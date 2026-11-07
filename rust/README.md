@@ -434,3 +434,10 @@ payload. Input edits recalculate filtered visibility before external XLSX/ODS ou
 remains guarded by the preservation checks. General filter expressions and external filter reconfiguration remain
 parity work. XLSX cannot distinguish a manually hidden row that also fails the filter from a row hidden by the
 filter alone; the private native snapshot retains that distinction.
+
+Imported XLSX/ODS saves now refresh supported scalar formula caches throughout the workbook, including
+dependent sheets and formulas whose text did not change. Numeric, Boolean, string and error results retain their
+file types; the original formulas, cell styles, relationships and unrelated parts remain in place. Unsupported
+results and repeated ODF formula caches are cleared after an edit so an office application can recalculate them.
+This does not add dynamic arrays or general imported calculation-chain editing. The cache audit can inspect saved
+values without recalculating: `python3 rust/scripts/audit-statistics-office.py --fixtures DIR --output DIR --cached-only`.

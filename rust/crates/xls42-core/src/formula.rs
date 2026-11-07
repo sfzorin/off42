@@ -25,7 +25,7 @@ pub(super) enum Value {
     Error(&'static str),
 }
 impl Value {
-    fn display(self) -> String {
+    pub(super) fn display(self) -> String {
         match self {
             Self::Number(0.0) => "0".into(),
             Self::Number(n) => n.to_string(),

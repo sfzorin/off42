@@ -1378,8 +1378,37 @@ def audit_statistical_formulas(process,main,output,binary,results):
     condition=root.find(".//t:filter-condition",ods_ns);assert condition is not None
     assert condition.attrib["{"+ods_ns["t"]+"}operator"]=="contains"and condition.attrib["{"+ods_ns["t"]+"}value"]=="1"
     open_file(baseline);open_file(ods);_,ods_reopened=save("ods-reopened");references(ods_reopened,filtered=True)
+    def without_project(path):
+        target=output/("external-"+path.name)
+        with zipfile.ZipFile(path)as source_zip,zipfile.ZipFile(target,"w")as target_zip:
+            for item in source_zip.infolist():
+                if item.filename!="xls42/project.json":target_zip.writestr(item,source_zip.read(item.filename))
+        return target
+    external=without_project(baseline);external_original=external.read_bytes();open_file(external)
+    fill_prompt(process,main,25,"Range (1-based)",["1","1","1","1"]);replace_editor_text(u.GetDlgItem(main,101),"4")
+    external_changed,ext_cells=save("external-changed");references(ext_cells,True);information(ext_cells,True);finance(ext_cells,4,4000)
+    with zipfile.ZipFile(external_changed)as archive:assert"xls42/project.json"not in archive.namelist()
+    command(main,4);_,ext_undo=save("external-undo");assert all(ext_undo["C"+str(i+1)]==cells["C"+str(i+1)]for i in range(len(formulas)))
+    command(main,5);_,ext_redo=save("external-redo");assert all(ext_redo["C"+str(i+1)]==ext_cells["C"+str(i+1)]for i in range(len(formulas)))
+    assert external.read_bytes()==external_original
+    external_ods=without_project(ods);external_ods_original=external_ods.read_bytes();open_file(external_ods)
+    fill_prompt(process,main,25,"Range (1-based)",["1","1","1","1"]);replace_editor_text(u.GetDlgItem(main,101),"4")
+    ods_saved=output/"statistics-external-edited.ods";save_as(main);choose_file(process,ods_saved,format_name="OpenDocument spreadsheet");output_ready(process,main,ods_saved,b"PK")
+    with zipfile.ZipFile(ods_saved)as archive:
+        assert"xls42/project.json"not in archive.namelist();root=ET.fromstring(archive.read("content.xml"))
+    office="urn:oasis:names:tc:opendocument:xmlns:office:1.0";table="urn:oasis:names:tc:opendocument:xmlns:table:1.0";cache={}
+    for row_index,row in enumerate(root.findall(".//{"+table+"}table-row")):
+        column=0
+        for cell in row:
+            repeat=int(cell.attrib.get("{"+table+"}number-columns-repeated",1))
+            if column<=2<column+repeat:cache[row_index+1]=cell
+            column+=repeat
+    for row,expected in [(41,"6"),(43,"4"),(50,"4"),(51,"4")]:assert cache[row].attrib.get("{"+office+"}value")==expected,(row,cache[row].attrib)
+    assert cache[52].attrib.get("{"+office+"}boolean-value")=="true"
+    assert cache[53].attrib.get("{"+office+"}string-value")=="$B$2"
+    assert external_ods.read_bytes()==external_ods_original
     assert source.read_bytes()==original
-    results["checks"].append("date entry and calendar/annuity/cash-flow calculations, statistical range/reference typing, distributions and 1e-100 literals, small-tail quantiles against an independent oracle, typed XLSX caches, computed references/lookup and filter-aware summaries, native filter/history and standard ODS output/reopen, input recalculation, complete Undo/Redo and dirty/discard/reopen")
+    results["checks"].append("date entry and calendar/annuity/cash-flow calculations, statistical range/reference typing, distributions and 1e-100 literals, small-tail quantiles against an independent oracle, typed XLSX caches, computed references/lookup and filter-aware summaries, native filter/history and standard ODS output/reopen, external XLSX/ODS typed cache refresh without private snapshots, input recalculation, complete Undo/Redo and dirty/discard/reopen")
 
 
 def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False):

@@ -13,6 +13,7 @@ import zipfile
 parser=argparse.ArgumentParser()
 parser.add_argument('--fixtures',type=Path,required=True)
 parser.add_argument('--output',type=Path,required=True)
+parser.add_argument('--cached-only',action='store_true',help='Inspect saved XML caches without asking an office application to recalculate')
 parser.add_argument('--soffice',default='/Applications/LibreOffice.app/Contents/MacOS/soffice')
 args=parser.parse_args();args.output.mkdir(parents=True,exist_ok=True)
 cases=json.loads((args.fixtures/'cases.json').read_text())
@@ -34,9 +35,11 @@ reports=[]
 with tempfile.TemporaryDirectory(prefix='off42-calc-profile-')as profile:
     for extension,target in [('xlsx','ods'),('ods','xlsx')]:
         source=(args.fixtures/('statistics.'+extension)).resolve();out=(args.output/('from-'+extension)).resolve();out.mkdir(exist_ok=True)
-        run=subprocess.run([args.soffice,'-env:UserInstallation='+Path(profile).as_uri(),'--headless','--convert-to',target,'--outdir',str(out),str(source)],text=True,capture_output=True,check=True)
-        (out/'conversion.log').write_text(run.stdout+run.stderr)
-        result=out/('statistics.'+target);assert result.exists(),run.stdout+run.stderr
+        if args.cached_only:result=source
+        else:
+            run=subprocess.run([args.soffice,'-env:UserInstallation='+Path(profile).as_uri(),'--headless','--convert-to',target,'--outdir',str(out),str(source)],text=True,capture_output=True,check=True)
+            (out/'conversion.log').write_text(run.stdout+run.stderr)
+            result=out/('statistics.'+target);assert result.exists(),run.stdout+run.stderr
         actual=values(result);rows=[]
         for case in cases:
             value=actual.get(case['cell']);expected=case['expected']
@@ -45,10 +48,10 @@ with tempfile.TemporaryDirectory(prefix='off42-calc-profile-')as profile:
             status='pass'
             if not matched:
                 # These are external Calc 25.2 behaviors. Native results remain checked against mpmath.
-                if case['formula']=='=ERF(8,9)'and value=='0':status='known_external_precision_loss'
-                elif case['formula']=='=PERCENTILE.EXC(A1:A2,0)'and value in ('Err:502','#VALUE!'):status='known_external_error_classification'
+                if not args.cached_only and case['formula']=='=ERF(8,9)'and value=='0':status='known_external_precision_loss'
+                elif not args.cached_only and case['formula']=='=PERCENTILE.EXC(A1:A2,0)'and value in ('Err:502','#VALUE!'):status='known_external_error_classification'
                 else:raise AssertionError((extension,case,value))
             rows.append({**case,'actual':value,'status':status})
-        reports.append({'source_format':extension,'source_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'output_sha256':hashlib.sha256(result.read_bytes()).hexdigest(),'passed':sum(r['status']=='pass'for r in rows),'known_external_differences':[r for r in rows if r['status']!='pass'],'cases':rows})
+        reports.append({'mode':'saved_cache'if args.cached_only else'office_recalculation','source_format':extension,'source_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'output_sha256':hashlib.sha256(result.read_bytes()).hexdigest(),'passed':sum(r['status']=='pass'for r in rows),'known_external_differences':[r for r in rows if r['status']!='pass'],'cases':rows})
 (args.output/'results.json').write_text(json.dumps(reports,indent=2)+'\n')
 print(json.dumps([{k:v for k,v in r.items()if k!='cases'}for r in reports],indent=2))

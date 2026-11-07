@@ -307,3 +307,14 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   **84/85 XLSX-origin and 83/85 ODS-origin** matches, retaining the prior explicit ERF precision/error-classification
   differences. Portable workspace: **427 passed**, zero failures, one OCR fixture ignored; GNU all targets compile.
   Native reference/filter/ODS/history assertions are added and await the next compatible build. Public state unchanged.
+
+- External Office saves now refresh supported scalar caches across all current sheets, preserving formula text,
+  shared-formula attributes, styles and unknown objects. They remove dangling native-snapshot declarations.
+  Unsupported/unbounded results and repeated ODF formula caches are cleared for recalculation instead of
+  retaining old numbers. Dynamic-array/legacy-array range fidelity and calculation-chain editing remain open.
+- Independent direct XML inspection of edited external packages passes **85/85 values in XLSX and 85/85 in ODS**
+  before any office recalculation. LibreOffice again gives 84/85 and 83/85, with the same recorded external
+  differences. Portable typed-cache regressions independently read number/string/Boolean/error/empty/newline
+  results with Calamine, cross-sheet dependencies, Undo/Redo, unknown metadata and clearing unsupported caches.
+  Workspace: **430 passed**, zero failures, one OCR fixture ignored; GNU all targets compile. Native external
+  XLSX/ODS edit/cache/history scenarios await the next compatible build. No public release/main/site change.

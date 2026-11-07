@@ -2532,7 +2532,7 @@ impl Workbook {
                     .zip(&self.history.current().sheets)
                     .any(|(a, b)| a.id != b.id || a.name != b.name))
         {
-            return patch_ods_structure(bytes, old, self.history.current());
+            return patch_ods_structure(bytes, old, self.history.current()).and_then(|bytes|formula_cache::refresh_external(bytes,self,kind));
         }
         let renames = sheet_renames(old, self.history.current())?;
         let changes = changed_cells(
@@ -2564,7 +2564,7 @@ impl Workbook {
             "xlsx" => patch_xlsx(bytes, old, self.history.current(), &changes, &renames),
             "ods" => patch_ods(bytes, old, self.history.current(), &changes),
             _ => Err(Error::Invalid("This Office format cannot yet be edited")),
-        }
+        }.and_then(|bytes|formula_cache::refresh_external(bytes,self,kind))
     }
 }
 fn patch_ods_structure(bytes: &[u8], old: &State, current: &State) -> Result<Vec<u8>, Error> {

@@ -1,5 +1,7 @@
 //! Correct generated formula caches without changing formula text or unrelated ZIP entries.
 use super::*;
+mod external;
+pub(super) fn refresh_external(bytes:Vec<u8>,book:&Workbook,kind:&str)->Result<Vec<u8>,Error>{external::refresh(bytes,book,kind)}
 // Spreadsheet string escapes differ from ordinary XML text. Preserve literal
 // _xHHHH_ sequences and encode characters forbidden by XML 1.0.
 fn cached_text_xml(value: &str) -> String {
