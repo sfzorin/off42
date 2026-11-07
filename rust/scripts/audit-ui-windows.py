@@ -1000,7 +1000,7 @@ def audit_preset_shapes(process,main,output,results):
     results["checks"].append("187-shape picker, actual curved/compound fill pixels, handle drag, one-step Undo/Redo, radius/type edits, PPTX/ODP output, dirty/discard/reopen and editable ODP overlay")
 
 
-def pdf_pixels(dll_path,path,index=0):
+def pdf_pixels(dll_path,path,index=0,annotations=False):
     """Render the saved PDF independently of the app's WinRT canvas/cache."""
     pdf=c.WinDLL(str(dll_path))
     pdf.FPDF_LoadDocument.argtypes,pdf.FPDF_LoadDocument.restype=[c.c_char_p,c.c_char_p],c.c_void_p
@@ -1021,7 +1021,7 @@ def pdf_pixels(dll_path,path,index=0):
         assert 0<width*height<=4_000_000
         bitmap=pdf.FPDFBitmap_Create(width,height,1);assert bitmap
         pdf.FPDFBitmap_FillRect(bitmap,0,0,width,height,0xFFFFFFFF)
-        pdf.FPDF_RenderPageBitmap(bitmap,page,0,0,width,height,0,0)
+        pdf.FPDF_RenderPageBitmap(bitmap,page,0,0,width,height,0,int(annotations))
         stride=pdf.FPDFBitmap_GetStride(bitmap)
         pixels=c.string_at(pdf.FPDFBitmap_GetBuffer(bitmap),stride*height)
         return width,height,pixels
@@ -1098,6 +1098,66 @@ def audit_pdf_decorations(process,main,binary,output,results):
     results["checks"].append("text/image watermarks with opacity, selected-page pixels/rotation, searchable Unicode headers/Bates/date/file tokens, ordered numbering, atomic Undo/Redo/removal and saved PDFium text/pixels")
 
 
+def audit_pdf_comparison(process,main,binary,output,results):
+    source=output/"comparison-source.pdf";other=output/"comparison-other.pdf"
+    minimal_pdf(source,["BOARD uses 10k resistor","REMOVE THIS"])
+    minimal_pdf(other,["BOARD uses 20k resistor","","ADDED PAGE"])
+    originals=(source.read_bytes(),other.read_bytes())
+    def open_file(path):
+        command(main,1);choose_file(process,path)
+        def state():
+            if path.name in text(main)and" * - "not in text(main)and u.IsWindowEnabled(main):return(True,None)
+            prompt=next((h for h in windows(process.pid)if classname(h)=="#32770"and u.IsWindowEnabled(h)and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
+            return(False,prompt)if prompt else None
+        opened,prompt=wait_for(state,"comparison PDF open/discard",process)
+        if not opened:click(prompt,7);wait_for(lambda:path.name in text(main)and" * - "not in text(main)and u.IsWindowEnabled(main),"comparison PDF committed open",process)
+    def save(name):
+        path=output/("comparison-"+name+".pdf");save_as(main);choose_file(process,path,format_name="PDF document");output_ready(process,main,path,b"%PDF-");return path
+    open_file(source);baseline=save("baseline")
+    def compare(path=other):
+        command(main,97);choose_file(process,path)
+        report=modal(process,native_class="Off42ReportWindow")
+        assert"Comparison"in text(report)
+        u.MoveWindow.argtypes=[w.HWND,c.c_int,c.c_int,c.c_int,c.c_int,w.BOOL]
+        assert u.MoveWindow(report,1120,40,760,650,True)
+        table=u.GetDlgItem(report,100);assert classname(table)=="SysListView32"
+        return report,table
+    report,table=compare()
+    assert u.SendMessageW(table,0x1004,0,0)==3  # LVM_GETITEMCOUNT
+    assert" * - "not in text(main)
+    canvas=wait_for(lambda:next((h for h in windows(process.pid,main)if classname(h)=="Suite42Canvas"),None),"comparison canvas",process)
+    def colored():
+        path=output/"PDF42-comparison-temporary.bmp";capture_window(canvas,path);data=path.read_bytes()[54:]
+        return sum(data[i+2]>data[i+1]+20 and data[i+1]>data[i]+20 for i in range(0,len(data),4))
+    wait_for(lambda:colored()>20,"temporary orange comparison pixels",process)
+    u.SendMessageW(table,0x100,0x24,0);u.SendMessageW(table,0x101,0x24,0)  # Home
+    wait_for(lambda:"10k"in text(u.GetDlgItem(report,102))and"20k"in text(u.GetDlgItem(report,102)),"replacement row contents",process)
+    u.SendMessageW(table,0x100,0x23,0);u.SendMessageW(table,0x101,0x23,0)  # End
+    wait_for(lambda:"ADDED PAGE"in text(u.GetDlgItem(report,102)),"inserted page row",process)
+    capture_window(report,output/"PDF42-comparison-report.bmp")
+    click(report,2);wait_for(lambda:u.IsWindowEnabled(main),"comparison closed without keeping",process)
+    unkept=save("unkept")
+    assert pdf_annotation_counts(binary.parent/"pdfium.dll",unkept)==[0,0]
+    assert pdf_text(binary.parent/"pdfium.dll",unkept,by_page=True)==pdf_text(binary.parent/"pdfium.dll",baseline,by_page=True)
+    report,table=compare();click(report,10)
+    wait_for(lambda:u.SendMessageW(u.GetDlgItem(report,10),0xF0,0,0)==1 and" * - "in text(main),"explicit keep highlights",process)
+    click(report,2);wait_for(lambda:u.IsWindowEnabled(main),"kept comparison closed",process)
+    kept=save("kept");assert pdf_annotation_counts(binary.parent/"pdfium.dll",kept)==[1,1]
+    for index in [0,1]:
+        _,_,pixels=pdf_pixels(binary.parent/"pdfium.dll",kept,index,annotations=True)
+        assert sum(pixels[i+2]>pixels[i]+30 and pixels[i+2]>pixels[i+1]+20 for i in range(0,len(pixels),4))>20
+
+    assert pdf_text(binary.parent/"pdfium.dll",kept,by_page=True)==pdf_text(binary.parent/"pdfium.dll",baseline,by_page=True)
+    command(main,98);cleared=save("cleared");assert pdf_annotation_counts(binary.parent/"pdfium.dll",cleared)==[0,0]
+    command(main,4);undone=save("undo-clear");assert pdf_annotation_counts(binary.parent/"pdfium.dll",undone)==[1,1]
+    command(main,5);redone=save("redo-clear");assert pdf_annotation_counts(binary.parent/"pdfium.dll",redone)==[0,0]
+    report,table=compare(source);assert u.SendMessageW(table,0x1004,0,0)==0
+    assert not u.IsWindowEnabled(u.GetDlgItem(report,10));click(report,2);wait_for(lambda:u.IsWindowEnabled(main),"identical comparison closed",process)
+    open_file(kept);reopened=save("reopened");assert pdf_annotation_counts(binary.parent/"pdfium.dll",reopened)==[1,1]
+    assert source.read_bytes()==originals[0]and other.read_bytes()==originals[1]
+    results["checks"].append("background word comparison, replacement/deletion/added-page report and navigation, temporary orange pixels without document edits, explicit kept highlights, clear/history and PDFium saved/reopened annotations/text, identical input and unchanged source files")
+
+
 def audit_statistical_formulas(process,main,output,binary,results):
     import math
     import xml.etree.ElementTree as ET
@@ -1170,7 +1230,7 @@ def audit_statistical_formulas(process,main,output,binary,results):
     results["checks"].append("date entry and calendar/annuity/cash-flow calculations, statistical range/reference typing, distributions and 1e-100 literals, small-tail quantiles against an independent oracle, typed XLSX caches, input recalculation, complete Undo/Redo and dirty/discard/reopen")
 
 
-def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False):
+def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False):
     startup = None
     if extended:
         if binary.stem.lower() == "pdf42":
@@ -1305,6 +1365,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_pdf_text_exports(process, main, binary, output, results)
         if pdf_decorations and binary.stem.lower()=="pdf42":
             audit_pdf_decorations(process,main,binary,output,results)
+        if pdf_comparison and binary.stem.lower()=="pdf42":
+            audit_pdf_comparison(process,main,binary,output,results)
         return results
     finally:
         if process.poll() is None:
@@ -1730,6 +1792,7 @@ def main():
     parser.add_argument("--rich-search", action="store_true")
     parser.add_argument("--preset-shapes", action="store_true")
     parser.add_argument("--pdf-decorations", action="store_true")
+    parser.add_argument("--pdf-comparison", action="store_true")
     parser.add_argument("--statistical-formulas", action="store_true")
     parser.add_argument("--page-exports", action="store_true")
     parser.add_argument("--host-commands", action="store_true")
@@ -1744,7 +1807,7 @@ def main():
     try:
         for app in ["DOC42", "XLS42", "PDF42", "IMG42", "PPT42", "SCN42"]:
             try:
-                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas))
+                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison))
             except Exception as error:
                 results.append({"app": app, "error": str(error), "traceback": traceback.format_exc()})
             print(json.dumps(results[-1]), flush=True)

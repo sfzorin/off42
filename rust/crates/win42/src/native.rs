@@ -2474,6 +2474,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 STATE.with(|s| s.borrow().as_ref().unwrap().app.dialog_request(id));
             if let Some(request) = dialog_request {
                 let result = match request {
+                    crate::DialogRequest::Report(report)=>{crate::report::show(hwnd,id,report);None},
                     crate::DialogRequest::Information { title, text } => {
                         MessageBoxW(hwnd,wide(&text).as_ptr(),wide(&crate::localization::text(title)).as_ptr(),MB_OK|MB_ICONINFORMATION);
                         None
@@ -2771,11 +2772,15 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
                     previous.set(interval);
                 }
             });
+            if !crate::report::is_open(){
+                let report=STATE.with(|s|s.borrow_mut().as_mut().and_then(|s|s.app.take_pending_report()));
+                if let Some((id,report))=report{crate::report::show(h,id,report);}
+            }
             sync_rulers(h);
             let pending = STATE.with(|s| {
                 s.borrow_mut()
                     .as_mut()
-                    .and_then(|s| s.app.take_pending_print_job())
+                    .and_then(|s| (!crate::report::is_open()).then(||s.app.take_pending_print_job()).flatten())
             });
             if let Some(result) = pending {
                 match result {
@@ -5245,4 +5250,9 @@ pub(super) unsafe fn grid_commit(value: String) -> bool {
             false
         }
     }
+}
+
+pub(super) unsafe fn report_event(owner:HWND,id:u16,event:crate::ReportEvent)->bool{
+    let result=STATE.with(|s|s.borrow_mut().as_mut().ok_or_else(||"Document is unavailable".to_string()).and_then(|s|s.app.report_event(id,event)));
+    match result{Ok(())=>{refresh();true},Err(error)=>{msg(owner,&error,MB_OK|MB_ICONERROR);false}}
 }

@@ -1,5 +1,7 @@
 //! Structural PDF operations. No renderer or signature preservation.
 pub mod decorations;
+mod comparison_marks;
+pub use comparison_marks::ComparisonMark;
 mod page_export;
 mod page_labels;
 pub use page_labels::PageLabelStyle;
@@ -168,6 +170,7 @@ struct Annotation {
     quads: Vec<[f64; 4]>,
     image: Option<ImageStamp>,
     vector: Option<VectorStamp>,
+    comparison:Option<(u64,[f64;3])>,
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AnnotationKind {
@@ -209,13 +212,18 @@ struct FormField {
     widgets: Vec<ObjectId>,
 }
 
-pub struct SaveState(State);
+fn next_source_identity() -> u64 {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}
+pub struct SaveState(State, u64, u64);
 
 pub enum PdfOpenProbe {
     Ready(PdfDocument),
     PasswordRequired,
 }
 pub struct PdfDocument {
+    source_identity: u64,
     doc: Document,
     root: ObjectId,
     original_pages: Vec<ObjectId>,
@@ -1163,6 +1171,7 @@ impl PdfDocument {
             return Err("empty page tree".into());
         }
         let result = Self {
+            source_identity: next_source_identity(),
             doc,
             root,
             original_pages: pages.clone(),
@@ -1481,6 +1490,7 @@ impl PdfDocument {
             quads: Vec::new(),
             image: None,
             vector: None,
+            comparison:None,
         });
         self.history.apply(state);
         Ok(())
@@ -1606,6 +1616,7 @@ impl PdfDocument {
             quads: Vec::new(),
             image: if vector.is_some() { None } else { Some(image) },
             vector,
+            comparison:None,
         });
         self.history.apply(state);
         Ok(target)
@@ -1697,6 +1708,7 @@ impl PdfDocument {
             quads: Vec::new(),
             image: None,
             vector: None,
+            comparison:None,
         });
         self.history.apply(state);
         Ok(())
@@ -1762,6 +1774,7 @@ impl PdfDocument {
             quads: clean,
             image: None,
             vector: None,
+            comparison:None,
         });
         self.history.apply(state);
         Ok(())
@@ -2841,6 +2854,7 @@ impl PdfDocument {
         state.crops.remove(&page);
         state.rotations.remove(&page);
         let candidate = Self {
+            source_identity: self.source_identity,
             doc: self.doc.clone(),
             root: self.root,
             original_pages: self.original_pages.clone(),
@@ -3281,6 +3295,7 @@ impl PdfDocument {
             .splice(index + 1..index + 1, pages.iter().copied());
         state.selected = pages[0];
         let candidate = Self {
+            source_identity: self.source_identity,
             doc: self.doc.clone(),
             root: self.root,
             original_pages: self.original_pages.clone(),
@@ -3311,6 +3326,7 @@ impl PdfDocument {
         state.pages.remove(index);
         state.selected = state.pages[index.min(state.pages.len() - 1)];
         let candidate = Self {
+            source_identity: self.source_identity,
             doc: self.doc.clone(),
             root: self.root,
             original_pages: self.original_pages.clone(),
@@ -3772,7 +3788,7 @@ impl PdfDocument {
                 )
             } else if !annotation.quads.is_empty() {
                 let mut drawing = match annotation.kind {
-                    AnnotationKind::Highlight => String::from("/GS gs 1 1 0 rg "),
+                    AnnotationKind::Highlight => {let c=annotation.comparison.map(|(_,c)|c).unwrap_or([1.0,1.0,0.0]);format!("/GS gs {} {} {} rg ",c[0],c[1],c[2])},
                     _ => String::from("1 0 0 RG 1 w "),
                 };
                 for q in &annotation.quads {
@@ -3889,7 +3905,7 @@ impl PdfDocument {
                     ),
                 }
             };
-            let mut resources = lopdf::dictionary! {"ExtGState"=>lopdf::dictionary!{"GS"=>lopdf::dictionary!{"Type"=>"ExtGState", "BM"=>"Multiply", "ca"=>0.35}}};
+            let mut resources = lopdf::dictionary! {"ExtGState"=>lopdf::dictionary!{"GS"=>lopdf::dictionary!{"Type"=>"ExtGState", "BM"=>"Multiply", "ca"=>if annotation.comparison.is_some(){0.4}else{0.35}}}};
             if let Some(image) = annotation
                 .image
                 .as_ref()
@@ -3920,6 +3936,11 @@ impl PdfDocument {
             }
             let ap = doc.add_object(lopdf::Stream::new(lopdf::dictionary! {"Type"=>"XObject", "Subtype"=>"Form", "BBox"=>vec![0.into(), 0.into(), Object::Real(w as f32), Object::Real(h as f32)], "Resources"=>resources}, drawing.into_bytes()));
             let mut annot = lopdf::dictionary! {"Type"=>"Annot", "Subtype"=>subtype, "Rect"=>vec![Object::Real(left as f32),Object::Real(bottom as f32),Object::Real(right as f32),Object::Real(top as f32)], "C"=>vec![1.into(),0.into(),0.into()], "F"=>4, "AP"=>lopdf::dictionary!{"N"=>ap}};
+            if let Some((_,color))=annotation.comparison {
+                annot.set("C",color.into_iter().map(|v|Object::Real(v as f32)).collect::<Vec<_>>());
+                annot.set("T",lopdf::text_string("Comparison"));
+                annot.set("CA",Object::Real(0.4));
+            }
             if matches!(
                 annotation.kind,
                 AnnotationKind::Highlight | AnnotationKind::Underline | AnnotationKind::StrikeOut
@@ -4209,7 +4230,7 @@ impl PdfDocument {
         if out.len() as u64 > MAX_FILE * 2 {
             return Err("output exceeds limit".into());
         }
-        Ok((out, SaveState(captured)))
+        Ok((out, SaveState(captured,self.source_identity,self.history.current_id())))
     }
     /// Encrypt a disposable snapshot with AES-128; the editing model stays decrypted in memory.
     pub fn save_encrypted_snapshot(&self, password: &str) -> Result<(Vec<u8>, SaveState), String> {

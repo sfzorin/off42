@@ -31,6 +31,7 @@ struct Api {
     close_text: unsafe extern "system" fn(Handle),
     count: unsafe extern "system" fn(Handle) -> i32,
     unicode: unsafe extern "system" fn(Handle, i32) -> u32,
+    box_rect: unsafe extern "system" fn(Handle, i32, *mut f64, *mut f64, *mut f64, *mut f64) -> i32,
     size: unsafe extern "system" fn(Handle, i32) -> f64,
     font: unsafe extern "system" fn(Handle, i32, *mut c_void, u32, *mut i32) -> u32,
     weight: unsafe extern "system" fn(Handle, i32) -> i32,
@@ -88,6 +89,17 @@ impl Api {
             unicode: symbol!(
                 "FPDFText_GetUnicode",
                 unsafe extern "system" fn(Handle, i32) -> u32
+            ),
+            box_rect: symbol!(
+                "FPDFText_GetCharBox",
+                unsafe extern "system" fn(
+                    Handle,
+                    i32,
+                    *mut f64,
+                    *mut f64,
+                    *mut f64,
+                    *mut f64,
+                ) -> i32
             ),
             size: symbol!(
                 "FPDFText_GetFontSize",
@@ -292,5 +304,115 @@ mod tests {
         assert_eq!(progress.load(Ordering::Relaxed), 2);
         cancel.store(true, Ordering::Relaxed);
         assert!(extract(source, &[0], &progress, &cancel).is_err());
+    }
+}
+
+/// Same decoding as text export, retaining source-coordinate boxes and UTF-8 word positions.
+pub fn positioned(
+    bytes: &[u8],
+    page_count: usize,
+    progress: &AtomicUsize,
+    cancel: &AtomicBool,
+) -> Result<Vec<crate::comparison::PageText>, String> {
+    let check = || {
+        if cancel.load(Ordering::Relaxed) {
+            Err("PDF comparison cancelled".to_string())
+        } else {
+            Ok(())
+        }
+    };
+    check()?;
+    let _lock = crate::search::PDFIUM_LOCK
+        .lock()
+        .map_err(|_| "PDFium lock failed")?;
+    unsafe {
+        let api = Api::open()?;
+        let handle = (api.load)(bytes.as_ptr().cast(), bytes.len(), std::ptr::null());
+        if handle.is_null() {
+            return Err("PDFium could not open a comparison snapshot".into());
+        }
+        let doc = Document { api: &api, handle };
+        let mut result = Vec::new();
+        let mut total = 0;
+        let mut glyph_count = 0;
+        for index in 0..page_count {
+            check()?;
+            let handle = (api.page)(doc.handle, index as i32);
+            if handle.is_null() {
+                return Err(format!("Cannot read comparison page {}", index + 1));
+            }
+            let mut page = Page {
+                api: &api,
+                handle,
+                text: std::ptr::null_mut(),
+            };
+            page.text = (api.text)(handle);
+            if page.text.is_null() {
+                return Err(format!("Cannot read comparison text on page {}", index + 1));
+            }
+            let count = (api.count)(page.text);
+            if !(0..=1_000_000).contains(&count) {
+                return Err("Comparison page exceeds its text limit".into());
+            }
+            glyph_count += count as usize;
+            if glyph_count > 1_000_000 {
+                return Err("Comparison document exceeds its character limit".into());
+            }
+            let mut text = crate::comparison::PageText::default();
+            let mut i = 0;
+            let char_box = |index: i32| -> Option<[f64; 4]> {
+                let (mut l, mut r, mut b, mut t) = (0.0, 0.0, 0.0, 0.0);
+                if (api.box_rect)(page.text, index, &mut l, &mut r, &mut b, &mut t) != 0
+                    && [l, b, r, t].iter().all(|v| v.is_finite())
+                    && r > l
+                    && t > b
+                {
+                    Some([l, b, r, t])
+                } else {
+                    None
+                }
+            };
+            while i < count {
+                if i % 1024 == 0 {
+                    check()?;
+                }
+                let mut code = (api.unicode)(page.text, i);
+                let mut bounds = char_box(i);
+                if (0xD800..=0xDBFF).contains(&code) && i + 1 < count {
+                    let low = (api.unicode)(page.text, i + 1);
+                    if (0xDC00..=0xDFFF).contains(&low) {
+                        i += 1;
+                        code = 0x10000 + ((code - 0xD800) << 10) + low - 0xDC00;
+                        if let Some(b) = char_box(i) {
+                            bounds = Some(bounds.map_or(b, |a| {
+                                [
+                                    a[0].min(b[0]),
+                                    a[1].min(b[1]),
+                                    a[2].max(b[2]),
+                                    a[3].max(b[3]),
+                                ]
+                            }));
+                        }
+                    }
+                }
+                let start = text.text.len();
+                let ch = char::from_u32(code)
+                    .filter(|c| *c != '\0')
+                    .unwrap_or('\u{fffd}');
+                text.text.push(ch);
+                let end = text.text.len();
+                total += end - start;
+                if total > 4 * 1024 * 1024 {
+                    return Err("Comparison document exceeds 4 MB of text".into());
+                }
+                if let Some(b) = bounds {
+                    text.glyphs.push((start..end, b));
+                }
+                i += 1;
+            }
+            result.push(text);
+            progress.fetch_add(1, Ordering::Relaxed);
+        }
+        Ok(result)
     }
 }

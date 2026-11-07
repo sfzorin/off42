@@ -2,7 +2,7 @@
 use doc42_core::rich::{Block, Format, Paragraph, RichDocument, Run, TextStyle};
 use std::{io::Write, path::Path};
 #[cfg(windows)]
-mod pdfium;
+pub(super) mod pdfium;
 
 #[derive(Clone, Copy)]
 pub enum Output {

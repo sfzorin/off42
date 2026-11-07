@@ -308,6 +308,8 @@ pub trait App {
     fn print_job(&self, _id: u16) -> Option<PrintJob> {
         None
     }
+    fn take_pending_report(&mut self)->Option<(u16,ReportRequest)>{None}
+    fn report_event(&mut self,_id:u16,_event:ReportEvent)->Result<(),String>{Err("Report action unavailable".into())}
     fn dialog_request(&self, _id: u16) -> Option<DialogRequest> {
         None
     }
@@ -503,6 +505,8 @@ mod recents;
 mod window_layout;
 #[cfg(windows)]
 mod native;
+#[cfg(windows)]
+mod report;
 #[cfg(any(windows, test))]
 mod note_pagination;
 #[cfg(any(windows, test))]
@@ -1119,7 +1123,25 @@ pub struct FontChoice {
     pub color: [u8; 3],
 }
 #[derive(Clone, Debug)]
+pub struct ReportRequest {
+    pub title: String,
+    pub summary: String,
+    pub columns: Vec<&'static str>,
+    pub column_colors: Vec<Option<[u8; 3]>>,
+    pub rows: Vec<Vec<String>>,
+    pub allow_keep: bool,
+    pub keeping: bool,
+}
+#[derive(Clone, Copy, Debug)]
+pub enum ReportEvent {
+    Select(usize),
+    Keep(bool),
+    Clear,
+    Closed { keep: bool },
+}
+#[derive(Clone, Debug)]
 pub enum DialogRequest {
+    Report(ReportRequest),
     Information { title: &'static str, text: String },
     Color([u8; 3]),
     Font,

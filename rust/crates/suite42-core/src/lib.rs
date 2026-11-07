@@ -97,8 +97,10 @@ impl Default for TextValue {
 pub struct SnapshotHistory<T> {
     current: T,
     saved: T,
-    undo: Vec<T>,
-    redo: Vec<T>,
+    undo: Vec<(T,u64)>,
+    redo: Vec<(T,u64)>,
+    current_id:u64,
+    next_id:u64,
     limit: usize,
 }
 impl<T: Clone + PartialEq> SnapshotHistory<T> {
@@ -109,16 +111,30 @@ impl<T: Clone + PartialEq> SnapshotHistory<T> {
             undo: Vec::new(),
             redo: Vec::new(),
             limit,
+            current_id:0,
+            next_id:0,
         }
     }
     /// Replace current state without changing history or saved state; may change dirty status.
     pub fn replace_current(&mut self, value: T) {
+        if self.current != value {
+            self.advance_identity();
+        }
         self.current = value;
     }
+    /// Opaque identity of this exact history state, retained through Undo/Redo.
+    pub fn current_id(&self) -> u64 {
+        self.current_id
+    }
+    fn advance_identity(&mut self) {
+        self.next_id = self.next_id.wrapping_add(1);
+        self.current_id = self.next_id;
+    }
+
     pub fn current(&self) -> &T {
         &self.current
     }
-    fn push(stack: &mut Vec<T>, value: T, limit: usize) {
+    fn push(stack: &mut Vec<(T, u64)>, value: (T, u64), limit: usize) {
         if limit > 0 {
             if stack.len() == limit {
                 stack.remove(0);
@@ -130,24 +146,39 @@ impl<T: Clone + PartialEq> SnapshotHistory<T> {
         if value == self.current {
             return false;
         }
-        Self::push(&mut self.undo, self.current.clone(), self.limit);
+        Self::push(
+            &mut self.undo,
+            (self.current.clone(), self.current_id),
+            self.limit,
+        );
         self.current = value;
+        self.advance_identity();
         self.redo.clear();
         true
     }
     pub fn undo(&mut self) -> bool {
-        if let Some(value) = self.undo.pop() {
-            Self::push(&mut self.redo, self.current.clone(), self.limit);
+        if let Some((value, id)) = self.undo.pop() {
+            Self::push(
+                &mut self.redo,
+                (self.current.clone(), self.current_id),
+                self.limit,
+            );
             self.current = value;
+            self.current_id = id;
             true
         } else {
             false
         }
     }
     pub fn redo(&mut self) -> bool {
-        if let Some(value) = self.redo.pop() {
-            Self::push(&mut self.undo, self.current.clone(), self.limit);
+        if let Some((value, id)) = self.redo.pop() {
+            Self::push(
+                &mut self.undo,
+                (self.current.clone(), self.current_id),
+                self.limit,
+            );
             self.current = value;
+            self.current_id = id;
             true
         } else {
             false
@@ -255,3 +286,15 @@ mod tests {
 }
 
 pub mod session;
+
+#[cfg(test)]
+mod history_identity_tests{
+    use super::*;
+    #[test]
+    fn identities_follow_history_and_do_not_reuse_discarded_branches(){
+        let mut h=SnapshotHistory::new("a".to_string(),3);let start=h.current_id();assert!(!h.apply("a".into()));assert_eq!(h.current_id(),start);
+        h.apply("b".into());let second=h.current_id();assert_ne!(second,start);h.apply("c".into());let third=h.current_id();
+        h.undo();assert_eq!(h.current_id(),second);h.redo();assert_eq!(h.current_id(),third);h.undo();h.apply("d".into());assert!(h.current_id()>third);assert!(!h.can_redo());
+        let branch=h.current_id();h.mark_saved_snapshot("a".into());assert_eq!(h.current_id(),branch);h.replace_current("d".into());assert_eq!(h.current_id(),branch);h.replace_current("e".into());assert!(h.current_id()>branch);
+    }
+}

@@ -370,5 +370,28 @@ The fixed example report now matches **398/492**, with **94 differences** and tw
 computed reference expressions and further CELL metadata remain incomplete. Independent LibreOffice QA checks
 all 19 new logical/information examples from both formats: 64/65 XLSX-origin and 63/65 ODS-origin cases agree;
 only the previously recorded external statistical differences remain. Portable workspace: 407 tests pass,
-none fail, one OCR fixture is ignored; all GNU Windows targets compile. Native scenarios for this block await
-a compatible Windows build.
+none fail, one OCR fixture is ignored; all GNU Windows targets compile. Full optimized run 42410651353 passed 412 MSVC tests and all 30 native groups on 5932667,
+including the added logical/information caches and history assertions.
+
+
+## PDF text comparison (development branch)
+
+**Compare With…** compares the current unsaved PDF snapshot with another PDF in the background. The native,
+resizable report lists page, removed words and added words; selecting a row navigates to and selects its source
+text. Removed words receive temporary red highlights, replacements orange. Closing the report removes temporary
+highlights. **Keep highlights when saving** explicitly adds ordinary PDF highlight annotations as one history
+transaction; **Remove Comparison Highlights** removes live comparison marks and supports Undo/Redo. Other
+annotations remain intact. **Cancel PDF Comparison** cancels pending work without replacing the document.
+
+This compares extracted words page by page; it does not compare page artwork, typography or punctuation, and
+does not recognize scanned images. Unicode word boundaries need not match macOS dictionary segmentation for
+all languages. Ten checked-in cases from the actual macOS Foundation comparison implementation agree, including
+Cyrillic, Arabic, Greek, Turkish, repeated words, page changes and electrical values. Regenerate them with
+`python3 rust/scripts/export-comparison-cases.py` on macOS with Swift available.
+
+Comparison has explicit text/word/change/work budgets and linear working memory for the word diff. Source and
+history identities discard stale background results without hashing or serializing every page on each UI poll.
+Portable tests cover exact temporary-pixel positions at four rotations/nonzero crop origins, black-text retention,
+colored saved annotations, one-step history and separate document identities. Workspace: 414 pass, zero fail,
+one OCR fixture ignored; all GNU Windows targets compile. Native report/pixel/keep/history/reopen assertions
+are included for the next compatible Windows build.

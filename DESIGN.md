@@ -696,3 +696,23 @@ Reference metadata operations inspect reference syntax and cell kinds without ca
 when that is unnecessary. Error literals and imported error cells feed the same typed error path; error-looking
 text remains text. Typed logical ranges ignore reference text/blank values and propagate errors across all operands.
 IF/IFS/SWITCH/CHOOSE retain selected-branch evaluation; native result caches preserve Boolean/text/error types.
+
+
+### Windows native reports and PDF comparison
+
+`ReportRequest` presents a resizable native list, a copyable read-only detail field and explicit keep/clear
+controls. Stable row indices produce `ReportEvent` callbacks; the owning app retains the data and performs
+navigation/model transactions. The owner is disabled while the report is open, background completion/rendering
+continues, and pending print dialogs wait until it closes. A pending report is consumed once on the UI thread.
+The report does not add toolbar controls to every app.
+
+PDF comparison reads two committed snapshots in a worker, keeps UTF-8 positions and PDF-space glyph bounds,
+and compares Unicode words per page using bounded linear-memory LCS with common-prefix/suffix/disjoint fast
+paths. It groups removed/replaced words into line rectangles. Temporary highlights multiply into disposable
+view pixels; explicit keeping adds colored highlight annotations in one validated history transaction. Tagged
+live marks can be cleared without affecting ordinary annotations; saved/reopened marks become ordinary PDF
+annotations. Source/document and history identities invalidate stale results while allowing navigation and Save.
+
+`SnapshotHistory::current_id` is opaque and follows the exact state through Undo/Redo; new branches and unequal
+replacement get new identities. Saving leaves the identity unchanged. PDF snapshot guards combine it with a
+unique source identity, so PDFs with matching object IDs cannot accept one another's asynchronous results.

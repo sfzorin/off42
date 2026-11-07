@@ -1,5 +1,6 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 mod decorations;
+mod comparison;
 mod page_export;
 mod text_export;
 use pdf42_core::PdfDocument;
@@ -146,6 +147,14 @@ struct Pdf {
     redact_tool: bool,
     selected_annotation: Option<pdf42_core::AnnotationSelection>,
     #[cfg(windows)]
+    comparison:Option<comparison::Session>,
+    #[cfg(windows)]
+    comparison_worker:Option<comparison::Worker>,
+    #[cfg(windows)]
+    comparison_ready:bool,
+    #[cfg(windows)]
+    next_comparison:u64,
+    #[cfg(windows)]
     search_hits: Vec<search::Hit>,
     #[cfg(windows)]
     search_index: usize,
@@ -225,6 +234,52 @@ impl Pdf {
         self.pan = win42::Point::default();
         Ok(())
     }
+    #[cfg(windows)]
+    fn clear_comparison(&mut self) -> Result<(), String> {
+        let same_document = self
+            .comparison
+            .as_ref()
+            .is_none_or(|s| self.doc.as_ref().is_some_and(|d| d.same_source(&s.source)));
+        if same_document {
+            if let Some(doc) = self.doc.as_mut() {
+                if doc.has_comparison_marks() {
+                    doc.clear_comparison_marks();
+                    self.future_documents.clear();
+                }
+            }
+        }
+        self.selected_annotation = None;
+        if let Some(session) = &mut self.comparison {
+            session.keeping = false;
+            session.visible = false;
+            if let Some(doc) = &self.doc {
+                session.source = doc.save_snapshot()?.1;
+            }
+        }
+        self.comparison_ready = false;
+        Ok(())
+    }
+    #[cfg(windows)]
+    fn start_comparison(&mut self, path: &Path) -> Result<(), String> {
+        if self.comparison_worker.is_some() {
+            return Err("A PDF comparison is already running".into());
+        }
+        self.clear_comparison()?;
+        self.comparison = None;
+        let doc = self.doc.as_ref().ok_or("Open a PDF first")?;
+        let (bytes, source) = doc.save_snapshot()?;
+        self.next_comparison = self.next_comparison.wrapping_add(1).max(1);
+        self.operation_error = None;
+        self.comparison_worker = Some(comparison::Worker::start(
+            bytes,
+            doc.page_count(),
+            source,
+            self.current_epoch,
+            self.next_comparison,
+            path,
+        )?);
+        Ok(())
+    }
     fn branch(&mut self) {
         self.future_documents.clear();
     }
@@ -251,6 +306,26 @@ impl Pdf {
     fn request_render(&mut self) -> Result<(), String> {
         #[cfg(windows)]
         {
+            if self.comparison_worker.as_ref().is_some_and(|w| {
+                !self
+                    .doc
+                    .as_ref()
+                    .is_some_and(|d| d.matches_snapshot(&w.source))
+            }) {
+                if let Some(worker) = self.comparison_worker.take() {
+                    worker
+                        .cancel
+                        .store(true, std::sync::atomic::Ordering::Relaxed);
+                }
+            }
+            if self
+                .comparison
+                .as_ref()
+                .is_some_and(|s| !self.doc.as_ref().is_some_and(|d| d.same_source(&s.source)))
+            {
+                self.comparison = None;
+                self.comparison_ready = false;
+            }
             if let Some((_, _, _, cancel)) = self.object_inspect.take() {
                 cancel.store(true, std::sync::atomic::Ordering::Relaxed);
             }
@@ -589,6 +664,65 @@ impl win42::App for Pdf {
         #[cfg(windows)]
         {
             let mut changed = page_changed;
+            if let Some(worker) = &mut self.comparison_worker {
+                let n = worker.progress.load(std::sync::atomic::Ordering::Relaxed);
+                if n != worker.shown {
+                    worker.shown = n;
+                    changed = true;
+                }
+            }
+            let result = self
+                .comparison_worker
+                .as_ref()
+                .and_then(|w| match w.rx.try_recv() {
+                    Ok(result) => Some(result),
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        Some(Err("PDF comparison worker stopped".into()))
+                    }
+                    Err(_) => None,
+                });
+            if let Some(result) = result {
+                let worker = self.comparison_worker.take().unwrap();
+                if worker.epoch == self.current_epoch
+                    && self
+                        .doc
+                        .as_ref()
+                        .is_some_and(|d| d.matches_snapshot(&worker.source))
+                {
+                    match result {
+                        Ok(changes) => {
+                            self.comparison = Some(comparison::Session {
+                                changes,
+                                source: worker.source,
+                                epoch: worker.epoch,
+                                tag: worker.tag,
+                                name: worker.name,
+                                keeping: false,
+                                visible: true,
+                            });
+                            self.comparison_ready = true;
+                        }
+                        Err(error) => self.operation_error = Some(error),
+                    }
+                } else {
+                    self.operation_error =
+                        Some("PDF comparison discarded because the document changed".into());
+                }
+                changed = true;
+            }
+            if let Some(session) = &mut self.comparison {
+                if session.visible
+                    && (session.epoch != self.current_epoch
+                        || !self
+                            .doc
+                            .as_ref()
+                            .is_some_and(|d| d.matches_snapshot(&session.source)))
+                {
+                    session.visible = false;
+                    self.comparison_ready = false;
+                    changed = true;
+                }
+            }
             if let Some(worker) = &mut self.text_export {
                 changed |= worker.progress_changed();
             }
@@ -734,6 +868,101 @@ impl win42::App for Pdf {
             None
         }
     }
+    fn take_pending_report(&mut self) -> Option<(u16, win42::ReportRequest)> {
+        #[cfg(windows)]
+        if self.comparison_ready {
+            self.comparison_ready = false;
+            return self.comparison.as_ref().map(|s| (97, s.report()));
+        }
+        None
+    }
+    fn report_event(&mut self, id: u16, event: win42::ReportEvent) -> Result<(), String> {
+        if id != 97 {
+            return Err("Report unavailable".into());
+        }
+        #[cfg(windows)]
+        {
+            let session = self
+                .comparison
+                .as_ref()
+                .ok_or("Comparison is unavailable")?;
+            match event {
+                win42::ReportEvent::Select(index) => {
+                    if session.epoch != self.current_epoch
+                        || !self
+                            .doc
+                            .as_ref()
+                            .is_some_and(|d| d.matches_snapshot(&session.source))
+                    {
+                        return Err("The document changed; run comparison again".into());
+                    }
+                    let page = session
+                        .changes
+                        .get(index)
+                        .ok_or("Invalid comparison row")?
+                        .page;
+                    let doc = self.doc.as_mut().ok_or("Open a PDF first")?;
+                    let target = page.min(doc.page_count() - 1);
+                    let change = &session.changes[index];
+                    let selection = search::Selection {
+                        page: target,
+                        text: change.removed_text(),
+                        boxes: change
+                            .removed
+                            .iter()
+                            .flat_map(|w| w.boxes.iter().copied())
+                            .collect(),
+                    };
+                    doc.select(target)?;
+                    self.request_render()?;
+                    if !selection.boxes.is_empty() {
+                        self.selected_text = Some(selection);
+                    }
+                }
+                win42::ReportEvent::Keep(keep) => {
+                    if self.protected_readonly {
+                        return Err("Document permissions do not allow annotations".into());
+                    }
+                    if session.epoch != self.current_epoch
+                        || !self
+                            .doc
+                            .as_ref()
+                            .is_some_and(|d| d.matches_snapshot(&session.source))
+                    {
+                        return Err("The document changed; run comparison again".into());
+                    }
+                    let marks = if keep { session.marks() } else { vec![] };
+                    let tag = session.tag;
+                    let doc = self.doc.as_mut().ok_or("Open a PDF first")?;
+                    doc.replace_comparison_marks(tag, &marks)?;
+                    let source = doc.save_snapshot()?.1;
+                    let session = self.comparison.as_mut().unwrap();
+                    session.keeping = keep;
+                    session.source = source;
+                    self.selected_annotation = None;
+                    self.future_documents.clear();
+                    self.request_render()?;
+                }
+                win42::ReportEvent::Clear => {
+                    self.clear_comparison()?;
+                    self.request_render()?;
+                }
+                win42::ReportEvent::Closed { keep } => {
+                    if !keep {
+                        self.clear_comparison()?;
+                        self.comparison = None;
+                        self.request_render()?;
+                    }
+                }
+            }
+            return Ok(());
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = event;
+            Err("PDF comparison requires Windows".into())
+        }
+    }
     fn canvas_scene(&self) -> Option<win42::CanvasScene> {
         #[cfg(windows)]
         {
@@ -745,6 +974,27 @@ impl win42::App for Pdf {
                 height: *height,
                 rgba: rgba.clone(),
             }];
+            if let (Some(doc), Some(session)) = (self.doc.as_ref(), self.comparison.as_ref()) {
+                if session.visible && !session.keeping && doc.matches_snapshot(&session.source) {
+                    if let (Ok(bounds), Ok(rotation)) =
+                        (doc.page_box(doc.current()), doc.rotation(doc.current()))
+                    {
+                        let mut pixels = rgba.to_vec();
+                        comparison::paint_view(
+                            &mut pixels,
+                            *width,
+                            *height,
+                            bounds,
+                            rotation,
+                            doc.current(),
+                            &session.changes,
+                        );
+                        if let win42::SceneItem::Image { rgba, .. } = &mut items[0] {
+                            *rgba = pixels.into();
+                        }
+                    }
+                }
+            }
             if let (Some(doc), Some(hit)) =
                 (self.doc.as_ref(), self.search_hits.get(self.search_index))
             {
@@ -1785,6 +2035,14 @@ impl win42::App for Pdf {
     fn file_actions(&self) -> &'static [win42::FileAction] {
         &[
             win42::FileAction {
+                id: 97,
+                title: "Compare With…",
+                save: false,
+                extension: "pdf",
+                format: "PDF document",
+                pattern: "*.pdf",
+            },
+            win42::FileAction {
                 id: 94,
                 title: "Image Watermark…",
                 save: false,
@@ -1867,6 +2125,16 @@ impl win42::App for Pdf {
         ]
     }
     fn file_action(&mut self, id: u16, path: &Path) -> Result<(), String> {
+        if id == 97 {
+            #[cfg(windows)]
+            {
+                return self.start_comparison(path);
+            }
+            #[cfg(not(windows))]
+            {
+                return Err("PDF comparison requires Windows".into());
+            }
+        }
         if id == 74 {
             if std::fs::metadata(path).map_err(|e| e.to_string())?.len() > 16 * 1024 * 1024 {
                 return Err("Stamp image exceeds 16 MB".into());
@@ -2117,6 +2385,8 @@ impl win42::App for Pdf {
     }
     fn actions(&self) -> &'static [(u16, &'static str)] {
         &[
+            (98, "Remove Comparison Highlights"),
+            (99, "Cancel PDF Comparison"),
             (90, "Text Watermark…"),
             (91, "Page Numbers…"),
             (92, "Header & Footer…"),
@@ -2220,8 +2490,19 @@ impl win42::App for Pdf {
     }
     fn status(&self) -> String {
         #[cfg(windows)]
+        if let Some(worker) = &self.comparison_worker {
+            return format!(
+                "Comparing PDF text: {} pages read",
+                worker.progress.load(std::sync::atomic::Ordering::Relaxed)
+            );
+        }
+        #[cfg(windows)]
         if let Some(worker) = &self.text_export {
-            return format!("Exporting PDF text: {} of {} pages", worker.progress.load(std::sync::atomic::Ordering::Relaxed), worker.total);
+            return format!(
+                "Exporting PDF text: {} of {} pages",
+                worker.progress.load(std::sync::atomic::Ordering::Relaxed),
+                worker.total
+            );
         }
         if let Some(worker) = &self.page_export {
             return format!(
@@ -2316,6 +2597,41 @@ impl win42::App for Pdf {
         let n = d.page_count();
         let index = d.current();
         match id {
+            97 => {
+                #[cfg(windows)]
+                {
+                    self.comparison_worker.is_none()
+                        && self.object_edit.is_none()
+                        && self.flatten_pending.is_none()
+                }
+                #[cfg(not(windows))]
+                {
+                    false
+                }
+            }
+            98 => {
+                #[cfg(windows)]
+                {
+                    self.comparison
+                        .as_ref()
+                        .is_some_and(|s| s.visible || s.keeping)
+                        || d.has_comparison_marks()
+                }
+                #[cfg(not(windows))]
+                {
+                    false
+                }
+            }
+            99 => {
+                #[cfg(windows)]
+                {
+                    self.comparison_worker.is_some()
+                }
+                #[cfg(not(windows))]
+                {
+                    false
+                }
+            }
             95 => {
                 d.has_decorations(pdf42_core::decorations::DecorationKind::Watermark)
                     || d.has_decorations(pdf42_core::decorations::DecorationKind::PageNumber)
@@ -2509,6 +2825,27 @@ impl win42::App for Pdf {
     fn action(&mut self, id: u16) -> Result<(), String> {
         if id >= 10 && !self.enabled(id) {
             return Err("Command unavailable".into());
+        }
+        if id == 98 {
+            #[cfg(windows)]
+            {
+                self.clear_comparison()?;
+                self.comparison = None;
+                self.request_render()?;
+                return Ok(());
+            }
+        }
+        if id == 99 {
+            #[cfg(windows)]
+            {
+                if let Some(worker) = self.comparison_worker.take() {
+                    worker
+                        .cancel
+                        .store(true, std::sync::atomic::Ordering::Relaxed);
+                }
+                self.operation_error = Some("PDF comparison cancelled".into());
+                return Ok(());
+            }
         }
         if id == 87 {
             #[cfg(windows)]
