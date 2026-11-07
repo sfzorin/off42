@@ -345,6 +345,8 @@ impl Session {
                 .iter()
                 .map(|c| vec![(c.page + 1).to_string(), c.removed_text(), c.added_text()])
                 .collect(),
+            highlight_controls: true,
+            compact_first_column: true,
             allow_keep: self.visible && self.changes.iter().any(|c| !c.removed.is_empty()),
             keeping: self.keeping,
         }

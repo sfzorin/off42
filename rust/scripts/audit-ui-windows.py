@@ -129,7 +129,7 @@ def replace_editor_text(hwnd, value):
     data = c.create_unicode_buffer(value)
     u.SendMessageW(hwnd, 0xB1, 0, -1)  # EM_SETSEL
     u.SendMessageW(hwnd, 0xC2, 1, c.cast(data, c.c_void_p).value)  # EM_REPLACESEL
-    assert text(hwnd) == value
+    assert text(hwnd) == value, (classname(hwnd), u.GetDlgCtrlID(hwnd), text(hwnd), value)
 
 
 def fill_prompt(process, main, identifier, title, values):
@@ -140,6 +140,7 @@ def fill_prompt(process, main, identifier, title, values):
         assert control, f"Missing field {index} in {title}"
         set_text(control, value)
     click(dialog, 1)
+    wait_for(lambda: not u.IsWindow(dialog), title + " applied and closed", process)
     return dialog
 
 
@@ -1233,6 +1234,63 @@ def audit_pdf_merge(process,main,binary,output,results):
     results["checks"].append("native multi-file merge picker and cancellation, complete ordered PDFium text, atomic output and clean separate result process preserve dirty parent source/history")
 
 
+def audit_pdf_batch_headers(process,main,binary,output,results):
+    parent=output/"bates-parent.pdf";a=output/"bates-file2.pdf";b=output/"bates-file10.pdf";bad=output/"bates-file3.pdf"
+    minimal_pdf(parent,["CURRENT BODY"]);minimal_pdf(a,["BODY A1","BODY A2"],"A-");minimal_pdf(b,["BODY B1"])
+    bad.write_bytes(b"damaged PDF fixture");originals={p:p.read_bytes()for p in(parent,a,b,bad)}
+    command(main,1);choose_file(process,parent)
+    def opened():
+        if parent.name in text(main)and" * - "not in text(main)and u.IsWindowEnabled(main):return True
+        prompt=next((h for h in windows(process.pid)if classname(h)=="#32770"and u.IsWindowEnabled(h)and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
+        if prompt:click(prompt,7)
+        return None
+    wait_for(opened,"Bates parent open/discard",process)
+    caption=text(main);command(main,112);picker=modal(process,title="Apply Headers to Other PDFs…",native_class="#32770");click(picker,2)
+    wait_for(lambda:u.IsWindowEnabled(main),"Bates picker Cancel",process);assert text(main)==caption
+    fill_prompt(process,main,93,"Bates Numbering Settings",["CASE-","-X","6","41","2026-11-08"])
+    command(main,92);dialog=modal(process,title="Header & Footer",native_class="Suite42InputDialog")
+    rect=w.RECT();assert u.GetClientRect(dialog,c.byref(rect))
+    # Every field and both buttons must be inside the usable dialog, including the long token label.
+    for identifier in list(range(100,111))+[1,2]:
+        control=u.GetDlgItem(dialog,identifier);assert control
+        bounds=w.RECT();assert u.GetWindowRect(control,c.byref(bounds));point=w.POINT(bounds.left,bounds.top);assert u.ScreenToClient(dialog,c.byref(point))
+        assert 0<=point.x<rect.right and 0<=point.y<rect.bottom,(identifier,point.x,point.y,rect.right,rect.bottom)
+        # A combo's dropped-list rectangle may extend below the field while its visible closed field stays inside.
+        if classname(control).lower()!="combobox":assert point.y+bounds.bottom-bounds.top<=rect.bottom
+    values=["<<file>>","<<page>>/<<pages>>","<<date>>","CASE <<bates>>","","","10","28","36","1","Yes"]
+    for index,value in enumerate(values):set_text(u.GetDlgItem(dialog,100+index),value)
+    capture_window(dialog,output/"PDF42-bates-settings.bmp");click(dialog,1)
+    picker=modal(process,title="Apply Headers to Other PDFs…",native_class="#32770")
+    folder=output/("bates-copies-"+uuid.uuid4().hex);folder.mkdir()
+    choose_file(process,'"'+str(b)+'" "'+str(bad)+'" "'+str(a)+'"')
+    wait_for(lambda:not u.IsWindowVisible(picker)or text(picker)!="Apply Headers to Other PDFs…","Bates inputs selected",process)
+    modal(process,title="Choose a Folder for PDF Copies",native_class="#32770");choose_file(process,folder)
+    report=modal(process,title="Batch Headers & Bates Numbers",native_class="Off42ReportWindow")
+    table=u.GetDlgItem(report,100);assert u.SendMessageW(table,0x1004,0,0)==3
+    assert"2 / 3"in text(u.GetDlgItem(report,101))and"45"in text(u.GetDlgItem(report,101)),text(u.GetDlgItem(report,101))
+    assert not u.IsWindowVisible(u.GetDlgItem(report,10))and not u.IsWindowVisible(u.GetDlgItem(report,11))
+    u.SendMessageW(table,0x100,0x23,0);u.SendMessageW(table,0x101,0x23,0)
+    wait_for(lambda:b.name in text(u.GetDlgItem(report,102))and"44–44"in text(u.GetDlgItem(report,102)),"natural order and copied Bates range",process)
+    capture_window(report,output/"PDF42-bates-results.bmp");click(report,2);wait_for(lambda:u.IsWindowEnabled(main),"Bates report closed",process)
+    assert" * - "in text(main)
+    assert sorted(p.name for p in folder.iterdir())==sorted([a.name,b.name])
+    atext=pdf_text(binary.parent/"pdfium.dll",folder/a.name,by_page=True);btext=pdf_text(binary.parent/"pdfium.dll",folder/b.name,by_page=True)
+    for text_page,body,number in [(atext[0],"BODY A1",42),(atext[1],"BODY A2",43),(btext[0],"BODY B1",44)]:
+        assert body in text_page and f"CASE-{number:06}-X"in text_page and"2026-11-08"in text_page,text_page
+    assert all(a.name in page for page in atext)and b.name in btext[0]
+    assert pdf_page_labels(binary.parent/"pdfium.dll",folder/a.name)==["A-iv","A-v"]
+    assert pdf_bookmarks(binary.parent/"pdfium.dll",folder/a.name)==[("Start A-",0)]
+    command(main,93);settings=modal(process,title="Bates Numbering Settings",native_class="Suite42InputDialog")
+    assert text(u.GetDlgItem(settings,103))=="45";click(settings,2);wait_for(lambda:u.IsWindowEnabled(main),"continued Bates settings Cancel",process)
+    def save(name):
+        path=output/("bates-current-"+name+".pdf");save_as(main);choose_file(process,path,format_name="PDF document");output_ready(process,main,path,b"%PDF-");return path
+    saved=save("saved");assert"CASE-000041-X"in pdf_text(binary.parent/"pdfium.dll",saved)
+    command(main,4);undone=save("undo");assert"CASE-"not in pdf_text(binary.parent/"pdfium.dll",undone)
+    command(main,5);redone=save("redo");assert pdf_text(binary.parent/"pdfium.dll",redone)==pdf_text(binary.parent/"pdfium.dll",saved)
+    assert all(path.read_bytes()==data for path,data in originals.items())
+    results["checks"].append("native batch-header continuation, all long-form controls onscreen, natural filename order, independent PDFium body/Bates/file/date/labels/bookmarks, damaged-file report without consuming a number, unchanged sources and current-document one-step Undo/Redo")
+
+
 def audit_statistical_formulas(process,main,output,binary,results):
     import math
     import xml.etree.ElementTree as ET
@@ -1305,7 +1363,7 @@ def audit_statistical_formulas(process,main,output,binary,results):
     results["checks"].append("date entry and calendar/annuity/cash-flow calculations, statistical range/reference typing, distributions and 1e-100 literals, small-tail quantiles against an independent oracle, typed XLSX caches, input recalculation, complete Undo/Redo and dirty/discard/reopen")
 
 
-def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False):
+def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False):
     startup = None
     if extended:
         if binary.stem.lower() == "pdf42":
@@ -1444,6 +1502,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_pdf_comparison(process,main,binary,output,results)
         if pdf_merge and binary.stem.lower()=="pdf42":
             audit_pdf_merge(process,main,binary,output,results)
+        if pdf_batch_headers and binary.stem.lower()=="pdf42":
+            audit_pdf_batch_headers(process,main,binary,output,results)
         return results
     finally:
         if process.poll() is None:
@@ -1871,6 +1931,7 @@ def main():
     parser.add_argument("--pdf-decorations", action="store_true")
     parser.add_argument("--pdf-comparison", action="store_true")
     parser.add_argument("--pdf-merge", action="store_true")
+    parser.add_argument("--pdf-batch-headers", action="store_true")
     parser.add_argument("--statistical-formulas", action="store_true")
     parser.add_argument("--page-exports", action="store_true")
     parser.add_argument("--host-commands", action="store_true")
@@ -1885,7 +1946,7 @@ def main():
     try:
         for app in ["DOC42", "XLS42", "PDF42", "IMG42", "PPT42", "SCN42"]:
             try:
-                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge))
+                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge, args.pdf_batch_headers))
             except Exception as error:
                 results.append({"app": app, "error": str(error), "traceback": traceback.format_exc()})
             print(json.dumps(results[-1]), flush=True)

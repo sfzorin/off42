@@ -730,3 +730,10 @@ adapter. Its temporary model retains no user Undo history. Imported page-label r
 values before object renumbering and map old/new page identities; existing labels and default numbering remain
 separate. Bookmarks/forms retain the existing namespace/resource validation. A fully prepared output is written to
 a same-directory temporary file, checked for cancellation and published without clobbering. No input is rewritten.
+
+Windows PDF header batches use the shared multi-file/folder dialog and return per-file outcomes in the native
+report component. Report clients choose whether highlight controls and a compact first column are relevant.
+App-requested continuation commands and output windows are delivered after modal owners become enabled;
+settings can therefore continue into another picker without re-entering the previous input dialog. Large
+settings forms use monitor-aware column placement. Batch files publish individually without replacing existing
+paths, and cancellation preserves the copies already completed.

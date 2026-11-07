@@ -13,7 +13,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Technical objects | Four barcode encoders, fourteen symbols, reusable PNG recipes, insertion/editing in PDF/DOC/XLS/PPT and document round trips | Full technical-object selection/placement controls and richer label artwork sources |
 | Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers | PDF artwork/region sources, preview and direct print |
 | Printing | Native dialogs, actual-size PDF scene path, optional per-printer calibration and measurement sheet | Native print-to-file output and physical driver checks |
-| PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge (native audit pending), bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction | Batch Bates workflows, decoration font choices, richer forms, OCR, certificate signing and validation, remote signing and CryptoPro integration |
+| PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction | Decoration font choices, richer forms, OCR, certificate signing and validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
 | XLS42 | Grid editing, engineering/text/math/statistical/financial/calendar formulas, styles, charts, summaries, tables, filtering, print layout | Formula coverage and dynamic arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, goal seek/solver, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, show tools and export workflows |
@@ -277,3 +277,16 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   has the requested order. Portable workspace: **418 passed**, zero failures, one OCR fixture ignored. GNU all
   targets compile. Native multi-file picker, result window/dirty-parent history and PDFium label/bookmark scenarios
   are added for the next build. No public release, main merge or website update has occurred.
+
+- Run [42414794355](https://github.com/sfzorin/off42/actions/runs/42414794355) on d0cf09d passed the native PDF
+  merge scenarios, including ordered PDFium text, labels/bookmarks, a separate result process and dirty-parent
+  history. Its comparison report capture is now nonblank and was visually inspected. The overall run failed
+  at the XLS edit assertion. The harness could send an edit before its asynchronously clicked range dialog
+  completed; it now waits
+  for that dialog to close and retains the same value/history assertions; repeat verification remains pending.
+- Batch headers/Bates now continue from the current PDF into naturally ordered source PDFs, create no-clobber
+  copies with per-file atomic publication, report every outcome, and retain completed copies on cancellation.
+  Failed files consume no Bates numbers; private background work does not edit the current PDF/history. Long
+  settings forms arrange fields in columns when a single column exceeds the monitor work area.
+  Portable workspace: **421 passed**, zero failures, one OCR fixture ignored; GNU all targets compile. New native
+  batch controls/report/saved-text/labels/bookmarks/history assertions await the next run. Full parity remains open.

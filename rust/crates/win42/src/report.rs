@@ -76,11 +76,21 @@ unsafe fn layout(h: HWND) {
         let available = (w - 2 * pad - unit(24)).max(unit(250));
         let columns = s.request.columns.len().max(1);
         for i in 0..columns {
-            let width = if i == 0 && columns > 1 {
+            let width = if i == 0 && columns > 1 && s.request.compact_first_column {
                 unit(60)
             } else {
-                (available - if columns > 1 { unit(60) } else { 0 })
-                    / (columns - if columns > 1 { 1 } else { 0 }) as i32
+                (available
+                    - if columns > 1 && s.request.compact_first_column {
+                        unit(60)
+                    } else {
+                        0
+                    })
+                    / (columns
+                        - if columns > 1 && s.request.compact_first_column {
+                            1
+                        } else {
+                            0
+                        }) as i32
             };
             SendMessageW(s.table, LVM_SETCOLUMNWIDTH, i, (width.max(1)) as isize);
         }
@@ -179,17 +189,12 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
                             .get(row)
                             .map(|r| {
                                 r.iter()
-                                    .skip(1)
                                     .enumerate()
                                     .map(|(i, value)| {
                                         format!(
                                             "{}: {}",
                                             crate::localization::text(
-                                                s.request
-                                                    .columns
-                                                    .get(i + 1)
-                                                    .copied()
-                                                    .unwrap_or("Text")
+                                                s.request.columns.get(i).copied().unwrap_or("Text")
                                             ),
                                             value
                                         )
@@ -337,6 +342,10 @@ pub unsafe fn show(owner: HWND, id: u16, request: ReportRequest) {
             ..zeroed()
         };
         SendMessageW(table, LVM_INSERTCOLUMNW, i, &column as *const _ as isize);
+    }
+    if !request.highlight_controls {
+        ShowWindow(keep, SW_HIDE);
+        ShowWindow(clear, SW_HIDE);
     }
     let keeping = request.keeping;
     let allow_keep = request.allow_keep;

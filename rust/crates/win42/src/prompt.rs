@@ -114,42 +114,79 @@ pub unsafe fn show_choices(
         ..zeroed()
     };
     RegisterClassW(&wc);
-    let dpi = GetDpiForWindow(owner) as i32;
+    let dpi = GetDpiForWindow(owner).max(96) as i32;
     let scale = |x: i32| x * dpi / 96;
-    let width = scale(460);
+    let mut work = RECT {
+        left: 0,
+        top: 0,
+        right: GetSystemMetrics(SM_CXSCREEN),
+        bottom: GetSystemMetrics(SM_CYSCREEN),
+    };
+    let mut info: MONITORINFO = zeroed();
+    info.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
+    let monitor = MonitorFromWindow(owner, MONITOR_DEFAULTTONEAREST);
+    if !monitor.is_null() && GetMonitorInfoW(monitor, &mut info) != 0 {
+        work = info.rcWork;
+    }
     let font = GetStockObject(DEFAULT_GUI_FONT) as usize;
     let dc = GetDC(owner);
     let previous_font = SelectObject(dc, font as HGDIOBJ);
-    let mut positions = Vec::new();
-    let mut next_y = scale(12);
-    for (index, (label, _)) in req.fields.iter().enumerate() {
-        let mut rect = RECT {
-            left: 0,
-            top: 0,
-            right: scale(420),
-            bottom: 0,
-        };
-        let label = wide(&crate::localization::text(label));
-        DrawTextW(
-            dc,
-            label.as_ptr(),
-            -1,
-            &mut rect,
-            DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX,
-        );
-        let label_height = (rect.bottom - rect.top).max(scale(20));
-        let extra = if multiline && index == 0 {
-            scale(100)
-        } else {
-            0
-        };
-        positions.push((next_y, label_height, extra));
-        next_y += label_height + scale(38) + extra;
-    }
+    // Long forms use columns instead of extending the final fields/buttons offscreen.
+    let mut columns = 1usize;
+    let (positions, button_y, width, height, field_width) = loop {
+        let width = scale(448 * columns as i32 + 12).min(work.right - work.left);
+        let field_width = ((width - scale(36)) / columns as i32 - scale(12)).max(scale(120));
+        let per_column = req.fields.len().div_ceil(columns).max(1);
+        let mut positions = Vec::new();
+        let mut column_y = vec![scale(12); columns];
+        for (index, (label, _)) in req.fields.iter().enumerate() {
+            let column = (index / per_column).min(columns - 1);
+            let mut rect = RECT {
+                left: 0,
+                top: 0,
+                right: field_width,
+                bottom: 0,
+            };
+            let label = wide(&crate::localization::text(label));
+            DrawTextW(
+                dc,
+                label.as_ptr(),
+                -1,
+                &mut rect,
+                DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX,
+            );
+            let label_height = (rect.bottom - rect.top).max(scale(20));
+            let extra = if multiline && index == 0 {
+                scale(100)
+            } else {
+                0
+            };
+            positions.push((
+                scale(12) + column as i32 * (field_width + scale(12)),
+                column_y[column],
+                label_height,
+                extra,
+            ));
+            column_y[column] += label_height + scale(38) + extra;
+        }
+        let button_y = column_y.into_iter().max().unwrap_or(scale(12)) + scale(6);
+        let height = button_y + scale(68);
+        if height <= work.bottom - work.top
+            || columns >= 3
+            || scale(300 * (columns + 1) as i32) > work.right - work.left
+        {
+            break (positions, button_y, width, height, field_width);
+        }
+        columns += 1;
+    };
     SelectObject(dc, previous_font);
     ReleaseDC(owner, dc);
-    let button_y = next_y + scale(6);
-    let height = button_y + scale(92);
+    let mut owner_rect: RECT = zeroed();
+    GetWindowRect(owner, &mut owner_rect);
+    let left = (owner_rect.left + (owner_rect.right - owner_rect.left - width) / 2)
+        .clamp(work.left, (work.right - width).max(work.left));
+    let top = (owner_rect.top + (owner_rect.bottom - owner_rect.top - height) / 2)
+        .clamp(work.top, (work.bottom - height).max(work.top));
     let h = CreateWindowExW(
         WS_EX_DLGMODALFRAME
             | if crate::localization::current().rtl {
@@ -160,8 +197,8 @@ pub unsafe fn show_choices(
         class.as_ptr(),
         wide(&crate::localization::text(req.title)).as_ptr(),
         WS_CAPTION | WS_SYSMENU | WS_POPUP,
-        CW_USEDEFAULT,
-        CW_USEDEFAULT,
+        left,
+        top,
         width,
         height,
         owner,
@@ -174,7 +211,7 @@ pub unsafe fn show_choices(
     }
     let mut fields = Vec::new();
     for (i, (label, value)) in req.fields.iter().enumerate() {
-        let (y, label_height, extra) = positions[i];
+        let (x, y, label_height, extra) = positions[i];
         let t = CreateWindowExW(
             if crate::localization::current().rtl {
                 WS_EX_RTLREADING
@@ -191,9 +228,9 @@ pub unsafe fn show_choices(
                 } else {
                     0
                 },
-            scale(12),
+            x,
             y,
-            scale(420),
+            field_width,
             label_height,
             h,
             null_mut(),
@@ -224,9 +261,9 @@ pub unsafe fn show_choices(
                             0
                         }
                 },
-            scale(12),
+            x,
             y + label_height + scale(1),
-            scale(420),
+            field_width,
             if combo { scale(220) } else { scale(24) + extra },
             h,
             (100 + i) as HMENU,
@@ -260,15 +297,15 @@ pub unsafe fn show_choices(
     }
     let y = button_y;
     for (id, title, x, style) in [
-        (IDOK, "OK", 260, BS_DEFPUSHBUTTON),
-        (IDCANCEL, "Cancel", 350, BS_PUSHBUTTON),
+        (IDOK, "OK", width - scale(200), BS_DEFPUSHBUTTON),
+        (IDCANCEL, "Cancel", width - scale(110), BS_PUSHBUTTON),
     ] {
         let b = CreateWindowExW(
             0,
             wide("BUTTON").as_ptr(),
             wide(&crate::localization::text(title)).as_ptr(),
             WS_CHILD | WS_VISIBLE | WS_TABSTOP | style as u32,
-            scale(x),
+            x,
             y,
             scale(80),
             scale(26),

@@ -18,7 +18,7 @@ use windows_sys::Win32::{
         Controls::{Dialogs::*, *},
         HiDpi::*,
         Input::KeyboardAndMouse::{
-            EnableWindow, GetFocus, GetKeyState, ReleaseCapture, SetCapture, SetFocus, VK_CONTROL,
+            EnableWindow, IsWindowEnabled, GetFocus, GetKeyState, ReleaseCapture, SetCapture, SetFocus, VK_CONTROL,
             VK_SHIFT,
         },
         Shell::{DragAcceptFiles, DragFinish, DragQueryFileW, ShellExecuteW, DefSubclassProc, SetWindowSubclass, RemoveWindowSubclass},
@@ -2491,6 +2491,12 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 STATE.with(|s| s.borrow().as_ref().unwrap().app.dialog_request(id));
             if let Some(request) = dialog_request {
                 let result = match request {
+                    crate::DialogRequest::BatchFolder{input,title}=>{
+                        match pick_multiple_files(hwnd,input){
+                            Ok(Some(inputs)) if !inputs.is_empty()=>pick_folder(hwnd,title).map(|output|crate::DialogResult::Files{inputs,output:output.into()}),
+                            Ok(_)=>None,Err(error)=>{msg(hwnd,&error,MB_OK|MB_ICONERROR);None}
+                        }
+                    },
                     crate::DialogRequest::CombineFiles{input,output}=>{
                         match pick_multiple_files(hwnd,input){
                             Ok(Some(inputs))if !inputs.is_empty()=>{
@@ -2800,13 +2806,17 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
                     previous.set(interval);
                 }
             });
-            if !crate::report::is_open(){
+            if !crate::report::is_open() && IsWindowEnabled(h)!=0{
                 let report=STATE.with(|s|s.borrow_mut().as_mut().and_then(|s|s.app.take_pending_report()));
                 if let Some((id,report))=report{crate::report::show(h,id,report);}
             }
-            if !crate::report::is_open(){
+            if !crate::report::is_open() && IsWindowEnabled(h)!=0{
                 let path=STATE.with(|s|s.borrow_mut().as_mut().and_then(|s|s.app.take_pending_new_window()));
                 if let Some(path)=path{if let Err(error)=spawn_document_window(Some(&path)){msg(h,&error,MB_OK|MB_ICONERROR);}}
+            }
+            if !crate::report::is_open() && IsWindowEnabled(h)!=0 {
+                let command=STATE.with(|s|s.borrow_mut().as_mut().and_then(|s|s.app.take_pending_command()));
+                if let Some(id)=command.filter(|id|crate::application_command_id(*id)) { PostMessageW(h,WM_COMMAND,id as usize,0); }
             }
             sync_rulers(h);
             let pending = STATE.with(|s| {

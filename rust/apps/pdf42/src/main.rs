@@ -2,6 +2,7 @@
 mod decorations;
 mod comparison;
 mod merge;
+mod batch_headers;
 mod page_export;
 mod text_export;
 use pdf42_core::PdfDocument;
@@ -111,6 +112,9 @@ struct Pdf {
     )>,
     operation_error: Option<String>,
     merge:Option<merge::Worker>,
+    batch_headers: Option<batch_headers::Worker>,
+    batch_report: Option<win42::ReportRequest>,
+    pending_command: Option<u16>,
     merged_window:Option<std::path::PathBuf>,
     page_export: Option<page_export::Worker>,
     #[cfg(windows)]
@@ -652,6 +656,23 @@ impl win42::App for Pdf {
         self.opening_path = None;
     }
     fn poll_background(&mut self) -> bool {
+        let mut batch_changed = self
+            .batch_headers
+            .as_mut()
+            .is_some_and(|w| w.progress_changed());
+        if let Some(result) = self.batch_headers.as_ref().and_then(|w| w.poll()) {
+            let worker = self.batch_headers.take().unwrap();
+            match result {
+                Ok(outcome) => {
+                    self.decorations
+                        .finish_batch(&worker.settings, outcome.next);
+                    self.operation_error = None;
+                    self.batch_report = Some(outcome.report());
+                }
+                Err(error) => self.operation_error = Some(error),
+            }
+            batch_changed = true;
+        }
         let mut merge_changed = self.merge.as_mut().is_some_and(|w| w.progress_changed());
         if let Some(result) = self.merge.as_ref().and_then(|w| w.poll()) {
             self.merge = None;
@@ -668,7 +689,8 @@ impl win42::App for Pdf {
             .page_export
             .as_mut()
             .is_some_and(|worker| worker.progress_changed())
-            || merge_changed;
+            || merge_changed
+            || batch_changed;
         if let Some(result) = self.page_export.as_ref().and_then(|worker| worker.poll()) {
             self.page_export = None;
             self.operation_error = Some(match result {
@@ -884,11 +906,26 @@ impl win42::App for Pdf {
             None
         }
     }
+    fn take_pending_command(&mut self) -> Option<u16> {
+        self.pending_command.take()
+    }
     fn take_pending_new_window(&mut self) -> Option<std::path::PathBuf> {
         self.merged_window.take()
     }
     fn dialog_request(&self, id: u16) -> Option<win42::DialogRequest> {
-        if id == 110 && self.merge.is_none() {
+        if id == 112 && self.batch_headers.is_none() && self.doc.is_some() {
+            Some(win42::DialogRequest::BatchFolder {
+                input: win42::FileAction {
+                    id: 112,
+                    title: "Apply Headers to Other PDFs…",
+                    save: false,
+                    extension: "pdf",
+                    format: "PDF document",
+                    pattern: "*.pdf",
+                },
+                title: "Choose a Folder for PDF Copies",
+            })
+        } else if id == 110 && self.merge.is_none() {
             Some(win42::DialogRequest::CombineFiles {
                 input: win42::FileAction {
                     id: 110,
@@ -912,6 +949,21 @@ impl win42::App for Pdf {
         }
     }
     fn dialog_result(&mut self, id: u16, result: win42::DialogResult) -> Result<(), String> {
+        if id == 112 {
+            if let win42::DialogResult::Files { inputs, output } = result {
+                if self.batch_headers.is_some() {
+                    return Err("A PDF header batch is already running".into());
+                }
+                self.batch_headers = Some(batch_headers::Worker::start(
+                    inputs,
+                    output,
+                    self.decorations.batch_settings(),
+                )?);
+                self.operation_error = None;
+                return Ok(());
+            }
+            return Err("Unsupported PDF batch dialog".into());
+        }
         if id == 110 {
             if let win42::DialogResult::Files { inputs, output } = result {
                 if self.merge.is_some() {
@@ -925,6 +977,9 @@ impl win42::App for Pdf {
         Err("Unsupported PDF dialog".into())
     }
     fn take_pending_report(&mut self) -> Option<(u16, win42::ReportRequest)> {
+        if let Some(report) = self.batch_report.take() {
+            return Some((112, report));
+        }
         #[cfg(windows)]
         if self.comparison_ready {
             self.comparison_ready = false;
@@ -933,6 +988,9 @@ impl win42::App for Pdf {
         None
     }
     fn report_event(&mut self, id: u16, event: win42::ReportEvent) -> Result<(), String> {
+        if id == 112 {
+            return Ok(());
+        }
         if id != 97 {
             return Err("Report unavailable".into());
         }
@@ -2443,6 +2501,8 @@ impl win42::App for Pdf {
         &[
             (110, "Merge Files…"),
             (111, "Cancel PDF Merge"),
+            (112, "Apply Headers to Other PDFs…"),
+            (113, "Cancel PDF Header Batch"),
             (98, "Remove Comparison Highlights"),
             (99, "Cancel PDF Comparison"),
             (90, "Text Watermark…"),
@@ -2547,6 +2607,13 @@ impl win42::App for Pdf {
         "Open a PDF document.".into()
     }
     fn status(&self) -> String {
+        if let Some(worker) = &self.batch_headers {
+            return format!(
+                "Writing PDF header copies: {} of {}",
+                worker.progress.load(std::sync::atomic::Ordering::Relaxed),
+                worker.total
+            );
+        }
         if let Some(worker) = &self.merge {
             return format!(
                 "Merging PDF files: {} of {}",
@@ -2648,6 +2715,12 @@ impl win42::App for Pdf {
         self.doc.as_ref().map_or(0, |d| d.current())
     }
     fn enabled(&self, id: u16) -> bool {
+        if id == 113 {
+            return self.batch_headers.is_some();
+        }
+        if matches!(id, 92 | 93 | 112) && self.batch_headers.is_some() {
+            return false;
+        }
         if id == 110 {
             return self.merge.is_none();
         }
@@ -2896,6 +2969,14 @@ impl win42::App for Pdf {
     fn action(&mut self, id: u16) -> Result<(), String> {
         if id >= 10 && !self.enabled(id) {
             return Err("Command unavailable".into());
+        }
+        if id == 113 {
+            if let Some(worker) = &self.batch_headers {
+                worker
+                    .cancel
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+            return Ok(());
         }
         if id == 111 {
             if let Some(worker) = self.merge.take() {

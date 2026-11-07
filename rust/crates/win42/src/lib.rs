@@ -87,10 +87,13 @@ pub enum LabelSource {
 pub trait App {
     /// Native top-level window handle, when a Windows host is available.
     fn set_native_window(&mut self, _window: usize) {}
-    /// Poll completed background work on the UI thread; return true when the view changed.
-    /// Request an ordinary document replacement after an app command.
+    /// Continue a command after its settings dialog has closed.
+    fn take_pending_command(&mut self) -> Option<u16> {
+        None
+    }
     /// Open a completed, explicitly requested output in a separate process/window.
     fn take_pending_new_window(&mut self)->Option<std::path::PathBuf>{None}
+    /// Request an ordinary document replacement after an app command.
     fn take_pending_open(&mut self) -> Option<PathBuf> {
         None
     }
@@ -1133,6 +1136,8 @@ pub struct ReportRequest {
     pub columns: Vec<&'static str>,
     pub column_colors: Vec<Option<[u8; 3]>>,
     pub rows: Vec<Vec<String>>,
+    pub highlight_controls: bool,
+    pub compact_first_column: bool,
     pub allow_keep: bool,
     pub keeping: bool,
 }
@@ -1147,6 +1152,10 @@ pub enum ReportEvent {
 pub enum DialogRequest {
     Report(ReportRequest),
     CombineFiles{input:FileAction,output:FileAction},
+    BatchFolder {
+        input: FileAction,
+        title: &'static str,
+    },
     Information { title: &'static str, text: String },
     Color([u8; 3]),
     Font,
@@ -1194,5 +1203,57 @@ mod app_command_namespace_tests{
     fn host_menus_and_control_notifications_are_reserved(){
         for id in[0,1,4,9,100,101,102,62000,64000,65507]{assert!(!super::application_command_id(id),"{id}");}
         for id in[10,18,97,110,111,200,360]{assert!(super::application_command_id(id),"{id}");}
+    }
+}
+
+/// Explorer's natural filename ordering for numbered PDF batches.
+pub fn logical_file_order(a: &std::ffi::OsStr, b: &std::ffi::OsStr) -> std::cmp::Ordering {
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        let a: Vec<_> = a.encode_wide().chain(Some(0)).collect();
+        let b: Vec<_> = b.encode_wide().chain(Some(0)).collect();
+        return unsafe { windows_sys::Win32::UI::Shell::StrCmpLogicalW(a.as_ptr(), b.as_ptr()) }
+            .cmp(&0);
+    }
+    #[cfg(not(windows))]
+    {
+        // Portable test runner: compare digit runs without fixed-width integer overflow.
+        let (a, b) = (
+            a.to_string_lossy().to_lowercase(),
+            b.to_string_lossy().to_lowercase(),
+        );
+        let (a, b) = (a.as_bytes(), b.as_bytes());
+        let (mut i, mut j) = (0, 0);
+        while i < a.len() && j < b.len() {
+            if a[i].is_ascii_digit() && b[j].is_ascii_digit() {
+                let (start, end) = (i, j);
+                while i < a.len() && a[i].is_ascii_digit() {
+                    i += 1;
+                }
+                while j < b.len() && b[j].is_ascii_digit() {
+                    j += 1;
+                }
+                let (mut x, mut y) = (start, end);
+                while x < i && a[x] == b'0' {
+                    x += 1;
+                }
+                while y < j && b[y] == b'0' {
+                    y += 1;
+                }
+                let order = (i - x).cmp(&(j - y)).then_with(|| a[x..i].cmp(&b[y..j]));
+                if !order.is_eq() {
+                    return order;
+                }
+            } else {
+                let order = a[i].cmp(&b[j]);
+                if !order.is_eq() {
+                    return order;
+                }
+                i += 1;
+                j += 1;
+            }
+        }
+        (a.len() - i).cmp(&(b.len() - j))
     }
 }

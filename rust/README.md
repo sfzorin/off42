@@ -90,8 +90,12 @@ Tokens resolve in document order. `<<file>>` uses the current successful documen
 
 A multi-page addition or removal is one Undo step. Live decorations follow the crop box and page rotation.
 Saving adds isolated content and preserves existing page resources. After reopening, decorations are ordinary
-page content. Headers and numbers use embedded Noto Sans; unsupported glyphs are refused. Other fonts and
-automated Bates processing of other files remain parity work. Independent Poppler checks cover four rotations,
+page content. Headers and numbers use embedded Noto Sans; unsupported glyphs are refused. Other font choices
+remain parity work. **Also number other PDF files** continues the current Bates sequence through selected PDFs
+in natural filename order. **Apply Headers to Other PDFs** repeats the saved settings later. Outputs are copies
+in a selected folder, with no overwrite. A per-file atomic save means cancellation retains completed copies; the
+report lists saved, failed and cancelled files, and only successful copies consume Bates numbers. Limits are
+128 files, 1000 pages, 256 MiB input and 512 MiB output. Locked files require an unlocked copy first. Independent Poppler checks cover four rotations,
 nonzero crop origins, source text, Unicode tokens and exclusion of watermarks from extracted text.
 Native run 42405270583 passed the dialog, rendered text/image pixels, selected-page numbering, complete
 Undo/Redo and dirty/discard/reopen checks on dd33481. This is development-build evidence.

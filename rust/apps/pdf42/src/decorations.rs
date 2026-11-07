@@ -5,6 +5,25 @@ pub(super) struct Settings {
     watermark: Watermark,
     header: HeaderFooter,
 }
+impl Settings {
+    pub(super) fn batch_settings(&self) -> HeaderFooter {
+        let mut spec = self.header.clone();
+        if spec.date.is_empty() {
+            spec.date = chrono::Local::now().format("%Y-%m-%d").to_string();
+        }
+        spec
+    }
+    pub(super) fn finish_batch(&mut self, baseline: &HeaderFooter, next: u64) {
+        let mut current = self.header.clone();
+        if current.date.is_empty() {
+            current.date = baseline.date.clone();
+        }
+        current.file_name = baseline.file_name.clone();
+        if current == *baseline {
+            self.header.bates_start = next;
+        }
+    }
+}
 const POSITIONS: [&str; 6] = [
     "Top left",
     "Top center",
@@ -87,8 +106,15 @@ impl Pdf {
                     ("Top/bottom margin (pt)", h.vertical.to_string()),
                     ("Side margin (pt)", h.horizontal.to_string()),
                     ("Pages", pages),
+                    (
+                        "Also number other PDF files (Bates numbers continue)",
+                        "No".into(),
+                    ),
                 ]);
-                win42::InputRequest{title:"Header & Footer",fields}
+                win42::InputRequest {
+                    title: "Header & Footer",
+                    fields,
+                }
             }
             93 => win42::InputRequest {
                 title: "Bates Numbering Settings",
@@ -131,6 +157,8 @@ impl Pdf {
                 (1, FORMATS.map(str::to_owned).to_vec()),
                 (3, vec!["No".into(), "Yes".into()]),
             ]
+        } else if id == 92 {
+            vec![(10, vec!["No".into(), "Yes".into()])]
         } else {
             vec![]
         }
@@ -199,8 +227,16 @@ impl Pdf {
                     self.doc.as_mut().unwrap().add_page_numbers(&pages, &spec)?;
                 }
                 92 => {
-                    if values.len() != 10 {
+                    if !matches!(values.len(), 10 | 11) {
                         return Err("Invalid header/footer settings".into());
+                    }
+                    let batch = match values.get(10).map(String::as_str).unwrap_or("No") {
+                        "No" => false,
+                        "Yes" => true,
+                        _ => return Err("Choose Yes or No".into()),
+                    };
+                    if batch && self.batch_headers.is_some() {
+                        return Err("A PDF header batch is already running".into());
                     }
                     let mut spec = self.decorations.header.clone();
                     spec.texts = std::array::from_fn(|i| values[i].clone());
@@ -219,6 +255,9 @@ impl Pdf {
                         .add_header_footer(&pages, &spec)?;
                     spec.bates_start = next;
                     self.decorations.header = spec;
+                    if batch {
+                        self.pending_command = Some(112);
+                    }
                 }
                 93 => {
                     let [prefix, suffix, digits, start, date] = values else {
@@ -334,7 +373,7 @@ mod tests {
         std::fs::write(&source, include_bytes!("../fixtures/page-export.pdf")).unwrap();
         let mut app = Pdf::default();
         app.open(&source).unwrap();
-        assert_eq!(app.input_request(92).unwrap().title,"Header & Footer");
+        assert_eq!(app.input_request(92).unwrap().title, "Header & Footer");
         let original = app.doc.as_ref().unwrap().save_snapshot().unwrap().0;
         app.input_action(
             93,
@@ -397,6 +436,52 @@ mod tests {
         app.action(5).unwrap();
         assert_eq!(app.doc.as_ref().unwrap().save_snapshot().unwrap().0, before);
         assert_eq!(app.decorations.header.bates_start, 7);
+    }
+    #[test]
+    fn batch_continuation_is_explicit_after_atomic_current_document_edit() {
+        let directory = tempfile::tempdir().unwrap();
+        let source = directory.path().join("source.pdf");
+        std::fs::write(&source, include_bytes!("../fixtures/page-export.pdf")).unwrap();
+        let mut app = Pdf::default();
+        app.open(&source).unwrap();
+        let original = app.doc.as_ref().unwrap().save_snapshot().unwrap().0;
+        let values = [
+            "<<bates>>",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "10",
+            "28",
+            "36",
+            "1-3",
+            "Yes",
+        ]
+        .map(str::to_owned);
+        app.input_action(92, &values).unwrap();
+        assert_eq!(app.decorations.header.bates_start, 4);
+        assert_eq!(app.take_pending_command(), Some(112));
+        assert_eq!(app.take_pending_command(), None);
+        assert!(matches!(
+            app.dialog_request(112),
+            Some(win42::DialogRequest::BatchFolder { .. })
+        ));
+        app.action(4).unwrap();
+        assert_eq!(
+            app.doc.as_ref().unwrap().save_snapshot().unwrap().0,
+            original
+        );
+        app.action(5).unwrap();
+        assert!(app.dirty());
+        let baseline = app.decorations.batch_settings();
+        app.decorations.finish_batch(&baseline, 10);
+        assert_eq!(app.decorations.header.bates_start, 10);
+        app.decorations.finish_batch(&baseline, 20);
+        assert_eq!(
+            app.decorations.header.bates_start, 10,
+            "changed settings must win"
+        );
     }
     #[test]
     fn image_settings_are_validated_before_the_file_picker_and_change_nothing() {
