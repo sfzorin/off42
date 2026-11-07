@@ -85,7 +85,7 @@ pub(super) fn refresh(bytes: Vec<u8>, book: &Workbook, kind: &str) -> Result<Vec
                 .ok_or(Error::Invalid("Unknown worksheet target"))?;
             let source =
                 zip_text(&mut archive, path)?.ok_or(Error::Invalid("Missing worksheet"))?;
-            replacements.insert(path.clone(), xlsx(&source, values)?.into_bytes());
+            replacements.insert(path.clone(), xlsx(&source, values, true)?.into_bytes());
         }
     } else {
         let source =
@@ -153,7 +153,11 @@ fn cache_error(code: &str) -> &str {
         code => code,
     }
 }
-fn xlsx(source: &str, values: &BTreeMap<(usize, usize), formula::Value>) -> Result<String, Error> {
+pub(super) fn xlsx(
+    source: &str,
+    values: &BTreeMap<(usize, usize), formula::Value>,
+    clear_unsupported: bool,
+) -> Result<String, Error> {
     let document = xml(source)?;
     let mut edits = Vec::new();
     for cell in document
@@ -164,24 +168,33 @@ fn xlsx(source: &str, values: &BTreeMap<(usize, usize), formula::Value>) -> Resu
             .children()
             .filter(|n| n.has_tag_name((MAIN, "f")))
             .collect();
-        if formulas.is_empty() {
-            continue;
-        }
-        if formulas.len() != 1 {
+        if formulas.len() > 1 {
             return Err(Error::Invalid("Duplicate cell formulas"));
         }
         let address = cell
             .attribute("r")
             .and_then(a1)
             .ok_or(Error::Invalid("Invalid formula address"))?;
-        let value = supported(values.get(&address));
+        let Some(original) = values.get(&address) else {
+            continue;
+        };
+        if formulas.is_empty()
+            && (clear_unsupported || !matches!(original, formula::Value::Error(_)))
+        {
+            continue;
+        }
+        let value = if clear_unsupported {
+            supported(Some(original))
+        } else {
+            Some(original)
+        };
         let p = prefix(&source[cell.range()]);
         let (kind, cached) = match value {
-            Some(formula::Value::Number(n)) => ("n", Some(n.to_string())),
+            Some(formula::Value::Number(n)) => ("", Some(n.to_string())),
             Some(formula::Value::Boolean(b)) => ("b", Some(u8::from(*b).to_string())),
             Some(formula::Value::Text(s)) => ("str", Some(cached_text_xml(s))),
             Some(formula::Value::Error(e)) => ("e", Some(escape_xml(cache_error(e)))),
-            None => ("", None),
+            None | Some(formula::Value::Array(_)) => ("", None),
         };
         if let Some(t) = cell.attribute_node("t") {
             edits.push((
@@ -207,7 +220,9 @@ fn xlsx(source: &str, values: &BTreeMap<(usize, usize), formula::Value>) -> Resu
             edits.push((old.range().start, old.range().end, String::new()));
         }
         if let Some(value) = cached {
-            let at = formulas[0].range().end;
+            let at = formulas.first().map(|f| f.range().end).unwrap_or_else(|| {
+                cell.range().start + source[cell.range()].find('>').unwrap() + 1
+            });
             edits.push((at, at, format!("<{p}v>{value}</{p}v>")));
         }
     }
@@ -493,7 +508,7 @@ mod tests {
             ((0, 0), formula::Value::Error("#ERROR!")),
             ((0, 1), formula::Value::Text("_x0041_<&>\u{1}".into())),
         ]);
-        let output = xlsx(&source, &values).unwrap();
+        let output = xlsx(&source, &values, true).unwrap();
         let doc = xml(&output).unwrap();
         let cells: Vec<_> = doc
             .descendants()

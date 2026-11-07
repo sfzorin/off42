@@ -48,6 +48,7 @@ pub(super) const ERRORS: [&str; 12] = [
 ];
 pub(super) fn truth(value: Value) -> Result<bool, &'static str> {
     match value {
+        Value::Array(_) => Err("#VALUE!"),
         Value::Number(n) => Ok(n != 0.0),
         Value::Boolean(b) => Ok(b),
         Value::Error(e) => Err(e),
@@ -141,6 +142,7 @@ pub(super) fn call(n: &str, a: &[Arg]) -> Value {
             Err(e) => Value::Error(e),
         },
         "TYPE" => finite(match v {
+            Value::Array(_) => 64.0,
             Value::Number(_) => 1.0,
             Value::Text(_) => 2.0,
             Value::Boolean(_) => 4.0,
@@ -330,6 +332,11 @@ impl Parser<'_, '_> {
             return Value::Error("#VALUE!");
         }
         match name {
+            "ROWS" | "COLUMNS" => match value {
+                Value::Array(m) => finite(if name == "ROWS" { m.rows } else { m.cols } as f64),
+                Value::Error(e) => Value::Error(e),
+                _ => finite(1.0),
+            },
             "ISREF" => Value::Boolean(false),
             "SHEET" => match value {
                 Value::Text(s) => self

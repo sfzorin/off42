@@ -13,6 +13,7 @@ impl Arg {
             Self::Scalar(Value::Error(e)) => Err(e),
             Self::Scalar(value) => Ok(value.clone()),
             Self::Range(values, _) if values.len() == 1 => match &values[0] {
+                Value::Array(_) => Err("#VALUE!"),
                 Value::Error(e) => Err(e),
                 value => Ok(value.clone()),
             },
@@ -46,6 +47,7 @@ pub(super) fn handles(name: &str) -> bool {
 }
 fn number(value: Value) -> Result<f64> {
     match value {
+        Value::Array(_) => Err("#VALUE!"),
         Value::Number(n) => Ok(n),
         Value::Boolean(b) => Ok(f64::from(b)),
         Value::Text(t) => t

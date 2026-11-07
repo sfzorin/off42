@@ -7,3 +7,5 @@ label42 = { path = "../../crates/label42" }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 win42 = { path = "../../crates/win42" }
 xls42-core = { path = "../../crates/xls42-core" }
+[dev-dependencies]
+serde_json = "1"

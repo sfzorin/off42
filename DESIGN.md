@@ -737,3 +737,18 @@ App-requested continuation commands and output windows are delivered after modal
 settings can therefore continue into another picker without re-entering the previous input dialog. Large
 settings forms use monitor-aware column placement. Batch files publish individually without replacing existing
 paths, and cancellation preserves the copies already completed.
+
+
+### Windows calculated spreadsheet arrays
+
+A calculation owns disposable typed values and spill rectangles; authoritative worksheet cells own user input.
+Formula anchors retain their source and calculated children never enter document history. An occupied input,
+protected array span, merge or competing spill produces a blocked anchor. Matrix shape, work and cumulative text
+are checked before replication. Parser-local LET bindings are scoped to the current expression. Scalar operations
+lift through the existing evaluator, while conditional operations select branches before broadcasting.
+
+Display, clipboard and export consume a single calculation per operation. Plain clipboard text uses formatted
+results; private payloads preserve formulas and source coordinates. Partial spills become typed values, while
+copied anchors keep calculated children empty. Export adapters write standard XLSX dynamic ranges/typed caches
+and ODS matrix spans independently of the optional native project payload. External array structure preservation
+remains a separate adapter responsibility; existing legacy-array edit guards are retained.

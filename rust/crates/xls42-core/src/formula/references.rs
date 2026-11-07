@@ -52,6 +52,9 @@ impl Parser<'_, '_> {
     pub(super) fn reference_value(&mut self, name: &str) -> Value {
         match self.reference_call(name) {
             Ok((sheet, top, left, bottom, right)) => {
+                if top != bottom || left != right {
+                    return self.array_range((sheet, top, left, bottom, right));
+                }
                 let row = if left == right && (top..=bottom).contains(&self.origin.0) {
                     self.origin.0
                 } else {
@@ -150,6 +153,7 @@ impl Parser<'_, '_> {
                     depth: self.depth,
                     sheet: self.sheet,
                     origin: self.origin,
+                    locals: self.locals.clone(),
                 };
                 // INDIRECT accepts addresses, never arbitrary formulas or external workbooks.
                 let first = p.read_any_ref(p.sheet).ok_or("#REF!")?;

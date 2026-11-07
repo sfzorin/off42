@@ -242,8 +242,8 @@ Invalid code points/counts and formula errors are reported rather than silently 
 
 `cargo run --manifest-path rust/Cargo.toml -p xls42-core --example formula-parity` prints a JSON report for 494
 macOS reference cases, including every mismatch. Two cases have locale-dependent expected output and are skipped.
-After this block, 136 fixed cases match and 356 differ. This measures example results, not complete function
-coverage or Excel conformance; arrays and many statistical/financial/date functions still need porting.
+The current engine matches 469 fixed cases and differs on 23. This measures example results, not complete
+function coverage or Excel conformance; regression arrays and several text functions remain open.
 Regenerate the fixture with `python3 rust/scripts/export-formula-cases.py`; its source hash is recorded.
 
 
@@ -444,3 +444,26 @@ values without recalculating: `python3 rust/scripts/audit-statistics-office.py -
 
 XLSX imports hide Excel's `_xlfn.`/`_xlws.` compatibility prefixes in user-facing function tokens, including
 FORMULATEXT results. Quoted document strings, sheet names and original package formulas keep their text.
+
+
+### Calculated arrays and clipboard values (development branch)
+
+XLS42 calculates bounded rectangular operands, arithmetic over ranges, array constants, LET, SEQUENCE/RANDARRAY,
+SORT/SORTBY, FILTER/UNIQUE, TRANSPOSE, VSTACK/HSTACK, TOCOL/TOROW, CHOOSECOLS/CHOOSEROWS, TAKE/DROP,
+EXPAND, WRAPROWS/WRAPCOLS, matrix multiplication/inversion/determinants, FREQUENCY, MODE.MULT and SUMPRODUCT.
+Dynamic results fill empty cells within the current sheet dimensions; conflicts report `#SPILL!`. Source formulas
+remain authoritative. Results shrink and recalculate after edits without turning calculated children into inputs.
+Operands are limited to 100,000 cells and eight MiB of cumulative matrix text, with separate evaluation work limits.
+Automatic sheet expansion, external/legacy array fidelity and the remaining formula families remain open.
+
+Native XLSX exports write standard dynamic-array ranges, metadata and typed caches; ODS writes standard matrix
+spans and caches. Round trips through native project payloads preserve formulas and history. Independent macOS
+XLS42 recalculation agrees on all 39 array fixtures in each format, including blocked spills, implicit intersection,
+conditional arrays and matrix constants. `array-fixtures` and `rust/scripts/audit-arrays-office.py` reproduce this
+check. Opening third-party array workbooks without the native payload still needs a separate adapter block.
+
+External clipboard text contains calculated, formatted values. The private off42 clipboard retains formulas,
+styles and physical source coordinates for translated internal paste. Copying part of a spill stores typed result
+values; copying its anchor and children retains one formula and empty calculated children. Both clipboard formats
+share one calculation, including volatile functions. Native Windows array controls/history/save/reopen checks are
+included in CI; their first run is pending.

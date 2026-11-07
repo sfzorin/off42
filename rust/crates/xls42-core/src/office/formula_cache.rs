@@ -1,7 +1,13 @@
 //! Correct generated formula caches without changing formula text or unrelated ZIP entries.
 use super::*;
 mod external;
-pub(super) fn refresh_external(bytes:Vec<u8>,book:&Workbook,kind:&str)->Result<Vec<u8>,Error>{external::refresh(bytes,book,kind)}
+pub(super) fn refresh_external(
+    bytes: Vec<u8>,
+    book: &Workbook,
+    kind: &str,
+) -> Result<Vec<u8>, Error> {
+    external::refresh(bytes, book, kind)
+}
 // Spreadsheet string escapes differ from ordinary XML text. Preserve literal
 // _xHHHH_ sequences and encode characters forbidden by XML 1.0.
 fn cached_text_xml(value: &str) -> String {
@@ -30,103 +36,52 @@ fn cached_text_xml(value: &str) -> String {
     }
     output
 }
-pub(super) fn patch_text_results(
+pub(super) fn patch_results(
     bytes: Vec<u8>,
-    results: &BTreeMap<usize, BTreeMap<String, String>>,
+    results: &BTreeMap<usize, BTreeMap<(usize, usize), formula::Value>>,
 ) -> Result<Vec<u8>, Error> {
     if results.is_empty() {
         return Ok(bytes);
     }
-    let mut archive = zip::ZipArchive::new(Cursor::new(&bytes))
-        .map_err(|_| Error::Invalid("Invalid generated XLSX"))?;
+    let mut archive = zip::ZipArchive::new(Cursor::new(bytes.as_slice()))
+        .map_err(|_| Error::Invalid("Invalid generated workbook"))?;
     let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
     for index in 0..archive.len() {
         let mut entry = archive
             .by_index(index)
-            .map_err(|_| Error::Invalid("Invalid generated XLSX entry"))?;
+            .map_err(|_| Error::Invalid("Invalid generated entry"))?;
         let sheet = entry
             .name()
             .strip_prefix("xl/worksheets/sheet")
             .and_then(|p| p.strip_suffix(".xml"))
-            .and_then(|p| p.parse::<usize>().ok());
-        let Some(values) = sheet.and_then(|sheet| results.get(&sheet)) else {
+            .and_then(|s| s.parse::<usize>().ok());
+        if let Some(values) = sheet.and_then(|n| results.get(&n)) {
+            if entry.size() > LIMIT as u64 {
+                return Err(Error::Limit);
+            }
+            let mut source = String::new();
+            entry.read_to_string(&mut source)?;
+            let output = external::xlsx(&source, values, false)?;
+            writer
+                .start_file(
+                    entry.name(),
+                    zip::write::SimpleFileOptions::default()
+                        .compression_method(entry.compression()),
+                )
+                .map_err(|_| Error::Invalid("Cannot write generated formula caches"))?;
+            writer.write_all(output.as_bytes())?;
+        } else {
             writer
                 .raw_copy_file(entry)
-                .map_err(|_| Error::Invalid("Cannot preserve generated XLSX entry"))?;
-            continue;
-        };
-        if entry.size() > LIMIT as u64 {
-            return Err(Error::Limit);
+                .map_err(|_| Error::Invalid("Cannot preserve generated entry"))?;
         }
-        let mut source = String::new();
-        entry.read_to_string(&mut source)?;
-        let document = roxmltree::Document::parse(&source)
-            .map_err(|_| Error::Invalid("Invalid generated worksheet XML"))?;
-        let mut edits = vec![];
-        let mut seen = std::collections::BTreeSet::new();
-        for cell in document.descendants().filter(|n| n.has_tag_name("c")) {
-            let Some((address, value)) = cell
-                .attribute("r")
-                .and_then(|address| values.get(address).map(|value| (address, value)))
-            else {
-                continue;
-            };
-            if !seen.insert(address) {
-                return Err(Error::Invalid("Duplicate generated formula cell"));
-            }
-            let formula = cell.children().find(|n| n.has_tag_name("f"));
-            let cached = cell
-                .children()
-                .find(|n| n.has_tag_name("v"))
-                .ok_or(Error::Invalid("Missing generated formula cache"))?;
-            if formula.is_none() {
-                return Err(Error::Invalid("Missing generated formula"));
-            }
-            let mut opening = String::from("<c");
-            for attribute in cell.attributes().filter(|a| a.name() != "t") {
-                if attribute.namespace().is_some() {
-                    return Err(Error::Invalid("Unsupported generated cell attribute"));
-                }
-                opening.push_str(&format!(
-                    " {}=\"{}\"",
-                    attribute.name(),
-                    escape_xml(attribute.value())
-                ));
-            }
-            opening.push_str(" t=\"str\">");
-            let begin = cell.range().start;
-            let end = begin
-                + source[begin..]
-                    .find('>')
-                    .ok_or(Error::Invalid("Invalid generated cell opening"))?
-                + 1;
-            edits.push((begin, end, opening));
-            edits.push((
-                cached.range().start,
-                cached.range().end,
-                format!("<v>{}</v>", cached_text_xml(value)),
-            ));
-        }
-        if seen.len() != values.len() {
-            return Err(Error::Invalid("Generated formula cache is missing"));
-        }
-        edits.sort_by_key(|edit| std::cmp::Reverse(edit.0));
-        for (start, end, value) in edits {
-            source.replace_range(start..end, &value);
-        }
-        writer
-            .start_file(
-                entry.name(),
-                zip::write::SimpleFileOptions::default().compression_method(entry.compression()),
-            )
-            .map_err(|_| Error::Invalid("Cannot encode generated worksheet"))?;
-        writer.write_all(source.as_bytes())?;
     }
     writer
         .finish()
         .map(|out| out.into_inner())
-        .map_err(|_| Error::Invalid("Cannot finish generated workbook"))
+        .map_err(|_| Error::Invalid("Cannot finish generated cache package"))
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -238,21 +193,62 @@ mod compatibility_prefixes {
     use super::*;
     #[test]
     fn import_hides_excel_function_prefixes_but_keeps_strings_and_quoted_names() {
-        for (source,expected)in [
-            ("=_xlfn.STDEV.S(A1:A5)","=STDEV.S(A1:A5)"),
-            ("_xlfn._xlws.FILTER(A1:A3,A1:A3>2)","=FILTER(A1:A3,A1:A3>2)"),
-            ("=_XLFN.FORMULATEXT (INDEX(A1:A3,1))","=FORMULATEXT (INDEX(A1:A3,1))"),
-            ("=\"_xlfn.STDEV.S(1)\"&\"Привет\"","=\"_xlfn.STDEV.S(1)\"&\"Привет\""),
-            ("='_xlfn.Sheet''s'!A1+_xlfn.MEDIAN(A1:A3)","='_xlfn.Sheet''s'!A1+MEDIAN(A1:A3)"),
-            ("=\"a\"\"_xlfn.SUM(\"&A1","=\"a\"\"_xlfn.SUM(\"&A1"),
-            ("=_xlfn.named_value+A1","=_xlfn.named_value+A1"),
-        ]{assert_eq!(xlsx_formula_to_a1(source),expected);}
-        let mut book=Workbook::new(8,4).unwrap();book.set_cell(0,0,"1".into()).unwrap();book.set_cell(1,0,"2".into()).unwrap();book.set_cell(0,1,"=STDEV.S(A1:A2)".into()).unwrap();book.set_cell(0,2,"=FORMULATEXT(B1)".into()).unwrap();
-        let source=book.xlsx_bytes().unwrap();let mut archive=zip::ZipArchive::new(Cursor::new(source)).unwrap();let mut writer=zip::ZipWriter::new(Cursor::new(Vec::new()));
-        for index in 0..archive.len(){let file=archive.by_index(index).unwrap();if file.name()!=EXTRA{writer.raw_copy_file(file).unwrap();}}
-        let bytes=writer.finish().unwrap().into_inner();let mut imported=Workbook::from_office_bytes(&bytes,"xlsx").unwrap();assert_eq!(imported.cell(0,1),Some("=STDEV.S(A1:A2)"));
-        imported.set_cell(0,0,"4".into()).unwrap();assert_eq!(imported.display_grid()[0][2],"=STDEV.S(A1:A2)");
-        let output=imported.xlsx_bytes().unwrap();let mut archive=zip::ZipArchive::new(Cursor::new(output.as_slice())).unwrap();let sheet=zip_text(&mut archive,"xl/worksheets/sheet1.xml").unwrap().unwrap();
-        assert!(sheet.contains("<f>_xlfn.STDEV.S(A1:A2)</f>"));let doc=xml(&sheet).unwrap();let c=doc.descendants().find(|n|n.has_tag_name("c")&&n.attribute("r")==Some("C1")).unwrap();assert_eq!(c.children().find(|n|n.has_tag_name("v")).unwrap().text(),Some("=STDEV.S(A1:A2)"));
+        for (source, expected) in [
+            ("=_xlfn.STDEV.S(A1:A5)", "=STDEV.S(A1:A5)"),
+            (
+                "_xlfn._xlws.FILTER(A1:A3,A1:A3>2)",
+                "=FILTER(A1:A3,A1:A3>2)",
+            ),
+            (
+                "=_XLFN.FORMULATEXT (INDEX(A1:A3,1))",
+                "=FORMULATEXT (INDEX(A1:A3,1))",
+            ),
+            (
+                "=\"_xlfn.STDEV.S(1)\"&\"Привет\"",
+                "=\"_xlfn.STDEV.S(1)\"&\"Привет\"",
+            ),
+            (
+                "='_xlfn.Sheet''s'!A1+_xlfn.MEDIAN(A1:A3)",
+                "='_xlfn.Sheet''s'!A1+MEDIAN(A1:A3)",
+            ),
+            ("=\"a\"\"_xlfn.SUM(\"&A1", "=\"a\"\"_xlfn.SUM(\"&A1"),
+            ("=_xlfn.named_value+A1", "=_xlfn.named_value+A1"),
+        ] {
+            assert_eq!(xlsx_formula_to_a1(source), expected);
+        }
+        let mut book = Workbook::new(8, 4).unwrap();
+        book.set_cell(0, 0, "1".into()).unwrap();
+        book.set_cell(1, 0, "2".into()).unwrap();
+        book.set_cell(0, 1, "=STDEV.S(A1:A2)".into()).unwrap();
+        book.set_cell(0, 2, "=FORMULATEXT(B1)".into()).unwrap();
+        let source = book.xlsx_bytes().unwrap();
+        let mut archive = zip::ZipArchive::new(Cursor::new(source)).unwrap();
+        let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        for index in 0..archive.len() {
+            let file = archive.by_index(index).unwrap();
+            if file.name() != EXTRA {
+                writer.raw_copy_file(file).unwrap();
+            }
+        }
+        let bytes = writer.finish().unwrap().into_inner();
+        let mut imported = Workbook::from_office_bytes(&bytes, "xlsx").unwrap();
+        assert_eq!(imported.cell(0, 1), Some("=STDEV.S(A1:A2)"));
+        imported.set_cell(0, 0, "4".into()).unwrap();
+        assert_eq!(imported.display_grid()[0][2], "=STDEV.S(A1:A2)");
+        let output = imported.xlsx_bytes().unwrap();
+        let mut archive = zip::ZipArchive::new(Cursor::new(output.as_slice())).unwrap();
+        let sheet = zip_text(&mut archive, "xl/worksheets/sheet1.xml")
+            .unwrap()
+            .unwrap();
+        assert!(sheet.contains("<f>_xlfn.STDEV.S(A1:A2)</f>"));
+        let doc = xml(&sheet).unwrap();
+        let c = doc
+            .descendants()
+            .find(|n| n.has_tag_name("c") && n.attribute("r") == Some("C1"))
+            .unwrap();
+        assert_eq!(
+            c.children().find(|n| n.has_tag_name("v")).unwrap().text(),
+            Some("=STDEV.S(A1:A2)")
+        );
     }
 }

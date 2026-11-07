@@ -82,8 +82,7 @@ impl Parser<'_, '_> {
                             if skip_nested && raw.starts_with('=') && nested_summary(raw) {
                                 continue;
                             }
-                            let blank = raw.is_empty();
-                            let value = self.eval.cell(sheet, r, c, self.depth + 1);
+                            let (value, blank) = self.eval.range_value(sheet, r, c, self.depth + 1);
                             if skip_errors && matches!(value, Value::Error(_)) {
                                 continue;
                             }

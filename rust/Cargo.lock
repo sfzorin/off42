@@ -2810,6 +2810,7 @@ version = "0.1.0"
 dependencies = [
  "image",
  "label42",
+ "serde_json",
  "win42",
  "xls42-core",
 ]

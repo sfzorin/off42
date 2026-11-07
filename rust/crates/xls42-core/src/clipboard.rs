@@ -33,7 +33,10 @@ impl Workbook {
         if !valid_axis(rows, self.rows()) || !valid_axis(columns, self.cols()) {
             return Err(Error::Bounds);
         }
-        let text = self.copy_tsv_mapped(rows, columns)?;
+        let calculation = formula::calculation_at(self, chrono::Local::now().naive_local());
+        let grid =
+            self.format_calculated_grid(formula::display_grid_with_calculation(self, &calculation));
+        let text = self.tsv_from_grid(rows, columns, &grid)?;
         let state = self.history.current();
         let sheet = state.sheet();
         if sheet.merges.iter().any(|range| {
@@ -49,7 +52,38 @@ impl Workbook {
         let mut cells = Vec::with_capacity(rows.len() * columns.len());
         for &row in rows {
             for &column in columns {
-                if let Some(cell) = sheet.cells.get(&(row, column)) {
+                let mut copied = sheet.cells.get(&(row, column)).cloned();
+                let value_only =
+                    calculation
+                        .spills
+                        .iter()
+                        .any(|(&(anchor_row, anchor_col), range)| {
+                            row >= range.top
+                                && row <= range.bottom
+                                && column >= range.left
+                                && column <= range.right
+                                && (row != anchor_row || column != anchor_col)
+                                && !(rows.contains(&anchor_row) && columns.contains(&anchor_col))
+                        });
+                if value_only {
+                    if let Some(value) = calculation.values.get(&(row, column)) {
+                        let text = TextValue::from_raw(value.clone().display());
+                        let content = match value {
+                            formula::Value::Number(_) => CellContent::Number(text),
+                            formula::Value::Text(_) => CellContent::Text(text),
+                            formula::Value::Boolean(_) => CellContent::Boolean(text),
+                            formula::Value::Error(_) => CellContent::Error(text),
+                            formula::Value::Array(_) => {
+                                return Err(Error::Invalid("Unresolved clipboard array"))
+                            }
+                        };
+                        copied = Some(Cell {
+                            text: content,
+                            style: copied.as_ref().map_or(0, |c| c.style),
+                        });
+                    }
+                }
+                if let Some(cell) = copied.as_ref() {
                     let style = if let Some(index) = indices.get(&cell.style) {
                         *index
                     } else {
@@ -267,5 +301,50 @@ mod tests {
             .paste_clipboard_mapped(&[3, 4], &[2], b"not valid")
             .is_err());
         assert_eq!(book.cell(3, 2), Some(""));
+    }
+}
+
+#[cfg(test)]
+mod calculated_copy {
+    use super::*;
+    #[test]
+    fn spill_children_copy_as_values_while_whole_spills_recalculate_from_the_anchor() {
+        let mut b = Workbook::new(16, 12).unwrap();
+        b.set_cell(0, 0, "=SEQUENCE(3,2)".into()).unwrap();
+        let (text, partial) = b.copy_clipboard_mapped(&[1, 2], &[0, 1]).unwrap();
+        assert_eq!(text, "3\t4\n5\t6");
+        b.paste_clipboard_mapped(&[5, 6], &[4, 5], &partial)
+            .unwrap();
+        assert_eq!(b.cell(5, 4), Some("3"));
+        assert!(matches!(b.content(5, 4), Some(CellContent::Number(_))));
+        let (text, whole) = b.copy_clipboard_mapped(&[0, 1, 2], &[0, 1]).unwrap();
+        assert_eq!(text, "1\t2\n3\t4\n5\t6");
+        b.paste_clipboard_mapped(&[9, 10, 11], &[7, 8], &whole)
+            .unwrap();
+        assert_eq!(b.cell(9, 7), Some("=SEQUENCE(3,2)"));
+        assert_eq!(b.cell(10, 7), Some(""));
+        assert_eq!(b.display_grid()[11][8], "6");
+        b.undo();
+        assert_eq!(b.display_grid()[11][8], "");
+        b.redo();
+        assert_eq!(b.display_grid()[11][8], "6");
+    }
+    #[test]
+    fn plain_and_typed_copies_share_one_volatile_calculation_and_keep_text_types() {
+        let mut b = Workbook::new(8, 6).unwrap();
+        b.set_cell(0, 0, "=RANDARRAY(3,1,1,100000000,TRUE)".into())
+            .unwrap();
+        let (text, bytes) = b.copy_clipboard_mapped(&[1, 2], &[0]).unwrap();
+        b.paste_clipboard_mapped(&[4, 5], &[3], &bytes).unwrap();
+        let expected: Vec<_> = text.lines().collect();
+        assert_eq!(b.cell(4, 3).unwrap(), expected[0]);
+        assert_eq!(b.cell(5, 3).unwrap(), expected[1]);
+        b.set_cell(0, 0, "=VSTACK(\"0007\",\"=1+2\")".into())
+            .unwrap();
+        let (text, bytes) = b.copy_clipboard_mapped(&[1], &[0]).unwrap();
+        assert_eq!(text, "=1+2");
+        b.paste_clipboard_mapped(&[6], &[4], &bytes).unwrap();
+        assert!(matches!(b.content(6, 4), Some(CellContent::Text(_))));
+        assert_eq!(b.display_grid()[6][4], "=1+2");
     }
 }

@@ -1411,7 +1411,58 @@ def audit_statistical_formulas(process,main,output,binary,results):
     results["checks"].append("date entry and calendar/annuity/cash-flow calculations, statistical range/reference typing, distributions and 1e-100 literals, small-tail quantiles against an independent oracle, typed XLSX caches, computed references/lookup and filter-aware summaries, native filter/history and standard ODS output/reopen, external XLSX/ODS typed cache refresh without private snapshots, input recalculation, complete Undo/Redo and dirty/discard/reopen")
 
 
-def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False):
+def audit_array_formulas(process,main,binary,output,results):
+    import xml.etree.ElementTree as ET
+    source=output/"array-source.csv";data=[[""]*16 for _ in range(20)]
+    for r,n in enumerate(["3","1","2"]):data[r][0]=n
+    for r,c,value in [(0,2,'=SORT(A1:A3)'),(0,3,'=SEQUENCE(2,3)'),(4,3,'=C2*10'),(0,7,'=TRANSPOSE(A1:A3)'),(2,7,'x'),(1,7,'=SEQUENCE(2)'),(1,9,'=IF(A1:A3>1,"y","n")'),(1,10,'=IFERROR(1/(A1:A3-1),"e")'),(1,11,'=LEN(A1:A3)&"!"')]:data[r][c]=value
+    with source.open("w",encoding="utf-8",newline="")as file:csv.writer(file).writerows(data)
+    original=source.read_bytes()
+    def open_file(path):
+        command(main,1);choose_file(process,path)
+        def opened():
+            if path.name in text(main)and" * - "not in text(main)and u.IsWindowEnabled(main):return True
+            prompt=next((h for h in windows(process.pid)if classname(h)=="#32770"and u.IsWindowEnabled(h)and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
+            if prompt:click(prompt,7)
+            return None
+        wait_for(opened,"array source open/discard",process)
+    def save(name):
+        path=output/("arrays-"+name+".xlsx");save_as(main);choose_file(process,path,format_name="Excel workbook");output_ready(process,main,path,b"PK")
+        with zipfile.ZipFile(path)as archive:
+            root=ET.fromstring(archive.read("xl/worksheets/sheet1.xml"));assert"xl/metadata.xml"in archive.namelist()
+        ns={"s":"http://schemas.openxmlformats.org/spreadsheetml/2006/main"};cells={cell.attrib["r"]:cell for cell in root.findall(".//s:c",ns)}
+        return path,cells,ns
+    def value(cells,ns,address,expected):
+        cell=cells[address];assert cell.findtext("s:v",namespaces=ns)==expected,(address,ET.tostring(cell,encoding="unicode"),expected)
+    def baseline_values(cells,ns):
+        for address,wanted in [("C1","1"),("C2","2"),("C3","3"),("D1","1"),("E1","2"),("F1","3"),("D2","4"),("E2","5"),("F2","6"),("D5","20"),("H1","3"),("I1","1"),("J1","2"),("H2","#SPILL!"),("J2","n"),("K2","e"),("L2","1!")]:value(cells,ns,address,wanted)
+        assert cells["H2"].attrib.get("t")=="e"
+        for address,span in [("C1","C1:C3"),("D1","D1:F2"),("H1","H1:J1")]:
+            cell=cells[address];formula=cell.find("s:f",ns);assert cell.attrib.get("cm")=="1"and formula.attrib.get("t")=="array"and formula.attrib.get("ref")==span,(address,cell.attrib,formula.attrib)
+        assert cells["C2"].find("s:f",ns)is None
+    open_file(source);baseline,cells,ns=save("baseline");baseline_values(cells,ns)
+    grid=u.GetDlgItem(main,102);assert classname(grid)=="Off42VariableGrid";capture_window(grid,output/"XLS42-arrays.bmp")
+    fill_prompt(process,main,25,"Range (1-based)",["2","3","2","3"])
+    editor=u.GetDlgItem(main,101);wait_for(lambda:text(editor)=="","spill child retains an empty input",process)
+    replace_editor_text(editor,"blocked");_,blocked,ns=save("blocked");value(blocked,ns,"C1","#SPILL!");assert blocked["C1"].attrib.get("t")=="e"
+    assert "blocked"in"".join(blocked["C2"].itertext())
+    command(main,4);_,undone,ns=save("undo");baseline_values(undone,ns);assert text(editor)==""
+    command(main,5);_,redone,ns=save("redo");value(redone,ns,"C1","#SPILL!");assert text(editor)=="blocked"
+    command(main,4)
+    ods=output/"arrays-native.ods";save_as(main);choose_file(process,ods,format_name="OpenDocument spreadsheet");output_ready(process,main,ods,b"PK")
+    with zipfile.ZipFile(ods)as archive:root=ET.fromstring(archive.read("content.xml"))
+    table="urn:oasis:names:tc:opendocument:xmlns:table:1.0";office="urn:oasis:names:tc:opendocument:xmlns:office:1.0";row=root.find(".//{"+table+"}table-row");column=0;anchors={}
+    for cell in row:
+        repeat=int(cell.attrib.get("{"+table+"}number-columns-repeated",1));anchors[column]=cell;column+=repeat
+    assert anchors[2].attrib["{"+table+"}number-matrix-rows-spanned"]=="3"
+    assert anchors[3].attrib["{"+table+"}number-matrix-columns-spanned"]=="3"
+    open_file(baseline);_,reopened,ns=save("reopened");baseline_values(reopened,ns)
+    open_file(ods);_,ods_reopened,ns=save("ods-reopened");baseline_values(ods_reopened,ns)
+    assert source.read_bytes()==original
+    results["checks"].append("dynamic arrays render/spill with empty child inputs, independent XLSX typed values/array ranges/metadata and ODS matrix spans, conflict errors, complete one-step Undo/Redo, saved/reopened results and unchanged CSV source")
+
+
+def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False):
     startup = None
     if extended:
         if binary.stem.lower() == "pdf42":
@@ -1538,6 +1589,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_engineering_formulas(process, main, binary, output, results, include_extended=extended_formulas)
         if statistical_formulas and binary.stem.lower()=="xls42":
             audit_statistical_formulas(process,main,output,binary,results)
+        if array_formulas and binary.stem.lower()=="xls42":
+            audit_array_formulas(process,main,binary,output,results)
         if host_commands and binary.stem.lower() == "pdf42":
             audit_rectangle_command(process, main, binary, output, results)
         if pages and binary.stem.lower() == "pdf42":
@@ -1981,6 +2034,7 @@ def main():
     parser.add_argument("--pdf-merge", action="store_true")
     parser.add_argument("--pdf-batch-headers", action="store_true")
     parser.add_argument("--statistical-formulas", action="store_true")
+    parser.add_argument("--array-formulas", action="store_true")
     parser.add_argument("--page-exports", action="store_true")
     parser.add_argument("--host-commands", action="store_true")
     parser.add_argument("--engineering", action="store_true")
@@ -1994,7 +2048,7 @@ def main():
     try:
         for app in ["DOC42", "XLS42", "PDF42", "IMG42", "PPT42", "SCN42"]:
             try:
-                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge, args.pdf_batch_headers))
+                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge, args.pdf_batch_headers, args.array_formulas))
             except Exception as error:
                 results.append({"app": app, "error": str(error), "traceback": traceback.format_exc()})
             print(json.dumps(results[-1]), flush=True)

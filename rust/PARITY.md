@@ -329,3 +329,21 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   unchanged. Import now normalizes function-token prefixes, retaining quoted strings/names and original package
   formulas; portable regression verifies the stored original formula and corrected text cache. Repeat native
   verification is pending. Workspace: **431 passed**, zero failures, one OCR fixture ignored; GNU all targets compile.
+
+
+- Repeated native run [42419327644](https://github.com/sfzorin/off42/actions/runs/42419327644) on 0e1c87b
+  passes **311 targeted MSVC tests and all 30 native groups**, including the unchanged FORMULATEXT assertion,
+  imported scalar-cache edit/save/reopen/history and existing reference/filter scenarios.
+- Calculated-array source block adds arithmetic/conditional arrays, LET, spill conflict/shrink handling, sorting,
+  reshaping and matrix operations. Agreement rises to **469/492 fixed macOS examples**, with 23 gaps and two
+  locale skips. Worksheet expansion and external/legacy array fidelity remain open. Scalar and array argument
+  text/work are bounded before replication; targeted oversized-input regressions pass.
+- Independent saved XML caches and actual macOS XLS42 recalculation match **39/39 cases in XLSX and 39/39 in
+  ODS**. The first independent ODS run exposed conflated matrix row/column separators; the converter now writes
+  OpenFormula `|` rows and `;` columns, retaining argument separators and quoted text. Evidence is retained under
+  `build/windows-parity/arrays-office-fixed/verified/results.json`.
+- Plain clipboard text now follows macOS formatted results, with private formulas/styles/coordinates retained;
+  partial spills copy typed values and complete anchored spills recalculate after paste. Existing translation and
+  history assertions remain, with explicit private-formula assertions replacing the former raw-formula TSV assumption.
+- Portable workspace: **437 passed**, zero failures, one OCR fixture ignored. New native array cache/range/
+  editing/Undo/Redo/ODS/reopen assertions are added, pending their first Windows run. No public release/main/site change.

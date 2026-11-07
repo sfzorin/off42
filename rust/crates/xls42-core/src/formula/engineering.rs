@@ -34,6 +34,7 @@ fn numeric(value: &Value) -> Result<f64> {
         Value::Number(v) => *v,
         Value::Boolean(v) => f64::from(*v),
         Value::Text(v) => v.trim().parse().map_err(|_| "#VALUE!")?,
+        Value::Array(_) => return Err("#VALUE!"),
         Value::Error(e) => return Err(e),
     };
     if number.is_finite() {

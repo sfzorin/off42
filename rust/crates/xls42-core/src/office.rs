@@ -302,7 +302,8 @@ impl Workbook {
         let formats: Vec<_> = state.styles.iter().map(format).collect();
         let mut book = Xlsx::new();
         let recalc_time = chrono::Local::now().naive_local();
-        let mut text_results: BTreeMap<usize, BTreeMap<String, String>> = BTreeMap::new();
+        let mut typed_results: BTreeMap<usize, BTreeMap<(usize, usize), formula::Value>> =
+            BTreeMap::new();
         for (sheet_index, sheet) in state.sheets.iter().enumerate() {
             let ws = book.add_worksheet();
             ws.set_name(&sheet.name)
@@ -358,7 +359,9 @@ impl Workbook {
                 external_format: None,
                 external_cache: BTreeMap::new(),
             };
-            let results = formula::formula_results_at(&eval, recalc_time);
+            let calculation = formula::calculation_at(&eval, recalc_time);
+            let results = &calculation.values;
+            typed_results.insert(sheet_index + 1, results.clone());
             for (&(r, c), cell) in &sheet.cells {
                 let (r, c) = (r as u32, c as u16);
                 let f = &formats[cell.style];
@@ -385,6 +388,9 @@ impl Workbook {
                             .get(&(r as usize, c as usize))
                             .ok_or(Error::Invalid("Missing formula result"))?
                         {
+                            formula::Value::Array(_) => {
+                                return Err(Error::Invalid("Unresolved array cache"))
+                            }
                             formula::Value::Number(value) => value.to_string(),
                             formula::Value::Boolean(value) => {
                                 if *value {
@@ -393,13 +399,7 @@ impl Workbook {
                                     "FALSE".into()
                                 }
                             }
-                            formula::Value::Text(value) => {
-                                text_results.entry(sheet_index + 1).or_default().insert(
-                                    format!("{}{}", col_name(c as usize), r + 1),
-                                    value.clone(),
-                                );
-                                value.clone()
-                            }
+                            formula::Value::Text(value) => value.clone(),
                             formula::Value::Error(value) => match *value {
                                 "#DIV/0!" | "#N/A" | "#NAME?" | "#NULL!" | "#NUM!" | "#REF!"
                                 | "#VALUE!" => (*value).into(),
@@ -409,16 +409,47 @@ impl Workbook {
                                 _ => "#N/A".into(),
                             },
                         };
-                        ws.write_formula_with_format(
-                            r,
-                            c,
-                            Formula::new(t.raw()).set_result(value),
-                            f,
-                        )
+                        if let Some(range) = calculation.spills.get(&(r as usize, c as usize)) {
+                            ws.write_dynamic_array_formula_with_format(
+                                r,
+                                c,
+                                range.bottom as u32,
+                                range.right as u16,
+                                Formula::new(t.raw()).set_result(value),
+                                f,
+                            )
+                        } else {
+                            ws.write_formula_with_format(
+                                r,
+                                c,
+                                Formula::new(t.raw()).set_result(value),
+                                f,
+                            )
+                        }
                     }
                     _ => unreachable!(),
                 }
                 .map_err(|_| Error::Invalid("cannot encode XLSX cell"))?;
+            }
+            for (&(row, col), value) in results {
+                if matches!(
+                    sheet.cells.get(&(row, col)).map(|c| &c.text),
+                    Some(CellContent::Formula(_))
+                ) {
+                    continue;
+                }
+                let f = &formats[sheet.cells.get(&(row, col)).map_or(0, |cell| cell.style)];
+                let (r, c) = (row as u32, col as u16);
+                match value {
+                    formula::Value::Number(n) => ws.write_number_with_format(r, c, *n, f),
+                    formula::Value::Boolean(b) => ws.write_boolean_with_format(r, c, *b, f),
+                    formula::Value::Text(s) => ws.write_string_with_format(r, c, s, f),
+                    formula::Value::Error(e) => ws.write_string_with_format(r, c, *e, f),
+                    formula::Value::Array(_) => {
+                        return Err(Error::Invalid("Unresolved spill value"))
+                    }
+                }
+                .map_err(|_| Error::Invalid("Cannot encode spilled value"))?;
             }
             for table in &sheet.tables {
                 use rust_xlsxwriter::{Table, TableColumn, TableFunction};
@@ -665,7 +696,7 @@ impl Workbook {
         let bytes = book
             .save_to_buffer()
             .map_err(|_| Error::Invalid("cannot encode XLSX"))?;
-        let bytes = formula_cache::patch_text_results(bytes, &text_results)?;
+        let bytes = formula_cache::patch_results(bytes, &typed_results)?;
         let bytes = if state.date_1904 {
             set_generated_xlsx_1904(&bytes)?
         } else {
@@ -843,6 +874,7 @@ fn ods_formula_to_a1(input: &str) -> Option<String> {
     let mut i = 0;
     let b = input.as_bytes();
     let mut in_string = false;
+    let mut array_depth = 0usize;
     while i < b.len() {
         if b[i] == b'"' {
             out.push('"');
@@ -913,6 +945,26 @@ fn ods_formula_to_a1(input: &str) -> Option<String> {
             i = end + 1;
             continue;
         }
+        if !in_string && b[i] == b'{' {
+            array_depth += 1;
+            out.push('{');
+            i += 1;
+            continue;
+        }
+        if !in_string && b[i] == b'}' {
+            if array_depth == 0 {
+                return None;
+            }
+            array_depth -= 1;
+            out.push('}');
+            i += 1;
+            continue;
+        }
+        if !in_string && array_depth > 0 && b[i] == b'|' {
+            out.push(';');
+            i += 1;
+            continue;
+        }
         if !in_string && b[i] == b';' {
             out.push(',');
             i += 1;
@@ -921,6 +973,9 @@ fn ods_formula_to_a1(input: &str) -> Option<String> {
         let ch = input[i..].chars().next()?;
         out.push(ch);
         i += ch.len_utf8();
+    }
+    if array_depth != 0 {
+        return None;
     }
     Some(out)
 }
@@ -979,6 +1034,7 @@ fn ods_formula(input: &str) -> Result<String, Error> {
     let mut out = String::from("of:");
     let mut i = 0;
     let mut quoted = false;
+    let mut array_depth = 0usize;
     while i < b.len() {
         if b[i] == b'"' {
             quoted = !quoted;
@@ -990,6 +1046,26 @@ fn ods_formula(input: &str) -> Result<String, Error> {
             let c = input[i..].chars().next().unwrap();
             out.push(c);
             i += c.len_utf8();
+            continue;
+        }
+        if b[i] == b'{' {
+            array_depth += 1;
+            out.push('{');
+            i += 1;
+            continue;
+        }
+        if b[i] == b'}' {
+            if array_depth == 0 {
+                return Err(Error::Invalid("Invalid array formula"));
+            }
+            array_depth -= 1;
+            out.push('}');
+            i += 1;
+            continue;
+        }
+        if array_depth > 0 && b[i] == b';' {
+            out.push('|');
+            i += 1;
             continue;
         }
         if b[i] == b'\'' || b[i].is_ascii_alphabetic() || b[i] == b'_' {
@@ -1111,6 +1187,9 @@ fn ods_formula(input: &str) -> Result<String, Error> {
     }
     if quoted {
         return Err(Error::Invalid("invalid formula"));
+    }
+    if array_depth != 0 {
+        return Err(Error::Invalid("Invalid array formula"));
     }
     Ok(out)
 }
@@ -1335,10 +1414,16 @@ impl Workbook {
                 external_format: None,
                 external_cache: BTreeMap::new(),
             };
-            let results = formula::formula_results_at(&eval, recalc_time);
-            if let Some(filter)=&sh.filter {
-                for row in formula::filter_hidden_rows_at(&eval,recalc_time,filter) {
-                    if !sh.view.hidden_rows.contains(&row){sheet.set_row_visible(row as u32,spreadsheet_ods::sheet::Visibility::Filtered);}
+            let calculation = formula::calculation_at(&eval, recalc_time);
+            let results = &calculation.values;
+            if let Some(filter) = &sh.filter {
+                for row in formula::filter_hidden_rows_at(&eval, recalc_time, filter) {
+                    if !sh.view.hidden_rows.contains(&row) {
+                        sheet.set_row_visible(
+                            row as u32,
+                            spreadsheet_ods::sheet::Visibility::Filtered,
+                        );
+                    }
                 }
             }
             for (&(r, c), cell) in &sh.cells {
@@ -1361,6 +1446,9 @@ impl Workbook {
                             .get(&(r as usize, c as usize))
                             .ok_or(Error::Invalid("Missing formula result"))?
                         {
+                            formula::Value::Array(_) => {
+                                return Err(Error::Invalid("Unresolved array cache"))
+                            }
                             formula::Value::Number(value) => sheet.set_value(r, c, *value),
                             formula::Value::Boolean(value) => sheet.set_value(r, c, *value),
                             formula::Value::Text(value) => sheet.set_value(r, c, value.clone()),
@@ -1373,6 +1461,38 @@ impl Workbook {
                     _ => unreachable!(),
                 }
                 sheet.set_cellstyle(r, c, &styles[cell.style]);
+            }
+            for (&(row, col), value) in results {
+                if matches!(
+                    sh.cells.get(&(row, col)).map(|c| &c.text),
+                    Some(CellContent::Formula(_))
+                ) {
+                    continue;
+                }
+                let (r, c) = (row as u32, col as u32);
+                match value {
+                    formula::Value::Number(n) => sheet.set_value(r, c, *n),
+                    formula::Value::Boolean(b) => sheet.set_value(r, c, *b),
+                    formula::Value::Text(s) => sheet.set_value(r, c, s.clone()),
+                    formula::Value::Error(e) => sheet.set_value(r, c, (*e).to_owned()),
+                    formula::Value::Array(_) => {
+                        return Err(Error::Invalid("Unresolved spill value"))
+                    }
+                }
+                let style = sh.cells.get(&(row, col)).map_or(0, |cell| cell.style);
+                sheet.set_cellstyle(r, c, &styles[style]);
+            }
+            for (&(r, c), range) in &calculation.spills {
+                sheet.set_matrix_row_span(
+                    r as u32,
+                    c as u32,
+                    (range.bottom - range.top + 1) as u32,
+                );
+                sheet.set_matrix_col_span(
+                    r as u32,
+                    c as u32,
+                    (range.right - range.left + 1) as u32,
+                );
             }
             for picture in &sh.images {
                 let mut frame = spreadsheet_ods::draw::DrawFrame::new();
@@ -7550,6 +7670,25 @@ mod calendar_finance_packages {
             doc.redo();
             doc.redo();
             assert_eq!(doc.display_grid()[0][2], changed[0][2]);
+        }
+    }
+}
+
+#[cfg(test)]
+mod array_formula_delimiters {
+    use super::*;
+    #[test]
+    fn openformula_arrays_have_distinct_row_column_and_argument_separators() {
+        for (formula, odf) in [
+            ("=MMULT({1,2;3,4},{5;6})", "of:=MMULT({1;2|3;4};{5|6})"),
+            ("=SUM({1,2,3}*2)", "of:=SUM({1;2;3}*2)"),
+            (
+                "=TEXTJOIN(\",\",TRUE,{\"a;b\",\"c|d\"})",
+                "of:=COM.MICROSOFT.TEXTJOIN(\",\";TRUE;{\"a;b\";\"c|d\"})",
+            ),
+        ] {
+            assert_eq!(ods_formula(formula).unwrap(), odf);
+            assert_eq!(ods_formula_to_a1(odf).as_deref(), Some(formula));
         }
     }
 }

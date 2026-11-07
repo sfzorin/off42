@@ -337,7 +337,9 @@ impl Workbook {
         self.display_grid_at(chrono::Local::now().naive_local())
     }
     fn display_grid_at(&self, now: chrono::NaiveDateTime) -> Vec<Vec<String>> {
-        let mut grid = formula::display_grid_at(self, now);
+        self.format_calculated_grid(formula::display_grid_at(self, now))
+    }
+    fn format_calculated_grid(&self, mut grid: Vec<Vec<String>>) -> Vec<Vec<String>> {
         if self
             .external_baseline
             .as_ref()
@@ -2375,18 +2377,31 @@ impl Workbook {
         {
             return Err(Error::Bounds);
         }
+        let grid = self.display_grid();
+        self.tsv_from_grid(rows, cols, &grid)
+    }
+    fn tsv_from_grid(
+        &self,
+        rows: &[usize],
+        cols: &[usize],
+        grid: &[Vec<String>],
+    ) -> Result<String, Error> {
         let mut writer = csv::WriterBuilder::new()
             .delimiter(b'\t')
             .from_writer(Vec::new());
         for &row in rows {
-            writer.write_record(cols.iter().map(|&col| self.cell(row, col).unwrap()))?;
+            writer.write_record(cols.iter().map(|&col| grid[row][col].as_str()))?;
         }
-        let bytes = writer.into_inner().map_err(|e| Error::Io(e.into_error()))?;
+        let mut bytes = writer.into_inner().map_err(|e| Error::Io(e.into_error()))?;
         if bytes.len() > MAX_INPUT {
             return Err(Error::Limit);
         }
+        if bytes.last() == Some(&b'\n') {
+            bytes.pop();
+        }
         String::from_utf8(bytes).map_err(|_| Error::Invalid("invalid clipboard text"))
     }
+
     /// Paste a complete text rectangle as one undoable transaction.
     pub fn paste_tsv(&mut self, top: usize, left: usize, text: &str) -> Result<bool, Error> {
         if top >= self.rows() || left >= self.cols() {

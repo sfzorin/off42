@@ -83,6 +83,7 @@ pub(super) fn number(arg: Option<&Arg>, default: Option<f64>) -> Result<f64> {
             .ok()
             .filter(|n| n.is_finite())
             .ok_or("#VALUE!"),
+        Value::Array(_) => Err("#VALUE!"),
         Value::Error(e) => Err(e),
     }
 }

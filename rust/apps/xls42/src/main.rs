@@ -1729,7 +1729,7 @@ mod regression {
     use super::*;
     use win42::App;
     #[test]
-    fn typed_copy_moves_formula_while_external_text_is_literal() {
+    fn typed_copy_translates_formula_while_external_text_keeps_its_reference() {
         let mut app = Xls {
             book: Workbook::new(4, 4).unwrap(),
             row: 0,
@@ -1742,7 +1742,10 @@ mod regression {
         app.book.set_cell(0, 1, "=A1".into()).unwrap();
         let bytes = match app.clipboard_request(39).unwrap() {
             win42::ClipboardRequest::WriteDataAndText { bytes, text, .. } => {
-                assert!(text.contains("=A1"));
+                assert_eq!(text, "0");
+                let payload: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+                assert_eq!(payload["cells"][0]["content"]["type"], "Formula");
+                assert_eq!(payload["cells"][0]["content"]["value"]["raw"], "=A1");
                 bytes
             }
             _ => panic!("missing typed copy"),
@@ -1757,6 +1760,10 @@ mod regression {
         app.select_cell(2, 1);
         app.clipboard_text(40, "=A1".into()).unwrap();
         assert_eq!(app.book.cell(2, 1), Some("=A1"));
+        assert!(matches!(
+            app.book.content(2, 1),
+            Some(xls42_core::CellContent::Formula(_))
+        ));
     }
     #[test]
     fn typed_clipboard_translates_formulas_across_filtered_hidden_gaps() {
@@ -1823,8 +1830,15 @@ mod regression {
             win42::ClipboardRequest::WriteDataAndText { text, bytes, .. } => (text, bytes),
             _ => panic!("missing typed copy"),
         };
-        assert!(text.contains("=A2"));
-        assert!(text.contains("=$A4+A$2+$A$2"));
+        assert_eq!(text, "hit1\t\n\t#VALUE!");
+        let payload: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(payload["cells"][0]["content"]["type"], "Formula");
+        assert_eq!(payload["cells"][0]["content"]["value"]["raw"], "=A2");
+        assert_eq!(payload["cells"][3]["content"]["type"], "Formula");
+        assert_eq!(
+            payload["cells"][3]["content"]["value"]["raw"],
+            "=$A4+A$2+$A$2"
+        );
         assert!(matches!(
             app.clipboard_request(40),
             Some(win42::ClipboardRequest::ReadDataOrText(_))
