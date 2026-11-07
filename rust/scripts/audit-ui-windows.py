@@ -736,6 +736,10 @@ def audit_pdf_text_exports(process, main, binary, output, results):
 
 def copied_selection(edit):
     u.SendMessageW(edit,0x301,0,0)  # WM_COPY operates inside the actual Rich Edit process.
+    return clipboard_text()
+
+
+def clipboard_text():
     u.OpenClipboard.argtypes=[w.HWND]
     u.GetClipboardData.argtypes,u.GetClipboardData.restype=[w.UINT],w.HANDLE
     kernel=c.WinDLL("kernel32",use_last_error=True)
@@ -1416,7 +1420,7 @@ def audit_array_formulas(process,main,binary,output,results):
     import xml.etree.ElementTree as ET
     source=output/"array-source.csv";data=[[""]*16 for _ in range(20)]
     for r,n in enumerate(["3","1","2"]):data[r][0]=n
-    for r,c,value in [(0,2,'=SORT(A1:A3)'),(0,3,'=SEQUENCE(2,3)'),(4,3,'=C2*10'),(0,7,'=TRANSPOSE(A1:A3)'),(2,7,'x'),(1,7,'=SEQUENCE(2)'),(1,9,'=IF(A1:A3>1,"y","n")'),(1,10,'=IFERROR(1/(A1:A3-1),"e")'),(1,11,'=LEN(A1:A3)&"!"'),(8,0,'=LINEST({3;5;8;10;13},{1;2;3;4;5},TRUE,TRUE)'),(8,3,'=TEXTSPLIT("αXβxγ;δ",{"x","XX"},";",FALSE,1,99)'),(8,7,'=REGEXEXTRACT("a12b34","[0-9]+",1)'),(8,9,'=REGEXEXTRACT("Ж12","(Ж)([0-9]+)",2)'),(8,13,'=REGEXREPLACE("a1b2","([a-z])([0-9])","$2$1")'),(9,13,'=FIXED(1234.567,-2,TRUE)'),(10,13,'=ROMAN(1999)'),(11,13,'=ARABIC("-iv")'),(12,13,'=TREND({3;5;8;10;13},{1;2;3;4;5},6)')]:data[r][c]=value
+    for r,c,value in [(0,2,'=SORT(A1:A3)'),(0,3,'=SEQUENCE(2,3)'),(4,3,'=C2*10'),(0,7,'=TRANSPOSE(A1:A3)'),(2,7,'x'),(1,7,'=SEQUENCE(2)'),(1,9,'=IF(A1:A3>1,"y","n")'),(1,10,'=IFERROR(1/(A1:A3-1),"e")'),(1,11,'=LEN(A1:A3)&"!"'),(8,0,'=LINEST({3;5;8;10;13},{1;2;3;4;5},TRUE,TRUE)'),(8,3,'=TEXTSPLIT("αXβxγ;δ",{"x","XX"},";",FALSE,1,99)'),(8,7,'=REGEXEXTRACT("a12b34","[0-9]+",1)'),(8,9,'=REGEXEXTRACT("Ж12","(Ж)([0-9]+)",2)'),(8,13,'=REGEXREPLACE("a1b2","([a-z])([0-9])","$2$1")'),(9,13,'=FIXED(1234.567,-2,TRUE)'),(10,13,'=ROMAN(1999)'),(11,13,'=ARABIC("-iv")'),(12,13,'=TREND({3;5;8;10;13},{1;2;3;4;5},6)'),(13,13,'=TEXT(7,"0000")')]:data[r][c]=value
     with source.open("w",encoding="utf-8",newline="")as file:csv.writer(file).writerows(data)
     original=source.read_bytes()
     def open_file(path):
@@ -1444,7 +1448,7 @@ def audit_array_formulas(process,main,binary,output,results):
     def baseline_values(cells,ns):
         for address,wanted in [("C1","1"),("C2","2"),("C3","3"),("D1","1"),("E1","2"),("F1","3"),("D2","4"),("E2","5"),("F2","6"),("D5","20"),("H1","3"),("I1","1"),("J1","2"),("H2","#SPILL!"),("J2","n"),("K2","e"),("L2","1!")]:value(cells,ns,address,wanted)
         assert cells["H2"].attrib.get("t")=="e"
-        for address,wanted in [("D9","α"),("E9","β"),("F9","γ"),("D10","δ"),("E10","99"),("F10","99"),("H9","12"),("H10","34"),("J9","Ж"),("K9","12"),("N9","1a2b"),("N10","1200"),("N11","MCMXCIX"),("N12","-4")]:value(cells,ns,address,wanted)
+        for address,wanted in [("D9","α"),("E9","β"),("F9","γ"),("D10","δ"),("E10","99"),("F10","99"),("H9","12"),("H10","34"),("J9","Ж"),("K9","12"),("N9","1a2b"),("N10","1200"),("N11","MCMXCIX"),("N12","-4"),("N14","0007")]:value(cells,ns,address,wanted)
         for address,wanted in [("A9",2.5),("B9",0.3),("N13",15.3)]:
             actual=float(cells[address].findtext("s:v",namespaces=ns));assert math.isclose(actual,wanted,rel_tol=1e-12,abs_tol=1e-12),(address,actual,wanted)
         for address,span in [("C1","C1:C3"),("D1","D1:F2"),("H1","H1:J1"),("A9","A9:B13"),("D9","D9:F10"),("H9","H9:H10"),("J9","J9:K9")]:
@@ -1452,6 +1456,8 @@ def audit_array_formulas(process,main,binary,output,results):
         assert cells["C2"].find("s:f",ns)is None
     open_file(source);baseline,cells,ns=save("baseline");baseline_values(cells,ns)
     grid=u.GetDlgItem(main,102);assert classname(grid)=="Off42VariableGrid";capture_window(grid,output/"XLS42-arrays.bmp")
+    fill_prompt(process,main,25,"Range (1-based)",["9","1","9","2"]);command(main,39)
+    wait_for(lambda:clipboard_text()=="2.5\t0.3","formatted general clipboard values",process)
     fill_prompt(process,main,25,"Range (1-based)",["2","3","2","3"])
     editor=u.GetDlgItem(main,101);wait_for(lambda:text(editor)=="","spill child retains an empty input",process)
     replace_editor_text(editor,"blocked");_,blocked,ns=save("blocked");value(blocked,ns,"C1","#SPILL!");assert blocked["C1"].attrib.get("t")=="e"
@@ -1529,7 +1535,7 @@ def audit_array_formulas(process,main,binary,output,results):
     open_file(ods_resized);_,od_reopened,od_ranges=save_external_ods("external-ods-reopened");assert od_reopened["E3"]=="6"and od_ranges["D1"]==(3,2)
     assert all(path.read_bytes()==before for path,before in external_sources.items())
     assert source.read_bytes()==original
-    results["checks"].append("dynamic arrays render/spill with empty child inputs, independent XLSX typed values/array ranges/metadata and ODS matrix spans, conflict errors, complete one-step Undo/Redo, saved/reopened results, standard external XLSX/ODS without private snapshots, resize/cache cleanup/blocking with complete Undo/Redo/reopening and unchanged sources")
+    results["checks"].append("dynamic arrays render/spill with empty child inputs, rounded General/clipboard text with full-precision numeric file caches, independent XLSX typed values/array ranges/metadata and ODS matrix spans, conflict errors, complete one-step Undo/Redo, saved/reopened results, standard external XLSX/ODS without private snapshots, resize/cache cleanup/blocking with complete Undo/Redo/reopening and unchanged sources")
 
 
 def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False):

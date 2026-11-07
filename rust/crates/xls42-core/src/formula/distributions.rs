@@ -952,7 +952,7 @@ mod tests {
             book.set_cell(i, 0, case["formula"].as_str().unwrap().into())
                 .unwrap();
         }
-        let grid = book.display_grid();
+        let grid = book.calculated_grid();
         for (i, case) in cases.iter().enumerate() {
             let actual = grid[i][0]
                 .parse::<f64>()

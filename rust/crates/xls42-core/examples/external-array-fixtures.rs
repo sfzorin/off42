@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for case in &original {
             let (r, c) = address(case["cell"].as_str().unwrap());
             assert_eq!(
-                book.display_grid()[r][c],
+                book.calculated_grid()[r][c],
                 case["expected"].as_str().unwrap(),
                 "{kind}: {}",
                 case["cell"]
@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         book.set_cell(0, 0, "4".into())?;
         book.set_cell(0, 3, "=SEQUENCE(3,2)".into())?;
-        let grid = book.display_grid();
+        let grid = book.calculated_grid();
         let mut cases = original.clone();
         for case in &mut cases {
             let (r, c) = address(case["cell"].as_str().unwrap());
@@ -106,7 +106,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for case in expected.as_ref().unwrap() {
             let (r, c) = address(case["cell"].as_str().unwrap());
             assert_eq!(
-                reopened.display_grid()[r][c],
+                reopened.calculated_grid()[r][c],
                 case["expected"].as_str().unwrap()
             );
         }

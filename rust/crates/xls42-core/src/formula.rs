@@ -96,6 +96,26 @@ impl<'a> Eval<'a> {
             .find(|s| s.id == sheet)?;
         s.cells.get(&(row, col)).map(|c| &c.text)
     }
+    fn display_for_filter(
+        &mut self,
+        sheet: SheetId,
+        row: usize,
+        col: usize,
+        depth: usize,
+    ) -> String {
+        let (value, blank) = self.range_value(sheet, row, col, depth);
+        if blank {
+            return String::new();
+        }
+        let mut text = match self.content(sheet, row, col) {
+            Some(CellContent::Text(v) | CellContent::Number(v) | CellContent::Date(v)) => {
+                v.raw().to_owned()
+            }
+            _ => value.clone().display(),
+        };
+        crate::display::format_cell(self.book, sheet, row, col, Some(&value), &mut text);
+        text
+    }
     fn range_cell(
         &mut self,
         sheet: SheetId,
@@ -2237,7 +2257,7 @@ fn wildcard(pattern: &str, value: &str) -> bool {
 fn format_formula_number(book: &Workbook, value: f64, format: &str) -> Option<String> {
     let format = format.trim().to_ascii_lowercase();
     if format == "general" {
-        return Some(value.to_string());
+        return Some(crate::display::general(value));
     }
     if matches!(
         format.as_str(),
@@ -2263,22 +2283,7 @@ fn format_formula_number(book: &Workbook, value: f64, format: &str) -> Option<St
             _ => date.format("%-d-%b-%y").to_string(),
         });
     }
-    let (pattern, percent) = format
-        .strip_suffix('%')
-        .map_or((format.as_str(), false), |s| (s, true));
-    let decimals = match pattern {
-        "0" => 0,
-        "0.0" => 1,
-        "0.00" => 2,
-        "0.000" => 3,
-        _ => return None,
-    };
-    Some(format!(
-        "{:.*}{}",
-        decimals,
-        if percent { value * 100.0 } else { value },
-        if percent { "%" } else { "" }
-    ))
+    crate::display::number_pattern(value, format.as_str())
 }
 fn criterion_matches(value: &Value, raw: &str, criterion: &Value) -> bool {
     let Value::Text(spec) = criterion else {
@@ -2575,8 +2580,7 @@ pub(super) fn filter_hidden_rows_at(
     (filter.range.top + 1..=filter.range.bottom)
         .filter(|r| {
             !eval
-                .cell(book.active_sheet(), *r, filter.column, 0)
-                .display()
+                .display_for_filter(book.active_sheet(), *r, filter.column, 0)
                 .to_lowercase()
                 .contains(&needle)
         })

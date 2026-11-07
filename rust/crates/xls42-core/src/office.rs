@@ -495,9 +495,10 @@ impl Workbook {
                     .replace('?', "~?");
                 let condition = FilterCondition::new()
                     .add_custom_filter(FilterCriteria::Contains, escaped.as_str());
+                ws.filter_automatic_off();
                 ws.filter_column(filter.column as u16, &condition)
                     .map_err(|_| Error::Invalid("cannot encode XLSX filter"))?;
-                let grid = eval.display_grid_at(recalc_time);
+                let grid = eval.format_calculation(&calculation);
                 let needle = filter.contains.to_lowercase();
                 for row in r.top + 1..=r.bottom {
                     if !grid[row][filter.column].to_lowercase().contains(&needle) {
@@ -1719,7 +1720,7 @@ impl Workbook {
         dynamic_arrays::import(bytes, kind, &mut state)?;
         pictures::import(bytes, kind, &mut state)?;
         if kind == "xlsx" {
-            filters::separate_xlsx_hidden(&mut state, &cache);
+            filters::separate_xlsx_hidden(&mut state);
         }
         Ok(Self {
             history: SnapshotHistory::new(state.clone(), 8),

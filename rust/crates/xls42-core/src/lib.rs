@@ -337,9 +337,17 @@ impl Workbook {
         self.display_grid_at(chrono::Local::now().naive_local())
     }
     fn display_grid_at(&self, now: chrono::NaiveDateTime) -> Vec<Vec<String>> {
-        self.format_calculated_grid(formula::display_grid_at(self, now))
+        let calculation = formula::calculation_at(self, now);
+        self.format_calculation(&calculation)
     }
-    fn format_calculated_grid(&self, mut grid: Vec<Vec<String>>) -> Vec<Vec<String>> {
+    /// Full-precision calculated text without number formatting, for data processing and numerical verification.
+    /// Authoritative editor input is available through `cell`; formula/spill values share one calculation.
+    pub fn calculated_grid(&self) -> Vec<Vec<String>> {
+        let calculation = formula::calculation_at(self, chrono::Local::now().naive_local());
+        self.calculated_grid_with(&calculation)
+    }
+    fn calculated_grid_with(&self, calculation: &formula::Calculation) -> Vec<Vec<String>> {
+        let mut grid = formula::display_grid_with_calculation(self, calculation);
         if self
             .external_baseline
             .as_ref()
@@ -355,7 +363,11 @@ impl Workbook {
                 }
             }
         }
-        display::apply(self, &mut grid);
+        grid
+    }
+    fn format_calculation(&self, calculation: &formula::Calculation) -> Vec<Vec<String>> {
+        let mut grid = self.calculated_grid_with(calculation);
+        display::apply(self, calculation, &mut grid);
         grid
     }
     pub fn is_read_only(&self) -> bool {
@@ -2190,7 +2202,7 @@ mod aggregate_range_regression {
         }
         b.set_cell(0, 3, "text".into()).unwrap();
         b.set_cell(2, 3, "=1/0".into()).unwrap();
-        let grid = b.display_grid();
+        let grid = b.calculated_grid();
         assert_eq!(
             (0..4).map(|r| grid[r][1].as_str()).collect::<Vec<_>>(),
             ["4", "1.3333333333333333", "-2", "6"]

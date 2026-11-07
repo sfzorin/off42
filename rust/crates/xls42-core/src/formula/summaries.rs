@@ -60,8 +60,7 @@ impl Parser<'_, '_> {
                                 let needle = filter.contains.to_lowercase();
                                 let value = self
                                     .eval
-                                    .cell(sheet, r, column, self.depth + 1)
-                                    .display()
+                                    .display_for_filter(sheet, r, column, self.depth + 1)
                                     .to_lowercase();
                                 self.eval.steps =
                                     self.eval.steps.saturating_add(value.len() + needle.len());

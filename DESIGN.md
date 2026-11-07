@@ -764,3 +764,11 @@ unknown attributes and objects, materialize only required ODS repeat runs, and c
 explicit inputs. XLSX registration preserves existing metadata records. Core ODS preservation checks remain strict;
 a writer-injected default style is removed only where an unchanged source cell had no explicit style. Array metadata
 updates occur separately from the general opaque-content preservation pass.
+
+
+A spreadsheet calculation keeps full precision. Presentation formats only typed numeric results and never feeds
+rounded grid strings back into arithmetic or typed Office caches. `calculated_grid` supplies data-processing text;
+`display_grid` and plain clipboard text share the presentation projection, while private clipboard payloads retain
+source formulas/types/styles. The common cell formatter accepts an explicit sheet identity so filter/summary
+references across sheets use the owning sheet's format. XLSX visibility uses the same calculation and disables the
+writer's independent filter pass, preventing it from hiding formula rows that passed the application filter.

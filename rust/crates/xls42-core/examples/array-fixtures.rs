@@ -65,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ] {
         b.set_cell(r, c, f.into())?;
     }
-    let grid = b.display_grid();
+    let grid = b.calculated_grid();
     let mut cases = Vec::new();
     for (r, c) in [
         (0, 2),

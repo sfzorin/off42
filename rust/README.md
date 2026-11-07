@@ -495,3 +495,24 @@ format, with no private project payload and an unchanged foreign package entry. 
 Undo/Redo, blocking/removal, reopened values, literal text, metadata records, ODS repeats and strict style preservation.
 Unchanged cells retain their original absence of a style when the ODS writer would otherwise inject a value default.
 Import range work is bounded. These source changes are not a public release.
+
+
+### Numeric presentation and data precision (development branch)
+
+The grid and plain clipboard use the macOS General projection: up to eleven significant digits at ordinary
+magnitudes and a bounded scientific representation at extremes. Actual Swift formatting produces the 105 General
+and 14 fixed-pattern oracle cases in `macos-number-display-cases.json`; regenerate them with
+`python3 rust/scripts/export-number-display-cases.py`. Decimal/group separators still follow the existing Windows
+convention; full locale and richer custom-format support remain open.
+
+`Workbook::calculated_grid()` supplies full-precision calculated text for data processing, retaining source
+representations for literal cells. Formula evaluation, chart/pivot calculation and typed Office caches keep their
+precision. Numerical reference tests use this data projection with their original expected values and tolerances.
+Number formats apply only to numeric results, including calculated children; text identifiers such as `0007` retain
+their type and leading zeroes. Cell display and TEXT share bounded zero-padding, grouping, decimals and percentage
+patterns. Native ODS custom-number-format export remains guarded.
+
+Filter matching, summaries, external hidden-row classification and saved XLSX row flags use the same presentation.
+The XLSX writer's separate automatic filter hiding is disabled in favor of calculated visibility. Portable checks
+verify display/clipboard values, full-precision XLSX/ODS numeric caches, formatted spill children, text typing,
+Undo/Redo and filter/manual-hidden-row round trips. Native formatted-copy checks await the next compatible build.

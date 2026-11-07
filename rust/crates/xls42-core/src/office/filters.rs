@@ -203,31 +203,12 @@ fn contains_pattern(value: &str) -> Option<String> {
     }
     (!out.is_empty()).then_some(out)
 }
-pub(super) fn separate_xlsx_hidden(
-    state: &mut State,
-    cache: &BTreeMap<(SheetId, usize, usize), String>,
-) {
+pub(super) fn separate_xlsx_hidden(state: &mut State) {
+    let excluded = hidden_rows(state);
     for sheet in &mut state.sheets {
-        let Some(filter) = &sheet.filter else {
-            continue;
-        };
-        let needle = filter.contains.to_lowercase();
-        sheet.view.hidden_rows.retain(|row| {
-            *row <= filter.range.top
-                || *row > filter.range.bottom
-                || cache
-                    .get(&(sheet.id, *row, filter.column))
-                    .map(String::as_str)
-                    .or_else(|| {
-                        sheet
-                            .cells
-                            .get(&(*row, filter.column))
-                            .map(|c| c.text.raw())
-                    })
-                    .unwrap_or("")
-                    .to_lowercase()
-                    .contains(&needle)
-        });
+        if let Some(rows) = excluded.get(&sheet.id) {
+            sheet.view.hidden_rows.retain(|row| !rows.contains(row));
+        }
     }
 }
 

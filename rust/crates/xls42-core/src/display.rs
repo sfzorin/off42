@@ -1,124 +1,133 @@
 //! Conservative common-format projection; unsupported custom codes retain raw display.
-use crate::{CellContent, Workbook};
+use crate::{
+    CellContent, Workbook,
+    formula::{Calculation, Value},
+};
 use chrono::{Datelike, NaiveDate, NaiveDateTime};
-pub(crate) fn apply(book: &Workbook, grid: &mut [Vec<String>]) {
+pub(crate) fn apply(book: &Workbook, calculation: &Calculation, grid: &mut [Vec<String>]) {
     for (r, row) in grid.iter_mut().enumerate() {
         for (c, text) in row.iter_mut().enumerate() {
-            let Some(style) = book.style(r, c) else {
-                continue;
-            };
-            let code = style.number_format.trim();
-            let Some(content) = book.content(r, c) else {
-                continue;
-            };
-            if let CellContent::Date(_) = content {
-                if let Some(date) = parse_date(text) {
-                    let rendered = match code.to_ascii_lowercase().as_str() {
-                        "m/d/yy" => Some(format!(
-                            "{}/{}/{:02}",
-                            date.month(),
-                            date.day(),
-                            date.year() % 100
-                        )),
-                        "mm-dd-yy" => Some(format!(
-                            "{:02}-{:02}-{:02}",
-                            date.month(),
-                            date.day(),
-                            date.year() % 100
-                        )),
-                        "yyyy-mm-dd" => Some(date.format("%Y-%m-%d").to_string()),
-                        "d-mmm-yy" => Some(date.format("%-d-%b-%y").to_string()),
-                        "d-mmm" => Some(date.format("%-d-%b").to_string()),
-                        "mmm-yy" => Some(date.format("%b-%y").to_string()),
-                        "" | "general" => Some(if text.contains('T') {
-                            text.replace('T', " ")
-                        } else {
-                            date.format("%Y-%m-%d").to_string()
-                        }),
-                        _ => None,
-                    };
-                    if let Some(v) = rendered {
-                        *text = v
-                    }
-                }
-                continue;
-            }
-            if !matches!(content, CellContent::Number(_) | CellContent::Formula(_)) {
-                continue;
-            }
-            let Ok(value) = text.parse::<f64>() else {
-                continue;
-            };
-            if !value.is_finite() {
-                continue;
-            }
-            if !book.history.current().date_1904 && value.floor() == 60.0 {
-                let rendered = match code.to_ascii_lowercase().as_str() {
-                    "yyyy-mm-dd" => Some("1900-02-29"),
-                    "m/d/yy" => Some("2/29/00"),
-                    "mm-dd-yy" => Some("02-29-00"),
-                    "d-mmm-yy" => Some("29-Feb-00"),
-                    _ => None,
-                };
-                if let Some(value) = rendered {
-                    *text = value.into();
-                    continue;
-                }
-            }
-            if let Some(date) = workbook_serial_to_date(book, value) {
-                let rendered = match code.to_ascii_lowercase().as_str() {
-                    "yyyy-mm-dd" => Some(date.format("%Y-%m-%d").to_string()),
-                    "m/d/yy" => Some(format!(
-                        "{}/{}/{:02}",
-                        date.month(),
-                        date.day(),
-                        date.year() % 100
-                    )),
-                    "mm-dd-yy" => Some(format!(
-                        "{:02}-{:02}-{:02}",
-                        date.month(),
-                        date.day(),
-                        date.year() % 100
-                    )),
-                    "d-mmm-yy" => Some(date.format("%-d-%b-%y").to_string()),
-                    _ => None,
-                };
-                if let Some(v) = rendered {
-                    *text = v;
-                    continue;
-                }
-            }
-            let (pattern, percent) = match code.strip_suffix('%') {
-                Some(p) => (p, true),
-                None => (code, false),
-            };
-            let decimals = match pattern {
-                "0" | "#,##0" => Some(0),
-                "0.0" | "#,##0.0" => Some(1),
-                "0.00" | "#,##0.00" => Some(2),
-                "0.000" | "#,##0.000" => Some(3),
-                _ => None,
-            };
-            if let Some(n) = decimals {
-                let scaled = if percent { value * 100.0 } else { value };
-                let mut rendered = format!("{:.*}", n, scaled);
-                if pattern.starts_with("#,##") {
-                    let dot = rendered.find('.').unwrap_or(rendered.len());
-                    let start = usize::from(rendered.starts_with('-'));
-                    let mut i = dot;
-                    while i > start + 3 {
-                        i -= 3;
-                        rendered.insert(i, ',');
-                    }
-                }
-                if percent {
-                    rendered.push('%')
-                }
-                *text = rendered;
-            }
+            format_cell(
+                book,
+                book.active_sheet(),
+                r,
+                c,
+                calculation.values.get(&(r, c)),
+                text,
+            );
         }
     }
 }
+pub(super) fn format_cell(
+    book: &Workbook,
+    sheet: crate::SheetId,
+    r: usize,
+    c: usize,
+    calculated: Option<&Value>,
+    text: &mut String,
+) {
+    let Some(source) = book.history.current().sheets.iter().find(|s| s.id == sheet) else {
+        return;
+    };
+    let cell = source.cells.get(&(r, c));
+    let code = cell
+        .and_then(|c| book.history.current().styles.get(c.style))
+        .map_or("", |s| s.number_format.trim());
+    let content = cell.map(|c| &c.text);
+    if calculated.is_some_and(|v| !matches!(v, Value::Number(_))) {
+        return;
+    }
+    if let Some(CellContent::Date(_)) = content {
+        if let Some(date) = parse_date(text) {
+            let rendered = match code.to_ascii_lowercase().as_str() {
+                "m/d/yy" => Some(format!(
+                    "{}/{}/{:02}",
+                    date.month(),
+                    date.day(),
+                    date.year() % 100
+                )),
+                "mm-dd-yy" => Some(format!(
+                    "{:02}-{:02}-{:02}",
+                    date.month(),
+                    date.day(),
+                    date.year() % 100
+                )),
+                "yyyy-mm-dd" => Some(date.format("%Y-%m-%d").to_string()),
+                "d-mmm-yy" => Some(date.format("%-d-%b-%y").to_string()),
+                "d-mmm" => Some(date.format("%-d-%b").to_string()),
+                "mmm-yy" => Some(date.format("%b-%y").to_string()),
+                "" | "general" => Some(if text.contains('T') {
+                    text.replace('T', " ")
+                } else {
+                    date.format("%Y-%m-%d").to_string()
+                }),
+                _ => None,
+            };
+            if let Some(v) = rendered {
+                *text = v
+            }
+        }
+        return;
+    }
+    if calculated.is_none()
+        && !matches!(
+            content,
+            Some(CellContent::Number(_) | CellContent::Formula(_))
+        )
+    {
+        return;
+    }
+    let Ok(value) = text.parse::<f64>() else {
+        return;
+    };
+    if !value.is_finite() {
+        return;
+    }
+    if code.is_empty() || code.eq_ignore_ascii_case("general") {
+        *text = general(value);
+        return;
+    }
+    if !book.history.current().date_1904 && value.floor() == 60.0 {
+        let rendered = match code.to_ascii_lowercase().as_str() {
+            "yyyy-mm-dd" => Some("1900-02-29"),
+            "m/d/yy" => Some("2/29/00"),
+            "mm-dd-yy" => Some("02-29-00"),
+            "d-mmm-yy" => Some("29-Feb-00"),
+            _ => None,
+        };
+        if let Some(value) = rendered {
+            *text = value.into();
+            return;
+        }
+    }
+    if let Some(date) = workbook_serial_to_date(book, value) {
+        let rendered = match code.to_ascii_lowercase().as_str() {
+            "yyyy-mm-dd" => Some(date.format("%Y-%m-%d").to_string()),
+            "m/d/yy" => Some(format!(
+                "{}/{}/{:02}",
+                date.month(),
+                date.day(),
+                date.year() % 100
+            )),
+            "mm-dd-yy" => Some(format!(
+                "{:02}-{:02}-{:02}",
+                date.month(),
+                date.day(),
+                date.year() % 100
+            )),
+            "d-mmm-yy" => Some(date.format("%-d-%b-%y").to_string()),
+            _ => None,
+        };
+        if let Some(v) = rendered {
+            *text = v;
+            return;
+        }
+    }
+    if let Some(rendered) = number_pattern(value, code) {
+        *text = rendered;
+    }
+}
+
 pub(crate) fn parse_date(s: &str) -> Option<NaiveDate> {
     NaiveDate::parse_from_str(s, "%Y-%m-%d").ok().or_else(|| {
         NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f")
@@ -191,4 +200,285 @@ pub(crate) fn parse_serial(s: &str) -> Option<f64> {
         );
     }
     parse_date(s).and_then(date_to_serial)
+}
+
+/// Match the macOS General projection without feeding rounded display text back into calculations.
+pub(super) fn general(value: f64) -> String {
+    if !value.is_finite() {
+        return "#NUM!".into();
+    }
+    if value == 0.0 {
+        return "0".into();
+    }
+    let magnitude = value.abs();
+    if !(1e-9..1e11).contains(&magnitude) {
+        let source = format!("{value:.5E}");
+        let (mantissa, exponent) = source.split_once('E').unwrap();
+        let mantissa = mantissa.trim_end_matches('0').trim_end_matches('.');
+        let exponent = exponent.parse::<i32>().unwrap();
+        format!("{mantissa}E{exponent:+03}")
+    } else {
+        let decimals = (10.0 - magnitude.log10().floor()).clamp(0.0, 10.0) as usize;
+        let result = format!("{:.*}", decimals, value);
+        if result.contains('.') {
+            result.trim_end_matches('0').trim_end_matches('.').into()
+        } else {
+            result
+        }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{CellStyle, Range};
+    #[test]
+    fn general_matches_actual_swift_formatter_at_boundaries_and_wide_exponents() {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../fixtures/macos-number-display-cases.json"))
+                .unwrap();
+        let cases = fixture["cases"].as_array().unwrap();
+        assert!(cases.len() > 100);
+        for case in cases {
+            let input = case["input"].as_str().unwrap();
+            let value = input.parse::<f64>().unwrap();
+            assert_eq!(
+                general(value),
+                case["expected"].as_str().unwrap(),
+                "{input}"
+            );
+        }
+        for case in fixture["patterns"].as_array().unwrap() {
+            let input = case["input"].as_str().unwrap();
+            let pattern = case["pattern"].as_str().unwrap();
+            let actual = number_pattern(input.parse::<f64>().unwrap(), pattern);
+            assert_eq!(
+                actual.as_deref(),
+                case["expected"].as_str(),
+                "{input}: {pattern}"
+            );
+        }
+        assert!(number_pattern(1.0, &format!("0.{}", "0".repeat(128))).is_none());
+    }
+    #[test]
+    fn display_and_clipboard_round_without_changing_calculations_or_office_values() {
+        let mut b = Workbook::new(8, 12).unwrap();
+        for (r, c, f) in [
+            (0, 0, "=1/3"),
+            (0, 1, "=A1*3"),
+            (0, 2, "=TEXT(7,\"0000\")"),
+            (0, 3, "=TEXTSPLIT(\"0007,=1+2\",\",\")"),
+            (0, 6, "=SEQUENCE(2)"),
+            (0, 8, "3.141592653589793"),
+        ] {
+            b.set_cell(r, c, f.into()).unwrap();
+        }
+        for (r, c, code) in [(0, 2, "0.00"), (0, 3, "0%"), (0, 4, "0.00"), (1, 6, "0.00")] {
+            b.set_style(
+                Range {
+                    top: r,
+                    left: c,
+                    bottom: r,
+                    right: c,
+                },
+                CellStyle {
+                    number_format: code.into(),
+                    ..CellStyle::default()
+                },
+            )
+            .unwrap();
+        }
+        let displayed = b.display_grid();
+        assert_eq!(
+            &displayed[0][..5],
+            &["0.3333333333", "1", "0007", "0007", "=1+2"]
+        );
+        assert_eq!(displayed[1][6], "2.00");
+        assert_eq!(displayed[0][8], "3.1415926536");
+        assert_eq!(b.cell(0, 8), Some("3.141592653589793"));
+        assert_eq!(b.calculated_grid()[0][0], "0.3333333333333333");
+        assert_eq!(b.calculated_grid()[1][6], "2");
+        let (text, payload) = b.copy_clipboard_mapped(&[0], &[0, 1, 2]).unwrap();
+        assert_eq!(text, "0.3333333333\t1\t0007");
+        let payload: serde_json::Value = serde_json::from_slice(&payload).unwrap();
+        assert_eq!(payload["cells"][0]["content"]["value"]["raw"], "=1/3");
+        // Native ODS custom-number-format export is still guarded; verify its raw numeric cache on a plain workbook.
+        let mut ods_book = Workbook::new(2, 2).unwrap();
+        ods_book.set_cell(0, 0, "=1/3".into()).unwrap();
+        for (kind, bytes, path, ns, tag, attr) in [
+            (
+                "xlsx",
+                b.xlsx_bytes().unwrap(),
+                "xl/worksheets/sheet1.xml",
+                "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+                "c",
+                "r",
+            ),
+            (
+                "ods",
+                ods_book.ods_bytes().unwrap(),
+                "content.xml",
+                "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
+                "table-cell",
+                "formula",
+            ),
+        ] {
+            let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+            let mut source = String::new();
+            use std::io::Read;
+            archive
+                .by_name(path)
+                .unwrap()
+                .read_to_string(&mut source)
+                .unwrap();
+            let doc = roxmltree::Document::parse(&source).unwrap();
+            let cell = doc
+                .descendants()
+                .find(|n| {
+                    n.has_tag_name((ns, tag))
+                        && (if kind == "xlsx" {
+                            n.attribute(attr)
+                        } else {
+                            n.attribute((ns, attr))
+                        }) == Some(if kind == "xlsx" { "A1" } else { "of:=1/3" })
+                })
+                .unwrap();
+            let value = if kind == "xlsx" {
+                cell.children()
+                    .find(|n| n.has_tag_name((ns, "v")))
+                    .unwrap()
+                    .text()
+                    .unwrap()
+            } else {
+                cell.attribute(("urn:oasis:names:tc:opendocument:xmlns:office:1.0", "value"))
+                    .unwrap()
+            };
+            assert_eq!(
+                value.parse::<f64>().unwrap().to_bits(),
+                (1.0_f64 / 3.0).to_bits(),
+                "{kind} full precision"
+            );
+        }
+        b.set_cell(0, 0, "=2/3".into()).unwrap();
+        assert_eq!(b.display_grid()[0][0], "0.6666666667");
+        assert_eq!(b.calculated_grid()[0][1], "2");
+        b.undo();
+        assert_eq!(b.display_grid(), displayed);
+        b.redo();
+        assert_eq!(b.display_grid()[0][0], "0.6666666667");
+    }
+}
+
+/// Bounded fixed numeric patterns shared by cell display and TEXT. Other custom formats remain explicit gaps.
+pub(super) fn number_pattern(value: f64, code: &str) -> Option<String> {
+    let (pattern, percent) = code.strip_suffix('%').map_or((code, false), |p| (p, true));
+    let (integer, fraction) = pattern.split_once('.').unwrap_or((pattern, ""));
+    let grouping = integer.starts_with("#,##");
+    let integer = integer.strip_prefix("#,##").unwrap_or(integer);
+    if integer.is_empty()
+        || integer.len() > 255
+        || !integer.bytes().all(|c| c == b'0')
+        || fraction.len() > 127
+        || !fraction.bytes().all(|c| c == b'0')
+    {
+        return None;
+    }
+    let scaled = if percent { value * 100.0 } else { value };
+    if !scaled.is_finite() {
+        return Some("#NUM!".into());
+    }
+    let rendered = format!("{:.*}", fraction.len(), scaled.abs());
+    let (whole, frac) = rendered.split_once('.').unwrap_or((&rendered, ""));
+    let mut whole = "0".repeat(integer.len().saturating_sub(whole.len())) + whole;
+    if grouping {
+        let mut i = whole.len();
+        while i > 3 {
+            i -= 3;
+            whole.insert(i, ',');
+        }
+    }
+    let sign = if scaled < 0.0 && rendered.parse::<f64>().ok() != Some(0.0) {
+        "-"
+    } else {
+        ""
+    };
+    Some(format!(
+        "{sign}{whole}{}{}{}",
+        if frac.is_empty() { "" } else { "." },
+        frac,
+        if percent { "%" } else { "" }
+    ))
+}
+#[cfg(test)]
+mod filter_tests {
+    use super::*;
+    #[test]
+    fn filters_summaries_and_saved_rows_use_the_same_presentation() {
+        let mut b = Workbook::new(6, 4).unwrap();
+        for (r, c, v) in [
+            (0, 0, "Value"),
+            (1, 0, "=1/3"),
+            (2, 0, "=2/3"),
+            (0, 1, "=SUBTOTAL(9,A2:A3)"),
+        ] {
+            b.set_cell(r, c, v.into()).unwrap();
+        }
+        let filter = crate::SheetFilter {
+            range: crate::Range {
+                top: 0,
+                left: 0,
+                bottom: 2,
+                right: 0,
+            },
+            column: 0,
+            contains: "0.3333333333".into(),
+        };
+        b.set_filter(Some(filter.clone())).unwrap();
+        let excluded =
+            crate::formula::filter_hidden_rows_at(&b, chrono::Local::now().naive_local(), &filter);
+        assert_eq!(excluded, std::collections::BTreeSet::from([2]));
+        assert_eq!(b.display_grid()[0][1], "0.3333333333");
+        assert_eq!(b.calculated_grid()[0][1], "0.3333333333333333");
+        let bytes = b.xlsx_bytes().unwrap();
+        let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+        let mut text = String::new();
+        use std::io::Read;
+        archive
+            .by_name("xl/worksheets/sheet1.xml")
+            .unwrap()
+            .read_to_string(&mut text)
+            .unwrap();
+        let doc = roxmltree::Document::parse(&text).unwrap();
+        for (row, hidden) in [("2", false), ("3", true)] {
+            let node = doc
+                .descendants()
+                .find(|n| n.has_tag_name("row") && n.attribute("r") == Some(row))
+                .unwrap();
+            assert_eq!(node.attribute("hidden") == Some("1"), hidden);
+        }
+        b.set_cell(1, 0, "=1E-100".into()).unwrap();
+        b.set_filter(Some(crate::SheetFilter {
+            contains: "1E-100".into(),
+            ..filter
+        }))
+        .unwrap();
+        let mut view = b.sheet_view().clone();
+        view.hidden_rows.insert(1);
+        b.set_sheet_view(view).unwrap();
+        let saved = b.xlsx_bytes().unwrap();
+        let mut input = zip::ZipArchive::new(std::io::Cursor::new(saved)).unwrap();
+        let mut output = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        for index in 0..input.len() {
+            let entry = input.by_index(index).unwrap();
+            if entry.name() != "xls42/project.json" {
+                output.raw_copy_file(entry).unwrap();
+            }
+        }
+        let plain = output.finish().unwrap().into_inner();
+        let reopened = Workbook::from_office_bytes(&plain, "xlsx").unwrap();
+        assert_eq!(
+            reopened.sheet_view().hidden_rows,
+            std::collections::BTreeSet::from([1])
+        );
+        assert_eq!(reopened.display_grid()[0][1], "1E-100");
+    }
 }

@@ -71,7 +71,7 @@ fn main() {
     for (row, case) in fixture.cases.iter().enumerate() {
         book.set_cell(row, 0, case.formula.clone()).unwrap();
     }
-    let grid = book.display_grid();
+    let grid = book.calculated_grid();
     let mut passed = 0;
     let mut skipped = 0;
     let mut cases = vec![];

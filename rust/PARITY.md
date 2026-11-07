@@ -15,7 +15,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Printing | Native dialogs, actual-size PDF scene path, optional per-printer calibration and measurement sheet | Native print-to-file output and physical driver checks |
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction | Decoration font choices, richer forms, OCR, certificate signing and validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
-| XLS42 | Grid editing, engineering/text/math/statistical/financial/calendar formulas, styles, charts, summaries, tables, filtering, print layout | Formula coverage and dynamic arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, goal seek/solver, split panes, per-cell/password protection and fuller format fidelity |
+| XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout | Full formula semantics/syntax and locale formats, capacity/automatic expansion, legacy arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, goal seek/solver, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, show tools and export workflows |
 | IMG42 | Image decoding, transforms, adjustments, selections, text, metadata and batch output | Full markup selection/editing, smart lasso, live text, background removal, viewing panels and additional supported system codecs |
 | SCN42 | WIA acquisition, image/PDF import, page processing, OCR and searchable output | Scan areas and rescan, device/preset controls, scan history, full export settings and physical-device checks |
@@ -386,3 +386,19 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 - Portable workspace: **450 passed**, zero failures, one OCR fixture ignored; GNU all targets compile. Native
   external-array edit/resize/cache-cleanup/block/history/reopen assertions await the next full optimized run.
   General numeric display precision and locale formatting also remain different from macOS. No public changes.
+
+
+- General numeric presentation now follows **105 actual Swift General and 14 fixed-pattern oracle cases**.
+  Numeric-only formatting preserves text identifiers and supports styled spill children. Shared TEXT/cell patterns
+  add bounded zero-padding/grouping/decimal/percentage formats. Full locale/custom-format and native ODS number
+  style export remain open. `calculated_grid` and typed Office caches retain full precision.
+- Existing numerical oracles retain their expected values/tolerances and now read the explicit full-precision data
+  projection. New checks separately verify visible/clipboard text, bit-exact `1/3` caches in XLSX/plain ODS, original
+  formulas/types, history and formatted spill children. All **492 fixed formula examples** still match.
+- A new formula-filter test exposed the XLSX writer's extra automatic row-hiding pass. Export disables that pass
+  and writes the application's calculated row flags. Filter matching, SUBTOTAL and external manual-hidden-row
+  classification now share the presentation formatter; no-private-payload scientific-number/hidden-row checks pass.
+- Portable workspace: **453 passed**, zero failures, one OCR fixture ignored; GNU all targets compile. Native
+  formatted clipboard/text-cache assertions are added, pending a compatible run. Optimized external-array run
+  [42425180333](https://github.com/sfzorin/off42/actions/runs/42425180333) on b4e9675 is still running.
+  No release/main/site changes have been made; full suite parity remains open.

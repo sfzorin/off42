@@ -34,8 +34,7 @@ impl Workbook {
             return Err(Error::Bounds);
         }
         let calculation = formula::calculation_at(self, chrono::Local::now().naive_local());
-        let grid =
-            self.format_calculated_grid(formula::display_grid_with_calculation(self, &calculation));
+        let grid = self.format_calculation(&calculation);
         let text = self.tsv_from_grid(rows, columns, &grid)?;
         let state = self.history.current();
         let sheet = state.sheet();
