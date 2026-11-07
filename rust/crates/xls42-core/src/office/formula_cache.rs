@@ -232,3 +232,27 @@ mod tests {
         assert_eq!(cells[7].attribute((office, "value")), Some("42"));
     }
 }
+
+#[cfg(test)]
+mod compatibility_prefixes {
+    use super::*;
+    #[test]
+    fn import_hides_excel_function_prefixes_but_keeps_strings_and_quoted_names() {
+        for (source,expected)in [
+            ("=_xlfn.STDEV.S(A1:A5)","=STDEV.S(A1:A5)"),
+            ("_xlfn._xlws.FILTER(A1:A3,A1:A3>2)","=FILTER(A1:A3,A1:A3>2)"),
+            ("=_XLFN.FORMULATEXT (INDEX(A1:A3,1))","=FORMULATEXT (INDEX(A1:A3,1))"),
+            ("=\"_xlfn.STDEV.S(1)\"&\"Привет\"","=\"_xlfn.STDEV.S(1)\"&\"Привет\""),
+            ("='_xlfn.Sheet''s'!A1+_xlfn.MEDIAN(A1:A3)","='_xlfn.Sheet''s'!A1+MEDIAN(A1:A3)"),
+            ("=\"a\"\"_xlfn.SUM(\"&A1","=\"a\"\"_xlfn.SUM(\"&A1"),
+            ("=_xlfn.named_value+A1","=_xlfn.named_value+A1"),
+        ]{assert_eq!(xlsx_formula_to_a1(source),expected);}
+        let mut book=Workbook::new(8,4).unwrap();book.set_cell(0,0,"1".into()).unwrap();book.set_cell(1,0,"2".into()).unwrap();book.set_cell(0,1,"=STDEV.S(A1:A2)".into()).unwrap();book.set_cell(0,2,"=FORMULATEXT(B1)".into()).unwrap();
+        let source=book.xlsx_bytes().unwrap();let mut archive=zip::ZipArchive::new(Cursor::new(source)).unwrap();let mut writer=zip::ZipWriter::new(Cursor::new(Vec::new()));
+        for index in 0..archive.len(){let file=archive.by_index(index).unwrap();if file.name()!=EXTRA{writer.raw_copy_file(file).unwrap();}}
+        let bytes=writer.finish().unwrap().into_inner();let mut imported=Workbook::from_office_bytes(&bytes,"xlsx").unwrap();assert_eq!(imported.cell(0,1),Some("=STDEV.S(A1:A2)"));
+        imported.set_cell(0,0,"4".into()).unwrap();assert_eq!(imported.display_grid()[0][2],"=STDEV.S(A1:A2)");
+        let output=imported.xlsx_bytes().unwrap();let mut archive=zip::ZipArchive::new(Cursor::new(output.as_slice())).unwrap();let sheet=zip_text(&mut archive,"xl/worksheets/sheet1.xml").unwrap().unwrap();
+        assert!(sheet.contains("<f>_xlfn.STDEV.S(A1:A2)</f>"));let doc=xml(&sheet).unwrap();let c=doc.descendants().find(|n|n.has_tag_name("c")&&n.attribute("r")==Some("C1")).unwrap();assert_eq!(c.children().find(|n|n.has_tag_name("v")).unwrap().text(),Some("=STDEV.S(A1:A2)"));
+    }
+}

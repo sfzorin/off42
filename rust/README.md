@@ -441,3 +441,6 @@ file types; the original formulas, cell styles, relationships and unrelated part
 results and repeated ODF formula caches are cleared after an edit so an office application can recalculate them.
 This does not add dynamic arrays or general imported calculation-chain editing. The cache audit can inspect saved
 values without recalculating: `python3 rust/scripts/audit-statistics-office.py --fixtures DIR --output DIR --cached-only`.
+
+XLSX imports hide Excel's `_xlfn.`/`_xlws.` compatibility prefixes in user-facing function tokens, including
+FORMULATEXT results. Quoted document strings, sheet names and original package formulas keep their text.

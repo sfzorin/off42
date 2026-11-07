@@ -318,3 +318,14 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   results with Calamine, cross-sheet dependencies, Undo/Redo, unknown metadata and clearing unsupported caches.
   Workspace: **430 passed**, zero failures, one OCR fixture ignored; GNU all targets compile. Native external
   XLSX/ODS edit/cache/history scenarios await the next compatible build. No public release/main/site change.
+
+- Full optimized run [42417840799](https://github.com/sfzorin/off42/actions/runs/42417840799) on 123bf3c
+  passes **432 MSVC tests**, zero failures, one OCR fixture ignored, all 30 native groups and the seven-binary
+  runtime import gate. Native reference/filter/ODS/reopen/history checks pass. Package CRC and all binary hashes
+  match the runtime manifest. Development ZIP: 61,728,869 bytes, SHA-256
+  `7bf41b95d6874389130cdd3ac40e25f9141a304d5eaa691e6d8b56c4ac75e70a`. It is not a public release.
+- Cache run [42418550661](https://github.com/sfzorin/off42/actions/runs/42418550661) on 1bd2c86 exposed an import
+  defect: FORMULATEXT showed Excel's `_xlfn.` function prefixes after an external XLSX open. The assertion remains
+  unchanged. Import now normalizes function-token prefixes, retaining quoted strings/names and original package
+  formulas; portable regression verifies the stored original formula and corrected text cache. Repeat native
+  verification is pending. Workspace: **431 passed**, zero failures, one OCR fixture ignored; GNU all targets compile.

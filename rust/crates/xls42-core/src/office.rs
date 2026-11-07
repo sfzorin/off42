@@ -806,6 +806,34 @@ fn add_ods_database_ranges(bytes: &[u8], state: &State) -> Result<Vec<u8>, Error
         .map_err(|_| Error::Invalid("Cannot write ODS"))?
         .into_inner())
 }
+// Excel's compatibility prefixes belong to function tokens in the package, not user-facing formula text.
+fn xlsx_formula_to_a1(input:&str)->String {
+    let input=input.strip_prefix('=').unwrap_or(input);let bytes=input.as_bytes();let mut out=String::from("=");
+    let (mut i,mut quoted,mut sheet_quoted)=(0,false,false);
+    while i<bytes.len(){
+        if bytes[i]==b'"' && !sheet_quoted {
+            out.push('"');i+=1;
+            if quoted && bytes.get(i)==Some(&b'"'){out.push('"');i+=1;}else{quoted=!quoted;}
+            continue;
+        }
+        if bytes[i]==b'\'' && !quoted {
+            out.push('\'');i+=1;
+            if sheet_quoted && bytes.get(i)==Some(&b'\''){out.push('\'');i+=1;}else{sheet_quoted=!sheet_quoted;}
+            continue;
+        }
+        if !quoted && !sheet_quoted && (bytes[i].is_ascii_alphabetic()||bytes[i]==b'_') {
+            let start=i;while bytes.get(i).is_some_and(|c|c.is_ascii_alphanumeric()||matches!(c,b'_'|b'.')){i+=1;}
+            let mut next=i;while bytes.get(next).is_some_and(u8::is_ascii_whitespace){next+=1;}
+            let mut name=&input[start..i];
+            if bytes.get(next)==Some(&b'('){
+                while name.as_bytes().get(..6).is_some_and(|p|p.eq_ignore_ascii_case(b"_xlfn.")||p.eq_ignore_ascii_case(b"_xlws.")){name=&name[6..];}
+            }
+            out.push_str(name);continue;
+        }
+        let ch=input[i..].chars().next().unwrap();out.push(ch);i+=ch.len_utf8();
+    }
+    out
+}
 fn ods_formula_to_a1(input: &str) -> Option<String> {
     let input = input
         .strip_prefix("=of:=")
@@ -1513,10 +1541,8 @@ impl Workbook {
                             format!("={formula}")
                         }
                     })
-                } else if formula.starts_with('=') {
-                    formula.clone()
                 } else {
-                    format!("={formula}")
+                    xlsx_formula_to_a1(formula)
                 };
                 total = total.checked_add(text.len()).ok_or(Error::Limit)?;
                 if total > MAX_TEXT {
