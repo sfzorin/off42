@@ -21,7 +21,7 @@ def values(path):
     with zipfile.ZipFile(path)as archive:
         if path.suffix=='.xlsx':
             root=ET.fromstring(archive.read('xl/worksheets/sheet1.xml'))
-            return {cell.attrib['r']:cell.findtext('x:v',namespaces=ns)for cell in root.findall('.//x:c',ns)}
+            return {cell.attrib['r']:('TRUE'if cell.findtext('x:v',namespaces=ns)=='1'else'FALSE')if cell.attrib.get('t')=='b'else cell.findtext('x:v',namespaces=ns)for cell in root.findall('.//x:c',ns)}
         root=ET.fromstring(archive.read('content.xml'));result={}
         for index,row in enumerate(root.findall('.//t:table-row',ns)):
             column=0

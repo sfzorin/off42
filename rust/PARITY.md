@@ -233,3 +233,16 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   Undo assertion: replacing an EDIT selection emitted separate deletion/insertion EN_CHANGE notifications.
   The standard editor now coalesces notifications within the native replace/paste operation, retaining the
   original complete-history assertion. Repeat native verification is pending; the failed evidence is retained.
+
+
+- Native run [42409672916](https://github.com/sfzorin/off42/actions/runs/42409672916) passed **284 targeted MSVC
+  tests and all 30 native result groups** on a666c7b. The original strict XLS Undo/Redo assertion now passes;
+  so do typed date entry, financial/calendar values against the independent oracle, caches and discard/reopen.
+  DOC statistics and PDF decoration scenarios remain passing. No public release was changed.
+- Logical/metadata work raises fixed example agreement to **398/492**, leaving **94 gaps** and two locale skips.
+  Regressions cover lazy conditions, logical error propagation, imported error vs text cells, nested formula origins,
+  cross-sheet metadata, Unicode SWITCH matching, addresses and random bounds. AND/OR's earlier short-circuit
+  test encoded behavior differing from macOS; it now explicitly requires propagation of the error operand.
+- Independent LibreOffice recalculates all 19 new logical/metadata examples in both formats; totals are 64/65
+  XLSX-origin and 63/65 ODS-origin, retaining the same external statistical differences. Portable workspace:
+  **407 passed**, zero failures, one OCR fixture ignored. GNU all targets compile. New native assertions pending.

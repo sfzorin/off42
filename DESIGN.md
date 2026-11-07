@@ -687,3 +687,12 @@ The plain Windows EDIT subclass brackets native text replacement, paste/cut/clea
 Intermediate EN_CHANGE notifications are suppressed until the outer native operation returns; the host then
 commits its final text once. REFRESHING notifications remain ignored, and Rich Edit keeps its existing path.
 This preserves one history step when replacing a selected cell value instead of first committing its deletion.
+
+
+### Windows conditions and reference information
+
+The scalar evaluator retains the original formula-cell coordinates through nested/lazy/fallback parsers.
+Reference metadata operations inspect reference syntax and cell kinds without calculating the referenced formula
+when that is unnecessary. Error literals and imported error cells feed the same typed error path; error-looking
+text remains text. Typed logical ranges ignore reference text/blank values and propagate errors across all operands.
+IF/IFS/SWITCH/CHOOSE retain selected-branch evaluation; native result caches preserve Boolean/text/error types.

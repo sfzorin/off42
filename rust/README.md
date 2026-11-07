@@ -329,8 +329,8 @@ the ODF manifest. ODF formula names distinguish modern left-tail F functions fro
 `statistical-fixtures` and `rust/scripts/audit-statistics-office.py` independently load and recalculate both full
 packages in LibreOffice. Nineteen of twenty XLSX-origin cases and eighteen of twenty ODS-origin cases agree;
 the audit records LibreOffice's invalid-percentile error classifications and its ODS ERF interval precision
-loss separately. Native results retain the independently checked values. The new DOC/XLS native scenarios
-await their first compatible Windows build.
+loss separately. Native results retain the independently checked values. Native runs 42408293307 (DOC statistics) and 42409672916 (XLS formulas) verify the added scenarios;
+the first run also exposed the standard editor replacement-history defect fixed in the second.
 
 
 ## Financial calculations and calendars (development branch)
@@ -353,4 +353,22 @@ The fixed macOS example report now matches **356/492**, with **136 gaps** and tw
 remains incomplete formula parity: array literals/dynamic arrays and several lookup/information families remain.
 Independent LibreOffice checks on 46 full-package cases agree on all 26 new financial/calendar examples in both
 formats; the previously recorded three external statistical differences remain explicit (45/46 and 44/46 total).
-Native Windows formula/date editing, typed caches, history and reopen scenarios are extended for the next build.
+Native run 42409672916 passed formula/date editing, typed caches, complete Undo/Redo and dirty/discard/reopen
+on a666c7b. It passed 284 targeted MSVC tests and all 30 native result groups. This is a development artifact.
+
+
+## Conditions and cell information (development branch)
+
+XLS42 adds lazy IFS/SWITCH/CHOOSE, optional IF branches, MAXIFS/MINIFS, logical aggregation over typed
+ranges, NA/error literals and information functions for types, formulas, addresses, sheet/reference metadata
+and simple CELL queries. Nested calculations retain the original formula-cell position for ROW/COLUMN/CELL.
+AND/OR now propagate errors from every operand, matching the macOS engine; IF/IFS/CHOOSE evaluate only the
+selected result. Imported error cells remain distinct from text that looks like an error. RAND/RANDBETWEEN
+use an in-process generator and validate finite, exactly representable integer bounds.
+
+The fixed example report now matches **398/492**, with **94 differences** and two locale skips. Array results,
+computed reference expressions and further CELL metadata remain incomplete. Independent LibreOffice QA checks
+all 19 new logical/information examples from both formats: 64/65 XLSX-origin and 63/65 ODS-origin cases agree;
+only the previously recorded external statistical differences remain. Portable workspace: 407 tests pass,
+none fail, one OCR fixture is ignored; all GNU Windows targets compile. Native scenarios for this block await
+a compatible Windows build.

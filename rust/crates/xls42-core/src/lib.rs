@@ -2720,7 +2720,7 @@ mod cross_sheet_regression {
 mod text_formula_regression {
     use super::*;
     #[test]
-    fn typed_values_string_functions_and_short_circuit() {
+    fn typed_values_string_functions_lazy_if_and_logical_error_propagation() {
         let mut b = Workbook::new(2, 6).unwrap();
         for (col, formula) in [
             "=\"a\"&\"b\"",
@@ -2737,7 +2737,7 @@ mod text_formula_regression {
         }
         assert_eq!(
             b.display_grid()[0],
-            ["ab", "YES", "heor", "FALSE", "TRUE", "2"]
+            ["ab", "YES", "heor", "#DIV/0!", "#DIV/0!", "2"]
         );
     }
 }

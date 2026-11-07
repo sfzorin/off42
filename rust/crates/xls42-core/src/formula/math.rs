@@ -9,7 +9,9 @@ pub(super) fn handles(name: &str) -> bool {
     aggregate(name)
         || matches!(
             name,
-            "ASIN"
+            "RAND"
+                | "RANDBETWEEN"
+                | "ASIN"
                 | "ACOS"
                 | "ATAN"
                 | "ATAN2"
@@ -84,6 +86,18 @@ fn calculate(name: &str, values: &[f64], count: usize) -> Result<f64> {
             Err("#VALUE!")
         }
     };
+    if name == "RAND" {
+        need(0, 0)?;
+        return Ok(fastrand::f64());
+    }
+    if name == "RANDBETWEEN" {
+        need(2, 2)?;
+        let (lo, hi) = (values[0].ceil(), values[1].floor());
+        if lo > hi || lo.abs() >= EXACT_INTEGER || hi.abs() >= EXACT_INTEGER {
+            return Err("#NUM!");
+        }
+        return Ok(fastrand::i64(lo as i64..=hi as i64) as f64);
+    }
     if aggregate(name) {
         need(1, 255)?;
         return match name {
@@ -464,5 +478,26 @@ mod tests {
                 ("2", "40", "164")
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod random_bounds_tests {
+    use super::*;
+    #[test]
+    fn random_values_stay_finite_and_integer_bounds_are_inclusive() {
+        for _ in 0..200 {
+            let Value::Number(v) = call("RAND", &[], 0) else {
+                panic!()
+            };
+            assert!((0.0..1.0).contains(&v));
+            let Value::Number(v) = call("RANDBETWEEN", &[-2.3, 2.8], 2) else {
+                panic!()
+            };
+            assert!((-2.0..=2.0).contains(&v));
+            assert_eq!(v.fract(), 0.0);
+        }
+        assert_eq!(call("RANDBETWEEN", &[2.1, 2.8], 2), Value::Error("#NUM!"));
+        assert_eq!(call("RAND", &[1.0], 1), Value::Error("#VALUE!"));
     }
 }

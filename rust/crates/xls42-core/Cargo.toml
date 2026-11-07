@@ -18,3 +18,4 @@ calamine = { version = "0.38", features = ["dates"] }
 roxmltree = "0.20"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 libm = "0.2"
+fastrand = "2"

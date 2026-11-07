@@ -4,6 +4,7 @@ mod distributions;
 mod engineering;
 mod finance;
 mod math;
+mod information;
 mod statistics;
 mod text;
 mod units;
@@ -115,6 +116,7 @@ impl Eval<'_> {
                     eval: self,
                     depth,
                     sheet,
+                    origin: (row, col),
                 };
                 let result = p.comparison();
                 p.space();
@@ -138,6 +140,14 @@ impl Eval<'_> {
                 Some(v) => finite(v),
                 None => Value::Error("#VALUE!"),
             }
+        } else if matches!(self.content(sheet, row, col), Some(CellContent::Error(_))) {
+            Value::Error(
+                information::ERRORS
+                    .iter()
+                    .copied()
+                    .find(|e| *e == raw)
+                    .unwrap_or("#VALUE!"),
+            )
         } else if matches!(self.content(sheet, row, col), Some(CellContent::Boolean(_))) {
             Value::Boolean(raw.eq_ignore_ascii_case("true"))
         } else {
@@ -167,6 +177,7 @@ struct Parser<'a, 'b> {
     eval: &'a mut Eval<'b>,
     depth: usize,
     sheet: SheetId,
+    origin:(usize,usize),
 }
 impl Parser<'_, '_> {
     fn space(&mut self) {
@@ -348,9 +359,11 @@ impl Parser<'_, '_> {
             }
             return Value::Text(result);
         }
-        if self.input[self.pos..].starts_with(b"#REF!") {
-            self.pos += 5;
-            return Value::Error("#REF!");
+        for error in information::ERRORS {
+            if self.input[self.pos..].starts_with(error.as_bytes()) {
+                self.pos += error.len();
+                return Value::Error(error);
+            }
         }
         let start = self.pos;
         // Function names can contain digits and Excel compatibility prefixes.
@@ -471,7 +484,10 @@ impl Parser<'_, '_> {
         self.depth += 1;
         let value = if self.depth > MAX_DEPTH {
             Value::Error("#LIMIT!")
-        } else if matches!(name, "IF" | "IFERROR" | "IFNA" | "AND" | "OR") {
+        } else if matches!(
+            name,
+            "IF" | "IFERROR" | "IFNA" | "IFS" | "SWITCH" | "CHOOSE"
+        ) {
             self.lazy_conditional(name)
         } else {
             self.function(name)
@@ -483,7 +499,13 @@ impl Parser<'_, '_> {
         if self.depth > MAX_DEPTH {
             return Value::Error("#LIMIT!");
         }
-        if text::handles(name) || statistics::handles(name) || distributions::handles(name) || finance::handles(name) || calendar::handles(name) {
+        if text::handles(name)
+            || statistics::handles(name)
+            || distributions::handles(name)
+            || finance::handles(name)
+            || calendar::handles(name)
+            || information::scalar_handles(name)
+        {
             return self.extended_text_function(name);
         }
         if matches!(name, "TRUE" | "FALSE") {
@@ -493,13 +515,19 @@ impl Parser<'_, '_> {
                 Value::Error("#ERROR!")
             };
         }
+        if information::reference_handles(name) {
+            return self.reference_information(name);
+        }
         if name == "LOOKUP" {
             return self.lookup();
         }
         if name == "XLOOKUP" {
             return self.xlookup();
         }
-        if matches!(name, "COUNTIFS" | "SUMIFS" | "AVERAGEIF" | "AVERAGEIFS") {
+        if matches!(
+            name,
+            "COUNTIFS" | "SUMIFS" | "AVERAGEIF" | "AVERAGEIFS" | "MAXIFS" | "MINIFS"
+        ) {
             return self.conditional_aggregate(name);
         }
         if engineering::handles(name) {
@@ -538,7 +566,11 @@ impl Parser<'_, '_> {
             loop {
                 argument_count += 1;
                 let start = self.pos;
-                let range = if aggregate || math::aggregate(name) { self.read_range() } else { None };
+                let range = if aggregate || math::aggregate(name) {
+                    self.read_range()
+                } else {
+                    None
+                };
                 self.space();
                 if let Some((sheet, top, left, bottom, right)) =
                     range.filter(|_| matches!(self.input.get(self.pos), Some(b',' | b')')))
@@ -1093,6 +1125,7 @@ impl Parser<'_, '_> {
                 eval: self.eval,
                 depth: self.depth,
                 sheet: self.sheet,
+                origin:self.origin,
             };
             let value = p.comparison();
             p.space();
@@ -1132,7 +1165,7 @@ impl Parser<'_, '_> {
         })
     }
     fn conditional_aggregate(&mut self, name: &str) -> Value {
-        let aggregate = if matches!(name, "SUMIFS" | "AVERAGEIFS") {
+        let aggregate = if matches!(name, "SUMIFS" | "AVERAGEIFS" | "MAXIFS" | "MINIFS") {
             let Some(range) = self.read_range() else {
                 return Value::Error("#REF!");
             };
@@ -1197,6 +1230,7 @@ impl Parser<'_, '_> {
         }
         let mut sum = 0.0;
         let mut count = 0usize;
+        let mut extremum: Option<f64> = None;
         for row in 0..height {
             for col in 0..width {
                 let mut matched = true;
@@ -1237,6 +1271,13 @@ impl Parser<'_, '_> {
                     ) {
                         Some(Value::Number(n)) => {
                             sum += n;
+                            extremum = Some(extremum.map_or(n, |old| {
+                                if name == "MINIFS" {
+                                    old.min(n)
+                                } else {
+                                    old.max(n)
+                                }
+                            }));
                             count += 1;
                         }
                         Some(Value::Error(e)) => return Value::Error(e),
@@ -1250,6 +1291,7 @@ impl Parser<'_, '_> {
         match name {
             "COUNTIFS" => finite(count as f64),
             "SUMIFS" => finite(sum),
+            "MAXIFS" | "MINIFS" => finite(extremum.unwrap_or(0.0)),
             _ if count == 0 => Value::Error("#DIV/0!"),
             _ => finite(sum / count as f64),
         }
@@ -1495,6 +1537,7 @@ impl Parser<'_, '_> {
                     || distributions::handles(name)
                     || finance::handles(name)
                     || calendar::handles(name)
+                    || information::scalar_handles(name)
                     || matches!(name, "TEXTJOIN" | "CONCAT" | "CONCATENATE")
                 {
                     self.read_range()
@@ -1517,8 +1560,14 @@ impl Parser<'_, '_> {
                                 return Value::Error("#REF!");
                             };
                             blanks.push(raw.is_empty());
-                            let value=if raw.is_empty() {Value::Text(String::new())}else{self.eval.cell(sheet,row,col,self.depth+1)};
-                            if !self.charge_argument_text(&value) { return Value::Error("#LIMIT!"); }
+                            let value = if raw.is_empty() {
+                                Value::Text(String::new())
+                            } else {
+                                self.eval.cell(sheet, row, col, self.depth + 1)
+                            };
+                            if !self.charge_argument_text(&value) {
+                                return Value::Error("#LIMIT!");
+                            }
                             values.push(value);
                         }
                     }
@@ -1538,8 +1587,10 @@ impl Parser<'_, '_> {
                         args.push(text::Arg::Scalar(Value::Text(String::new())));
                     } else {
                         self.pos = reference_start;
-                        let value=self.comparison();
-                        if !self.charge_argument_text(&value) { return Value::Error("#LIMIT!"); }
+                        let value = self.comparison();
+                        if !self.charge_argument_text(&value) {
+                            return Value::Error("#LIMIT!");
+                        }
                         args.push(text::Arg::Scalar(value));
                     }
                 }
@@ -1553,12 +1604,17 @@ impl Parser<'_, '_> {
         }
         self.call_extended(name, &args)
     }
-    fn charge_argument_text(&mut self,value:&Value)->bool {
-        if let Value::Text(text)=value { self.eval.argument_text_bytes=self.eval.argument_text_bytes.saturating_add(text.len()); }
-        self.eval.argument_text_bytes<=crate::MAX_TEXT*2
+    fn charge_argument_text(&mut self, value: &Value) -> bool {
+        if let Value::Text(text) = value {
+            self.eval.argument_text_bytes =
+                self.eval.argument_text_bytes.saturating_add(text.len());
+        }
+        self.eval.argument_text_bytes <= crate::MAX_TEXT * 2
     }
     fn call_extended(&mut self, name: &str, args: &[text::Arg]) -> Value {
-        if statistics::handles(name) {
+        if information::scalar_handles(name) {
+            information::call(name, args)
+        } else if statistics::handles(name) {
             statistics::call(name, args)
         } else if calendar::handles(name) {
             calendar::call(name, args, self.eval.book, &mut self.eval.steps)
@@ -1796,19 +1852,25 @@ impl Parser<'_, '_> {
         if self.pos == start {
             return Value::Error("#ERROR!");
         }
-        if (name == "IF" && segments.len() != 3)
+        if (name == "IF" && !(1..=3).contains(&segments.len()))
             || (matches!(name, "IFERROR" | "IFNA") && segments.len() != 2)
-            || ((name == "AND" || name == "OR") && segments.is_empty())
+            || (name == "IFS" && (segments.len() < 2 || segments.len() % 2 != 0))
+            || (name == "SWITCH" && segments.len() < 3)
+            || (name == "CHOOSE" && segments.len() < 2)
         {
             return Value::Error("#ERROR!");
         }
         let eval_arg = |this: &mut Self, idx: usize| {
+            if segments[idx].iter().all(u8::is_ascii_whitespace) {
+                return Value::Number(0.0);
+            }
             let mut p = Parser {
                 input: segments[idx],
                 pos: 0,
                 eval: this.eval,
                 depth: this.depth,
                 sheet: this.sheet,
+                origin: this.origin,
             };
             let v = p.comparison();
             p.space();
@@ -1818,23 +1880,49 @@ impl Parser<'_, '_> {
                 v
             }
         };
-        if name == "AND" || name == "OR" {
-            for i in 0..segments.len() {
-                let value = eval_arg(self, i);
-                let truth = match value {
-                    Value::Number(v) => v != 0.0,
-                    Value::Boolean(v) => v,
-                    Value::Error(e) => return Value::Error(e),
-                    _ => return Value::Error("#VALUE!"),
-                };
-                if name == "AND" && !truth {
-                    return Value::Boolean(false);
-                }
-                if name == "OR" && truth {
-                    return Value::Boolean(true);
+        if name == "IFS" {
+            for i in (0..segments.len()).step_by(2) {
+                match information::truth(eval_arg(self, i)) {
+                    Ok(true) => return eval_arg(self, i + 1),
+                    Ok(false) => {}
+                    Err(e) => return Value::Error(e),
                 }
             }
-            return Value::Boolean(name == "AND");
+            return Value::Error("#N/A");
+        }
+        if name == "SWITCH" {
+            let value = eval_arg(self, 0);
+            if let Value::Error(_) = value {
+                return value;
+            }
+            let mut i = 1;
+            while i + 1 < segments.len() {
+                let candidate = eval_arg(self, i);
+                if let Value::Error(_) = candidate {
+                    return candidate;
+                }
+                if lookup_equal(&value, &candidate) {
+                    return eval_arg(self, i + 1);
+                }
+                i += 2;
+            }
+            return if i < segments.len() {
+                eval_arg(self, i)
+            } else {
+                Value::Error("#N/A")
+            };
+        }
+        if name == "CHOOSE" {
+            let value = eval_arg(self, 0);
+            let idx = match statistics::number(Some(&text::Arg::Scalar(value)), None) {
+                Ok(v) => v.trunc(),
+                Err(e) => return Value::Error(e),
+            };
+            return if idx >= 1.0 && idx < (segments.len() as f64) {
+                eval_arg(self, idx as usize)
+            } else {
+                Value::Error("#VALUE!")
+            };
         }
         let first = eval_arg(self, 0);
         if matches!(name, "IFERROR" | "IFNA") {
@@ -1846,14 +1934,20 @@ impl Parser<'_, '_> {
                 first
             }
         } else {
-            match first {
-                Value::Number(n) => eval_arg(self, if n != 0.0 { 1 } else { 2 }),
-                Value::Boolean(v) => eval_arg(self, if v { 1 } else { 2 }),
-                Value::Text(_) => Value::Error("#VALUE!"),
-                e => e,
+            match information::truth(first) {
+                Ok(truth) => {
+                    let index = if truth { 1 } else { 2 };
+                    if index < segments.len() {
+                        eval_arg(self, index)
+                    } else {
+                        Value::Boolean(truth)
+                    }
+                }
+                Err(e) => Value::Error(e),
             }
         }
     }
+
     fn read_ref(&mut self) -> Option<(usize, usize)> {
         self.space();
         let start = self.pos;
@@ -1887,7 +1981,7 @@ fn lookup_order(a: &Value, b: &Value) -> Option<std::cmp::Ordering> {
 fn lookup_equal(a: &Value, b: &Value) -> bool {
     match (a, b) {
         (Value::Number(a), Value::Number(b)) => a == b,
-        (Value::Text(a), Value::Text(b)) => a.eq_ignore_ascii_case(b),
+        (Value::Text(a), Value::Text(b)) => a.to_lowercase()==b.to_lowercase(),
         (Value::Boolean(a), Value::Boolean(b)) => a == b,
         _ => false,
     }

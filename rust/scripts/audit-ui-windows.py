@@ -1104,6 +1104,7 @@ def audit_statistical_formulas(process,main,output,binary,results):
     source=output/"statistical-source.csv"
     formulas=["=STDEV.S(A1:A5)","=AVERAGEA(A1:A5)","=COUNTBLANK(A1:A5)","=CORREL(A1:A5,B1:B5)","=NORM.DIST(A1,0,1,TRUE)","=BETA.INV(0.5,2,2)","=T.DIST.2T(A1,10)","=VAR.S(A1:A5)","=NORM.S.INV(1e-100)","=T.DIST.RT(20,100)","=CHISQ.INV.RT(1e-20,2)","=ERF(8,9)","=F.INV.RT(1e-20,5,8)","=PERCENTILE.EXC(A1:A2,0.5)","=PERCENTILE.EXC(A1:A2,0)"]
     formulas += ["=PV(.1/12,12,-100*A1)","=RATE(12,-100*A1,1000)","=CUMIPMT(.1/12,36,1000*A1,1,12,0)","=IRR(D3:D5)","=XIRR(D3:D5,D6:D8)","=XNPV(0,D3:D5,D6:D8)","=WORKDAY(DATE(2024,12,20),A1,D1:D2)","=NETWORKDAYS(DATE(2024,12,20),DATE(2024,12,31),D1:D2)","=EDATE(DATE(2024,1,31),A1)"]
+    formulas += ['=IFNA(NA(),"fallback")','=IFS(A1>2,"large",TRUE,"small")','=SWITCH(A1,1,"one",4,"four","other")','=CHOOSE(2,"first","second")','=MAXIFS(B1:B5,A1:A5,">0")','=MINIFS(B1:B5,A1:A5,">0")','=ERROR.TYPE(1/0)','=TYPE(A4)','=ISFORMULA(C1)','=CELL("address",B3)','=CELL("contents",A1)','=ADDRESS(2,3)','=AND(RAND()>=0,RAND()<1)','=AND(RANDBETWEEN(1,6)>=1,RANDBETWEEN(1,6)<=6)','=OR(TRUE,1/0)','=TYPE(NA())']
     dates=["2024-12-25","2025-01-01","-100","0","121","2021-01-01","2022-01-01","2023-01-01"]
     a=["1","2","text","TRUE",""];b=["2","4","6","8","10"]
     with source.open("w",encoding="utf-8",newline="")as file:
@@ -1146,11 +1147,18 @@ def audit_statistical_formulas(process,main,output,binary,results):
         value(cells,"C19",.1);value(cells,"C20",.1);value(cells,"C21",21.0);value(cells,"C23",7.0)
     finance(cells,1,1000)
     value(cells,"C22",45649.0);value(cells,"C24",45351.0)
+    def information(cells,changed=False):
+        for address,expected in [("C25","fallback"),("C26","large"if changed else"small"),("C27","four"if changed else"one"),("C28","second"),("C34","$B$3"),("C36","$C$2")]:assert cells[address][1:]==(expected,"str"),(address,cells[address])
+        for address,expected in [("C29",4.0),("C30",2.0),("C31",2.0),("C32",4.0),("C35",4.0 if changed else 1.0),("C40",16.0)]:value(cells,address,expected)
+        for address in ["C33","C37","C38"]:assert cells[address][1:]==("1","b"),(address,cells[address])
+        assert cells["C39"][1:]==("#DIV/0!","e")
+    information(cells)
     fill_prompt(process,main,25,"Range (1-based)",["1","1","1","1"])
     edit=u.GetDlgItem(main,101);replace_editor_text(edit,"4")
     _,changed=save("changed")
     value(changed,"C1",math.sqrt(2));value(changed,"C2",1.75);value(changed,"C4",-1.0);value(changed,"C5",.9999683287581669);value(changed,"C8",2.0);value(changed,"C14",3.0)
     finance(changed,4,4000)
+    information(changed,True)
     value(changed,"C22",45653.0);value(changed,"C24",45443.0)
     command(main,4);_,undone=save("undo")
     assert all(undone["C"+str(i+1)]==cells["C"+str(i+1)]for i in range(len(formulas)))
