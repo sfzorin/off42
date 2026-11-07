@@ -2826,6 +2826,7 @@ dependencies = [
  "fastrand",
  "image",
  "libm",
+ "regex",
  "roxmltree",
  "rust_xlsxwriter",
  "serde",

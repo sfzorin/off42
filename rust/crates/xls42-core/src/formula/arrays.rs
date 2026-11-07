@@ -2,7 +2,10 @@
 mod lookup;
 mod matrix;
 mod parse;
+mod regression;
 mod spill;
+mod text_split;
+mod text_regex;
 mod transforms;
 use super::{finite, information, statistics, text::Arg, Value, MAX_STEPS};
 use std::sync::Arc;
@@ -235,6 +238,14 @@ pub(super) fn handles(name: &str) -> bool {
             | "XMATCH"
             | "LOOKUP"
             | "TEXTSPLIT"
+            | "LINEST"
+            | "LOGEST"
+            | "TREND"
+            | "GROWTH"
+            | "REGEX"
+            | "REGEXTEST"
+            | "REGEXEXTRACT"
+            | "REGEXREPLACE"
     )
 }
 pub(super) fn dynamic(name: &str) -> bool {
@@ -324,6 +335,18 @@ pub(super) fn call(name: &str, args: &[Option<Value>], steps: &mut usize) -> Val
     calculate(name, Args(args), steps).unwrap_or_else(Value::Error)
 }
 fn calculate(name: &str, x: Args<'_>, steps: &mut usize) -> Result<Value> {
+    if matches!(
+        name,
+        "REGEX" | "REGEXTEST" | "REGEXEXTRACT" | "REGEXREPLACE"
+    ) {
+        return text_regex::calculate(name, &x, steps);
+    }
+    if name == "TEXTSPLIT" {
+        return text_split::calculate(&x, steps);
+    }
+    if matches!(name, "LINEST" | "LOGEST" | "TREND" | "GROWTH") {
+        return regression::calculate(name, &x, steps);
+    }
     if matches!(name, "SEQUENCE" | "RANDARRAY" | "MUNIT") {
         x.count(
             if matches!(name, "MUNIT" | "SEQUENCE") {

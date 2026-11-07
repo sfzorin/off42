@@ -1,5 +1,6 @@
 //! Scalar text functions and row-major text range aggregation.
 use super::Value;
+mod formatted;
 type Result<T> = std::result::Result<T, &'static str>;
 pub(super) enum Arg {
     Missing,
@@ -24,7 +25,7 @@ impl Arg {
 pub(super) fn handles(name: &str) -> bool {
     matches!(
         name,
-        "PROPER"
+        "FIXED" | "DOLLAR" | "ROMAN" | "ARABIC" | "PROPER"
             | "CLEAN"
             | "NUMBERVALUE"
             | "TEXTBEFORE"
@@ -294,6 +295,7 @@ fn before_after(name: &str, args: &Args<'_>) -> Result<Value> {
 pub(super) fn call(name: &str, raw: &[Arg]) -> Value {
     let args = Args(raw);
     let result: Result<Value> = (|| {
+        if matches!(name,"FIXED"|"DOLLAR"|"ROMAN"|"ARABIC"){return formatted::calculate(name,&args);}
         if matches!(name, "CONCAT" | "CONCATENATE") {
             args.count(1, 1024)?;
             return join(raw, "", false);

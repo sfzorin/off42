@@ -39,6 +39,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (6, 20, "=SUM(LEN(B1:B3))"),
         (7, 20, "=LET(x,5,y,x*2,x+y)"),
         (8, 20, "=TEXTJOIN(\",\",TRUE,SORT(UNIQUE(B1:B3)))"),
+        (
+            24,
+            0,
+            "=LINEST({10;20;18;25;32;40},{1,3;2,5;3,2;4,4;5,3;6,6},TRUE,TRUE)",
+        ),
+        (34, 0, "=LINEST({3,5,8,10,13},{1,2,3,4,5},FALSE,TRUE)"),
+        (41, 0, "=GROWTH({2;4;8},{1;2;3},{4;5})"),
+        (45, 0, "=TREND({3;5;8;10;13},{1;2;3;4;5},{6;7})"),
+        (24, 6, r#"=TEXTSPLIT("αXβxγ;δ",{"x","XX"},";",FALSE,1,99)"#),
+        (29, 6, r#"=REGEXEXTRACT("a12b34","[0-9]+",1)"#),
+        (29, 9, r#"=REGEXEXTRACT("Ж12","(Ж)([0-9]+)",2)"#),
+        (10, 20, r#"=REGEX("abc123def","[0-9]+")"#),
+        (11, 20, r##"=REGEX("a1b2c3","[0-9]","#","g")"##),
+        (12, 20, r#"=REGEX("a1b2c3","[0-9]",,2)"#),
+        (13, 20, r#"=REGEX("abc","z")"#),
+        (14, 20, r#"=REGEXTEST("Жук","ж",1)"#),
+        (15, 20, r#"=REGEXREPLACE("a1b2","([a-z])([0-9])","$2$1")"#),
+        (16, 20, r#"=REGEXREPLACE("a1b2c3","[0-9]","X",-2)"#),
+        (17, 20, r#"=REGEXREPLACE("αβ","","!")"#),
+        (18, 20, r#"=FIXED(1234.567,-2,TRUE)"#),
+        (19, 20, r#"=LEN(FIXED(1.005,2,TRUE))"#),
+        (20, 20, r#"=ROMAN(1999)"#),
+        (21, 20, r#"=ARABIC("-iv")"#),
     ] {
         b.set_cell(r, c, f.into())?;
     }
@@ -78,6 +101,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ]
     .into_iter()
     .chain((0..9).map(|r| (r, 20)))
+    .chain((24..29).flat_map(|r| (0..3).map(move |c| (r, c))))
+    .chain((34..39).flat_map(|r| (0..2).map(move |c| (r, c))))
+    .chain([(41, 0), (42, 0), (45, 0), (46, 0)])
+    .chain((24..26).flat_map(|r| (6..9).map(move |c| (r, c))))
+    .chain([(29, 6), (30, 6), (29, 9), (29, 10)])
+    .chain((10..22).map(|r| (r, 20)))
     {
         let mut col = c + 1;
         let mut label = String::new();

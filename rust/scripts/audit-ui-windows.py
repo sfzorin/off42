@@ -1412,10 +1412,11 @@ def audit_statistical_formulas(process,main,output,binary,results):
 
 
 def audit_array_formulas(process,main,binary,output,results):
+    import math
     import xml.etree.ElementTree as ET
     source=output/"array-source.csv";data=[[""]*16 for _ in range(20)]
     for r,n in enumerate(["3","1","2"]):data[r][0]=n
-    for r,c,value in [(0,2,'=SORT(A1:A3)'),(0,3,'=SEQUENCE(2,3)'),(4,3,'=C2*10'),(0,7,'=TRANSPOSE(A1:A3)'),(2,7,'x'),(1,7,'=SEQUENCE(2)'),(1,9,'=IF(A1:A3>1,"y","n")'),(1,10,'=IFERROR(1/(A1:A3-1),"e")'),(1,11,'=LEN(A1:A3)&"!"')]:data[r][c]=value
+    for r,c,value in [(0,2,'=SORT(A1:A3)'),(0,3,'=SEQUENCE(2,3)'),(4,3,'=C2*10'),(0,7,'=TRANSPOSE(A1:A3)'),(2,7,'x'),(1,7,'=SEQUENCE(2)'),(1,9,'=IF(A1:A3>1,"y","n")'),(1,10,'=IFERROR(1/(A1:A3-1),"e")'),(1,11,'=LEN(A1:A3)&"!"'),(8,0,'=LINEST({3;5;8;10;13},{1;2;3;4;5},TRUE,TRUE)'),(8,3,'=TEXTSPLIT("αXβxγ;δ",{"x","XX"},";",FALSE,1,99)'),(8,7,'=REGEXEXTRACT("a12b34","[0-9]+",1)'),(8,9,'=REGEXEXTRACT("Ж12","(Ж)([0-9]+)",2)'),(8,13,'=REGEXREPLACE("a1b2","([a-z])([0-9])","$2$1")'),(9,13,'=FIXED(1234.567,-2,TRUE)'),(10,13,'=ROMAN(1999)'),(11,13,'=ARABIC("-iv")'),(12,13,'=TREND({3;5;8;10;13},{1;2;3;4;5},6)')]:data[r][c]=value
     with source.open("w",encoding="utf-8",newline="")as file:csv.writer(file).writerows(data)
     original=source.read_bytes()
     def open_file(path):
@@ -1426,18 +1427,27 @@ def audit_array_formulas(process,main,binary,output,results):
             if prompt:click(prompt,7)
             return None
         wait_for(opened,"array source open/discard",process)
+    shared_strings=[]
     def save(name):
+        nonlocal shared_strings
         path=output/("arrays-"+name+".xlsx");save_as(main);choose_file(process,path,format_name="Excel workbook");output_ready(process,main,path,b"PK")
         with zipfile.ZipFile(path)as archive:
             root=ET.fromstring(archive.read("xl/worksheets/sheet1.xml"));assert"xl/metadata.xml"in archive.namelist()
+            shared_strings=["".join(n.itertext())for n in ET.fromstring(archive.read("xl/sharedStrings.xml"))]if"xl/sharedStrings.xml"in archive.namelist()else[]
         ns={"s":"http://schemas.openxmlformats.org/spreadsheetml/2006/main"};cells={cell.attrib["r"]:cell for cell in root.findall(".//s:c",ns)}
         return path,cells,ns
+    def cell_value(cells,ns,address):
+        cell=cells[address];value=cell.findtext("s:v",namespaces=ns)
+        return shared_strings[int(value)]if cell.attrib.get("t")=="s"else value
     def value(cells,ns,address,expected):
-        cell=cells[address];assert cell.findtext("s:v",namespaces=ns)==expected,(address,ET.tostring(cell,encoding="unicode"),expected)
+        cell=cells[address];assert cell_value(cells,ns,address)==expected,(address,ET.tostring(cell,encoding="unicode"),expected)
     def baseline_values(cells,ns):
         for address,wanted in [("C1","1"),("C2","2"),("C3","3"),("D1","1"),("E1","2"),("F1","3"),("D2","4"),("E2","5"),("F2","6"),("D5","20"),("H1","3"),("I1","1"),("J1","2"),("H2","#SPILL!"),("J2","n"),("K2","e"),("L2","1!")]:value(cells,ns,address,wanted)
         assert cells["H2"].attrib.get("t")=="e"
-        for address,span in [("C1","C1:C3"),("D1","D1:F2"),("H1","H1:J1")]:
+        for address,wanted in [("D9","α"),("E9","β"),("F9","γ"),("D10","δ"),("E10","99"),("F10","99"),("H9","12"),("H10","34"),("J9","Ж"),("K9","12"),("N9","1a2b"),("N10","1200"),("N11","MCMXCIX"),("N12","-4")]:value(cells,ns,address,wanted)
+        for address,wanted in [("A9",2.5),("B9",0.3),("N13",15.3)]:
+            actual=float(cells[address].findtext("s:v",namespaces=ns));assert math.isclose(actual,wanted,rel_tol=1e-12,abs_tol=1e-12),(address,actual,wanted)
+        for address,span in [("C1","C1:C3"),("D1","D1:F2"),("H1","H1:J1"),("A9","A9:B13"),("D9","D9:F10"),("H9","H9:H10"),("J9","J9:K9")]:
             cell=cells[address];formula=cell.find("s:f",ns);assert cell.attrib.get("cm")=="1"and formula.attrib.get("t")=="array"and formula.attrib.get("ref")==span,(address,cell.attrib,formula.attrib)
         assert cells["C2"].find("s:f",ns)is None
     open_file(source);baseline,cells,ns=save("baseline");baseline_values(cells,ns)
@@ -1445,7 +1455,7 @@ def audit_array_formulas(process,main,binary,output,results):
     fill_prompt(process,main,25,"Range (1-based)",["2","3","2","3"])
     editor=u.GetDlgItem(main,101);wait_for(lambda:text(editor)=="","spill child retains an empty input",process)
     replace_editor_text(editor,"blocked");_,blocked,ns=save("blocked");value(blocked,ns,"C1","#SPILL!");assert blocked["C1"].attrib.get("t")=="e"
-    assert "blocked"in"".join(blocked["C2"].itertext())
+    value(blocked,ns,"C2","blocked")
     command(main,4);_,undone,ns=save("undo");baseline_values(undone,ns);assert text(editor)==""
     command(main,5);_,redone,ns=save("redo");value(redone,ns,"C1","#SPILL!");assert text(editor)=="blocked"
     command(main,4)

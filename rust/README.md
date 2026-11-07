@@ -242,8 +242,8 @@ Invalid code points/counts and formula errors are reported rather than silently 
 
 `cargo run --manifest-path rust/Cargo.toml -p xls42-core --example formula-parity` prints a JSON report for 494
 macOS reference cases, including every mismatch. Two cases have locale-dependent expected output and are skipped.
-The current engine matches 469 fixed cases and differs on 23. This measures example results, not complete
-function coverage or Excel conformance; regression arrays and several text functions remain open.
+The current engine matches all 492 fixed cases. This measures example results, not complete
+function coverage or Excel conformance; unsupported regular-expression syntax, locale formatting and wider function semantics still need verification.
 Regenerate the fixture with `python3 rust/scripts/export-formula-cases.py`; its source hash is recorded.
 
 
@@ -458,7 +458,7 @@ Automatic sheet expansion, external/legacy array fidelity and the remaining form
 
 Native XLSX exports write standard dynamic-array ranges, metadata and typed caches; ODS writes standard matrix
 spans and caches. Round trips through native project payloads preserve formulas and history. Independent macOS
-XLS42 recalculation agrees on all 39 array fixtures in each format, including blocked spills, implicit intersection,
+XLS42 recalculation agrees on all 90 array/text/regression fixtures in each format, including blocked spills, implicit intersection,
 conditional arrays and matrix constants. `array-fixtures` and `rust/scripts/audit-arrays-office.py` reproduce this
 check. Opening third-party array workbooks without the native payload still needs a separate adapter block.
 
@@ -467,3 +467,13 @@ styles and physical source coordinates for translated internal paste. Copying pa
 values; copying its anchor and children retains one formula and empty calculated children. Both clipboard formats
 share one calculation, including volatile functions. Native Windows array controls/history/save/reopen checks are
 included in CI; their first run is pending.
+
+
+The calculation engine also supports TEXTSPLIT with Unicode delimiter arrays and padding, LINEST/LOGEST
+statistics, and TREND/GROWTH prediction. Regression uses centered/scaled Householder QR and bounded dense work;
+large-offset and singular-data regressions are covered. FIXED/DOLLAR currently use the existing Windows formula
+convention (`.` decimal, `,` grouping and `$` currency); full locale formatting remains open. ROMAN follows macOS
+classic form and ARABIC accepts signed Roman text. REGEX, REGEXTEST, REGEXEXTRACT and REGEXREPLACE use a compiled
+Unicode expression engine with occurrence/capture/array/replacement support and bounded output/work. Look-around
+and pattern backreferences currently return `#VALUE!`; their macOS syntax compatibility remains open. The engine
+is statically linked and adds no runtime DLL requirement. CELL metadata now observes calculated spill values.

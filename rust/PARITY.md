@@ -347,3 +347,24 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   history assertions remain, with explicit private-formula assertions replacing the former raw-formula TSV assumption.
 - Portable workspace: **437 passed**, zero failures, one OCR fixture ignored. New native array cache/range/
   editing/Undo/Redo/ODS/reopen assertions are added, pending their first Windows run. No public release/main/site change.
+
+
+- TEXTSPLIT, regular-expression functions, fixed-decimal/Roman conversions and regression arrays close the
+  remaining **23 fixed-example gaps: 492/492 match**, with two locale-dependent skips. This is example agreement,
+  not full formula semantics or Office parity. Look-around/pattern backreferences and locale formatting remain open.
+- Regression uses centered/scaled Householder QR with covariance/statistics and multivariable/row-oriented
+  predictions; singular, nonpositive logarithmic, mismatched and large-offset inputs have portable regressions.
+  CELL metadata reads typed spill results. Empty regex patterns follow macOS `#VALUE!` after independent comparison.
+- Expanded independent standard-cache inspection and actual macOS XLS42 recalculation pass **90/90 per format**
+  for XLSX and ODS. Decimal FIXED output was locale-sensitive in the first comparison; the fixture verifies its
+  output length alongside independent Windows rounding assertions. The failure evidence remains retained.
+- Portable workspace: **442 passed**, zero failures, one OCR fixture ignored; GNU all targets compile. Native
+  text/regression spill/range/reopen assertions are extended for the next build. External array adapters, capacity
+  and the other application parity gaps remain open. No release/main/site publication.
+
+
+- First array-native run [42422535506](https://github.com/sfzorin/off42/actions/runs/42422535506) on 4d2fa4a
+  passed the native baseline typed values/ranges/metadata, empty child input and blocked-anchor calculation.
+  It stopped at a new harness assertion reading a shared-string index as literal XML text. Independent extraction
+  resolves C2 to the exact expected `blocked` text. The audit now resolves the XLSX shared-string table and retains
+  that exact expected value; full native Undo/Redo/reopen verification is pending a repeat. Grid capture was inspected.

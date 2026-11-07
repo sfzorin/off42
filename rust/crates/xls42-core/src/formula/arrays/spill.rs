@@ -343,3 +343,12 @@ mod bounds {
         }
     }
 }
+
+#[cfg(test)]mod metadata_tests{
+use crate::{formula,Workbook};
+#[test]fn cell_metadata_observes_typed_spill_values_and_empty_inputs(){
+let mut b=Workbook::new(8,8).unwrap();
+b.set_cell(0,0,"=SEQUENCE(2)".into()).unwrap();
+b.set_cell(0,2,"=TEXTSPLIT(\"one,two\",\",\")".into()).unwrap();
+for(r,f,e)in [(4,"=CELL(\"type\",A2)","v"),(5,"=CELL(\"type\",D1)","l"),(6,"=CELL(\"prefix\",D1)","'"),(7,"=CELL(\"type\",H1)","b")]{b.set_cell(r,0,f.into()).unwrap();assert_eq!(formula::display_cell(&b,r,0),e,"{f}");}
+}}

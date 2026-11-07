@@ -380,16 +380,13 @@ impl Parser<'_, '_> {
             "row" => finite(row as f64 + 1.0),
             "col" => finite(col as f64 + 1.0),
             "contents" => self.eval.cell(sheet, row, col, self.depth + 1),
-            "type" => Value::Text(
-                if content.is_none() {
-                    "b"
-                } else if matches!(content, Some(CellContent::Text(_))) {
-                    "l"
-                } else {
-                    "v"
-                }
-                .into(),
-            ),
+            "type" => {
+                let empty=self.eval.raw(sheet,row,col)==Some("");
+                let formula=matches!(content,Some(CellContent::Formula(_)));
+                let value=self.eval.cell(sheet,row,col,self.depth+1);
+                let spilled=self.eval.spills.contains_key(&(sheet,row,col));
+                Value::Text(if empty&&!formula&&!spilled {"b"}else if matches!(value,Value::Text(_)){"l"}else{"v"}.into())
+            },
             "width" => finite(
                 (((sh.col_widths.get(&col).copied().unwrap_or(80) as f64 - 5.0).max(0.0) / 7.0
                     * 100.0)
@@ -399,7 +396,7 @@ impl Parser<'_, '_> {
             ),
             "filename" | "sheet" => Value::Text(sh.name.clone()),
             "prefix" => Value::Text(
-                if matches!(content, Some(CellContent::Text(_))) {
+                if matches!(self.eval.cell(sheet,row,col,self.depth+1), Value::Text(_)) {
                     "'"
                 } else {
                     ""
