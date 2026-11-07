@@ -89,22 +89,175 @@ struct Embedded {
     digest: [u8; 32],
     project: Vec<u8>,
 }
+fn project_declaration(bytes: &[u8], format: &str, include: bool) -> Result<Vec<u8>, Error> {
+    let text =
+        std::str::from_utf8(bytes).map_err(|_| Error::Invalid("invalid Office declaration XML"))?;
+    let xml = roxmltree::Document::parse(text)
+        .map_err(|_| Error::Invalid("invalid Office declaration XML"))?;
+    let root = xml.root_element();
+    let (ns, element, attribute, value, fragment) = if format == "xlsx" {
+        ("http://schemas.openxmlformats.org/package/2006/content-types","Override","PartName",format!("/{EXTRA}"),format!("<Override xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\" PartName=\"/{EXTRA}\" ContentType=\"application/json\"/>"))
+    } else {
+        ("urn:oasis:names:tc:opendocument:xmlns:manifest:1.0","file-entry","full-path",EXTRA.to_owned(),format!("<manifest:file-entry xmlns:manifest=\"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0\" manifest:full-path=\"{EXTRA}\" manifest:media-type=\"application/json\"/>"))
+    };
+    if root.tag_name().namespace() != Some(ns)
+        || root.tag_name().name()
+            != if format == "xlsx" {
+                "Types"
+            } else {
+                "manifest"
+            }
+    {
+        return Err(Error::Invalid("invalid Office declaration namespace"));
+    }
+    let mut old=root.children().filter(|n|n.is_element()&&n.tag_name().name()==element&&n.tag_name().namespace()==Some(ns)).filter(|n|if format=="xlsx"{n.attribute(attribute)}else{n.attribute((ns,attribute))}==Some(value.as_str())).map(|n|n.range()).collect::<Vec<_>>();
+    let mut text = text.to_owned();
+    old.sort_by_key(|r| std::cmp::Reverse(r.start));
+    for range in old {
+        text.replace_range(range, "");
+    }
+    if !include {
+        return Ok(text.into_bytes());
+    }
+    let xml = roxmltree::Document::parse(&text)
+        .map_err(|_| Error::Invalid("invalid Office declaration XML"))?;
+    let root = xml.root_element();
+    let range = root.range();
+    if let Some(end) = text[range.clone()].rfind("</") {
+        text.insert_str(range.start + end, &fragment);
+    } else {
+        let end = range.end - 2;
+        if &text[end..range.end] != "/>" {
+            return Err(Error::Invalid("invalid Office declaration element"));
+        }
+        let name = text[range.start + 1..end]
+            .split_whitespace()
+            .next()
+            .ok_or(Error::Invalid("invalid Office declaration element"))?
+            .to_owned();
+        text.replace_range(end..range.end, &format!(">{fragment}</{name}>"));
+    }
+    Ok(text.into_bytes())
+}
+fn repair_missing_project_manifest(bytes: &[u8]) -> Result<std::borrow::Cow<'_, [u8]>, Error> {
+    let mut archive = zip::ZipArchive::new(Cursor::new(bytes))
+        .map_err(|_| Error::Invalid("invalid ODS archive"))?;
+    if archive.file_names().any(|name| name == EXTRA) {
+        return Ok(std::borrow::Cow::Borrowed(bytes));
+    }
+    let mut manifest = Vec::new();
+    match archive.by_name("META-INF/manifest.xml") {
+        Ok(entry) => {
+            entry
+                .take(16 * 1024 * 1024 + 1)
+                .read_to_end(&mut manifest)?;
+        }
+        Err(_) => return Ok(std::borrow::Cow::Borrowed(bytes)),
+    }
+    if manifest.len() > 16 * 1024 * 1024 {
+        return Err(Error::Limit);
+    }
+    let repaired = project_declaration(&manifest, "ods", false)?;
+    if repaired == manifest {
+        return Ok(std::borrow::Cow::Borrowed(bytes));
+    }
+    // An editor may drop the optional native snapshot but leave its private manifest entry.
+    // Drop only that dangling entry in the working copy; all document and unknown parts remain intact.
+    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    for index in 0..archive.len() {
+        let entry = archive
+            .by_index(index)
+            .map_err(|_| Error::Invalid("invalid ODS entry"))?;
+        if entry.name() == "META-INF/manifest.xml" {
+            writer
+                .start_file(
+                    "META-INF/manifest.xml",
+                    zip::write::SimpleFileOptions::default()
+                        .compression_method(entry.compression()),
+                )
+                .map_err(|_| Error::Invalid("cannot repair ODS manifest"))?;
+            writer.write_all(&repaired)?;
+        } else {
+            writer
+                .raw_copy_file(entry)
+                .map_err(|_| Error::Invalid("cannot preserve ODS entry"))?;
+        }
+    }
+    Ok(std::borrow::Cow::Owned(
+        writer
+            .finish()
+            .map_err(|_| Error::Invalid("cannot repair ODS container"))?
+            .into_inner(),
+    ))
+}
 fn embed(bytes: Vec<u8>, format: &str, project: Vec<u8>) -> Result<Vec<u8>, Error> {
     if bytes.len() > LIMIT {
         return Err(Error::Limit);
     }
-    let sum = digest(
-        &mut zip::ZipArchive::new(Cursor::new(bytes.as_slice()))
-            .map_err(|_| Error::Invalid("invalid Office archive"))?,
-    )?;
+    let declaration = match format {
+        "xlsx" => "[Content_Types].xml",
+        "ods" => "META-INF/manifest.xml",
+        _ => return Err(Error::Invalid("invalid Office format")),
+    };
+    // Rebuild the container, declaring the JSON part in the standard package metadata.
+    // LibreOffice rejects an appended container; ODF also requires the extra part in its manifest.
+    let mut source = zip::ZipArchive::new(Cursor::new(bytes))
+        .map_err(|_| Error::Invalid("invalid Office archive"))?;
+    let mut base = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    let mut declared = false;
+    for index in 0..source.len() {
+        let mut entry = source
+            .by_index(index)
+            .map_err(|_| Error::Invalid("invalid Office archive"))?;
+        if entry.name() == EXTRA {
+            continue;
+        }
+        if entry.name() == declaration {
+            let mut xml = Vec::new();
+            (&mut entry)
+                .take(16 * 1024 * 1024 + 1)
+                .read_to_end(&mut xml)?;
+            if xml.len() > 16 * 1024 * 1024 {
+                return Err(Error::Limit);
+            }
+            let xml = project_declaration(&xml, format, true)?;
+            base.start_file(
+                declaration,
+                zip::write::SimpleFileOptions::default().compression_method(entry.compression()),
+            )
+            .map_err(|_| Error::Invalid("cannot write Office declaration"))?;
+            base.write_all(&xml)?;
+            declared = true;
+        } else {
+            base.raw_copy_file(entry)
+                .map_err(|_| Error::Invalid("cannot preserve Office part"))?;
+        }
+    }
+    if !declared {
+        return Err(Error::Invalid("Office package declaration is missing"));
+    }
+    let base = base
+        .finish()
+        .map_err(|_| Error::Invalid("cannot finish Office archive"))?
+        .into_inner();
+    let mut source = zip::ZipArchive::new(Cursor::new(base.as_slice()))
+        .map_err(|_| Error::Invalid("invalid Office archive"))?;
     let payload = serde_json::to_vec(&Embedded {
         format: format.into(),
-        digest: sum,
+        digest: digest(&mut source)?,
         project,
     })
     .map_err(|_| Error::Invalid("cannot encode project"))?;
-    let mut writer = zip::ZipWriter::new_append(Cursor::new(bytes))
-        .map_err(|_| Error::Invalid("invalid Office archive"))?;
+    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    for index in 0..source.len() {
+        writer
+            .raw_copy_file(
+                source
+                    .by_index(index)
+                    .map_err(|_| Error::Invalid("invalid Office archive"))?,
+            )
+            .map_err(|_| Error::Invalid("cannot preserve Office part"))?;
+    }
     writer
         .start_file(EXTRA, zip::write::SimpleFileOptions::default())
         .map_err(|_| Error::Invalid("cannot write Office metadata"))?;
@@ -118,6 +271,7 @@ fn embed(bytes: Vec<u8>, format: &str, project: Vec<u8>) -> Result<Vec<u8>, Erro
     }
     Ok(bytes)
 }
+
 impl Workbook {
     pub fn xlsx_bytes(&self) -> Result<Vec<u8>, Error> {
         self.require_editable()?;
@@ -665,6 +819,38 @@ fn ods_formula_to_a1(input: &str) -> Option<String> {
             }
             continue;
         }
+        if !in_string && (b[i].is_ascii_alphabetic() || b[i] == b'_') {
+            let mut end = i;
+            while b
+                .get(end)
+                .is_some_and(|c| c.is_ascii_alphanumeric() || matches!(*c, b'_' | b'.'))
+            {
+                end += 1;
+            }
+            let mut next = end;
+            while b.get(next).is_some_and(u8::is_ascii_whitespace) {
+                next += 1;
+            }
+            if b.get(next) == Some(&b'(') {
+                let name = input[i..end].to_ascii_uppercase();
+                let converted = match name.as_str() {
+                    "FDIST" => "F.DIST",
+                    "FINV" => "F.INV",
+                    "SKEWP" => "SKEW.P",
+                    name => name
+                        .strip_prefix("COM.MICROSOFT.")
+                        .or_else(|| name.strip_prefix("ORG.OPENOFFICE."))
+                        .or_else(|| name.strip_prefix("ORG.LIBREOFFICE."))
+                        .or_else(|| name.strip_prefix("LEGACY."))
+                        .or_else(|| name.strip_prefix("_XLFN."))
+                        .unwrap_or(name),
+                };
+                out.push_str(converted);
+                out.push_str(&input[end..next]);
+                i = next;
+                continue;
+            }
+        }
         if !in_string && b[i] == b'[' {
             let end = input[i + 1..].find(']')? + i + 1;
             let range = &input[i + 1..end];
@@ -701,6 +887,56 @@ fn ods_formula_to_a1(input: &str) -> Option<String> {
         i += ch.len_utf8();
     }
     Some(out)
+}
+fn ods_function_name(mut name: &str) -> String {
+    while let Some(rest) = name
+        .strip_prefix("_XLFN.")
+        .or_else(|| name.strip_prefix("_XLWS."))
+    {
+        name = rest;
+    }
+    match name {
+        "F.DIST" => "FDIST".into(),
+        "F.INV" => "FINV".into(),
+        "SKEW.P" => "SKEWP".into(),
+        "FDIST" | "FINV" | "NORMSDIST" | "NORMSINV" | "TDIST" | "CHIDIST" | "CHIINV" => {
+            format!("LEGACY.{name}")
+        }
+        _ if name.contains('.')
+            || matches!(
+                name,
+                "MAXIFS"
+                    | "MINIFS"
+                    | "IFS"
+                    | "SWITCH"
+                    | "XLOOKUP"
+                    | "XMATCH"
+                    | "FILTER"
+                    | "SORT"
+                    | "SORTBY"
+                    | "UNIQUE"
+                    | "SEQUENCE"
+                    | "RANDARRAY"
+                    | "LET"
+                    | "CONCAT"
+                    | "TEXTJOIN"
+                    | "CEILING"
+                    | "FLOOR"
+                    | "AGGREGATE"
+                    | "TEXTBEFORE"
+                    | "TEXTAFTER"
+                    | "NUMBERVALUE"
+                    | "BITAND"
+                    | "BITOR"
+                    | "BITXOR"
+                    | "BITLSHIFT"
+                    | "BITRSHIFT"
+            ) =>
+        {
+            format!("COM.MICROSOFT.{name}")
+        }
+        _ => name.into(),
+    }
 }
 fn ods_formula(input: &str) -> Result<String, Error> {
     let b = input.as_bytes();
@@ -764,6 +1000,16 @@ fn ods_formula(input: &str) -> Result<String, Error> {
                 }
                 out.push(']');
                 i = end;
+                continue;
+            }
+            let mut next = j;
+            while b.get(next).is_some_and(u8::is_ascii_whitespace) {
+                next += 1;
+            }
+            if b.get(next) == Some(&b'(') {
+                out.push_str(&ods_function_name(&name.to_ascii_uppercase()));
+                out.push_str(&input[j..next]);
+                i = next;
                 continue;
             }
         }
@@ -1176,6 +1422,8 @@ mod tests {
 
 impl Workbook {
     fn from_external_office(bytes: &[u8], kind: &str) -> Result<Self, Error> {
+        let repaired=if kind=="ods"{repair_missing_project_manifest(bytes)?}else{std::borrow::Cow::Borrowed(bytes)};
+        let bytes=repaired.as_ref();
         use calamine::{Data, Reader};
         let mut source = calamine::open_workbook_auto_from_rs(Cursor::new(bytes))
             .map_err(|_| Error::Invalid("unsupported or invalid spreadsheet"))?;
@@ -7113,5 +7361,53 @@ mod external_sheet_structure_regression {
         assert!(book.sheets().iter().any(|s| s.0 == second));
         book.redo();
         assert!(!book.sheets().iter().any(|s| s.0 == second));
+    }
+}
+
+#[cfg(test)]
+mod statistical_formula_names {
+    use super::*;
+    #[test]
+    fn odf_function_names_keep_tails_and_quoted_text_distinct() {
+        for (excel, odf) in [
+            ("=F.DIST(1,5,8,TRUE)", "of:=FDIST(1;5;8;TRUE)"),
+            ("=FDIST(1,5,8)", "of:=LEGACY.FDIST(1;5;8)"),
+            ("=F.INV(0.5,5,8)", "of:=FINV(0.5;5;8)"),
+            ("=FINV(0.5,5,8)", "of:=LEGACY.FINV(0.5;5;8)"),
+            ("=STDEV.S(A1:A3)", "of:=COM.MICROSOFT.STDEV.S([.A1:.A3])"),
+            (
+                "=NORM.S.INV(1e-100)",
+                "of:=COM.MICROSOFT.NORM.S.INV(1e-100)",
+            ),
+        ] {
+            assert_eq!(ods_formula(excel).unwrap(), odf);
+            assert_eq!(ods_formula_to_a1(odf).unwrap(), excel);
+        }
+        assert_eq!(
+            ods_formula("=_xlfn.NORM.DIST(1,0,1,TRUE)").unwrap(),
+            "of:=COM.MICROSOFT.NORM.DIST(1;0;1;TRUE)"
+        );
+        let text = "=\"FDIST( COM.MICROSOFT.STDEV.S(\"";
+        assert_eq!(
+            ods_formula_to_a1(&ods_formula(text).unwrap()).unwrap(),
+            text
+        );
+    }
+}
+
+#[cfg(test)]
+mod project_package_registration {
+    use super::*;
+    #[test]
+    fn project_snapshot_is_registered_once_and_reembedding_preserves_other_parts(){
+        let mut book=Workbook::new(3,3).unwrap();book.set_cell(0,0,"=SUM(1,2)".into()).unwrap();
+        for kind in ["xlsx","ods"]{
+            let bytes=if kind=="xlsx"{book.xlsx_bytes()}else{book.ods_bytes()}.unwrap();
+            let rebuilt=embed(bytes,kind,book.project_bytes().unwrap()).unwrap();let mut archive=zip::ZipArchive::new(Cursor::new(rebuilt.as_slice())).unwrap();
+            assert_eq!(archive.file_names().filter(|n|*n==EXTRA).count(),1);
+            let name=if kind=="xlsx"{"[Content_Types].xml"}else{"META-INF/manifest.xml"};let mut text=String::new();archive.by_name(name).unwrap().read_to_string(&mut text).unwrap();let xml=roxmltree::Document::parse(&text).unwrap();
+            let entries=xml.descendants().filter(|n|n.is_element()&&if kind=="xlsx"{n.attribute("PartName")==Some("/xls42/project.json")}else{n.attribute(("urn:oasis:names:tc:opendocument:xmlns:manifest:1.0","full-path"))==Some(EXTRA)}).count();assert_eq!(entries,1);
+            let restored=Workbook::from_office_bytes(&rebuilt,kind).unwrap();assert_eq!(restored.display_grid(),book.display_grid());assert_eq!(restored.cell(0,0),book.cell(0,0));
+        }
     }
 }

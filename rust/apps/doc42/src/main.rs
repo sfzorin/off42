@@ -1011,6 +1011,7 @@ impl App for Doc {
             (353, "Go to bookmark…", None),
             (354, "Follow link", None),
             (355, "Delete bookmark…", None),
+            (360, "Statistics…", None),
         ]
         .into_iter()
         .map(|(id, title, accelerator)| CommandSpec {
@@ -2151,6 +2152,24 @@ impl App for Doc {
     }
     fn dialog_request(&self, id: u16) -> Option<DialogRequest> {
         match id {
+            360 => {
+                let stats = self.doc.statistics();
+                let label = win42::localization::text;
+                Some(DialogRequest::Information {
+                    title: "Statistics",
+                    text: format!(
+                        "{}: {}\n{}: {}\n{}: {}\n{}: {}",
+                        label("Words"),
+                        stats.words,
+                        label("Characters (with spaces)"),
+                        stats.characters,
+                        label("Characters (no spaces)"),
+                        stats.characters_without_spaces,
+                        label("Paragraphs"),
+                        stats.paragraphs
+                    ),
+                })
+            }
             303 => Some(DialogRequest::Font),
             304 => Some(DialogRequest::Color([0, 0, 0])),
             309 => {
@@ -2249,7 +2268,7 @@ impl App for Doc {
             .any(|s| !s.header.is_empty() || !s.footer.is_empty());
         format!(
             "{} words · {}%{}{}{}",
-            self.visible_text().split_whitespace().count(),
+            self.doc.statistics().words,
             self.zoom_percent,
             if headers {
                 " · header/footer stored; body view"
@@ -3695,5 +3714,27 @@ mod table_label_regression {
             panic!("table source expected");
         };
         assert_eq!(rows[1].1[1], "PCB-0007");
+    }
+}
+
+#[cfg(test)]
+mod statistics_tests {
+    use super::*;
+    #[test]
+    fn word_count_is_read_only_and_available_without_a_plain_text_projection() {
+        let mut app = Doc::new();
+        app.doc=RichDocument::decode(br"{\rtf1\ansi Before TARGET\par\trowd\cellx2000\cellx4000\pard\intbl Table TARGET\cell Other cell\cell\row\pard After TARGET\par}",Format::Rtf).unwrap();
+        app.selection = (usize::MAX, usize::MAX);
+        assert!(app.doc.editor_text().is_err());
+        let before = app.doc.encode(Format::Project).unwrap();
+        assert!(app.command_state(360).enabled);
+        let Some(DialogRequest::Information { title, text }) = app.dialog_request(360) else {
+            panic!("Expected read-only statistics")
+        };
+        assert_eq!(title, "Statistics");
+        assert!(text.contains("Words: 8"));
+        assert!(app.status().starts_with("8 words"));
+        assert_eq!(app.doc.encode(Format::Project).unwrap(), before);
+        assert!(!app.doc.can_undo());
     }
 }

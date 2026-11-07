@@ -649,3 +649,21 @@ Save snapshots add isolated Form XObjects, preserve inherited/shared page resour
 Repeated watermark forms/images and font character sets are shared. Watermarks use glyph outlines; headers and numbers
 carry embedded Unicode text. Reopening leaves baked page content. Filename tokens follow only successful save callbacks.
 The shared configured file action validates image-watermark settings before showing its PNG/JPEG picker.
+
+
+### Windows read-only statistics and typed statistical arguments
+
+`DialogRequest::Information` displays a localized read-only message without producing a model callback.
+DOC42 statistics traverse rich body paragraphs and table cells directly; they do not flatten the Rich Edit
+caret projection or alter history. Style runs are joined before Unicode word/grapheme segmentation.
+
+XLS extended arguments preserve scalar/reference provenance and actual blank flags alongside evaluated values.
+Statistical families use that information for standard and A-variant coercion and paired observations.
+Distribution iterations charge the evaluator's shared step budget; argument text charges a separate cumulative
+8 MiB budget before accumulation, including cache hits. Tail and inverse-tail functions avoid `1-p` cancellation.
+The independent high-precision numeric fixture is QA data, not an installed runtime dependency.
+
+Office snapshot embedding rebuilds fresh ZIP containers, preserves unrelated parts and declares the JSON part
+in standard package metadata before hashing. Re-embedding removes prior private declarations/parts. ODS import
+repairs only a dangling own optional snapshot declaration in its working copy. Formula token mapping operates
+outside quoted literals and distinguishes ODF native F left tails from legacy Excel right-tail names.

@@ -93,7 +93,8 @@ Saving adds isolated content and preserves existing page resources. After reopen
 page content. Headers and numbers use embedded Noto Sans; unsupported glyphs are refused. Other fonts and
 automated Bates processing of other files remain parity work. Independent Poppler checks cover four rotations,
 nonzero crop origins, source text, Unicode tokens and exclusion of watermarks from extracted text.
-The new native `--pdf-decorations` dialog/pixel/save/reopen audit awaits its first compatible Windows run.
+Native run 42405270583 passed the dialog, rendered text/image pixels, selected-page numbering, complete
+Undo/Redo and dirty/discard/reopen checks on dd33481. This is development-build evidence.
 
 ## Presentation shapes
 
@@ -301,3 +302,32 @@ all 30 native result groups passed, and packaged binary dependency checks passed
 artifact contains the six apps, PDFium and licenses. ZIP SHA-256:
 `ede6e36ba0dc3a81673ed79680d988e129fe307838db202d3a09cd8a3cbeac7c` (61,197,732 bytes).
 This is a development artifact, separate from the public preview.3 download; it is not a full parity claim.
+
+
+## Body statistics and statistical formulas (development branch)
+
+DOC42's **Statistics…** dialog counts body words, grapheme characters with/without spaces and nonempty
+paragraphs, including table cells even when pictures prevent a plain editor projection. The status word count
+uses the same whole-body traversal. Counting is read-only and retains formatting/history. It excludes notes,
+comments, image alternate text and page decorations. Unicode word boundaries do not establish the same
+language-specific dictionary segmentation as macOS; selection statistics and layout line counts remain work.
+
+XLS42 adds descriptive statistics, ranks/percentiles/quartiles, regression/covariance and probability
+distributions/inverses (normal, lognormal, Student t, chi-square, F, gamma, beta, binomial and Poisson),
+confidence intervals, Fisher transforms and error functions. Scalar/reference coercion, blanks, errors and
+A-variant Boolean/text handling remain distinct. Scientific numeric literals are supported; iteration and
+argument text budgets refuse excessive computation or allocation. Small right-tail probabilities are evaluated
+directly to avoid subtraction from one. Dynamic statistical arrays remain incomplete.
+
+The fixed macOS report now matches **293/492** cases, with **199 differences** and two additional locale-dependent
+cases skipped. A separate checked-in oracle contains **277** mpmath cases at 160-digit precision; regenerate it
+with `rust/scripts/export-distribution-cases.py` in a QA environment containing mpmath 1.3.0. This is a QA-only
+dependency. These counts measure examples rather than complete function or Excel compatibility.
+
+Office output rebuilds the ZIP container and registers its optional native snapshot in XLSX content types or
+the ODF manifest. ODF formula names distinguish modern left-tail F functions from legacy right-tail aliases.
+`statistical-fixtures` and `rust/scripts/audit-statistics-office.py` independently load and recalculate both full
+packages in LibreOffice. Nineteen of twenty XLSX-origin cases and eighteen of twenty ODS-origin cases agree;
+the audit records LibreOffice's invalid-percentile error classifications and its ODS ERF interval precision
+loss separately. Native results retain the independently checked values. The new DOC/XLS native scenarios
+await their first compatible Windows build.

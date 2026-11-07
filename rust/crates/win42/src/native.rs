@@ -2432,6 +2432,10 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 STATE.with(|s| s.borrow().as_ref().unwrap().app.dialog_request(id));
             if let Some(request) = dialog_request {
                 let result = match request {
+                    crate::DialogRequest::Information { title, text } => {
+                        MessageBoxW(hwnd,wide(&text).as_ptr(),wide(&crate::localization::text(title)).as_ptr(),MB_OK|MB_ICONINFORMATION);
+                        None
+                    }
                     crate::DialogRequest::Color(c) => {
                         crate::dialogs::color(hwnd, c).map(crate::DialogResult::Color)
                     }

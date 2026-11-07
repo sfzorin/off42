@@ -14,8 +14,8 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers | PDF artwork/region sources, preview and direct print |
 | Printing | Native dialogs, actual-size PDF scene path, optional per-printer calibration and measurement sheet | Native print-to-file output and physical driver checks |
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction | Comparison, batch merge/Bates workflows, decoration font choices, richer forms, OCR, certificate signing and validation, remote signing and CryptoPro integration |
-| DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping and word-count coverage, picture geometry and rich page decorations |
-| XLS42 | Grid editing, engineering/text/math formulas, styles, charts, summaries, tables, filtering, print layout | Formula coverage and dynamic arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, goal seek/solver, split panes, per-cell/password protection and fuller format fidelity |
+| DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
+| XLS42 | Grid editing, engineering/text/math/statistical formulas, styles, charts, summaries, tables, filtering, print layout | Formula coverage and dynamic arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, goal seek/solver, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, show tools and export workflows |
 | IMG42 | Image decoding, transforms, adjustments, selections, text, metadata and batch output | Full markup selection/editing, smart lasso, live text, background removal, viewing panels and additional supported system codecs |
 | SCN42 | WIA acquisition, image/PDF import, page processing, OCR and searchable output | Scan areas and rescan, device/preset controls, scan history, full export settings and physical-device checks |
@@ -195,3 +195,21 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   section fixes physical slide size; the Office audit checks 16 pages and all 187 preset labels in both formats.
 - Portable workspace: 387 passes, zero failures, one OCR fixture ignored. GNU all-targets compilation passes.
   Native PDF decoration controls/pixels/history/reopen verification is pending the next compatible Windows build.
+
+
+- Native run [42405270583](https://github.com/sfzorin/off42/actions/runs/42405270583) passed all 30 result groups
+  and 269 targeted MSVC tests on dd33481. PDF text/image watermark pixels, rotated pages, Unicode headers,
+  Bates/date/file tokens, ordered numbering, removal/history and dirty/discard/reopen pass. Earlier optimized
+  run 42403791844 passed tests/import checks but failed the header dialog title wait; its failure is retained.
+- DOC whole-body statistics now includes tables beside pictures, joins style runs before Unicode boundaries and
+  counts graphemes without changing editor caret projection. Portable tests cover history and project/DOCX/ODT.
+- XLS statistical/distribution support raises the macOS fixed-example agreement to **293/492**, leaving **199 gaps**.
+  All 277 independent 160-digit mpmath examples pass, including extreme tails/inverses and scientific literals.
+  Computation and repeated argument text have shared budgets. Native DOC statistics and XLS formula/cache/history
+  scenarios are added but await a compatible build.
+- Independent LibreOffice QA reproduced unusable appended XLSX/ODS ZIP containers and an undeclared ODF private
+  part. Fresh containers with package declarations now load. Recalculation agrees on 19/20 XLSX-origin and 18/20
+  ODS-origin cases; explicit external differences are invalid-percentile error classes and ODS ERF precision loss.
+  Golden native results are not weakened to match those differences. ODF function aliases retain tail semantics.
+- Current portable workspace: **398 passed**, zero failed, one OCR fixture ignored. All GNU Windows targets compile.
+  No new public release, main merge or website update has occurred; the remaining matrix is still open.

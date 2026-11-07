@@ -1,6 +1,8 @@
 //! Small, bounded spreadsheet expression evaluator. Raw cells remain authoritative.
+mod distributions;
 mod engineering;
 mod math;
+mod statistics;
 mod text;
 mod units;
 use crate::{CellContent, SheetId, Workbook};
@@ -40,6 +42,7 @@ struct Eval<'a> {
     visiting: HashSet<(SheetId, usize, usize)>,
     steps: usize,
     text_bytes: usize,
+    argument_text_bytes: usize,
     now: chrono::NaiveDateTime,
 }
 impl Eval<'_> {
@@ -441,6 +444,19 @@ impl Parser<'_, '_> {
         if start == self.pos {
             return Value::Error("#ERROR!");
         }
+        if matches!(self.input.get(self.pos), Some(b'e' | b'E')) {
+            self.pos += 1;
+            if matches!(self.input.get(self.pos), Some(b'+' | b'-')) {
+                self.pos += 1;
+            }
+            let exponent_start = self.pos;
+            while self.input.get(self.pos).is_some_and(u8::is_ascii_digit) {
+                self.pos += 1;
+            }
+            if self.pos == exponent_start {
+                return Value::Error("#ERROR!");
+            }
+        }
         match std::str::from_utf8(&self.input[start..self.pos])
             .ok()
             .and_then(|s| s.parse::<f64>().ok())
@@ -465,7 +481,7 @@ impl Parser<'_, '_> {
         if self.depth > MAX_DEPTH {
             return Value::Error("#LIMIT!");
         }
-        if text::handles(name) {
+        if text::handles(name) || statistics::handles(name) || distributions::handles(name) {
             return self.extended_text_function(name);
         }
         if matches!(name, "TRUE" | "FALSE") {
@@ -1556,7 +1572,7 @@ impl Parser<'_, '_> {
     fn extended_text_function(&mut self, name: &str) -> Value {
         let mut args = Vec::new();
         if self.take(b')') {
-            return text::call(name, &args);
+            return self.call_extended(name, &args);
         }
         loop {
             self.space();
@@ -1564,7 +1580,10 @@ impl Parser<'_, '_> {
                 args.push(text::Arg::Missing);
             } else {
                 let start = self.pos;
-                let range = if matches!(name, "TEXTJOIN" | "CONCAT" | "CONCATENATE") {
+                let range = if statistics::handles(name)
+                    || distributions::handles(name)
+                    || matches!(name, "TEXTJOIN" | "CONCAT" | "CONCATENATE")
+                {
                     self.read_range()
                 } else {
                     None
@@ -1574,6 +1593,7 @@ impl Parser<'_, '_> {
                     range.filter(|_| matches!(self.input.get(self.pos), Some(b',' | b')')))
                 {
                     let mut values = Vec::new();
+                    let mut blanks = Vec::new();
                     for row in top..=bottom {
                         for col in left..=right {
                             self.eval.steps += 1;
@@ -1583,14 +1603,13 @@ impl Parser<'_, '_> {
                             let Some(raw) = self.eval.raw(sheet, row, col) else {
                                 return Value::Error("#REF!");
                             };
-                            values.push(if raw.is_empty() {
-                                Value::Text(String::new())
-                            } else {
-                                self.eval.cell(sheet, row, col, self.depth + 1)
-                            });
+                            blanks.push(raw.is_empty());
+                            let value=if raw.is_empty() {Value::Text(String::new())}else{self.eval.cell(sheet,row,col,self.depth+1)};
+                            if !self.charge_argument_text(&value) { return Value::Error("#LIMIT!"); }
+                            values.push(value);
                         }
                     }
-                    args.push(text::Arg::Range(values));
+                    args.push(text::Arg::Range(values, blanks));
                 } else {
                     self.pos = start;
                     // A directly referenced blank cell remains blank for text aggregation.
@@ -1606,7 +1625,9 @@ impl Parser<'_, '_> {
                         args.push(text::Arg::Scalar(Value::Text(String::new())));
                     } else {
                         self.pos = reference_start;
-                        args.push(text::Arg::Scalar(self.comparison()));
+                        let value=self.comparison();
+                        if !self.charge_argument_text(&value) { return Value::Error("#LIMIT!"); }
+                        args.push(text::Arg::Scalar(value));
                     }
                 }
             }
@@ -1617,7 +1638,20 @@ impl Parser<'_, '_> {
                 return Value::Error("#ERROR!");
             }
         }
-        text::call(name, &args)
+        self.call_extended(name, &args)
+    }
+    fn charge_argument_text(&mut self,value:&Value)->bool {
+        if let Value::Text(text)=value { self.eval.argument_text_bytes=self.eval.argument_text_bytes.saturating_add(text.len()); }
+        self.eval.argument_text_bytes<=crate::MAX_TEXT*2
+    }
+    fn call_extended(&mut self, name: &str, args: &[text::Arg]) -> Value {
+        if statistics::handles(name) {
+            statistics::call(name, args)
+        } else if distributions::handles(name) {
+            distributions::call(name, args, &mut self.eval.steps)
+        } else {
+            text::call(name, args)
+        }
     }
     fn text_function(&mut self, name: &str) -> Value {
         let mut args = Vec::new();
@@ -2145,6 +2179,7 @@ pub(super) fn formula_results_at(
         visiting: HashSet::new(),
         steps: 0,
         text_bytes: 0,
+        argument_text_bytes: 0,
         now,
     };
     book.history
@@ -2172,6 +2207,7 @@ pub(crate) fn display_grid_at(book: &Workbook, now: chrono::NaiveDateTime) -> Ve
         visiting: HashSet::new(),
         steps: 0,
         text_bytes: 0,
+        argument_text_bytes: 0,
         now,
     };
     (0..book.rows())
@@ -2179,10 +2215,10 @@ pub(crate) fn display_grid_at(book: &Workbook, now: chrono::NaiveDateTime) -> Ve
             (0..book.cols())
                 .map(|c| {
                     let raw = book.cell(r, c).unwrap();
-                    if matches!(book.content(r, c), Some(CellContent::Formula(_))) {
-                        eval.cell(book.active_sheet(), r, c, 0).display()
-                    } else {
-                        raw.to_owned()
+                    match book.content(r,c) {
+                        Some(CellContent::Formula(_)) => eval.cell(book.active_sheet(), r, c, 0).display(),
+                        Some(CellContent::Boolean(value)) => if value.raw().eq_ignore_ascii_case("true") { "TRUE".into() } else { "FALSE".into() },
+                        _ => raw.to_owned(),
                     }
                 })
                 .collect()
@@ -2197,6 +2233,7 @@ pub(crate) fn display_cell(book: &Workbook, row: usize, col: usize) -> String {
         visiting: HashSet::new(),
         steps: 0,
         text_bytes: 0,
+        argument_text_bytes: 0,
         now: chrono::Local::now().naive_local(),
     };
     eval.cell(book.active_sheet(), row, col, 0).display()

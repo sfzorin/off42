@@ -12,6 +12,8 @@ mod rtf_lists;
 mod rtf_picture;
 mod rtf_read;
 mod search;
+mod statistics;
+pub use statistics::TextStatistics;
 mod table_edit;
 mod toc;
 use serde::{Deserialize, Serialize};

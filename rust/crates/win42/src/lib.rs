@@ -1120,6 +1120,7 @@ pub struct FontChoice {
 }
 #[derive(Clone, Debug)]
 pub enum DialogRequest {
+    Information { title: &'static str, text: String },
     Color([u8; 3]),
     Font,
     PageSetup(PageMargins),

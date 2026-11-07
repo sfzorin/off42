@@ -4,19 +4,19 @@ type Result<T> = std::result::Result<T, &'static str>;
 pub(super) enum Arg {
     Missing,
     Scalar(Value),
-    Range(Vec<Value>),
+    Range(Vec<Value>, Vec<bool>),
 }
 impl Arg {
-    fn scalar(&self) -> Result<Value> {
+    pub(super) fn scalar(&self) -> Result<Value> {
         match self {
             Self::Missing => Ok(Value::Text(String::new())),
             Self::Scalar(Value::Error(e)) => Err(e),
             Self::Scalar(value) => Ok(value.clone()),
-            Self::Range(values) if values.len() == 1 => match &values[0] {
+            Self::Range(values, _) if values.len() == 1 => match &values[0] {
                 Value::Error(e) => Err(e),
                 value => Ok(value.clone()),
             },
-            Self::Range(_) => Err("#VALUE!"),
+            Self::Range(_, _) => Err("#VALUE!"),
         }
     }
 }
@@ -98,7 +98,7 @@ fn join(args: &[Arg], delimiter: &str, ignore_empty: bool) -> Result<Value> {
     let mut first = true;
     for arg in args {
         let values = match arg {
-            Arg::Range(values) => values.clone(),
+            Arg::Range(values, _) => values.clone(),
             _ => vec![arg.scalar()?],
         };
         for value in values {

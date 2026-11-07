@@ -624,6 +624,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "suite42-core",
+ "unicode-segmentation",
  "zip 6.0.0",
 ]
 
@@ -2820,6 +2821,7 @@ dependencies = [
  "chrono",
  "csv",
  "image",
+ "libm",
  "roxmltree",
  "rust_xlsxwriter",
  "serde",

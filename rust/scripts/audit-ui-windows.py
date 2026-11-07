@@ -763,6 +763,15 @@ def audit_rich_search(process,main,binary,output,results):
     command(main,1);choose_file(process,source)
     wait_for(lambda:source.name in text(main)and u.IsWindowEnabled(main),"rich table/picture source opened",process)
     edit=u.GetDlgItem(main,101)
+    def statistics(characters):
+        command(main,360)
+        dialog=modal(process,title="Statistics",native_class="#32770")
+        value=" ".join(text(h)for h in windows_for_dialog(dialog))
+        assert "Words: 8" in value and f"Characters (with spaces): {characters}" in value and f"Characters (no spaces): {characters-5}" in value and "Paragraphs: 4" in value,value
+        click(dialog,1)
+        wait_for(lambda:u.IsWindowEnabled(main),"read-only statistics closed",process)
+        wait_for(lambda:any("8 words"in text(h)for h in windows(process.pid,main)),"structured document status word count",process)
+    statistics(49)
     u.SendMessageW(edit,0xB1,0,0)
     def selection():
         packed=u.SendMessageW(edit,0xB0,0,0)
@@ -787,6 +796,7 @@ def audit_rich_search(process,main,binary,output,results):
     confirmation=wait_for(lambda:next((h for h in windows(process.pid)if classname(h)=="#32770"and u.IsWindowEnabled(h)and "Replaced 3"in" ".join(text(c)for c in windows_for_dialog(h))),None),"three body/table replacements",process)
     click(confirmation,1)
     modified=saved("rich-search-after.doc42")
+    statistics(55)
     blocks=modified["state"]["blocks"]
     paragraphs=[]
     for block in blocks:
@@ -813,7 +823,8 @@ def audit_rich_search(process,main,binary,output,results):
     fill_prompt(process,main,7,"Find next",["REPLACED"])
     wait_for(lambda:selection()[1]-selection()[0]==8,"reopened rich text search",process)
     assert copied_selection(edit)=="REPLACED" and source.read_bytes()==original
-    results["checks"].append("native rich Find traverses body/table/image offsets and wraps; Replace All retains table/image bytes, complete Undo/Redo/save and dirty/discard/reopen")
+    statistics(55)
+    results["checks"].append("structured body/table/image statistics retain Unicode grapheme counts through replace/history/reopen; native rich Find traverses body/table/image offsets and wraps; Replace All retains table/image bytes, complete Undo/Redo/save and dirty/discard/reopen")
 
 
 def audit_engineering_formulas(process, main, binary, output, results, include_extended=False):
@@ -1087,7 +1098,56 @@ def audit_pdf_decorations(process,main,binary,output,results):
     results["checks"].append("text/image watermarks with opacity, selected-page pixels/rotation, searchable Unicode headers/Bates/date/file tokens, ordered numbering, atomic Undo/Redo/removal and saved PDFium text/pixels")
 
 
-def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False):
+def audit_statistical_formulas(process,main,output,binary,results):
+    import math
+    import xml.etree.ElementTree as ET
+    source=output/"statistical-source.csv"
+    formulas=["=STDEV.S(A1:A5)","=AVERAGEA(A1:A5)","=COUNTBLANK(A1:A5)","=CORREL(A1:A5,B1:B5)","=NORM.DIST(A1,0,1,TRUE)","=BETA.INV(0.5,2,2)","=T.DIST.2T(A1,10)","=VAR.S(A1:A5)","=NORM.S.INV(1e-100)","=T.DIST.RT(20,100)","=CHISQ.INV.RT(1e-20,2)","=ERF(8,9)","=F.INV.RT(1e-20,5,8)","=PERCENTILE.EXC(A1:A2,0.5)","=PERCENTILE.EXC(A1:A2,0)"]
+    a=["1","2","text","TRUE",""];b=["2","4","6","8","10"]
+    with source.open("w",encoding="utf-8",newline="")as file:
+        csv.writer(file).writerows([[a[i]if i<len(a)else"",b[i]if i<len(b)else"",formula,"","","","",""]for i,formula in enumerate(formulas)])
+    original=source.read_bytes()
+    def open_file(path):
+        command(main,1);choose_file(process,path)
+        def state():
+            if path.name in text(main)and" * - "not in text(main)and u.IsWindowEnabled(main):return(True,None)
+            prompt=next((h for h in windows(process.pid)if classname(h)=="#32770"and u.IsWindowEnabled(h)and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
+            return(False,prompt)if prompt else None
+        opened,prompt=wait_for(state,"statistics file open/discard",process)
+        if not opened:
+            click(prompt,7);wait_for(lambda:path.name in text(main)and" * - "not in text(main)and u.IsWindowEnabled(main),"statistics file committed open",process)
+    open_file(source)
+    def save(name):
+        path=output/("statistics-"+name+".xlsx")
+        save_as(main);choose_file(process,path,format_name="Excel workbook");output_ready(process,main,path,b"PK")
+        with zipfile.ZipFile(path)as archive:root=ET.fromstring(archive.read("xl/worksheets/sheet1.xml"))
+        ns={"s":"http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        cells={cell.attrib["r"]:(cell.findtext("s:f",namespaces=ns),cell.findtext("s:v",namespaces=ns),cell.attrib.get("t"))for cell in root.findall(".//s:c",ns)}
+        return path,cells
+    baseline,cells=save("baseline")
+    def value(cells,address,expected):
+        assert cells[address][2]in(None,"n"),cells[address]
+        assert math.isclose(float(cells[address][1]),expected,rel_tol=2e-9,abs_tol=0.0),(address,cells[address],expected)
+    value(cells,"C1",math.sqrt(.5));value(cells,"C2",1.0);value(cells,"C3",1.0);value(cells,"C4",1.0);value(cells,"C5",.8413447460685429);value(cells,"C6",.5);value(cells,"C8",.5);value(cells,"C14",1.5)
+    assert cells["C15"][1:]==("#NUM!","e")
+    oracle=json.loads((Path(__file__).resolve().parents[1]/"crates/xls42-core/fixtures/independent-distribution-cases.json").read_text())
+    expected={case["formula"]:case["expected"]for case in oracle["cases"]}
+    for address,formula in [("C9","=NORM.S.INV(1e-100)"),("C10","=T.DIST.RT(20.0,100.0)"),("C11","=CHISQ.INV.RT(1e-20,2.0)"),("C12","=ERF(8.0,9.0)"),("C13","=F.INV.RT(1e-20,5.0,8.0)")]:value(cells,address,expected[formula])
+    fill_prompt(process,main,25,"Range (1-based)",["1","1","1","1"])
+    edit=u.GetDlgItem(main,101);replace_editor_text(edit,"4")
+    _,changed=save("changed")
+    value(changed,"C1",math.sqrt(2));value(changed,"C2",1.75);value(changed,"C4",-1.0);value(changed,"C5",.9999683287581669);value(changed,"C8",2.0);value(changed,"C14",3.0)
+    command(main,4);_,undone=save("undo")
+    assert all(undone["C"+str(i+1)]==cells["C"+str(i+1)]for i in range(len(formulas)))
+    command(main,5);_,redone=save("redo")
+    assert all(redone["C"+str(i+1)]==changed["C"+str(i+1)]for i in range(len(formulas)))
+    replace_editor_text(edit,"9");open_file(baseline);_,reopened=save("reopened")
+    assert all(reopened["C"+str(i+1)]==cells["C"+str(i+1)]for i in range(len(formulas)))
+    assert source.read_bytes()==original
+    results["checks"].append("statistical range/reference typing, distributions and 1e-100 literals, small-tail quantiles against an independent oracle, typed XLSX caches, input recalculation, complete Undo/Redo and dirty/discard/reopen")
+
+
+def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False):
     startup = None
     if extended:
         if binary.stem.lower() == "pdf42":
@@ -1212,6 +1272,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_rich_search(process, main, binary, output, results)
         if engineering and binary.stem.lower() == "xls42":
             audit_engineering_formulas(process, main, binary, output, results, include_extended=extended_formulas)
+        if statistical_formulas and binary.stem.lower()=="xls42":
+            audit_statistical_formulas(process,main,output,binary,results)
         if host_commands and binary.stem.lower() == "pdf42":
             audit_rectangle_command(process, main, binary, output, results)
         if pages and binary.stem.lower() == "pdf42":
@@ -1645,6 +1707,7 @@ def main():
     parser.add_argument("--rich-search", action="store_true")
     parser.add_argument("--preset-shapes", action="store_true")
     parser.add_argument("--pdf-decorations", action="store_true")
+    parser.add_argument("--statistical-formulas", action="store_true")
     parser.add_argument("--page-exports", action="store_true")
     parser.add_argument("--host-commands", action="store_true")
     parser.add_argument("--engineering", action="store_true")
@@ -1658,7 +1721,7 @@ def main():
     try:
         for app in ["DOC42", "XLS42", "PDF42", "IMG42", "PPT42", "SCN42"]:
             try:
-                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations))
+                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas))
             except Exception as error:
                 results.append({"app": app, "error": str(error), "traceback": traceback.format_exc()})
             print(json.dumps(results[-1]), flush=True)
