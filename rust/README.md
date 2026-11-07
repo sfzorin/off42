@@ -454,19 +454,20 @@ EXPAND, WRAPROWS/WRAPCOLS, matrix multiplication/inversion/determinants, FREQUEN
 Dynamic results fill empty cells within the current sheet dimensions; conflicts report `#SPILL!`. Source formulas
 remain authoritative. Results shrink and recalculate after edits without turning calculated children into inputs.
 Operands are limited to 100,000 cells and eight MiB of cumulative matrix text, with separate evaluation work limits.
-Automatic sheet expansion, external/legacy array fidelity and the remaining formula families remain open.
+Automatic sheet expansion, legacy CSE semantics and unsupported formula syntax remain open.
 
 Native XLSX exports write standard dynamic-array ranges, metadata and typed caches; ODS writes standard matrix
 spans and caches. Round trips through native project payloads preserve formulas and history. Independent macOS
 XLS42 recalculation agrees on all 90 array/text/regression fixtures in each format, including blocked spills, implicit intersection,
 conditional arrays and matrix constants. `array-fixtures` and `rust/scripts/audit-arrays-office.py` reproduce this
-check. Opening third-party array workbooks without the native payload still needs a separate adapter block.
+check. Standard external XLSX/ODS arrays can also be imported, resized and saved without the native payload; the
+remaining adapter limits are listed below.
 
 External clipboard text contains calculated, formatted values. The private off42 clipboard retains formulas,
 styles and physical source coordinates for translated internal paste. Copying part of a spill stores typed result
 values; copying its anchor and children retains one formula and empty calculated children. Both clipboard formats
-share one calculation, including volatile functions. Native Windows array controls/history/save/reopen checks are
-included in CI; their first run is pending.
+share one calculation, including volatile functions. Native Windows array controls/history/save/reopen checks pass in run 42423267384; external array edits have
+additional native scenarios awaiting the next compatible build.
 
 
 The calculation engine also supports TEXTSPLIT with Unicode delimiter arrays and padding, LINEST/LOGEST
@@ -477,3 +478,20 @@ classic form and ARABIC accepts signed Roman text. REGEX, REGEXTEST, REGEXEXTRAC
 Unicode expression engine with occurrence/capture/array/replacement support and bounded output/work. Look-around
 and pattern backreferences currently return `#VALUE!`; their macOS syntax compatibility remains open. The engine
 is statically linked and adds no runtime DLL requirement. CELL metadata now observes calculated spill values.
+
+
+### External calculated-array files (development branch)
+
+External XLSX imports recognize pure XLDAPR dynamic-array metadata, and ODS imports recognize supported matrix
+formulas. Cached children retain their styles and become disposable values. Saving refreshes standard typed caches,
+range metadata and dimensions, clears former children after resizing/removal/blocking, and preserves explicit inputs.
+A disposable reader copy accommodates modern Excel errors such as `#SPILL!`; original package bytes remain retained.
+New XLSX arrays register their standard metadata relationships/content types when no metadata part exists. Existing
+pure dynamic records keep their original index. Unknown or mixed metadata and legacy CSE arrays retain edit guards;
+registration alongside unsupported existing metadata, structural shifts and repeated matrix anchors remain limited.
+
+Independent inspection and actual macOS XLS42 recalculation agree on all 92 edited/resized external fixtures in each
+format, with no private project payload and an unchanged foreign package entry. Portable regressions cover complete
+Undo/Redo, blocking/removal, reopened values, literal text, metadata records, ODS repeats and strict style preservation.
+Unchanged cells retain their original absence of a style when the ODS writer would otherwise inject a value default.
+Import range work is bounded. These source changes are not a public release.

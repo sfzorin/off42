@@ -8,6 +8,7 @@ const LIMIT: usize = 64 * 1024 * 1024;
 mod pictures;
 mod formula_cache;
 mod filters;
+mod dynamic_arrays;
 fn date_time(raw: &str) -> Result<chrono::NaiveDateTime, Error> {
     chrono::NaiveDateTime::parse_from_str(raw, "%Y-%m-%dT%H:%M:%S%.f")
         .ok()
@@ -1585,10 +1586,15 @@ mod tests {
 
 impl Workbook {
     fn from_external_office(bytes: &[u8], kind: &str) -> Result<Self, Error> {
-        let repaired=if kind=="ods"{repair_missing_project_manifest(bytes)?}else{std::borrow::Cow::Borrowed(bytes)};
-        let bytes=repaired.as_ref();
+        let repaired = if kind == "ods" {
+            repair_missing_project_manifest(bytes)?
+        } else {
+            std::borrow::Cow::Borrowed(bytes)
+        };
+        let bytes = repaired.as_ref();
         use calamine::{Data, Reader};
-        let mut source = calamine::open_workbook_auto_from_rs(Cursor::new(bytes))
+        let (reader_bytes, modern_errors) = dynamic_arrays::working_copy(bytes, kind)?;
+        let mut source = calamine::open_workbook_auto_from_rs(Cursor::new(reader_bytes.as_ref()))
             .map_err(|_| Error::Invalid("unsupported or invalid spreadsheet"))?;
         let names = source.sheet_names().to_vec();
         if names.is_empty() || names.len() > MAX_SHEETS {
@@ -1633,7 +1639,12 @@ impl Workbook {
                     Data::DateTimeIso(v) | Data::DurationIso(v) => {
                         CellContent::Date(TextValue::from_raw(v.clone()))
                     }
-                    Data::Error(v) => CellContent::Error(TextValue::from_raw(v.to_string())),
+                    Data::Error(v) => CellContent::Error(TextValue::from_raw(
+                        modern_errors
+                            .get(&(sheet.name.clone(), r, c))
+                            .cloned()
+                            .unwrap_or_else(|| v.to_string()),
+                    )),
                 };
                 total = total.checked_add(val.raw().len()).ok_or(Error::Limit)?;
                 if total > MAX_TEXT {
@@ -1705,8 +1716,11 @@ impl Workbook {
             }
             import_xlsx_layout(bytes, &mut state)?;
         }
+        dynamic_arrays::import(bytes, kind, &mut state)?;
         pictures::import(bytes, kind, &mut state)?;
-        if kind=="xlsx"{filters::separate_xlsx_hidden(&mut state,&cache);}
+        if kind == "xlsx" {
+            filters::separate_xlsx_hidden(&mut state, &cache);
+        }
         Ok(Self {
             history: SnapshotHistory::new(state.clone(), 8),
             snapshots: BTreeMap::new(),
@@ -2315,7 +2329,16 @@ fn import_xlsx_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
             continue;
         };
         let d = xml(&text)?;
-        filters::import_xlsx(&d,sheet)?;
+        if let Some(range) = d
+            .descendants()
+            .find(|n| n.has_tag_name("dimension"))
+            .and_then(|n| n.attribute("ref"))
+            .and_then(dynamic_arrays::range)
+        {
+            sheet.rows = sheet.rows.max(range.bottom + 1);
+            sheet.cols = sheet.cols.max(range.right + 1);
+        }
+        filters::import_xlsx(&d, sheet)?;
         if let Some(pane) = d.descendants().find(|n| {
             n.has_tag_name("pane") && matches!(n.attribute("state"), Some("frozen" | "frozenSplit"))
         }) {
@@ -3373,6 +3396,7 @@ fn patch_ods(
     }
     let generated = spreadsheet_ods::write_ods_buf(&mut book, Vec::new())
         .map_err(|_| Error::Invalid("cannot write ODS without loss"))?;
+    let generated = dynamic_arrays::preserve_ods_defaults(bytes, generated, changes, old, current)?;
     verify_ods_untouched_styles(bytes, &generated, changes, old, current)?;
     let mut original =
         zip::ZipArchive::new(Cursor::new(bytes)).map_err(|_| Error::Invalid("invalid ODS"))?;
@@ -3613,16 +3637,24 @@ fn patch_row(
                 }
                 continue;
             }
+            let dynamic = node.attribute("cm").is_some()
+                && old.cells.get(&(*r, *c)).is_some_and(|c| {
+                    matches!(c.text, CellContent::Formula(_))
+                        && formula::is_dynamic_formula(c.text.raw())
+                })
+                && !old.protected_formula_ranges.iter().any(|range| {
+                    *r >= range.top && *r <= range.bottom && *c >= range.left && *c <= range.right
+                });
             if node
                 .attributes()
-                .any(|a| !matches!(a.name(), "r" | "s" | "t"))
+                .any(|a| !matches!(a.name(), "r" | "s" | "t") && !(dynamic && a.name() == "cm"))
                 || node
                     .children()
                     .any(|n| n.is_element() && !matches!(n.tag_name().name(), "v" | "f" | "is"))
-                || node
-                    .children()
-                    .filter(|n| n.has_tag_name("f"))
-                    .any(|n| n.attributes().len() > 0)
+                || node.children().filter(|n| n.has_tag_name("f")).any(|n| {
+                    n.attributes()
+                        .any(|a| !dynamic || !matches!(a.name(), "t" | "ref"))
+                })
                 || node
                     .children()
                     .filter(|n| n.has_tag_name("is"))

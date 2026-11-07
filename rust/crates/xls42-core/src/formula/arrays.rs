@@ -739,3 +739,7 @@ fn calculate(name: &str, x: Args<'_>, steps: &mut usize) -> Result<Value> {
         _ => Err("#NAME?"),
     }
 }
+
+pub(super) fn dynamic_formula(raw: &str) -> bool {
+    spill::dynamic_formula(raw)
+}

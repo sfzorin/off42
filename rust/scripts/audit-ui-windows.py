@@ -1468,8 +1468,68 @@ def audit_array_formulas(process,main,binary,output,results):
     assert anchors[3].attrib["{"+table+"}number-matrix-columns-spanned"]=="3"
     open_file(baseline);_,reopened,ns=save("reopened");baseline_values(reopened,ns)
     open_file(ods);_,ods_reopened,ns=save("ods-reopened");baseline_values(ods_reopened,ns)
+    def strip_private(path,name):
+        destination=output/name
+        with zipfile.ZipFile(path)as archive,zipfile.ZipFile(destination,"w",compression=zipfile.ZIP_DEFLATED)as target:
+            for item in archive.infolist():
+                if item.filename=="xls42/project.json":continue
+                data=archive.read(item.filename)
+                if item.filename in("[Content_Types].xml","META-INF/manifest.xml"):
+                    root=ET.fromstring(data)
+                    for child in list(root):
+                        if any(key.split("}")[-1]in("PartName","full-path")and value.lstrip("/")=="xls42/project.json"for key,value in child.attrib.items()):root.remove(child)
+                    data=ET.tostring(root,encoding="utf-8",xml_declaration=True)
+                target.writestr(item,data)
+        return destination
+    external_xlsx=strip_private(baseline,"arrays-external.xlsx");external_ods=strip_private(ods,"arrays-external.ods")
+    external_sources={path:path.read_bytes()for path in(external_xlsx,external_ods)}
+    open_file(external_xlsx);_,external_base,ns=save("external-baseline");baseline_values(external_base,ns)
+    fill_prompt(process,main,25,"Range (1-based)",["1","4","1","4"]);editor=u.GetDlgItem(main,101)
+    wait_for(lambda:text(editor)=="=SEQUENCE(2,3)","standard external array anchor formula",process)
+    replace_editor_text(editor,"=SEQUENCE(3,2)");resized_path,resized,ns=save("external-resized")
+    def resized_values(cells,ns):
+        for address,wanted in[("D1","1"),("E1","2"),("D2","3"),("E2","4"),("D3","5"),("E3","6")]:value(cells,ns,address,wanted)
+        assert all(address not in cells or cell_value(cells,ns,address)in(None,"")for address in("F1","F2"))
+        assert cells["D1"].find("s:f",ns).attrib["ref"]=="D1:E3"
+    resized_values(resized,ns)
+    command(main,4);_,external_undo,ns=save("external-undo");baseline_values(external_undo,ns)
+    command(main,5);_,external_redo,ns=save("external-redo");resized_values(external_redo,ns)
+    fill_prompt(process,main,25,"Range (1-based)",["2","4","2","4"]);wait_for(lambda:text(editor)=="","external spill child empty source",process)
+    replace_editor_text(editor,"stop");_,external_blocked,ns=save("external-blocked");value(external_blocked,ns,"D1","#SPILL!");value(external_blocked,ns,"D2","stop")
+    assert all(address not in external_blocked or cell_value(external_blocked,ns,address)in(None,"")for address in("E1","E2","D3","E3"))
+    command(main,4);_,external_unblock,ns=save("external-unblock");resized_values(external_unblock,ns)
+    open_file(resized_path);_,external_reopened,ns=save("external-reopened");resized_values(external_reopened,ns)
+    with zipfile.ZipFile(resized_path)as archive:assert"xls42/project.json"not in archive.namelist()
+    def save_external_ods(name):
+        path=output/("arrays-"+name+".ods");save_as(main);choose_file(process,path,format_name="OpenDocument spreadsheet");output_ready(process,main,path,b"PK")
+        with zipfile.ZipFile(path)as archive:
+            assert"xls42/project.json"not in archive.namelist();root=ET.fromstring(archive.read("content.xml"))
+        values={};ranges={};row=0
+        for node in root.findall(".//{"+table+"}table-row"):
+            count=int(node.attrib.get("{"+table+"}number-rows-repeated",1));col=0
+            for cell in node:
+                repeat=int(cell.attrib.get("{"+table+"}number-columns-repeated",1))
+                cached=next((cell.attrib["{"+office+"}"+key]for key in("value","string-value","boolean-value")if"{"+office+"}"+key in cell.attrib),"")
+                for r in range(row,row+count):
+                    for c in range(col,col+repeat):values[chr(65+c)+str(r+1)]=cached
+                if"{"+table+"}formula"in cell.attrib:ranges[chr(65+col)+str(row+1)]=(int(cell.attrib.get("{"+table+"}number-matrix-rows-spanned",1)),int(cell.attrib.get("{"+table+"}number-matrix-columns-spanned",1)))
+                col+=repeat
+            row+=count
+        return path,values,ranges
+    open_file(external_ods);_,od_base,od_ranges=save_external_ods("external-ods-baseline");assert od_base["C2"]=="2"and od_base["F2"]=="6"and od_ranges["D1"]==(2,3)
+    fill_prompt(process,main,25,"Range (1-based)",["1","4","1","4"]);wait_for(lambda:text(editor)=="=SEQUENCE(2,3)","external ODS array anchor",process);replace_editor_text(editor,"=SEQUENCE(3,2)")
+    ods_resized,od_resized,od_ranges=save_external_ods("external-ods-resized");assert od_ranges["D1"]==(3,2)
+    for address,wanted in[("D1","1"),("E1","2"),("D2","3"),("E2","4"),("D3","5"),("E3","6"),("F1",""),("F2","")]:assert od_resized.get(address,"")==wanted,(address,od_resized.get(address),wanted)
+    command(main,4);_,od_undo,od_ranges=save_external_ods("external-ods-undo");assert od_ranges["D1"]==(2,3)and od_undo["F2"]=="6"
+    command(main,5);_,od_redo,od_ranges=save_external_ods("external-ods-redo");assert od_ranges["D1"]==(3,2)and od_redo["E3"]=="6"
+    fill_prompt(process,main,25,"Range (1-based)",["2","4","2","4"]);wait_for(lambda:text(editor)=="","external ODS spill child empty source",process);replace_editor_text(editor,"stop")
+    _,od_blocked,_=save_external_ods("external-ods-blocked");assert od_blocked["D1"]=="#SPILL!"and od_blocked["D2"]=="stop"
+    assert all(not od_blocked.get(address)for address in("E1","E2","D3","E3"))
+    command(main,4);_,od_unblock,_=save_external_ods("external-ods-unblock");assert od_unblock["E3"]=="6"and text(editor)==""
+    open_file(ods_resized);_,od_reopened,od_ranges=save_external_ods("external-ods-reopened");assert od_reopened["E3"]=="6"and od_ranges["D1"]==(3,2)
+    assert all(path.read_bytes()==before for path,before in external_sources.items())
     assert source.read_bytes()==original
-    results["checks"].append("dynamic arrays render/spill with empty child inputs, independent XLSX typed values/array ranges/metadata and ODS matrix spans, conflict errors, complete one-step Undo/Redo, saved/reopened results and unchanged CSV source")
+    results["checks"].append("dynamic arrays render/spill with empty child inputs, independent XLSX typed values/array ranges/metadata and ODS matrix spans, conflict errors, complete one-step Undo/Redo, saved/reopened results, standard external XLSX/ODS without private snapshots, resize/cache cleanup/blocking with complete Undo/Redo/reopening and unchanged sources")
 
 
 def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False):

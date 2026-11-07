@@ -752,3 +752,15 @@ results; private payloads preserve formulas and source coordinates. Partial spil
 copied anchors keep calculated children empty. Export adapters write standard XLSX dynamic ranges/typed caches
 and ODS matrix spans independently of the optional native project payload. External array structure preservation
 remains a separate adapter responsibility; existing legacy-array edit guards are retained.
+
+
+External array adapters distinguish authoritative input from cached children using standard format metadata.
+Only pure, explicitly dynamic XLSX metadata records unlock caches; mixed records and legacy ranges remain guarded.
+ODS matrix anchors use supported dynamic functions. Import validates overlap and bounded total range work before
+clearing child inputs. Modern XLSX errors are sanitized in a disposable reader package and restored from original XML.
+
+External scalar and array exports share one calculation/clock per sheet. Surgical XML updates preserve styles,
+unknown attributes and objects, materialize only required ODS repeat runs, and clear old cache ranges without erasing
+explicit inputs. XLSX registration preserves existing metadata records. Core ODS preservation checks remain strict;
+a writer-injected default style is removed only where an unchanged source cell had no explicit style. Array metadata
+updates occur separately from the general opaque-content preservation pass.

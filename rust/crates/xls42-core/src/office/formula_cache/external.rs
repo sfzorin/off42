@@ -1,6 +1,6 @@
 //! Refresh ordinary scalar caches after an imported workbook changes, without rebuilding its document objects.
 use super::*;
-type Results = BTreeMap<String, BTreeMap<(usize, usize), formula::Value>>;
+type Results = BTreeMap<String, formula::Calculation>;
 const MAIN: &str = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const ODF_TABLE: &str = "urn:oasis:names:tc:opendocument:xmlns:table:1.0";
 const ODF_OFFICE: &str = "urn:oasis:names:tc:opendocument:xmlns:office:1.0";
@@ -20,7 +20,7 @@ pub(super) fn refresh(bytes: Vec<u8>, book: &Workbook, kind: &str) -> Result<Vec
             external_format: None,
             external_cache: BTreeMap::new(),
         };
-        results.insert(sheet.name.clone(), formula::formula_results_at(&eval, now));
+        results.insert(sheet.name.clone(), formula::calculation_at(&eval, now));
     }
     let mut archive = zip::ZipArchive::new(Cursor::new(bytes.as_slice()))
         .map_err(|_| Error::Invalid("Invalid Office cache package"))?;
@@ -85,7 +85,10 @@ pub(super) fn refresh(bytes: Vec<u8>, book: &Workbook, kind: &str) -> Result<Vec
                 .ok_or(Error::Invalid("Unknown worksheet target"))?;
             let source =
                 zip_text(&mut archive, path)?.ok_or(Error::Invalid("Missing worksheet"))?;
-            replacements.insert(path.clone(), xlsx(&source, values, true)?.into_bytes());
+            replacements.insert(
+                path.clone(),
+                xlsx(&source, &values.values, true)?.into_bytes(),
+            );
         }
     } else {
         let source =
@@ -140,7 +143,7 @@ pub(super) fn refresh(bytes: Vec<u8>, book: &Workbook, kind: &str) -> Result<Vec
     let mut check = zip::ZipArchive::new(Cursor::new(output.as_slice()))
         .map_err(|_| Error::Invalid("Invalid refreshed Office package"))?;
     digest(&mut check)?;
-    Ok(output)
+    dynamic_arrays::refresh(output, book, kind, &results)
 }
 fn supported(value: Option<&formula::Value>) -> Option<&formula::Value> {
     value.filter(|v| !matches!(v, formula::Value::Error("#ERROR!" | "#NAME?" | "#LIMIT!")))
@@ -258,7 +261,7 @@ fn ods(source: &str, results: &Results) -> Result<String, Error> {
                 let count = repeat(cell, "number-columns-repeated")?;
                 if cell.attribute((ODF_TABLE, "formula")).is_some() {
                     let value = if repeated == 1 && count == 1 {
-                        supported(values.get(&(row, col)))
+                        supported(values.values.get(&(row, col)))
                     } else {
                         None
                     };
@@ -536,11 +539,14 @@ mod tests {
         );
         let results = BTreeMap::from([(
             "Sheet1".into(),
-            BTreeMap::from([
-                ((0, 0), formula::Value::Number(2.0)),
-                ((0, 2), formula::Value::Error("#ERROR!")),
-                ((0, 3), formula::Value::Number(4.0)),
-            ]),
+            formula::Calculation {
+                values: BTreeMap::from([
+                    ((0, 0), formula::Value::Number(2.0)),
+                    ((0, 2), formula::Value::Error("#ERROR!")),
+                    ((0, 3), formula::Value::Number(4.0)),
+                ]),
+                spills: BTreeMap::new(),
+            },
         )]);
         let output = ods(&source, &results).unwrap();
         let doc = xml(&output).unwrap();

@@ -368,3 +368,21 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   It stopped at a new harness assertion reading a shared-string index as literal XML text. Independent extraction
   resolves C2 to the exact expected `blocked` text. The audit now resolves the XLSX shared-string table and retains
   that exact expected value; full native Undo/Redo/reopen verification is pending a repeat. Grid capture was inspected.
+
+
+- Run [42423267384](https://github.com/sfzorin/off42/actions/runs/42423267384) on 3e1f271 passes **322 targeted
+  MSVC tests and all 30 native groups**. It covers text/regression array values and ranges, complete blocking Undo/Redo,
+  ODS matrix spans and saved/reopened results. The shared-string audit correction now passes; grid capture was inspected.
+- External standard arrays now import without private snapshots and save updated values/ranges after resizing,
+  blocking and removal. Typed child caches, modern Excel errors, source styles and original pure metadata record
+  indices are preserved. New XLSX arrays register metadata when no part exists. Mixed/unknown metadata registration,
+  legacy CSE semantics, repeated matrix anchors and structural shifts remain guarded/open.
+- Independent saved-cache inspection and actual macOS XLS42 recalculation pass **92/92 per format** on external
+  XLSX/ODS packages after input edits and array resizing, with no private snapshot and a retained foreign binary part.
+  Evidence: `build/windows-parity/external-arrays-office/recalculated/results.json`.
+- ODS testing exposed injected default styles on new cached numeric cells. Export now restores the source's lack of
+  explicit style before running the unchanged strict preservation check. Repeats, metadata, full history/reopen,
+  new registration, literal strings, overlap and total import-work bounds have portable regressions.
+- Portable workspace: **450 passed**, zero failures, one OCR fixture ignored; GNU all targets compile. Native
+  external-array edit/resize/cache-cleanup/block/history/reopen assertions await the next full optimized run.
+  General numeric display precision and locale formatting also remain different from macOS. No public changes.

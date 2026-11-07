@@ -10,7 +10,7 @@ pub(super) fn refresh_external(
 }
 // Spreadsheet string escapes differ from ordinary XML text. Preserve literal
 // _xHHHH_ sequences and encode characters forbidden by XML 1.0.
-fn cached_text_xml(value: &str) -> String {
+pub(super) fn cached_text_xml(value: &str) -> String {
     let mut output = String::new();
     for (index, character) in value.char_indices() {
         let rest = &value.as_bytes()[index..];

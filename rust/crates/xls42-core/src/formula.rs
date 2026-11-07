@@ -2426,13 +2426,6 @@ pub(super) fn calculation_at(book: &Workbook, now: chrono::NaiveDateTime) -> Cal
         .collect();
     Calculation { values, spills }
 }
-/// Typed formula results share one evaluation cache and clock per sheet export.
-pub(super) fn formula_results_at(
-    book: &Workbook,
-    now: chrono::NaiveDateTime,
-) -> std::collections::BTreeMap<(usize, usize), Value> {
-    calculation_at(book, now).values
-}
 
 pub(crate) fn display_grid(book: &Workbook) -> Vec<Vec<String>> {
     display_grid_at(book, chrono::Local::now().naive_local())
@@ -2625,4 +2618,8 @@ fn concat_scalar(a: Value, b: Value) -> Value {
             }
         }
     }
+}
+
+pub(super) fn is_dynamic_formula(raw: &str) -> bool {
+    arrays::dynamic_formula(raw)
 }
