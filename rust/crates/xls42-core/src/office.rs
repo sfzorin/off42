@@ -7,6 +7,7 @@ const EXTRA: &str = "xls42/project.json";
 const LIMIT: usize = 64 * 1024 * 1024;
 mod pictures;
 mod formula_cache;
+mod filters;
 fn date_time(raw: &str) -> Result<chrono::NaiveDateTime, Error> {
     chrono::NaiveDateTime::parse_from_str(raw, "%Y-%m-%dT%H:%M:%S%.f")
         .ok()
@@ -753,21 +754,18 @@ fn add_ods_database_ranges(bytes: &[u8], state: &State) -> Result<Vec<u8>, Error
         .map(|n| prefix(&content[n.range()]))
         .unwrap_or("table:");
     let mut items = String::new();
+    let mut names:std::collections::BTreeSet<_>=state.sheets.iter().flat_map(|s|s.tables.iter().map(|t|t.name.to_lowercase())).collect();
     for sheet in &state.sheets {
+        let mut included=false;
         for table in &sheet.tables {
-            let sheet_name = sheet.name.replace('\'', "''");
-            let r = table.range;
-            let target = format!(
-                "'{}'.$${}${}:'{}'.$${}${}",
-                sheet_name,
-                col_name(r.left),
-                r.top + 1,
-                sheet_name,
-                col_name(r.right),
-                r.bottom + 1
-            )
-            .replace("$$", "$");
-            items.push_str(&format!("<{prefix}database-range {prefix}name=\"{}\" {prefix}target-range-address=\"{}\" {prefix}contains-header=\"true\" {prefix}display-filter-buttons=\"true\"/>", escape_xml(&table.name), escape_xml(&target)));
+            let filter=sheet.filter.as_ref().filter(|f|f.range==table.range);
+            included|=filter.is_some();
+            items.push_str(&filters::database_range(prefix,&table.name,&sheet.name,table.range,filter));
+        }
+        if let Some(filter)=sheet.filter.as_ref().filter(|_|!included) {
+            let mut name=format!("off42Filter{}",sheet.id);
+            while !names.insert(name.to_lowercase()){name.push('_');}
+            items.push_str(&filters::database_range(prefix,&name,&sheet.name,filter.range,Some(filter)));
         }
     }
     let insert = spreadsheet
@@ -776,11 +774,10 @@ fn add_ods_database_ranges(bytes: &[u8], state: &State) -> Result<Vec<u8>, Error
         .map(|n| n.range().end)
         .max()
         .ok_or(Error::Invalid("Missing ODS sheets"))?;
+    let existing=spreadsheet.children().find(|n|n.has_tag_name("database-ranges")).map(|n|n.range());
     let mut content = content.clone();
-    content.insert_str(
-        insert,
-        &format!("<{prefix}database-ranges>{items}</{prefix}database-ranges>"),
-    );
+    let replacement=format!("<{prefix}database-ranges>{items}</{prefix}database-ranges>");
+    if let Some(range)=existing{content.replace_range(range,&replacement);}else{content.insert_str(insert,&replacement);}
     let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
     for index in 0..archive.len() {
         let file = archive
@@ -1199,10 +1196,10 @@ impl Workbook {
         if state
             .sheets
             .iter()
-            .any(|s| s.filter.is_some() || s.print != PrintSettings::default())
+            .any(|s| s.print != PrintSettings::default())
         {
             return Err(Error::Invalid(
-                "ODS export of filter or print settings is not yet supported",
+                "ODS export of print settings is not yet supported",
             ));
         }
         if state
@@ -1311,6 +1308,11 @@ impl Workbook {
                 external_cache: BTreeMap::new(),
             };
             let results = formula::formula_results_at(&eval, recalc_time);
+            if let Some(filter)=&sh.filter {
+                for row in formula::filter_hidden_rows_at(&eval,recalc_time,filter) {
+                    if !sh.view.hidden_rows.contains(&row){sheet.set_row_visible(row as u32,spreadsheet_ods::sheet::Visibility::Filtered);}
+                }
+            }
             for (&(r, c), cell) in &sh.cells {
                 let (r, c) = (r as u32, c as u32);
                 match &cell.text {
@@ -1361,6 +1363,7 @@ impl Workbook {
         }
         let bytes = spreadsheet_ods::write_ods_buf(&mut book, Vec::new())
             .map_err(|_| Error::Invalid("cannot encode ODS"))?;
+        let bytes=if state.sheets.iter().any(|s|s.filter.is_some()){add_ods_database_ranges(&bytes,state)?}else{bytes};
         embed(bytes, "ods", self.project_bytes()?)
     }
 }
@@ -1557,6 +1560,7 @@ impl Workbook {
             import_xlsx_layout(bytes, &mut state)?;
         }
         pictures::import(bytes, kind, &mut state)?;
+        if kind=="xlsx"{filters::separate_xlsx_hidden(&mut state,&cache);}
         Ok(Self {
             history: SnapshotHistory::new(state.clone(), 8),
             snapshots: BTreeMap::new(),
@@ -1595,6 +1599,7 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
             sheet.protected = protected;
         }
     }
+    filters::import_ods(&document,state)?;
     if book.num_sheets() != state.sheets.len() {
         return Err(Error::Invalid("inconsistent ODS sheets"));
     }
@@ -1622,7 +1627,8 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
             }
         }
         for row in 0..sheet.rows {
-            if source.row_visible(row as u32) != spreadsheet_ods::sheet::Visibility::Visible {
+            if source.row_visible(row as u32) == spreadsheet_ods::sheet::Visibility::Collapsed
+                || source.row_visible(row as u32)==spreadsheet_ods::sheet::Visibility::Filtered && sheet.filter.is_none() {
                 sheet.view.hidden_rows.insert(row);
             }
         }
@@ -2163,6 +2169,7 @@ fn import_xlsx_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
             continue;
         };
         let d = xml(&text)?;
+        filters::import_xlsx(&d,sheet)?;
         if let Some(pane) = d.descendants().find(|n| {
             n.has_tag_name("pane") && matches!(n.attribute("state"), Some("frozen" | "frozenSplit"))
         }) {
@@ -3030,11 +3037,12 @@ fn patch_ods(
     use spreadsheet_ods::Value;
     let mut book = spreadsheet_ods::read_ods_buf(bytes)
         .map_err(|_| Error::Invalid("cannot read original ODS"))?;
+    let filtered=filters::hidden_rows(current);
     let view_changed = old
         .sheets
         .iter()
         .zip(&current.sheets)
-        .any(|(before, after)| before.view != after.view);
+        .any(|(before, after)| before.view != after.view) || !filtered.is_empty();
     for (i, (before, after)) in old.sheets.iter().zip(&current.sheets).enumerate() {
         for row in before
             .view
@@ -3207,6 +3215,16 @@ fn patch_ods(
             }
         }
     }
+    for (i,sheet) in current.sheets.iter().enumerate() {
+        if let Some(filter)=&sheet.filter {
+            for row in filter.range.top+1..=filter.range.bottom {
+                let visibility=if sheet.view.hidden_rows.contains(&row){spreadsheet_ods::sheet::Visibility::Collapsed}
+                    else if filtered.get(&sheet.id).is_some_and(|rows|rows.contains(&row)){spreadsheet_ods::sheet::Visibility::Filtered}
+                    else{spreadsheet_ods::sheet::Visibility::Visible};
+                book.sheet_mut(i).set_row_visible(row as u32,visibility);
+            }
+        }
+    }
     let generated = spreadsheet_ods::write_ods_buf(&mut book, Vec::new())
         .map_err(|_| Error::Invalid("cannot write ODS without loss"))?;
     verify_ods_untouched_styles(bytes, &generated, changes, old, current)?;
@@ -3229,6 +3247,13 @@ fn patch_ods(
             .map_err(|_| Error::Invalid("Invalid ODS source"))?;
         for (i, sheet) in current.sheets.iter().enumerate() {
             for row in 0..sheet.rows {
+                if sheet.filter.as_ref().is_some_and(|f|row>f.range.top && row<=f.range.bottom) {
+                    let expected=if sheet.view.hidden_rows.contains(&row){spreadsheet_ods::sheet::Visibility::Collapsed}
+                        else if filtered.get(&sheet.id).is_some_and(|rows|rows.contains(&row)){spreadsheet_ods::sheet::Visibility::Filtered}
+                        else{spreadsheet_ods::sheet::Visibility::Visible};
+                    if parsed.sheet(i).row_visible(row as u32)!=expected {return Err(Error::Invalid("ODS filtered row visibility could not be preserved"));}
+                    continue;
+                }
                 let hidden = parsed.sheet(i).row_visible(row as u32)
                     != spreadsheet_ods::sheet::Visibility::Visible;
                 if old.sheets[i].view.hidden_rows.contains(&row)
@@ -4697,6 +4722,7 @@ fn patch_xlsx(
             "Save and reopen before reusing a renamed source sheet name",
         ));
     }
+    let filtered=filters::hidden_rows(current);
     let mut archive =
         zip::ZipArchive::new(Cursor::new(bytes)).map_err(|_| Error::Invalid("invalid XLSX"))?;
     let workbook = zip_text(&mut archive, "xl/workbook.xml")?
@@ -4845,6 +4871,7 @@ fn patch_xlsx(
             &mut style_doc,
             &mut style_cache,
         )?;
+        let patched=if let Some(rows)=filtered.get(&current_sheet.id){filters::patch_xlsx_visibility(&patched,current_sheet,rows)?}else{patched};
         replacements.insert(path.to_owned(), patched);
     }
     let table_headers_changed = old.sheets.iter().any(|source| {

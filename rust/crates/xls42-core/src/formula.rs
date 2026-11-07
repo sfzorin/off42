@@ -1,5 +1,7 @@
 //! Small, bounded spreadsheet expression evaluator. Raw cells remain authoritative.
 mod calendar;
+mod references;
+mod summaries;
 mod distributions;
 mod engineering;
 mod finance;
@@ -496,6 +498,15 @@ impl Parser<'_, '_> {
         value
     }
     fn function(&mut self, name: &str) -> Value {
+        if matches!(name, "SUBTOTAL" | "AGGREGATE") {
+            return self.summary(name);
+        }
+        if references::handles(name) {
+            return self.reference_value(name);
+        }
+        if matches!(name, "XMATCH" | "HLOOKUP") {
+            return self.extended_lookup(name);
+        }
         if self.depth > MAX_DEPTH {
             return Value::Error("#LIMIT!");
         }
@@ -536,7 +547,7 @@ impl Parser<'_, '_> {
         if matches!(name, "ISBLANK" | "ISNUMBER" | "ISTEXT" | "ISERROR" | "ISNA") {
             return self.type_predicate(name);
         }
-        if matches!(name, "COUNTIF" | "SUMIF" | "INDEX" | "MATCH" | "VLOOKUP") {
+        if matches!(name, "COUNTIF" | "SUMIF" | "MATCH" | "VLOOKUP") {
             return self.range_function(name);
         }
         if matches!(
@@ -863,6 +874,14 @@ impl Parser<'_, '_> {
     }
     fn read_range(&mut self) -> Option<(SheetId, usize, usize, usize, usize)> {
         let start = self.pos;
+        if let Some(result) = self.computed_range() {
+            if let Ok(range) = result {
+                return Some(range);
+            }
+            self.pos = start;
+            return None;
+        }
+        self.pos = start;
         if let Some(range) = self.read_table_range() {
             return Some(range);
         }
@@ -1363,39 +1382,6 @@ impl Parser<'_, '_> {
                 }
             }
             return finite(total);
-        }
-        if name == "INDEX" {
-            let Some(range) = self.read_range() else {
-                return Value::Error("#REF!");
-            };
-            if !self.take(b',') {
-                return Value::Error("#ERROR!");
-            }
-            let row = self.comparison();
-            let col = if self.take(b',') {
-                self.comparison()
-            } else {
-                Value::Number(1.0)
-            };
-            if !self.take(b')') {
-                return Value::Error("#ERROR!");
-            }
-            let (Value::Number(r), Value::Number(c)) = (row, col) else {
-                return Value::Error("#VALUE!");
-            };
-            if r < 1.0
-                || c < 1.0
-                || r.trunc() > (range.3 - range.1 + 1) as f64
-                || c.trunc() > (range.4 - range.2 + 1) as f64
-            {
-                return Value::Error("#REF!");
-            }
-            let rr = range.1 + r.trunc() as usize - 1;
-            let cc = range.2 + c.trunc() as usize - 1;
-            if rr > range.3 || cc > range.4 {
-                return Value::Error("#REF!");
-            }
-            return self.eval.cell(range.0, rr, cc, self.depth + 1);
         }
         let needle = self.comparison();
         if let Value::Error(_) = needle {
@@ -2346,4 +2332,31 @@ mod common_formula_regression {
             assert_eq!(book.display_grid()[row][0], expected, "{formula}");
         }
     }
+}
+
+/// Filter exclusions use one bounded evaluator and clock, rather than materializing a full display grid.
+pub(super) fn filter_hidden_rows_at(
+    book: &Workbook,
+    now: chrono::NaiveDateTime,
+    filter: &crate::SheetFilter,
+) -> std::collections::BTreeSet<usize> {
+    let mut eval = Eval {
+        book,
+        cache: HashMap::new(),
+        visiting: HashSet::new(),
+        steps: 0,
+        text_bytes: 0,
+        argument_text_bytes: 0,
+        now,
+    };
+    let needle = filter.contains.to_lowercase();
+    (filter.range.top + 1..=filter.range.bottom)
+        .filter(|r| {
+            !eval
+                .cell(book.active_sheet(), *r, filter.column, 0)
+                .display()
+                .to_lowercase()
+                .contains(&needle)
+        })
+        .collect()
 }

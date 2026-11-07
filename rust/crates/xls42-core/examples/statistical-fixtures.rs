@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .ok_or("output directory required")?,
     );
     fs::create_dir_all(&output)?;
-    let mut book = Workbook::new(80, 8)?;
+    let mut book = Workbook::new(120, 8)?;
     for (i, v) in ["1", "2", "text", "TRUE", ""].into_iter().enumerate() {
         book.set_cell(i, 0, v.into())?;
         book.set_cell(i, 1, (2 * (i + 1)).to_string())?;
@@ -28,6 +28,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         book.set_cell(i, 3, value.into())?;
     }
+    for (r, (tag, n)) in [
+        ("Tag", 0),
+        ("keep", 1),
+        ("keep", 2),
+        ("skip", 3),
+        ("keep", 4),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        book.set_cell(r, 5, tag.into())?;
+        book.set_cell(r, 6, n.to_string())?;
+    }
+    let mut view = book.sheet_view().clone();
+    view.hidden_rows.insert(2);
+    book.set_sheet_view(view)?;
+    book.set_filter(Some(xls42_core::SheetFilter {
+        range: xls42_core::Range {
+            top: 0,
+            left: 5,
+            bottom: 4,
+            right: 6,
+        },
+        column: 5,
+        contains: "keep".into(),
+    }))?;
     let formulas = [
         "=STDEV.S(A1:A5)",
         "=AVERAGEA(A1:A5)",
@@ -94,6 +120,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "=SHEETS()",
         "=AND(RAND()>=0,RAND()<1)",
         "=AND(RANDBETWEEN(1,6)>=1,RANDBETWEEN(1,6)<=6)",
+        "=OFFSET(A1,1,0)",
+        "=SUM(OFFSET(A1,0,0,2,1))",
+        "=SUM(INDEX(A1:B5,0,2))",
+        "=SUM(INDEX(A1:B5,2,0))",
+        "=INDIRECT(\"A\"&2)",
+        "=SUM(INDIRECT(\"A1:A2\"))",
+        "=INDIRECT(\"R2C1\",FALSE)",
+        "=INDIRECT(\"R1C[-2]\",FALSE)",
+        "=ISREF(OFFSET(A1,1,1))",
+        "=CELL(\"address\",OFFSET(A1,1,1))",
+        "=XMATCH(6,B1:B5)",
+        "=XMATCH(5,B1:B5,1)",
+        "=XMATCH(5,B1:B5,-1)",
+        "=HLOOKUP(2,A1:B2,2,FALSE)",
+        "=SUBTOTAL(9,G2:G5)",
+        "=SUBTOTAL(109,G2:G5)",
+        "=SUBTOTAL(1,G2:G5)",
+        "=AGGREGATE(9,1,G2:G5)",
+        "=AGGREGATE(14,1,G2:G5,2)",
+        "=SUM(OFFSET(G2,0,0,4,1))",
     ];
     for (i, formula) in formulas.iter().enumerate() {
         book.set_cell(i, 2, formula.to_string())?;

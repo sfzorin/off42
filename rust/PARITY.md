@@ -290,3 +290,20 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   settings forms arrange fields in columns when a single column exceeds the monitor work area.
   Portable workspace: **421 passed**, zero failures, one OCR fixture ignored; GNU all targets compile. New native
   batch controls/report/saved-text/labels/bookmarks/history assertions await the next run. Full parity remains open.
+
+- Native run [42416530246](https://github.com/sfzorin/off42/actions/runs/42416530246) on 714dc02 passes
+  **301 targeted MSVC tests and all 30 native groups**. It verifies current-document-to-batch Bates continuation,
+  natural file ordering, damaged-file outcomes without consuming a number, independently read PDFium body/token
+  text and labels/bookmarks, current PDF Undo/Redo and source preservation. The monitor-aware settings form and
+  outcome report were visually inspected. The original XLS values/history scenario also passes again.
+- Computed references add OFFSET, A1/R1C1 INDIRECT and row/column INDEX selection, with bounded recursion and
+  source identity for CELL/ISREF/ROWS. XMATCH/HLOOKUP and filter-aware SUBTOTAL/AGGREGATE raise agreement to
+  **416/492 fixed macOS examples**, leaving 76 gaps and two locale skips. Arrays remain a separate open block.
+- Single-column contains filters now use standard ODS database ranges and are read from standard XLSX/ODS
+  metadata. External input edits update filtered row visibility while retaining manual hidden rows and unrelated
+  structures. No-private-payload regressions verify formulas, filter state, exact row flags, history and reopening.
+  General filter expressions, external filter reconfiguration and external formula-cache refresh remain open.
+- Independent LibreOffice agrees on all 20 new reference/summary cases in each format. The expanded suite has
+  **84/85 XLSX-origin and 83/85 ODS-origin** matches, retaining the prior explicit ERF precision/error-classification
+  differences. Portable workspace: **427 passed**, zero failures, one OCR fixture ignored; GNU all targets compile.
+  Native reference/filter/ODS/history assertions are added and await the next compatible build. Public state unchanged.

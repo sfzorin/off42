@@ -39,7 +39,7 @@ Windows runtime behavior. The Windows CI workflow also builds with MSVC.
 | App | Current implementation | Important limits |
 | --- | --- | --- |
 | DOC42 | Rich text, lists, images and tables with merge/split, sizing and formatting; comments, notes, links, range bookmarks and linked TOC; DOCX, RTF, ODT, HTML and Markdown subsets; ruler, preview and print | Office adapters are bounded; individual table-edge styles and revisions are incomplete. TOC requires explicit refresh, which invalidates cached page numbers; unsupported annotation or TOC exports refuse fidelity loss. The editing canvas is not fully paginated. Markdown image sidecar saves are not OS-atomic. |
-| XLS42 | Native grid with sizing, frozen/hidden rows and columns, merged cells, selection, typed clipboard and inline editing; sheets, formulas, tables, styles, validation, charts, filters and paginated print; XLSX and ODS adapters | Pivot summaries are materialized, not interactive Excel pivots. Dynamic arrays, complex imported tables and structured references are incomplete; complex ODS changes and active filter/print export are guarded. |
+| XLS42 | Native grid with sizing, frozen/hidden rows and columns, merged cells, selection, typed clipboard and inline editing; sheets, formulas, tables, styles, validation, charts, filters and paginated print; XLSX and ODS adapters | Pivot summaries are materialized, not interactive Excel pivots. Dynamic arrays, complex imported tables and structured references are incomplete; complex ODS changes, external filter reconfiguration and ODS print export are guarded. |
 | PPT42 | Mixed-run in-place text editing, 187 preset shapes with adjustment handles, native objects, multi-selection, grouping and rotation, slides, timed cut/fade/push-left slideshow transitions and printing; PPTX/ODP adapters | Complex source text and existing source-group structural edits are guarded. Complex source transforms and rotated source groups may be preserved without rendering. ODP transition duration is limited to 250/500/1000 ms. Object animation, full master/theme semantics, charts and media playback are incomplete. |
 | PDF42 | WinRT rendering; PDFium search, selection and supported top-level text-object edits; annotations, forms, nested bookmarks, attachments, password-prompted PDF open and AES-128 copy, compression, printing, image export and raster redaction | Complex text, forms and navigation remain guarded. Protected files use conservative permissions; new AES-128 passwords require 1–32 printable ASCII characters, and original permissions and encryption are not preserved. Encrypted interoperability is unverified. Redaction removes metadata, attachments, forms and navigation. Trusted digital signatures and PDF/A conformance are not supported. |
 | IMG42 | Transforms, tone, text, masks and lasso; directory navigation, GIF/WebP frames, multipage TIFF, PDF and bounded SVG import; standard EXIF fields, DPI/ICC, folder batch export and printing | Proprietary MakerNote, TIFF EXIF subdirectories, palette/CMYK and floating-point TIFF remain limited. TIFF and PNG support 16-bit edits; other 16-bit sources may require conversion. Some PNG metadata requires a converted copy; profile conversion is not color-managed. Batch PNG/JPEG exports the first frame; TIFF exports all frames, with explicit 8-bit white flattening. |
@@ -419,3 +419,18 @@ corrupt inputs and no-clobber publication. Independent Poppler rendering produce
 before and after a three-page merge. Workspace: 418 tests pass, zero fail, one OCR fixture ignored; GNU Windows
 all-targets compilation passes. Native multi-file picker/cancellation, separate result window, preserved dirty
 parent/history and PDFium text/labels/bookmarks checks await a compatible build.
+
+## Computed references and filtered summaries
+
+OFFSET, INDIRECT (A1 and absolute/relative R1C1) and reference-form INDEX keep their source rectangle for
+SUM/statistical functions and reference metadata. INDEX with zero row/column selects the corresponding column/row.
+XMATCH supports exact, nearest and wildcard matches with forward/reverse search; HLOOKUP searches rows.
+External workbook references are refused; array-valued INDEX and dynamic-array expressions remain incomplete.
+
+SUBTOTAL and AGGREGATE exclude filtered rows, optionally exclude manually hidden rows, and handle nested totals
+and error-skipping options. The native contains-text filter is written as a standard ODS database range as well
+as an XLSX autofilter. Simple single-column contains filters are imported without relying on the private project
+payload. Input edits recalculate filtered visibility before external XLSX/ODS output; unrelated package data
+remains guarded by the preservation checks. General filter expressions and external filter reconfiguration remain
+parity work. XLSX cannot distinguish a manually hidden row that also fails the filter from a row hidden by the
+filter alone; the private native snapshot retains that distinction.

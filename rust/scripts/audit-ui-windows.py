@@ -1298,6 +1298,7 @@ def audit_statistical_formulas(process,main,output,binary,results):
     formulas=["=STDEV.S(A1:A5)","=AVERAGEA(A1:A5)","=COUNTBLANK(A1:A5)","=CORREL(A1:A5,B1:B5)","=NORM.DIST(A1,0,1,TRUE)","=BETA.INV(0.5,2,2)","=T.DIST.2T(A1,10)","=VAR.S(A1:A5)","=NORM.S.INV(1e-100)","=T.DIST.RT(20,100)","=CHISQ.INV.RT(1e-20,2)","=ERF(8,9)","=F.INV.RT(1e-20,5,8)","=PERCENTILE.EXC(A1:A2,0.5)","=PERCENTILE.EXC(A1:A2,0)"]
     formulas += ["=PV(.1/12,12,-100*A1)","=RATE(12,-100*A1,1000)","=CUMIPMT(.1/12,36,1000*A1,1,12,0)","=IRR(D3:D5)","=XIRR(D3:D5,D6:D8)","=XNPV(0,D3:D5,D6:D8)","=WORKDAY(DATE(2024,12,20),A1,D1:D2)","=NETWORKDAYS(DATE(2024,12,20),DATE(2024,12,31),D1:D2)","=EDATE(DATE(2024,1,31),A1)"]
     formulas += ['=IFNA(NA(),"fallback")','=IFS(A1>2,"large",TRUE,"small")','=SWITCH(A1,1,"one",4,"four","other")','=CHOOSE(2,"first","second")','=MAXIFS(B1:B5,A1:A5,">0")','=MINIFS(B1:B5,A1:A5,">0")','=ERROR.TYPE(1/0)','=TYPE(A4)','=ISFORMULA(C1)','=CELL("address",B3)','=CELL("contents",A1)','=ADDRESS(2,3)','=AND(RAND()>=0,RAND()<1)','=AND(RANDBETWEEN(1,6)>=1,RANDBETWEEN(1,6)<=6)','=OR(TRUE,1/0)','=TYPE(NA())']
+    formulas += ['=SUM(OFFSET(A1,0,0,2,1))','=SUM(INDEX(A1:B5,0,2))','=INDIRECT("A"&1)','=SUM(INDIRECT("A1:A2"))','=INDIRECT("R2C1",FALSE)','=XMATCH(6,B1:B5)','=XMATCH(5,B1:B5,1)','=XMATCH(5,B1:B5,-1)','=HLOOKUP(2,A1:B2,2,FALSE)','=SUBTOTAL(9,A1:A5)','=AGGREGATE(9,6,A1:A5)','=ISREF(OFFSET(A1,1,1))','=CELL("address",OFFSET(A1,1,1))','=FORMULATEXT(INDEX(C1:C2,1))','=SUM(INDEX(A1:B5,2,0))','=OFFSET(A1,1,1)']
     dates=["2024-12-25","2025-01-01","-100","0","121","2021-01-01","2022-01-01","2023-01-01"]
     a=["1","2","text","TRUE",""];b=["2","4","6","8","10"]
     with source.open("w",encoding="utf-8",newline="")as file:
@@ -1346,12 +1347,19 @@ def audit_statistical_formulas(process,main,output,binary,results):
         for address in ["C33","C37","C38"]:assert cells[address][1:]==("1","b"),(address,cells[address])
         assert cells["C39"][1:]==("#DIV/0!","e")
     information(cells)
+    def references(cells,changed=False,filtered=False):
+        for address,expected in [("C41",6 if changed else 3),("C42",30),("C43",4 if changed else 1),("C44",6 if changed else 3),("C45",2),("C46",3),("C47",3),("C48",2),("C49",4),("C50",1 if filtered else 6 if changed else 3),("C51",1 if filtered else 6 if changed else 3),("C55",6),("C56",4)]:value(cells,address,expected)
+        assert cells["C52"][1:]==("1","b"),cells["C52"]
+        assert cells["C53"][1:]==("$B$2","str"),cells["C53"]
+        assert cells["C54"][1:]==("=STDEV.S(A1:A5)","str"),cells["C54"]
+    references(cells)
     fill_prompt(process,main,25,"Range (1-based)",["1","1","1","1"])
     edit=u.GetDlgItem(main,101);replace_editor_text(edit,"4")
     _,changed=save("changed")
     value(changed,"C1",math.sqrt(2));value(changed,"C2",1.75);value(changed,"C4",-1.0);value(changed,"C5",.9999683287581669);value(changed,"C8",2.0);value(changed,"C14",3.0)
     finance(changed,4,4000)
     information(changed,True)
+    references(changed,True)
     value(changed,"C22",45653.0);value(changed,"C24",45443.0)
     command(main,4);_,undone=save("undo")
     assert all(undone["C"+str(i+1)]==cells["C"+str(i+1)]for i in range(len(formulas)))
@@ -1359,8 +1367,19 @@ def audit_statistical_formulas(process,main,output,binary,results):
     assert all(redone["C"+str(i+1)]==changed["C"+str(i+1)]for i in range(len(formulas)))
     replace_editor_text(edit,"9");open_file(baseline);_,reopened=save("reopened")
     assert all(reopened["C"+str(i+1)]==cells["C"+str(i+1)]for i in range(len(formulas)))
+    fill_prompt(process,main,25,"Range (1-based)",["1","1","5","2"])
+    fill_prompt(process,main,63,"Filter selection (first row is header)",["1","1"])
+    _,filtered=save("filtered");references(filtered,filtered=True)
+    command(main,4);_,filter_undo=save("filter-undo");references(filter_undo)
+    command(main,5);_,filter_redo=save("filter-redo");references(filter_redo,filtered=True)
+    ods=output/"statistics-filtered.ods";save_as(main);choose_file(process,ods,format_name="OpenDocument spreadsheet");output_ready(process,main,ods,b"PK")
+    with zipfile.ZipFile(ods)as archive:root=ET.fromstring(archive.read("content.xml"))
+    ods_ns={"t":"urn:oasis:names:tc:opendocument:xmlns:table:1.0"}
+    condition=root.find(".//t:filter-condition",ods_ns);assert condition is not None
+    assert condition.attrib["{"+ods_ns["t"]+"}operator"]=="contains"and condition.attrib["{"+ods_ns["t"]+"}value"]=="1"
+    open_file(baseline);open_file(ods);_,ods_reopened=save("ods-reopened");references(ods_reopened,filtered=True)
     assert source.read_bytes()==original
-    results["checks"].append("date entry and calendar/annuity/cash-flow calculations, statistical range/reference typing, distributions and 1e-100 literals, small-tail quantiles against an independent oracle, typed XLSX caches, input recalculation, complete Undo/Redo and dirty/discard/reopen")
+    results["checks"].append("date entry and calendar/annuity/cash-flow calculations, statistical range/reference typing, distributions and 1e-100 literals, small-tail quantiles against an independent oracle, typed XLSX caches, computed references/lookup and filter-aware summaries, native filter/history and standard ODS output/reopen, input recalculation, complete Undo/Redo and dirty/discard/reopen")
 
 
 def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False):
