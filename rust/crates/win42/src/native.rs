@@ -135,6 +135,23 @@ unsafe fn pick_folder(hwnd: HWND, title: &str) -> Option<String> {
     CoUninitialize();
     result
 }
+unsafe fn pick_multiple_files(hwnd:HWND,action:crate::FileAction)->Result<Option<Vec<PathBuf>>,String>{
+    use windows::{core::PCWSTR,Win32::{Foundation::HWND as WinHwnd,System::Com::{CoCreateInstance,CLSCTX_INPROC_SERVER},UI::Shell::{Common::COMDLG_FILTERSPEC,FileOpenDialog,IFileOpenDialog,FOS_ALLOWMULTISELECT,FOS_FORCEFILESYSTEM,FOS_PATHMUSTEXIST,FOS_FILEMUSTEXIST,FOS_NOCHANGEDIR,FOS_DONTADDTORECENT,SIGDN_FILESYSPATH}}};
+    if CoInitializeEx(null(),COINIT_APARTMENTTHREADED as u32)<0{return Err("Could not initialize the Windows file picker".into());}
+    let result=(||->Result<Option<Vec<PathBuf>>,String>{
+        let result=(||->windows::core::Result<Option<Vec<PathBuf>>>{
+            let picker:IFileOpenDialog=CoCreateInstance(&FileOpenDialog,None,CLSCTX_INPROC_SERVER)?;
+            picker.SetOptions(picker.GetOptions()?|FOS_ALLOWMULTISELECT|FOS_FORCEFILESYSTEM|FOS_PATHMUSTEXIST|FOS_FILEMUSTEXIST|FOS_NOCHANGEDIR|FOS_DONTADDTORECENT)?;
+            let(title,format,pattern)=(wide(&crate::localization::text(action.title)),wide(&crate::localization::text(action.format)),wide(action.pattern));
+            picker.SetTitle(PCWSTR(title.as_ptr()))?;picker.SetFileTypes(&[COMDLG_FILTERSPEC{pszName:PCWSTR(format.as_ptr()),pszSpec:PCWSTR(pattern.as_ptr())}])?;
+            match picker.Show(Some(WinHwnd(hwnd))){Err(e)if e.code().0 as u32==0x800704c7=>return Ok(None),result=>result?,}
+            let items=picker.GetResults()?;let mut paths=Vec::new();let count=items.GetCount()?;
+            if count>128{return Err(windows::core::Error::new(windows::core::HRESULT(0x80070057u32 as i32),"Choose at most 128 files"));}
+            for index in 0..count{let path=items.GetItemAt(index)?.GetDisplayName(SIGDN_FILESYSPATH)?;paths.push(PathBuf::from(OsString::from_wide(path.as_wide())));CoTaskMemFree(path.0.cast());}Ok(Some(paths))
+        })();result.map_err(|e|format!("Could not select input files: {e}"))
+    })();CoUninitialize();result
+}
+
 unsafe fn dialog(
     hwnd: HWND,
     save: bool,
@@ -2474,6 +2491,17 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 STATE.with(|s| s.borrow().as_ref().unwrap().app.dialog_request(id));
             if let Some(request) = dialog_request {
                 let result = match request {
+                    crate::DialogRequest::CombineFiles{input,output}=>{
+                        match pick_multiple_files(hwnd,input){
+                            Ok(Some(inputs))if !inputs.is_empty()=>{
+                                if let Some(path)=file_dialog(hwnd,true,output.extension,output.format,output.pattern,Some(output.title)){
+                                    if path.exists(){msg(hwnd,"This file already exists; choose a new output file",MB_OK|MB_ICONWARNING);None}
+                                    else if path.extension().and_then(|e|e.to_str()).is_none_or(|e|!e.eq_ignore_ascii_case(output.extension)){msg(hwnd,&format!("Choose a file name ending in .{}",output.extension),MB_OK|MB_ICONWARNING);None}
+                                    else{Some(crate::DialogResult::Files{inputs,output:path})}
+                                }else{None}
+                            },Ok(_)=>None,Err(error)=>{msg(hwnd,&error,MB_OK|MB_ICONERROR);None}
+                        }
+                    },
                     crate::DialogRequest::Report(report)=>{crate::report::show(hwnd,id,report);None},
                     crate::DialogRequest::Information { title, text } => {
                         MessageBoxW(hwnd,wide(&text).as_ptr(),wide(&crate::localization::text(title)).as_ptr(),MB_OK|MB_ICONINFORMATION);
@@ -2775,6 +2803,10 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
             if !crate::report::is_open(){
                 let report=STATE.with(|s|s.borrow_mut().as_mut().and_then(|s|s.app.take_pending_report()));
                 if let Some((id,report))=report{crate::report::show(h,id,report);}
+            }
+            if !crate::report::is_open(){
+                let path=STATE.with(|s|s.borrow_mut().as_mut().and_then(|s|s.app.take_pending_new_window()));
+                if let Some(path)=path{if let Err(error)=spawn_document_window(Some(&path)){msg(h,&error,MB_OK|MB_ICONERROR);}}
             }
             sync_rulers(h);
             let pending = STATE.with(|s| {
@@ -3189,6 +3221,8 @@ impl Drop for ComApartment {
 
 pub fn run(app: Box<dyn App>) {
     unsafe {
+        let invalid=app.actions().iter().map(|a|a.0).chain(app.file_actions().iter().map(|a|a.id)).chain(app.view_actions().iter().map(|a|a.0)).find(|id|!crate::application_command_id(*id));
+        if let Some(id)=invalid{msg(null_mut(),&format!("Application command {id} conflicts with a native host identifier"),MB_OK|MB_ICONERROR);return;}
         if CoInitializeEx(null(), COINIT_APARTMENTTHREADED as u32) < 0 {
             msg(
                 null_mut(),

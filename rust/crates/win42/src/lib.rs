@@ -56,6 +56,8 @@ impl TechnicalRaster {
     }
 }
 
+/// Application commands must not overlap host menus or native control notifications.
+pub fn application_command_id(id:u16)->bool{(10..62000).contains(&id)&&!(100..=102).contains(&id)}
 pub fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(Some(0)).collect()
 }
@@ -65,7 +67,7 @@ pub struct InputRequest {
     pub title: &'static str,
     pub fields: Vec<(&'static str, String)>,
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct FileAction {
     pub id: u16,
     pub title: &'static str,
@@ -87,6 +89,8 @@ pub trait App {
     fn set_native_window(&mut self, _window: usize) {}
     /// Poll completed background work on the UI thread; return true when the view changed.
     /// Request an ordinary document replacement after an app command.
+    /// Open a completed, explicitly requested output in a separate process/window.
+    fn take_pending_new_window(&mut self)->Option<std::path::PathBuf>{None}
     fn take_pending_open(&mut self) -> Option<PathBuf> {
         None
     }
@@ -1142,6 +1146,7 @@ pub enum ReportEvent {
 #[derive(Clone, Debug)]
 pub enum DialogRequest {
     Report(ReportRequest),
+    CombineFiles{input:FileAction,output:FileAction},
     Information { title: &'static str, text: String },
     Color([u8; 3]),
     Font,
@@ -1149,6 +1154,7 @@ pub enum DialogRequest {
 }
 #[derive(Clone, Debug)]
 pub enum DialogResult {
+    Files{inputs:Vec<std::path::PathBuf>,output:std::path::PathBuf},
     Color([u8; 3]),
     Font(FontChoice),
     PageSetup(PageMargins),
@@ -1180,4 +1186,13 @@ pub struct PageMargins {
     pub bottom: i32,
     pub paper_width: i32,
     pub paper_height: i32,
+}
+
+#[cfg(test)]
+mod app_command_namespace_tests{
+    #[test]
+    fn host_menus_and_control_notifications_are_reserved(){
+        for id in[0,1,4,9,100,101,102,62000,64000,65507]{assert!(!super::application_command_id(id),"{id}");}
+        for id in[10,18,97,110,111,200,360]{assert!(super::application_command_id(id),"{id}");}
+    }
 }

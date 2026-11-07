@@ -237,15 +237,31 @@ pub unsafe fn show(owner: HWND, id: u16, request: ReportRequest) {
     let mut owner_rect: RECT = zeroed();
     GetWindowRect(owner, &mut owner_rect);
     let dpi = GetDpiForWindow(owner).max(96) as i32;
-    let (w, height) = (900 * dpi / 96, 560 * dpi / 96);
+    let (mut width, mut height) = (900 * dpi / 96, 560 * dpi / 96);
+    let mut work = RECT {
+        left: 0,
+        top: 0,
+        right: GetSystemMetrics(SM_CXSCREEN),
+        bottom: GetSystemMetrics(SM_CYSCREEN),
+    };
+    let monitor = MonitorFromWindow(owner, MONITOR_DEFAULTTONEAREST);
+    let mut info: MONITORINFO = zeroed();
+    info.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
+    if !monitor.is_null() && GetMonitorInfoW(monitor, &mut info) != 0 {
+        work = info.rcWork;
+    }
+    width = width.min((work.right - work.left).max(1));
+    height = height.min((work.bottom - work.top).max(1));
+    let left = (owner_rect.left + 40).clamp(work.left, work.right - width);
+    let top = (owner_rect.top + 40).clamp(work.top, work.bottom - height);
     let h = CreateWindowExW(
         WS_EX_DLGMODALFRAME,
         class.as_ptr(),
         wide(&request.title).as_ptr(),
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME,
-        (owner_rect.left + 40).max(0),
-        (owner_rect.top + 40).max(0),
-        w,
+        left,
+        top,
+        width,
         height,
         owner,
         null_mut(),

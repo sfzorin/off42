@@ -1,6 +1,7 @@
 //! Structural PDF operations. No renderer or signature preservation.
 pub mod decorations;
 mod comparison_marks;
+pub mod merge;
 pub use comparison_marks::ComparisonMark;
 mod page_export;
 mod page_labels;
@@ -2934,13 +2935,29 @@ impl PdfDocument {
                     if index < 0 {
                         return Err("Invalid page-label index".into());
                     }
-                    let rule = doc
+                    let mut rule = doc
                         .dereference(&pair[1])
                         .map_err(|e| e.to_string())?
                         .1
                         .as_dict()
                         .map_err(|e| e.to_string())?
                         .clone();
+                    for key in [b"S".as_slice(), b"P", b"St"] {
+                        if let Ok(value) = rule.get(key) {
+                            let value =
+                                doc.dereference(value).map_err(|e| e.to_string())?.1.clone();
+                            rule.set(key, value);
+                        }
+                    }
+                    if let Ok(prefix) = rule.get(b"P") {
+                        if lopdf::decode_text_string(prefix)
+                            .map_err(|e| e.to_string())?
+                            .len()
+                            > 32768
+                        {
+                            return Err("Page-label prefix exceeds display limit".into());
+                        }
+                    }
                     if let Ok(style) = rule.get(b"S") {
                         if !matches!(style.as_name().ok(), Some(b"D" | b"R" | b"r" | b"A" | b"a")) {
                             return Err("Unsupported page-label style".into());
@@ -3025,18 +3042,70 @@ impl PdfDocument {
         if index >= self.page_count() {
             return Err("page index out of range".into());
         }
-        let mut source = PdfDocument::open(path)?;
+        let source = PdfDocument::open(path)?;
+        let name = path
+            .file_name()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "PDF".into());
+        self.insert_document_after(index, source, &name)
+    }
+    fn insert_document_after(
+        &mut self,
+        index: usize,
+        mut source: PdfDocument,
+        source_name: &str,
+    ) -> Result<(), String> {
+        self.ensure_position_safe()?;
+        if index >= self.page_count() {
+            return Err("page index out of range".into());
+        }
+        let imported_labels = source
+            .page_label_rules()?
+            .map(
+                |rules| -> Result<HashMap<ObjectId, lopdf::Dictionary>, String> {
+                    let mut result = HashMap::new();
+                    let mut prefix_bytes = 0usize;
+                    for (page, rule) in rules {
+                        let mut normalized = lopdf::Dictionary::new();
+                        for (key, value) in rule.iter() {
+                            if !matches!(key.as_slice(), b"S" | b"P" | b"St") {
+                                return Err("Imported page-label metadata is unsupported".into());
+                            }
+                            let value = source
+                                .doc
+                                .dereference(value)
+                                .map_err(|e| e.to_string())?
+                                .1
+                                .clone();
+                            if key.as_slice() == b"P" {
+                                let text =
+                                    lopdf::decode_text_string(&value).map_err(|e| e.to_string())?;
+                                prefix_bytes = prefix_bytes.saturating_add(text.len());
+                                if prefix_bytes > 4 * 1024 * 1024 {
+                                    return Err("Imported page-label text exceeds its limit".into());
+                                }
+                            }
+                            normalized.set(key.clone(), value);
+                        }
+                        result.insert(page, normalized);
+                    }
+                    Ok(result)
+                },
+            )
+            .transpose()?;
         let source_catalog = source.doc.catalog().map_err(|e| e.to_string())?;
         for key in [
             b"Names".as_slice(),
             b"Dests",
-            b"PageLabels",
             b"StructTreeRoot",
             b"OpenAction",
             b"Threads",
         ] {
             if source_catalog.get(key).is_ok() {
-                return Err("Imported PDF navigation, names, page labels or tagged structure cannot yet be merged".into());
+                return Err(
+                    "Imported PDF navigation, names or tagged structure cannot yet be merged"
+                        .into(),
+                );
             }
         }
         let has_outlines = source_catalog.get(b"Outlines").is_ok();
@@ -3118,7 +3187,6 @@ impl PdfDocument {
                             .map_err(|e| e.to_string())?
                             .set("Parent", parent);
                     }
-                    let source_name = path.file_name().and_then(|v| v.to_str()).unwrap_or("PDF");
                     source.doc.objects.insert(parent,Object::Dictionary(lopdf::dictionary!{"T"=>lopdf::text_string(&namespace),"TU"=>lopdf::text_string(&format!("Imported from {source_name}")),"Kids"=>fields.clone()}));
                     fields = vec![Object::Reference(parent)];
                     source_dict.set("Fields", fields.clone());
@@ -3249,6 +3317,22 @@ impl PdfDocument {
             .ok_or("PDF object limit exceeded")?;
         source.doc.renumber_objects_with(start);
         let pages: Vec<_> = source.doc.get_pages().values().copied().collect();
+        let combined_labels = if let Some(labels) = imported_labels {
+            let mut combined = self.page_label_rules()?.unwrap_or_default();
+            for (i, page) in self.history.current().pages.iter().enumerate() {
+                combined
+                    .entry(*page)
+                    .or_insert_with(|| lopdf::dictionary! {"S"=>"D","St"=>(i+1)as i64});
+            }
+            for (old, new) in source_pages.iter().zip(&pages) {
+                if let Some(label) = labels.get(old) {
+                    combined.insert(*new, label.clone());
+                }
+            }
+            Some(combined)
+        } else {
+            None
+        };
         let imported_bookmarks = if has_outlines {
             source.base_bookmarks()?
         } else {
@@ -3284,6 +3368,9 @@ impl PdfDocument {
         self.doc.max_id = self.doc.max_id.max(source.doc.max_id);
         self.doc.objects.extend(source.doc.objects);
         let mut state = self.history.current().clone();
+        if let Some(labels) = combined_labels {
+            state.page_labels = Some(labels);
+        }
         if let Some(form) = imported_form {
             state.imported_acroforms.push(form);
         }

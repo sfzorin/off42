@@ -1,6 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 mod decorations;
 mod comparison;
+mod merge;
 mod page_export;
 mod text_export;
 use pdf42_core::PdfDocument;
@@ -109,6 +110,8 @@ struct Pdf {
         std::sync::Arc<std::sync::atomic::AtomicBool>,
     )>,
     operation_error: Option<String>,
+    merge:Option<merge::Worker>,
+    merged_window:Option<std::path::PathBuf>,
     page_export: Option<page_export::Worker>,
     #[cfg(windows)]
     text_export: Option<text_export::Worker>,
@@ -649,10 +652,23 @@ impl win42::App for Pdf {
         self.opening_path = None;
     }
     fn poll_background(&mut self) -> bool {
+        let mut merge_changed = self.merge.as_mut().is_some_and(|w| w.progress_changed());
+        if let Some(result) = self.merge.as_ref().and_then(|w| w.poll()) {
+            self.merge = None;
+            match result {
+                Ok(path) => {
+                    self.operation_error = Some(format!("Merged PDF saved: {}", path.display()));
+                    self.merged_window = Some(path);
+                }
+                Err(error) => self.operation_error = Some(error),
+            }
+            merge_changed = true;
+        }
         let mut page_changed = self
             .page_export
             .as_mut()
-            .is_some_and(|worker| worker.progress_changed());
+            .is_some_and(|worker| worker.progress_changed())
+            || merge_changed;
         if let Some(result) = self.page_export.as_ref().and_then(|worker| worker.poll()) {
             self.page_export = None;
             self.operation_error = Some(match result {
@@ -867,6 +883,46 @@ impl win42::App for Pdf {
         {
             None
         }
+    }
+    fn take_pending_new_window(&mut self) -> Option<std::path::PathBuf> {
+        self.merged_window.take()
+    }
+    fn dialog_request(&self, id: u16) -> Option<win42::DialogRequest> {
+        if id == 110 && self.merge.is_none() {
+            Some(win42::DialogRequest::CombineFiles {
+                input: win42::FileAction {
+                    id: 110,
+                    title: "Merge Files…",
+                    save: false,
+                    extension: "pdf",
+                    format: "PDF document",
+                    pattern: "*.pdf",
+                },
+                output: win42::FileAction {
+                    id: 110,
+                    title: "Save Merged PDF…",
+                    save: true,
+                    extension: "pdf",
+                    format: "PDF document",
+                    pattern: "*.pdf",
+                },
+            })
+        } else {
+            None
+        }
+    }
+    fn dialog_result(&mut self, id: u16, result: win42::DialogResult) -> Result<(), String> {
+        if id == 110 {
+            if let win42::DialogResult::Files { inputs, output } = result {
+                if self.merge.is_some() {
+                    return Err("A PDF merge is already running".into());
+                }
+                self.operation_error = None;
+                self.merge = Some(merge::Worker::start(inputs, output)?);
+                return Ok(());
+            }
+        }
+        Err("Unsupported PDF dialog".into())
     }
     fn take_pending_report(&mut self) -> Option<(u16, win42::ReportRequest)> {
         #[cfg(windows)]
@@ -2385,6 +2441,8 @@ impl win42::App for Pdf {
     }
     fn actions(&self) -> &'static [(u16, &'static str)] {
         &[
+            (110, "Merge Files…"),
+            (111, "Cancel PDF Merge"),
             (98, "Remove Comparison Highlights"),
             (99, "Cancel PDF Comparison"),
             (90, "Text Watermark…"),
@@ -2489,6 +2547,13 @@ impl win42::App for Pdf {
         "Open a PDF document.".into()
     }
     fn status(&self) -> String {
+        if let Some(worker) = &self.merge {
+            return format!(
+                "Merging PDF files: {} of {}",
+                worker.progress.load(std::sync::atomic::Ordering::Relaxed),
+                worker.total
+            );
+        }
         #[cfg(windows)]
         if let Some(worker) = &self.comparison_worker {
             return format!(
@@ -2583,6 +2648,12 @@ impl win42::App for Pdf {
         self.doc.as_ref().map_or(0, |d| d.current())
     }
     fn enabled(&self, id: u16) -> bool {
+        if id == 110 {
+            return self.merge.is_none();
+        }
+        if id == 111 {
+            return self.merge.is_some();
+        }
         let Some(d) = self.doc.as_ref() else {
             return false;
         };
@@ -2825,6 +2896,15 @@ impl win42::App for Pdf {
     fn action(&mut self, id: u16) -> Result<(), String> {
         if id >= 10 && !self.enabled(id) {
             return Err("Command unavailable".into());
+        }
+        if id == 111 {
+            if let Some(worker) = self.merge.take() {
+                worker
+                    .cancel
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+            self.operation_error = Some("PDF merge cancelled".into());
+            return Ok(());
         }
         if id == 98 {
             #[cfg(windows)]

@@ -716,3 +716,17 @@ annotations. Source/document and history identities invalidate stale results whi
 `SnapshotHistory::current_id` is opaque and follows the exact state through Undo/Redo; new branches and unequal
 replacement get new identities. Saving leaves the identity unchanged. PDF snapshot guards combine it with a
 unique source identity, so PDFs with matching object IDs cannot accept one another's asynchronous results.
+
+
+### Windows file batches and separate results
+
+`DialogRequest::CombineFiles` uses a native multi-select picker and a new save destination, then returns typed
+paths to the app. Cancellation dispatches no model transaction. A completed background result can request a new
+independent document window; its originating document/session is retained. Print/report modal work remains ordered.
+Application command IDs are checked against host menus and native control-notification IDs before building UI.
+
+PDF batch merge reads bounded inputs into disposable documents and shares the existing structural insertion
+adapter. Its temporary model retains no user Undo history. Imported page-label rules resolve indirect standard
+values before object renumbering and map old/new page identities; existing labels and default numbering remain
+separate. Bookmarks/forms retain the existing namespace/resource validation. A fully prepared output is written to
+a same-directory temporary file, checked for cancellation and published without clobbering. No input is rewritten.

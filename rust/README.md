@@ -393,5 +393,25 @@ Comparison has explicit text/word/change/work budgets and linear working memory 
 history identities discard stale background results without hashing or serializing every page on each UI poll.
 Portable tests cover exact temporary-pixel positions at four rotations/nonzero crop origins, black-text retention,
 colored saved annotations, one-step history and separate document identities. Workspace: 414 pass, zero fail,
-one OCR fixture ignored; all GNU Windows targets compile. Native report/pixel/keep/history/reopen assertions
-are included for the next compatible Windows build.
+one OCR fixture ignored; all GNU Windows targets compile. Native run 42412900551 passed the report, row navigation, temporary orange pixels, explicit keep, clear/history
+and saved/reopened PDFium text/annotation checks on 07e178d (294 targeted MSVC tests, all 30 groups).
+
+
+## Merge PDF files (development branch)
+
+**Merge Files…** selects multiple PDFs and a new output filename, preserves their selected order and performs
+the merge in the background. The completed output opens in a separate window; the current document and its
+unsaved history remain intact. **Cancel PDF Merge** stops pending work. Output publication is atomic and never
+replaces an existing file, including a race after the picker. Input files are read only.
+
+The merge retains page geometry, ordinary annotations, supported bookmarks/forms and logical page labels.
+Imported label prefixes and numbering rules are resolved before PDF object IDs change, including indirect
+values. Work is limited to 128 files, 1000 pages and 256 MB of input data. Unsupported imported document names,
+named destinations, tagged structure and active document actions are refused rather than silently discarded;
+XFA/signature restrictions still apply. This is not unrestricted format fidelity.
+
+Portable regressions cover order, crop/rotation, annotations, bookmark targets, label prefixes, cancellation,
+corrupt inputs and no-clobber publication. Independent Poppler rendering produces byte-identical page PNGs
+before and after a three-page merge. Workspace: 418 tests pass, zero fail, one OCR fixture ignored; GNU Windows
+all-targets compilation passes. Native multi-file picker/cancellation, separate result window, preserved dirty
+parent/history and PDFium text/labels/bookmarks checks await a compatible build.

@@ -189,7 +189,7 @@ def output_ready(process, main, path, signature):
     assert path.read_bytes().startswith(signature), path
 
 
-def minimal_pdf(path, labels=None):
+def minimal_pdf(path, labels=None, logical_prefix=None):
     if labels is None:
         objects = [b"<< /Type /Catalog /Pages 2 0 R >>", b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
             b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R >>", b"<< /Length 0 >>\nstream\n\nendstream"]
@@ -202,6 +202,11 @@ def minimal_pdf(path, labels=None):
             content = f"BT /F1 18 Tf 40 760 Td ({label}) Tj ET".encode()
             objects.extend([f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 {font} 0 R >> >> /Contents {4 + index * 2} 0 R >>".encode(), f"<< /Length {len(content)} >>\nstream\n".encode() + content + b"\nendstream"])
         objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+    if logical_prefix is not None:
+        assert labels and logical_prefix.isascii() and not any(c in logical_prefix for c in "()\\")
+        outlines=len(objects)+1;item=outlines+1
+        objects[0]=f"<< /Type /Catalog /Pages 2 0 R /PageLabels << /Nums [0 << /S /r /St 4 /P ({logical_prefix}) >>] >> /Outlines {outlines} 0 R >>".encode()
+        objects.extend([f"<< /Type /Outlines /First {item} 0 R /Last {item} 0 R /Count 1 >>".encode(),f"<< /Title (Start {logical_prefix}) /Parent {outlines} 0 R /Dest [3 0 R /Fit] >>".encode()])
     data = bytearray(b"%PDF-1.4\n")
     offsets = [0]
     for number, obj in enumerate(objects, 1):
@@ -1134,7 +1139,12 @@ def audit_pdf_comparison(process,main,binary,output,results):
     wait_for(lambda:"10k"in text(u.GetDlgItem(report,102))and"20k"in text(u.GetDlgItem(report,102)),"replacement row contents",process)
     u.SendMessageW(table,0x100,0x23,0);u.SendMessageW(table,0x101,0x23,0)  # End
     wait_for(lambda:"ADDED PAGE"in text(u.GetDlgItem(report,102)),"inserted page row",process)
+    assert u.MoveWindow(report,20,20,min(760,u.GetSystemMetrics(0)-40),min(650,u.GetSystemMetrics(1)-40),True)
+    u.RedrawWindow.argtypes=[w.HWND,c.c_void_p,c.c_void_p,w.UINT]
+    assert u.RedrawWindow(report,None,None,0x181)  # invalidate/update all children
     capture_window(report,output/"PDF42-comparison-report.bmp")
+    assert len(set((output/"PDF42-comparison-report.bmp").read_bytes()[54:]))>30
+
     click(report,2);wait_for(lambda:u.IsWindowEnabled(main),"comparison closed without keeping",process)
     unkept=save("unkept")
     assert pdf_annotation_counts(binary.parent/"pdfium.dll",unkept)==[0,0]
@@ -1156,6 +1166,71 @@ def audit_pdf_comparison(process,main,binary,output,results):
     open_file(kept);reopened=save("reopened");assert pdf_annotation_counts(binary.parent/"pdfium.dll",reopened)==[1,1]
     assert source.read_bytes()==originals[0]and other.read_bytes()==originals[1]
     results["checks"].append("background word comparison, replacement/deletion/added-page report and navigation, temporary orange pixels without document edits, explicit kept highlights, clear/history and PDFium saved/reopened annotations/text, identical input and unchanged source files")
+
+
+def pdf_bookmarks(dll_path,path):
+    pdf=c.CDLL(str(dll_path));handle=c.c_void_p
+    pdf.FPDF_LoadDocument.argtypes,pdf.FPDF_LoadDocument.restype=[c.c_char_p,c.c_char_p],handle
+    pdf.FPDF_CloseDocument.argtypes=[handle]
+    pdf.FPDFBookmark_GetFirstChild.argtypes,pdf.FPDFBookmark_GetFirstChild.restype=[handle,handle],handle
+    pdf.FPDFBookmark_GetNextSibling.argtypes,pdf.FPDFBookmark_GetNextSibling.restype=[handle,handle],handle
+    pdf.FPDFBookmark_GetTitle.argtypes,pdf.FPDFBookmark_GetTitle.restype=[handle,c.c_void_p,c.c_ulong],c.c_ulong
+    pdf.FPDFBookmark_GetDest.argtypes,pdf.FPDFBookmark_GetDest.restype=[handle,handle],handle
+    pdf.FPDFDest_GetDestPageIndex.argtypes,pdf.FPDFDest_GetDestPageIndex.restype=[handle,handle],c.c_int
+    pdf.FPDF_InitLibrary();doc=pdf.FPDF_LoadDocument(str(path).encode("utf-8"),None);assert doc
+    result=[]
+    def visit(parent,depth=0):
+        assert depth<32
+        item=pdf.FPDFBookmark_GetFirstChild(doc,parent)
+        while item:
+            assert len(result)<10000
+            length=pdf.FPDFBookmark_GetTitle(item,None,0);assert 2<=length<=65536
+            title=c.create_string_buffer(length);assert pdf.FPDFBookmark_GetTitle(item,title,length)==length
+            dest=pdf.FPDFBookmark_GetDest(doc,item);assert dest
+            result.append((title.raw.decode("utf-16-le").rstrip("\0"),pdf.FPDFDest_GetDestPageIndex(doc,dest)))
+            visit(item,depth+1);item=pdf.FPDFBookmark_GetNextSibling(doc,item)
+    try:visit(None);return result
+    finally:pdf.FPDF_CloseDocument(doc)
+
+
+def audit_pdf_merge(process,main,binary,output,results):
+    first=output/"merge-01-first.pdf";second=output/"merge-02-second.pdf";parent=output/"merge-parent.pdf"
+    minimal_pdf(first,["MERGE A1","MERGE A2"],"A-");minimal_pdf(second,["MERGE B1"],"B-");minimal_pdf(parent,["DIRTY PARENT"])
+    originals=[p.read_bytes()for p in(first,second,parent)]
+    command(main,1);choose_file(process,parent)
+    def opened():
+        if parent.name in text(main)and u.IsWindowEnabled(main):return True
+        dialog=next((h for h in windows(process.pid)if classname(h)=="#32770"and u.IsWindowEnabled(h)and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
+        if dialog:click(dialog,7)
+        return None
+    wait_for(opened,"merge parent opened",process);command(main,10)
+    wait_for(lambda:" * - "in text(main),"parent dirty before merge",process);caption=text(main)
+    command(main,110);picker=modal(process,title="Merge Files…",native_class="#32770");click(picker,2)
+    wait_for(lambda:u.IsWindowEnabled(main),"merge picker cancel",process);assert text(main)==caption
+    before=set(child_processes(process.pid,binary.name));target=output/("merged-window-"+uuid.uuid4().hex+".pdf")
+    command(main,110);picker=modal(process,title="Merge Files…",native_class="#32770")
+    choose_file(process,'"'+str(first)+'" "'+str(second)+'"')
+    wait_for(lambda:not u.IsWindowVisible(picker)or text(picker)!="Merge Files…","input picker closed before merge destination",process)
+    choose_file(process,target)
+    output_ready(process,main,target,b"%PDF-")
+    pid=wait_for(lambda:next(iter(set(child_processes(process.pid,binary.name))-before),None),"merged PDF separate process",process)
+    child=OwnedChildProcess(pid)
+    try:
+        window=modal(child,native_class="Suite42Native")
+        wait_for(lambda:target.name in text(window)and" * - "not in text(window),"merged PDF clean separate window",child)
+        assert text(main)==caption and u.IsWindowEnabled(main)
+        assert[page.strip()for page in pdf_text(binary.parent/"pdfium.dll",target,by_page=True)]==["MERGE A1","MERGE A2","MERGE B1"]
+        assert pdf_page_labels(binary.parent/"pdfium.dll",target)==["A-iv","A-v","B-iv"]
+        assert pdf_bookmarks(binary.parent/"pdfium.dll",target)==[("Start A-",0),("Start B-",2)]
+
+        command(main,4);wait_for(lambda:" * - "not in text(main),"parent history unchanged by batch merge",process)
+        command(main,5);wait_for(lambda:text(main)==caption,"parent redo unchanged by batch merge",process)
+        u.PostMessageW(window,WM_CLOSE,0,0);child.wait(timeout=5)
+    finally:
+        if child.poll()is None:child.terminate();child.wait(timeout=5)
+        child.close_handle()
+    assert[p.read_bytes()for p in(first,second,parent)]==originals
+    results["checks"].append("native multi-file merge picker and cancellation, complete ordered PDFium text, atomic output and clean separate result process preserve dirty parent source/history")
 
 
 def audit_statistical_formulas(process,main,output,binary,results):
@@ -1230,7 +1305,7 @@ def audit_statistical_formulas(process,main,output,binary,results):
     results["checks"].append("date entry and calendar/annuity/cash-flow calculations, statistical range/reference typing, distributions and 1e-100 literals, small-tail quantiles against an independent oracle, typed XLSX caches, input recalculation, complete Undo/Redo and dirty/discard/reopen")
 
 
-def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False):
+def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False):
     startup = None
     if extended:
         if binary.stem.lower() == "pdf42":
@@ -1367,6 +1442,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_pdf_decorations(process,main,binary,output,results)
         if pdf_comparison and binary.stem.lower()=="pdf42":
             audit_pdf_comparison(process,main,binary,output,results)
+        if pdf_merge and binary.stem.lower()=="pdf42":
+            audit_pdf_merge(process,main,binary,output,results)
         return results
     finally:
         if process.poll() is None:
@@ -1793,6 +1870,7 @@ def main():
     parser.add_argument("--preset-shapes", action="store_true")
     parser.add_argument("--pdf-decorations", action="store_true")
     parser.add_argument("--pdf-comparison", action="store_true")
+    parser.add_argument("--pdf-merge", action="store_true")
     parser.add_argument("--statistical-formulas", action="store_true")
     parser.add_argument("--page-exports", action="store_true")
     parser.add_argument("--host-commands", action="store_true")
@@ -1807,7 +1885,7 @@ def main():
     try:
         for app in ["DOC42", "XLS42", "PDF42", "IMG42", "PPT42", "SCN42"]:
             try:
-                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison))
+                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge))
             except Exception as error:
                 results.append({"app": app, "error": str(error), "traceback": traceback.format_exc()})
             print(json.dumps(results[-1]), flush=True)

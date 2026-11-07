@@ -13,7 +13,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Technical objects | Four barcode encoders, fourteen symbols, reusable PNG recipes, insertion/editing in PDF/DOC/XLS/PPT and document round trips | Full technical-object selection/placement controls and richer label artwork sources |
 | Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers | PDF artwork/region sources, preview and direct print |
 | Printing | Native dialogs, actual-size PDF scene path, optional per-printer calibration and measurement sheet | Native print-to-file output and physical driver checks |
-| PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison (native audit pending), bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction | Batch merge/Bates workflows, decoration font choices, richer forms, OCR, certificate signing and validation, remote signing and CryptoPro integration |
+| PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge (native audit pending), bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction | Batch Bates workflows, decoration font choices, richer forms, OCR, certificate signing and validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
 | XLS42 | Grid editing, engineering/text/math/statistical/financial/calendar formulas, styles, charts, summaries, tables, filtering, print layout | Formula coverage and dynamic arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, goal seek/solver, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, show tools and export workflows |
@@ -262,3 +262,18 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   history exposes opaque identities retained through Undo/Redo, avoiding repeated document-content comparisons.
   **414 portable tests pass**, zero failures, one OCR fixture ignored; GNU all targets compile. Native comparison
   report/pixel/keep/history/reopen scenarios await a compatible build. Public preview/main/site are unchanged.
+
+
+- Native run [42412900551](https://github.com/sfzorin/off42/actions/runs/42412900551) passed 294 targeted MSVC
+  tests and all 30 native groups on 07e178d, including the comparison report, row selection/navigation, temporary
+  orange pixels, explicit keeping/removal/history, identical inputs and saved/reopened PDFium text/annotations.
+  Its report screenshot was taken after moving the window offscreen; the next audit returns it onscreen and
+  requires a nonblank capture. The report now also fits its owner's monitor work area.
+- Batch merge selects input PDFs and a new destination, runs in the background and opens the atomic output in
+  an independent process. It preserves ordered pages, logical labels (including indirect prefixes), ordinary
+  annotations and supported bookmark/form structures. Source/current documents remain untouched. Unsupported
+  imported names/actions/tagging remain refused. Portable cancellation/failure/no-clobber and format regressions pass.
+- Independent Poppler rendering confirms exact PNG equality for all three source/merged pages; extracted text
+  has the requested order. Portable workspace: **418 passed**, zero failures, one OCR fixture ignored. GNU all
+  targets compile. Native multi-file picker, result window/dirty-parent history and PDFium label/bookmark scenarios
+  are added for the next build. No public release, main merge or website update has occurred.
