@@ -1522,7 +1522,7 @@ def audit_array_formulas(process,main,binary,output,results):
             count=int(node.attrib.get("{"+table+"}number-rows-repeated",1));col=0
             for cell in node:
                 repeat=int(cell.attrib.get("{"+table+"}number-columns-repeated",1))
-                cached=next((cell.attrib["{"+office+"}"+key]for key in("value","string-value","boolean-value")if"{"+office+"}"+key in cell.attrib),"")
+                cached=next((cell.attrib["{"+office+"}"+key]for key in("value","string-value","boolean-value")if"{"+office+"}"+key in cell.attrib),"\n".join("".join(paragraph.itertext())for paragraph in cell.findall("{urn:oasis:names:tc:opendocument:xmlns:text:1.0}p")))
                 for r in range(row,row+count):
                     for c in range(col,col+repeat):values[chr(65+c)+str(r+1)]=cached
                 if"{"+table+"}formula"in cell.attrib:ranges[chr(65+col)+str(row+1)]=(int(cell.attrib.get("{"+table+"}number-matrix-rows-spanned",1)),int(cell.attrib.get("{"+table+"}number-matrix-columns-spanned",1)))

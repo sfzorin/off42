@@ -412,3 +412,14 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   after the new rounded General clipboard check passes. Its PPT audit also encounters a transient sharing lock
   while reading the atomically saved JSON. The harness now reads standard inline strings and retries only sharing
   failures within the existing deadline; all exact data/geometry/history assertions remain. Repeat verification pending.
+
+
+- Run [42426756820](https://github.com/sfzorin/off42/actions/runs/42426756820) on ff84a6b completes the external
+  XLSX scenario and ODS resize/Undo/Redo, then exposes another new harness reader omission: ordinary ODS text may
+  live only in `text:p`, without `office:string-value`. Independent reading of the actual saved artifact confirms
+  `D1=#SPILL!`, `D2=stop` and every former child cleared. The audit now reads that standard text representation;
+  the same exact blocking/history/reopen assertions remain. Other native groups, including PPT sharing-lock retry,
+  pass. Full native completion remains pending a repeat.
+- The optimized b4e9675 development ZIP passes CRC and all seven PE identities match the runtime report
+  (six apps plus PDFium.dll): 61,948,557 bytes, SHA-256
+  `355e6655b311d609e894c99daadbaa453b9b54bcdbba8f420063065fbc7b2e5e`. It is not a public release.
