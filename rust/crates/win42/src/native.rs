@@ -21,7 +21,7 @@ use windows_sys::Win32::{
             EnableWindow, GetFocus, GetKeyState, ReleaseCapture, SetCapture, SetFocus, VK_CONTROL,
             VK_SHIFT,
         },
-        Shell::{DragAcceptFiles, DragFinish, DragQueryFileW, ShellExecuteW},
+        Shell::{DragAcceptFiles, DragFinish, DragQueryFileW, ShellExecuteW, DefSubclassProc, SetWindowSubclass, RemoveWindowSubclass},
         WindowsAndMessaging::*,
     },
 };
@@ -1897,6 +1897,44 @@ fn trace_command(stage: &str, id: u16, notify: u16) {
         }
     }
 }
+thread_local! {
+    static PLAIN_EDIT_DEPTH:Cell<usize>=const{Cell::new(0)};
+    static PLAIN_EDIT_CHANGED:Cell<bool>=const{Cell::new(false)};
+}
+// Standard multiline EDIT emits deletion and insertion EN_CHANGE notifications for
+// a single replacement/paste. Deliver the final value once after the native operation.
+unsafe extern "system" fn plain_edit_proc(
+    h: HWND,
+    m: u32,
+    w: WPARAM,
+    l: LPARAM,
+    id: usize,
+    _data: usize,
+) -> LRESULT {
+    if m == WM_NCDESTROY {
+        RemoveWindowSubclass(h, Some(plain_edit_proc), id);
+    }
+    let mutation = matches!(
+        m,
+        WM_SETTEXT | WM_PASTE | WM_CUT | WM_CLEAR | WM_CHAR | WM_KEYDOWN | WM_UNDO | EM_REPLACESEL
+    );
+    if mutation {
+        PLAIN_EDIT_DEPTH.with(|depth| depth.set(depth.get() + 1));
+    }
+    let result = DefSubclassProc(h, m, w, l);
+    if mutation {
+        let outer = PLAIN_EDIT_DEPTH.with(|depth| {
+            depth.set(depth.get() - 1);
+            depth.get() == 0
+        });
+        if outer && PLAIN_EDIT_CHANGED.with(|changed| changed.replace(false)) {
+            command(GetParent(h), EDIT as u16, EN_CHANGE as u16);
+            flush_deferred_commands();
+        }
+    }
+    result
+}
+
 unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
     trace_command("received", id, notify);
     if REFRESHING.with(|refreshing| refreshing.get()) {
@@ -1911,6 +1949,10 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 }
             });
         }
+        return;
+    }
+    if id==EDIT as u16 && notify==EN_CHANGE as u16 && PLAIN_EDIT_DEPTH.with(|depth|depth.get()>0) {
+        PLAIN_EDIT_CHANGED.with(|changed|changed.set(true));
         return;
     }
     // Control notifications are not app commands. In particular, RichEdit
@@ -3477,6 +3519,11 @@ pub fn run(app: Box<dyn App>) {
             instance,
             null(),
         );
+        if !rich && SetWindowSubclass(edit,Some(plain_edit_proc),42,0)==0 {
+            msg(h,"Could not initialize the document editor",MB_OK|MB_ICONERROR);
+            DestroyWindow(h);
+            return;
+        }
         let canvas = CreateWindowExW(
             0,
             canvas_class.as_ptr(),

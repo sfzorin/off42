@@ -15,7 +15,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Printing | Native dialogs, actual-size PDF scene path, optional per-printer calibration and measurement sheet | Native print-to-file output and physical driver checks |
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction | Comparison, batch merge/Bates workflows, decoration font choices, richer forms, OCR, certificate signing and validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
-| XLS42 | Grid editing, engineering/text/math/statistical formulas, styles, charts, summaries, tables, filtering, print layout | Formula coverage and dynamic arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, goal seek/solver, split panes, per-cell/password protection and fuller format fidelity |
+| XLS42 | Grid editing, engineering/text/math/statistical/financial/calendar formulas, styles, charts, summaries, tables, filtering, print layout | Formula coverage and dynamic arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, goal seek/solver, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, show tools and export workflows |
 | IMG42 | Image decoding, transforms, adjustments, selections, text, metadata and batch output | Full markup selection/editing, smart lasso, live text, background removal, viewing panels and additional supported system codecs |
 | SCN42 | WIA acquisition, image/PDF import, page processing, OCR and searchable output | Scan areas and rescan, device/preset controls, scan history, full export settings and physical-device checks |
@@ -213,3 +213,23 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   Golden native results are not weakened to match those differences. ODF function aliases retain tail semantics.
 - Current portable workspace: **398 passed**, zero failed, one OCR fixture ignored. All GNU Windows targets compile.
   No new public release, main merge or website update has occurred; the remaining matrix is still open.
+
+
+- Financial and calendar work raises fixed macOS example agreement to **356/492**, with **136 gaps** and two
+  locale-dependent skips. A separate 112-case 100-digit mpmath oracle exposed and now guards long-term annuity
+  cancellation, rounded-payment amplification and failed RATE guesses. Solvers and loops share work limits.
+- ISO date entry now supplies actual date values to holidays/cash-flow functions; native and external XLSX/ODS
+  tests cover edited inputs, complete history, saving and independent reopen without a private snapshot.
+  Business-day searches use whole-week counting and bounded monotone search. Serial 60 and 1904 arithmetic
+  have direct regressions. Locale entry formats and broader ODS date/number-format fidelity remain open.
+- LibreOffice recalculates all 26 new financial/calendar examples from both complete packages. Across 46 cases,
+  45 XLSX-origin and 44 ODS-origin agree; earlier external statistical differences are explicitly retained.
+  Portable workspace: **403 passed**, zero failed, one OCR fixture ignored; GNU all targets compile.
+  New finance/calendar native scenarios await a compatible Windows build.
+
+- Optimized run [42408293307](https://github.com/sfzorin/off42/actions/runs/42408293307) on 373424b passed the
+  workspace MSVC tests, all six builds and the runtime import gate. DOC body/table/image statistics passed;
+  PDF decorations and the other native groups passed. The XLS statistical scenario failed its strict one-step
+  Undo assertion: replacing an EDIT selection emitted separate deletion/insertion EN_CHANGE notifications.
+  The standard editor now coalesces notifications within the native replace/paste operation, retaining the
+  original complete-history assertion. Repeat native verification is pending; the failed evidence is retained.

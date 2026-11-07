@@ -1103,9 +1103,11 @@ def audit_statistical_formulas(process,main,output,binary,results):
     import xml.etree.ElementTree as ET
     source=output/"statistical-source.csv"
     formulas=["=STDEV.S(A1:A5)","=AVERAGEA(A1:A5)","=COUNTBLANK(A1:A5)","=CORREL(A1:A5,B1:B5)","=NORM.DIST(A1,0,1,TRUE)","=BETA.INV(0.5,2,2)","=T.DIST.2T(A1,10)","=VAR.S(A1:A5)","=NORM.S.INV(1e-100)","=T.DIST.RT(20,100)","=CHISQ.INV.RT(1e-20,2)","=ERF(8,9)","=F.INV.RT(1e-20,5,8)","=PERCENTILE.EXC(A1:A2,0.5)","=PERCENTILE.EXC(A1:A2,0)"]
+    formulas += ["=PV(.1/12,12,-100*A1)","=RATE(12,-100*A1,1000)","=CUMIPMT(.1/12,36,1000*A1,1,12,0)","=IRR(D3:D5)","=XIRR(D3:D5,D6:D8)","=XNPV(0,D3:D5,D6:D8)","=WORKDAY(DATE(2024,12,20),A1,D1:D2)","=NETWORKDAYS(DATE(2024,12,20),DATE(2024,12,31),D1:D2)","=EDATE(DATE(2024,1,31),A1)"]
+    dates=["2024-12-25","2025-01-01","-100","0","121","2021-01-01","2022-01-01","2023-01-01"]
     a=["1","2","text","TRUE",""];b=["2","4","6","8","10"]
     with source.open("w",encoding="utf-8",newline="")as file:
-        csv.writer(file).writerows([[a[i]if i<len(a)else"",b[i]if i<len(b)else"",formula,"","","","",""]for i,formula in enumerate(formulas)])
+        csv.writer(file).writerows([[a[i]if i<len(a)else"",b[i]if i<len(b)else"",formula,dates[i]if i<len(dates)else"","","","",""]for i,formula in enumerate(formulas)])
     original=source.read_bytes()
     def open_file(path):
         command(main,1);choose_file(process,path)
@@ -1133,10 +1135,23 @@ def audit_statistical_formulas(process,main,output,binary,results):
     oracle=json.loads((Path(__file__).resolve().parents[1]/"crates/xls42-core/fixtures/independent-distribution-cases.json").read_text())
     expected={case["formula"]:case["expected"]for case in oracle["cases"]}
     for address,formula in [("C9","=NORM.S.INV(1e-100)"),("C10","=T.DIST.RT(20.0,100.0)"),("C11","=CHISQ.INV.RT(1e-20,2.0)"),("C12","=ERF(8.0,9.0)"),("C13","=F.INV.RT(1e-20,5.0,8.0)")]:value(cells,address,expected[formula])
+    finance_oracle=json.loads((Path(__file__).resolve().parents[1]/"crates/xls42-core/fixtures/independent-finance-cases.json").read_text())
+    finance_expected={c["formula"]:c["expected"]for c in finance_oracle["cases"]}
+    def finance(cells,payment,present):
+        # PV annuity identity is independent of the application evaluator.
+        rate=.1/12;pv=100*payment*(1-(1+rate)**-12)/rate
+        value(cells,"C16",pv)
+        value(cells,"C17",finance_expected[f"=RATE(12.0,{-100.0*payment},1000.0)"])
+        value(cells,"C18",finance_expected[f"=CUMIPMT({rate!r},36.0,{present:.1f},1.0,12.0,0.0)"])
+        value(cells,"C19",.1);value(cells,"C20",.1);value(cells,"C21",21.0);value(cells,"C23",7.0)
+    finance(cells,1,1000)
+    value(cells,"C22",45649.0);value(cells,"C24",45351.0)
     fill_prompt(process,main,25,"Range (1-based)",["1","1","1","1"])
     edit=u.GetDlgItem(main,101);replace_editor_text(edit,"4")
     _,changed=save("changed")
     value(changed,"C1",math.sqrt(2));value(changed,"C2",1.75);value(changed,"C4",-1.0);value(changed,"C5",.9999683287581669);value(changed,"C8",2.0);value(changed,"C14",3.0)
+    finance(changed,4,4000)
+    value(changed,"C22",45653.0);value(changed,"C24",45443.0)
     command(main,4);_,undone=save("undo")
     assert all(undone["C"+str(i+1)]==cells["C"+str(i+1)]for i in range(len(formulas)))
     command(main,5);_,redone=save("redo")
@@ -1144,7 +1159,7 @@ def audit_statistical_formulas(process,main,output,binary,results):
     replace_editor_text(edit,"9");open_file(baseline);_,reopened=save("reopened")
     assert all(reopened["C"+str(i+1)]==cells["C"+str(i+1)]for i in range(len(formulas)))
     assert source.read_bytes()==original
-    results["checks"].append("statistical range/reference typing, distributions and 1e-100 literals, small-tail quantiles against an independent oracle, typed XLSX caches, input recalculation, complete Undo/Redo and dirty/discard/reopen")
+    results["checks"].append("date entry and calendar/annuity/cash-flow calculations, statistical range/reference typing, distributions and 1e-100 literals, small-tail quantiles against an independent oracle, typed XLSX caches, input recalculation, complete Undo/Redo and dirty/discard/reopen")
 
 
 def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False):

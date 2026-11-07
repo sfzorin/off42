@@ -7,6 +7,12 @@ const EXTRA: &str = "xls42/project.json";
 const LIMIT: usize = 64 * 1024 * 1024;
 mod pictures;
 mod formula_cache;
+fn date_time(raw: &str) -> Result<chrono::NaiveDateTime, Error> {
+    chrono::NaiveDateTime::parse_from_str(raw, "%Y-%m-%dT%H:%M:%S%.f")
+        .ok()
+        .or_else(|| crate::display::parse_date(raw).and_then(|d| d.and_hms_opt(0, 0, 0)))
+        .ok_or(Error::Invalid("invalid date cell"))
+}
 fn format(s: &CellStyle) -> Format {
     let mut f = Format::new();
     if s.bold {
@@ -283,10 +289,10 @@ impl Workbook {
             .sheets
             .iter()
             .flat_map(|s| s.cells.values())
-            .any(|c| matches!(c.text, CellContent::Date(_) | CellContent::Error(_)))
+            .any(|c| matches!(c.text, CellContent::Error(_)))
         {
             return Err(Error::Invalid(
-                "XLSX export of date and error cells is unsupported",
+                "XLSX export of error cells is unsupported",
             ));
         }
         if state.styles.iter().any(|s| s.borders & !15 != 0) {
@@ -367,6 +373,11 @@ impl Workbook {
                     ),
                     CellContent::Boolean(t) => {
                         ws.write_boolean_with_format(r, c, t.raw().eq_ignore_ascii_case("true"), f)
+                    }
+                    CellContent::Date(t) => {
+                        let value=crate::display::workbook_parse_serial(self,t.raw()).ok_or(Error::Invalid("invalid date cell"))?;
+                        let date_format=if state.styles[cell.style].number_format.is_empty(){f.clone().set_num_format(if t.raw().contains('T'){"yyyy-mm-dd hh:mm:ss"}else{"yyyy-mm-dd"})}else{f.clone()};
+                        ws.write_number_with_format(r,c,value,&date_format)
                     }
                     CellContent::Formula(t) => {
                         let value = match results
@@ -1216,13 +1227,13 @@ impl Workbook {
             s.protected
                 || s.cells
                     .values()
-                    .any(|c| matches!(c.text, CellContent::Date(_) | CellContent::Error(_)))
+                    .any(|c| matches!(c.text, CellContent::Error(_)))
         }) || state
             .styles
             .iter()
             .any(|s| s.borders & !15 != 0 || !s.number_format.is_empty())
         {
-            return Err(Error::Invalid("ODS export of protection, dates, errors, unknown borders or number formats is unsupported"));
+            return Err(Error::Invalid("ODS export of protection, errors, unknown borders or number formats is unsupported"));
         }
         let mut book = WorkBook::default();
         let mut styles = Vec::new();
@@ -1314,6 +1325,7 @@ impl Workbook {
                     CellContent::Boolean(t) => {
                         sheet.set_value(r, c, t.raw().eq_ignore_ascii_case("true"))
                     }
+                    CellContent::Date(t)=>sheet.set_value(r,c,date_time(t.raw())?),
                     CellContent::Formula(t) => {
                         match results
                             .get(&(r as usize, c as usize))
@@ -3182,13 +3194,14 @@ fn patch_ods(
                 Some(CellContent::Boolean(v)) => {
                     sheet.set_value(r, c, v.raw().eq_ignore_ascii_case("true"))
                 }
+                Some(CellContent::Date(v))=>sheet.set_value(r,c,date_time(v.raw())?),
                 Some(CellContent::Formula(v)) => {
                     sheet.set_value(r, c, Value::Empty);
                     sheet.set_formula(r, c, ods_formula(v.raw())?)
                 }
                 _ => {
                     return Err(Error::Invalid(
-                        "editing dates and errors in ODS is unsupported",
+                        "editing error cells in ODS is unsupported",
                     ))
                 }
             }
@@ -3356,6 +3369,7 @@ fn cell_xml(
                 "0"
             }
         )),
+        CellContent::Date(_)=>out.push_str(&format!(" t=\"d\"><{prefix}v>{}</{prefix}v></{prefix}c>",date_time(raw)?.format("%Y-%m-%dT%H:%M:%S%.f"))),
         CellContent::Formula(_) => out.push_str(&format!(
             "><{prefix}f>{}</{prefix}f></{prefix}c>",
             escape_xml(
@@ -3365,7 +3379,7 @@ fn cell_xml(
         )),
         _ => {
             return Err(Error::Invalid(
-                "editing dates or errors in XLSX is unsupported",
+                "editing error cells in XLSX is unsupported",
             ))
         }
     }
@@ -7408,6 +7422,81 @@ mod project_package_registration {
             let name=if kind=="xlsx"{"[Content_Types].xml"}else{"META-INF/manifest.xml"};let mut text=String::new();archive.by_name(name).unwrap().read_to_string(&mut text).unwrap();let xml=roxmltree::Document::parse(&text).unwrap();
             let entries=xml.descendants().filter(|n|n.is_element()&&if kind=="xlsx"{n.attribute("PartName")==Some("/xls42/project.json")}else{n.attribute(("urn:oasis:names:tc:opendocument:xmlns:manifest:1.0","full-path"))==Some(EXTRA)}).count();assert_eq!(entries,1);
             let restored=Workbook::from_office_bytes(&rebuilt,kind).unwrap();assert_eq!(restored.display_grid(),book.display_grid());assert_eq!(restored.cell(0,0),book.cell(0,0));
+        }
+    }
+}
+
+#[cfg(test)]
+mod calendar_finance_packages {
+    use super::*;
+    fn external(bytes: Vec<u8>, kind: &str) -> Workbook {
+        let mut input = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        for i in 0..input.len() {
+            let entry = input.by_index(i).unwrap();
+            if entry.name() != EXTRA {
+                out.raw_copy_file(entry).unwrap();
+            }
+        }
+        Workbook::from_office_bytes(&out.finish().unwrap().into_inner(), kind).unwrap()
+    }
+    #[test]
+    fn entered_dates_and_finance_recalculate_after_external_save_and_reopen() {
+        let mut b = Workbook::new(12, 8).unwrap();
+        for (i, v) in ["2024-12-20", "2024-12-25", "2025-01-01"]
+            .iter()
+            .enumerate()
+        {
+            b.set_cell(i, 0, (*v).into()).unwrap();
+        }
+        for (i, v) in ["-100", "0", "121"].iter().enumerate() {
+            b.set_cell(i, 1, (*v).into()).unwrap();
+        }
+        for (i, f) in [
+            "=WORKDAY(A1,5,A2:A3)",
+            "=NETWORKDAYS(A1,A3,A2:A3)",
+            "=IRR(B1:B3)",
+            "=XNPV(.1,B1:B3,A1:A3)",
+            "=EOMONTH(A1,1)",
+        ]
+        .iter()
+        .enumerate()
+        {
+            b.set_cell(i, 2, (*f).into()).unwrap();
+        }
+        let before = b.display_grid();
+        assert_eq!(before[0][2], "45656");
+        for kind in ["xlsx", "ods"] {
+            let bytes = if kind == "xlsx" {
+                b.xlsx_bytes()
+            } else {
+                b.ods_bytes()
+            }
+            .unwrap();
+            let mut doc = external(bytes, kind);
+            assert_eq!(doc.display_grid()[0][2], before[0][2]);
+            assert!(matches!(doc.content(0, 0), Some(CellContent::Date(_))));
+            doc.set_cell_editor_text(0, 0, "2024-12-19".into()).unwrap();
+            doc.set_cell(2, 1, "144".into()).unwrap();
+            let changed = doc.display_grid();
+            assert_eq!(changed[0][2], "45653");
+            let irr = changed[2][2].parse::<f64>().unwrap();
+            assert!((irr - 0.2).abs() < 1e-10);
+            let saved = if kind == "xlsx" {
+                doc.xlsx_bytes()
+            } else {
+                doc.ods_bytes()
+            }
+            .unwrap();
+            let reopened = external(saved, kind);
+            assert_eq!(reopened.display_grid()[0][2], changed[0][2]);
+            assert_eq!(reopened.display_grid()[2][2], changed[2][2]);
+            doc.undo();
+            doc.undo();
+            assert_eq!(doc.display_grid()[0][2], before[0][2]);
+            doc.redo();
+            doc.redo();
+            assert_eq!(doc.display_grid()[0][2], changed[0][2]);
         }
     }
 }

@@ -331,3 +331,26 @@ packages in LibreOffice. Nineteen of twenty XLSX-origin cases and eighteen of tw
 the audit records LibreOffice's invalid-percentile error classifications and its ODS ERF interval precision
 loss separately. Native results retain the independently checked values. The new DOC/XLS native scenarios
 await their first compatible Windows build.
+
+
+## Financial calculations and calendars (development branch)
+
+XLS42 adds PV/FV/NPER, interest/principal and cumulative loan payments, RATE, IRR/XIRR/XNPV/MIRR,
+depreciation, effective/nominal rates and growth-duration calculations. The financial family shares typed
+arguments and bounded iterations; root finding stays in the rate > -1 domain, normalizes cash flows and uses
+a bracket fallback. Future balances and interest calculations avoid amplification of rounded payment errors.
+A separate 112-case mpmath oracle checks 100-digit reference values, including tiny rates and long terms.
+`rust/scripts/export-finance-cases.py` regenerates this QA fixture; mpmath is not an app dependency.
+
+Calendar functions include EDATE/EOMONTH, weekday/week numbers, DATEDIF, DAYS/DAYS360/YEARFRAC, working-day
+counts and shifts with custom weekend masks/holidays, TIMEVALUE and time components. Calendar arithmetic
+retains Excel's fictional serial day 60 and workbook date offsets; business-day searches avoid stepping through
+millions of days. Real ISO dates entered in cells now have a date type, including in holiday/cash-flow ranges.
+XLSX/ODS retain those entered values and recalculate after external editing. Automatic local date-entry formats,
+the fictional date as typed ISO text and broader ODS number-format editing still need work.
+
+The fixed macOS example report now matches **356/492**, with **136 gaps** and two locale cases skipped. This
+remains incomplete formula parity: array literals/dynamic arrays and several lookup/information families remain.
+Independent LibreOffice checks on 46 full-package cases agree on all 26 new financial/calendar examples in both
+formats; the previously recorded three external statistical differences remain explicit (45/46 and 44/46 total).
+Native Windows formula/date editing, typed caches, history and reopen scenarios are extended for the next build.

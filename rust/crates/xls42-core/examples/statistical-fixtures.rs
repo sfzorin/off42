@@ -8,10 +8,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .ok_or("output directory required")?,
     );
     fs::create_dir_all(&output)?;
-    let mut book = Workbook::new(25, 8)?;
+    let mut book = Workbook::new(80, 8)?;
     for (i, v) in ["1", "2", "text", "TRUE", ""].into_iter().enumerate() {
         book.set_cell(i, 0, v.into())?;
         book.set_cell(i, 1, (2 * (i + 1)).to_string())?;
+    }
+    for (i, value) in [
+        "2024-12-25",
+        "2025-01-01",
+        "-100",
+        "0",
+        "121",
+        "2021-01-01",
+        "2022-01-01",
+        "2023-01-01",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        book.set_cell(i, 3, value.into())?;
     }
     let formulas = [
         "=STDEV.S(A1:A5)",
@@ -34,6 +49,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "=F.INV(0.75,5,8)",
         "=FINV(0.75,5,8)",
         "=SKEW.P(A1:A2)",
+        "=PV(.1/12,12,-100*A1)",
+        "=FV(.06/12,10,-200,-500,1)",
+        "=NPER(.12/12,-100,-1000,10000,1)",
+        "=RATE(12,-100*A1,1000)",
+        "=IPMT(.1/12,1,36,8000)",
+        "=PPMT(.1/12,1,24,2000)",
+        "=CUMIPMT(.1/12,36,1000*A1,1,12,0)",
+        "=CUMPRINC(.1/12,36,1000,1,12,0)",
+        "=IRR(D3:D5)",
+        "=XIRR(D3:D5,D6:D8)",
+        "=XNPV(0,D3:D5,D6:D8)",
+        "=MIRR(D3:D5,.1,.12)",
+        "=DDB(2400,300,10,10)",
+        "=DB(1000000,100000,6,7,7)",
+        "=EFFECT(.0525,4)",
+        "=NOMINAL(.053543,4)",
+        "=PDURATION(.025,2000,2200)",
+        "=RRI(96,10000,11000)",
+        "=WORKDAY(DATE(2024,12,20),A1,D1:D2)",
+        "=NETWORKDAYS(DATE(2024,12,20),DATE(2024,12,31),D1:D2)",
+        "=EDATE(DATE(2024,1,31),A1)",
+        "=WEEKNUM(DATE(2024,12,31),21)",
+        "=YEARFRAC(DATE(2023,3,1),DATE(2025,2,28),1)",
+        "=DATEDIF(DATE(2020,2,29),DATE(2024,2,28),\"M\")",
+        "=NETWORKDAYS.INTL(DATE(2024,1,1),DATE(2024,1,31),\"0000110\")",
+        "=DAYS360(DATE(2024,2,29),DATE(2024,3,31),TRUE)",
     ];
     for (i, formula) in formulas.iter().enumerate() {
         book.set_cell(i, 2, formula.to_string())?;

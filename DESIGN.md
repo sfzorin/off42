@@ -667,3 +667,23 @@ Office snapshot embedding rebuilds fresh ZIP containers, preserves unrelated par
 in standard package metadata before hashing. Re-embedding removes prior private declarations/parts. ODS import
 repairs only a dangling own optional snapshot declaration in its working copy. Formula token mapping operates
 outside quoted literals and distinguishes ODF native F left tails from legacy Excel right-tail names.
+
+
+### Windows spreadsheet financial and calendar arithmetic
+
+Financial functions reuse typed scalar/reference arguments and the global calculation budget. IRR and RATE
+solve in log-rate space, normalize residuals and use bounded bracket fallback; cash-flow sign and date-shape
+checks precede solving. Loan interest discounts remaining payments rather than advancing a rounded payment
+through many periods. Long-term future balances retain compensated cancellation terms.
+
+Calendar functions work in absolute Excel serial days with a workbook offset. Explicit components preserve
+day 60 without constructing an invalid Gregorian date. Business-day intervals count whole weeks and holiday
+sets; WORKDAY finds the first distance reaching the requested count with bounded monotone search. Real ISO
+entry values are typed dates. Native XLSX uses serial values/date formatting; ODS uses date-time values, and
+external XLSX edits use the standard ISO date cell kind. Explicit imported text remains text.
+
+
+The plain Windows EDIT subclass brackets native text replacement, paste/cut/clear and character operations.
+Intermediate EN_CHANGE notifications are suppressed until the outer native operation returns; the host then
+commits its final text once. REFRESHING notifications remain ignored, and Rich Edit keeps its existing path.
+This preserves one history step when replacing a selected cell value instead of first committing its deletion.

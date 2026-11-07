@@ -1,6 +1,8 @@
 //! Small, bounded spreadsheet expression evaluator. Raw cells remain authoritative.
+mod calendar;
 mod distributions;
 mod engineering;
+mod finance;
 mod math;
 mod statistics;
 mod text;
@@ -481,7 +483,7 @@ impl Parser<'_, '_> {
         if self.depth > MAX_DEPTH {
             return Value::Error("#LIMIT!");
         }
-        if text::handles(name) || statistics::handles(name) || distributions::handles(name) {
+        if text::handles(name) || statistics::handles(name) || distributions::handles(name) || finance::handles(name) || calendar::handles(name) {
             return self.extended_text_function(name);
         }
         if matches!(name, "TRUE" | "FALSE") {
@@ -493,9 +495,6 @@ impl Parser<'_, '_> {
         }
         if name == "LOOKUP" {
             return self.lookup();
-        }
-        if name == "NPV" {
-            return self.npv();
         }
         if name == "XLOOKUP" {
             return self.xlookup();
@@ -712,28 +711,6 @@ impl Parser<'_, '_> {
                     (number / magnitude).floor() * magnitude
                 })
             }
-            "PMT" if (3..=5).contains(&values.len()) => {
-                let (rate, periods, present) = (values[0], values[1], values[2]);
-                let future = values.get(3).copied().unwrap_or(0.0);
-                let due = values.get(4).copied().unwrap_or(0.0);
-                if periods == 0.0 {
-                    return Value::Error("#DIV/0!");
-                }
-                if due != 0.0 && due != 1.0 {
-                    return Value::Error("#NUM!");
-                }
-                if rate == 0.0 {
-                    finite(-(present + future) / periods)
-                } else {
-                    let growth = (1.0 + rate).powf(periods);
-                    let denominator = (1.0 + rate * due) * (growth - 1.0);
-                    if denominator == 0.0 {
-                        Value::Error("#DIV/0!")
-                    } else {
-                        finite(-rate * (future + present * growth) / denominator)
-                    }
-                }
-            }
             "PI" if values.is_empty() => finite(std::f64::consts::PI),
             "ABS" if one => finite(values[0].abs()),
             "SQRT" if one && values[0] >= 0.0 => finite(values[0].sqrt()),
@@ -947,73 +924,7 @@ impl Parser<'_, '_> {
             Value::Error("#N/A")
         }
     }
-    fn npv(&mut self) -> Value {
-        let rate = match self.comparison() {
-            Value::Number(n) => n,
-            Value::Error(e) => return Value::Error(e),
-            _ => return Value::Error("#VALUE!"),
-        };
-        if rate == -1.0 {
-            return Value::Error("#DIV/0!");
-        }
-        if !self.take(b',') {
-            return Value::Error("#ERROR!");
-        }
-        let mut period = 0i32;
-        let mut total = 0.0;
-        loop {
-            let start = self.pos;
-            if let Some(range) = self.read_range() {
-                self.space();
-                if matches!(self.input.get(self.pos), Some(b',' | b')')) {
-                    for row in range.1..=range.3 {
-                        for col in range.2..=range.4 {
-                            self.eval.steps += 1;
-                            if self.eval.steps > MAX_STEPS {
-                                return Value::Error("#LIMIT!");
-                            }
-                            match self.eval.range_cell(range.0, row, col, self.depth + 1) {
-                                Some(Value::Number(value)) => {
-                                    period += 1;
-                                    total += value / (1.0 + rate).powi(period);
-                                }
-                                Some(Value::Error(e)) => return Value::Error(e),
-                                _ => {}
-                            }
-                        }
-                    }
-                } else {
-                    self.pos = start;
-                    let value = self.comparison();
-                    match value {
-                        Value::Number(n) => {
-                            period += 1;
-                            total += n / (1.0 + rate).powi(period);
-                        }
-                        Value::Error(e) => return Value::Error(e),
-                        _ => return Value::Error("#VALUE!"),
-                    }
-                }
-            } else {
-                self.pos = start;
-                match self.comparison() {
-                    Value::Number(n) => {
-                        period += 1;
-                        total += n / (1.0 + rate).powi(period);
-                    }
-                    Value::Error(e) => return Value::Error(e),
-                    _ => return Value::Error("#VALUE!"),
-                }
-            }
-            if self.take(b')') {
-                break;
-            }
-            if !self.take(b',') {
-                return Value::Error("#ERROR!");
-            }
-        }
-        finite(total)
-    }
+
     fn xlookup(&mut self) -> Value {
         let needle = self.comparison();
         if matches!(needle, Value::Error(_)) {
@@ -1582,6 +1493,8 @@ impl Parser<'_, '_> {
                 let start = self.pos;
                 let range = if statistics::handles(name)
                     || distributions::handles(name)
+                    || finance::handles(name)
+                    || calendar::handles(name)
                     || matches!(name, "TEXTJOIN" | "CONCAT" | "CONCATENATE")
                 {
                     self.read_range()
@@ -1647,6 +1560,10 @@ impl Parser<'_, '_> {
     fn call_extended(&mut self, name: &str, args: &[text::Arg]) -> Value {
         if statistics::handles(name) {
             statistics::call(name, args)
+        } else if calendar::handles(name) {
+            calendar::call(name, args, self.eval.book, &mut self.eval.steps)
+        } else if finance::handles(name) {
+            finance::call(name, args, &mut self.eval.steps)
         } else if distributions::handles(name) {
             distributions::call(name, args, &mut self.eval.steps)
         } else {

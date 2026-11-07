@@ -113,6 +113,8 @@ impl CellContent {
             Self::Boolean(t)
         } else if v.parse::<f64>().is_ok_and(f64::is_finite) {
             Self::Number(t)
+        } else if display::parse_date(v).is_some_and(|d| display::date_to_serial(d).is_some_and(|s|s<=2_958_465.0)) {
+            Self::Date(t)
         } else {
             Self::Text(t)
         }
