@@ -402,3 +402,13 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   formatted clipboard/text-cache assertions are added, pending a compatible run. Optimized external-array run
   [42425180333](https://github.com/sfzorin/off42/actions/runs/42425180333) on b4e9675 is still running.
   No release/main/site changes have been made; full suite parity remains open.
+
+
+- Optimized run [42425180333](https://github.com/sfzorin/off42/actions/runs/42425180333) on b4e9675 passes
+  **455 MSVC tests**, zero failures, one OCR fixture ignored, and builds all executables. Native external XLSX
+  import/resize/Undo/Redo reaches the blocked child, then a new harness reader misses its valid inline string.
+  Independent extraction from both failing source artifacts resolves the exact expected `stop` text.
+- Run [42426181089](https://github.com/sfzorin/off42/actions/runs/42426181089) on 04bd50d reaches the same assertion,
+  after the new rounded General clipboard check passes. Its PPT audit also encounters a transient sharing lock
+  while reading the atomically saved JSON. The harness now reads standard inline strings and retries only sharing
+  failures within the existing deadline; all exact data/geometry/history assertions remain. Repeat verification pending.

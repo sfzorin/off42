@@ -939,8 +939,12 @@ def audit_preset_shapes(process,main,output,results):
     choose_file(process,project,format_name="off42 slides JSON")
     output_ready(process,main,project,b"{")
     def current():
-        objects=json.loads(project.read_text(encoding="utf-8"))["slides"][0]["objects"]
-        return next(o for o in objects if o.get("preset"))
+        def available():
+            try:source=project.read_text(encoding="utf-8")
+            except PermissionError:return None
+            objects=json.loads(source)["slides"][0]["objects"]
+            return next(o for o in objects if o.get("preset"))
+        return wait_for(available,"read preset project after atomic save",process)
     original=current()
     assert original["preset"]=={"name":"roundRect"}
     canvas=wait_for(lambda:next((h for h in windows(process.pid,main) if classname(h)=="Suite42Canvas"),None),"PPT canvas",process)
@@ -1442,6 +1446,9 @@ def audit_array_formulas(process,main,binary,output,results):
         return path,cells,ns
     def cell_value(cells,ns,address):
         cell=cells[address];value=cell.findtext("s:v",namespaces=ns)
+        if cell.attrib.get("t")=="inlineStr":
+            inline=cell.find("s:is",ns);assert inline is not None
+            return"".join(node.text or""for node in inline.findall("s:t",ns)+inline.findall("s:r/s:t",ns))
         return shared_strings[int(value)]if cell.attrib.get("t")=="s"else value
     def value(cells,ns,address,expected):
         cell=cells[address];assert cell_value(cells,ns,address)==expected,(address,ET.tostring(cell,encoding="unicode"),expected)
