@@ -37,7 +37,7 @@ impl Xls {
         }
     }
     fn compute_sparse_rows(&self,cells:&std::collections::BTreeMap<(usize,usize),String>)->Vec<usize>{
-        let mut rows=self.book.visible_rows_from_cells(cells);if !rows.contains(&self.row)&&self.row<self.book.rows()&&!self.book.sheet_view().hidden_rows.contains(&self.row){rows.push(self.row);rows.sort_unstable()}rows
+        let mut rows=self.book.visible_rows_from_cells(cells);if self.row<self.book.rows()&&!self.book.sheet_view().hidden_rows.contains(&self.row){if let Err(i)=rows.binary_search(&self.row){rows.insert(i,self.row);}}rows
     }
     fn visible_rows(&self) -> std::sync::Arc<[usize]> {
         if self.visible_cache.borrow().is_empty() {
@@ -1129,11 +1129,7 @@ impl win42::App for Xls {
     }
     fn grid_frozen_panes(&self) -> (usize, usize) {
         let rows = self.book.sheet_view().frozen_rows;
-        let visible = self
-            .visible_rows()
-            .iter().copied()
-            .filter(|row| *row < rows)
-            .count();
+        let visible = self.visible_rows().partition_point(|row|*row<rows);
         (visible, self.book.sheet_view().frozen_columns)
     }
     fn grid_axes(&self)->Option<(win42::GridAxis,win42::GridAxis)> {
@@ -1202,12 +1198,10 @@ impl win42::App for Xls {
     fn grid_selection(&self) -> Option<win42::GridRange> {
         let r = self.selection_range();
         let rows = self.visible_rows();
-        let top = rows
-            .iter()
-            .position(|row| *row >= r.top && *row <= r.bottom)?;
-        let bottom = rows
-            .iter()
-            .rposition(|row| *row >= r.top && *row <= r.bottom)?;
+        let top=rows.partition_point(|row|*row<r.top);
+        let end=rows.partition_point(|row|*row<=r.bottom);
+        if top>=end{return None}
+        let bottom=end-1;
         Some(win42::GridRange {
             top,
             left: r.left,
@@ -1271,45 +1265,16 @@ impl win42::App for Xls {
             .find(|image| image.id == id)
             .cloned()
             .ok_or("Select a picture")?;
-        let visible = self.visible_rows();
-        let index = visible
-            .iter()
-            .position(|row| *row == picture.row)
-            .ok_or("The picture anchor is hidden")?;
-        let mut x = (0..picture.column)
-            .map(|column| f64::from(self.grid_column_width(column)))
-            .sum::<f64>()
-            + picture.offset_x / 0.75
-            + dx;
-        let mut y = (0..index)
-            .map(|row| f64::from(self.grid_row_height(row)))
-            .sum::<f64>()
-            + picture.offset_y / 0.75
-            + dy;
-        x = x.max(0.0);
-        y = y.max(0.0);
-        let mut column = 0;
-        while column + 1 < self.book.cols() {
-            let width = f64::from(self.grid_column_width(column));
-            if width > 0.0 && x < width {
-                break;
-            }
-            x -= width;
-            column += 1;
-        }
-        let mut row = 0;
-        while row + 1 < visible.len() {
-            let height = f64::from(self.grid_row_height(row));
-            if height > 0.0 && y < height {
-                break;
-            }
-            y -= height;
-            row += 1;
-        }
-        picture.row = visible[row];
-        picture.column = column;
-        picture.offset_x = x * 0.75;
-        picture.offset_y = y * 0.75;
+        let visible=self.visible_rows();
+        let index=visible.binary_search(&picture.row).map_err(|_|"The picture anchor is hidden")?;
+        let (widths,heights)=self.grid_axes().ok_or("Invalid grid geometry")?;
+        let x=(widths.offset(picture.column)as f64+picture.offset_x/0.75+dx).max(0.0);
+        let y=(heights.offset(index)as f64+picture.offset_y/0.75+dy).max(0.0);
+        let column=widths.index_at((x.floor()as i64).min(widths.total()-1)).ok_or("No visible column")?;
+        let row=heights.index_at((y.floor()as i64).min(heights.total()-1)).ok_or("No visible row")?;
+        picture.row=visible[row];picture.column=column;
+        picture.offset_x=(x-widths.offset(column)as f64)*0.75;
+        picture.offset_y=(y-heights.offset(row)as f64)*0.75;
         self.book.update_image(picture).map_err(|e| e.to_string())?;
         Ok(())
     }
@@ -2640,5 +2605,21 @@ mod sparse_open_regression {
         std::fs::write(&path,source.project_bytes().unwrap()).unwrap();
         assert!(app.open(&path).is_err());assert_eq!(app.book.project_bytes().unwrap(),before);
         std::fs::remove_file(path).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod far_picture_geometry_regression {
+    use super::*;use win42::App;
+    #[test]
+    fn far_picture_move_uses_visible_axes_and_one_history_step(){
+        let mut book=Workbook::new(xls42_core::MAX_ROWS,xls42_core::MAX_COLS).unwrap();
+        let mut png=std::io::Cursor::new(Vec::new());image::RgbaImage::from_pixel(1,1,image::Rgba([255,0,0,255])).write_to(&mut png,image::ImageFormat::Png).unwrap();
+        let id=book.insert_image(1_048_574,16_382,png.into_inner(),1.,1.,"far".into()).unwrap();let original=book.images()[0].clone();
+        let mut app=Xls{goal_seek:Default::default(),solver:Default::default(),book,row:1_048_575,col:16_383,preview:None,visible_cache:Default::default(),picture_cache:Default::default(),selected_picture:Some(id)};
+        let range=app.grid_selection().unwrap();assert_eq!((range.top,range.bottom),(1_048_575,1_048_575));assert_eq!(app.grid_frozen_panes(),(0,0));
+        app.move_grid_picture(id,80.,20.).unwrap();let moved=app.book.images()[0].clone();
+        assert_eq!((moved.row,moved.column),(1_048_575,16_383));assert_eq!((moved.offset_x,moved.offset_y),(0.,0.));assert_eq!(moved.data,original.data);
+        app.action(4).unwrap();assert_eq!(app.book.images(),&[original]);app.action(5).unwrap();assert_eq!(app.book.images(),&[moved]);
     }
 }

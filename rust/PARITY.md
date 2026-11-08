@@ -721,3 +721,8 @@ after image selection; image unit regressions are now included in quick CI.
   compatibility path and modern evaluator error recognition are covered. Workspace 541/0/1, GNU all targets
   compile; fixed Swift oracle 492 pass/0 gaps/2 explicit skips. Full-size native scenario now checks SUM,
   COUNTBLANK and distinct saved error/text types too, pending a compatible build.
+
+- Large-grid selection/frozen queries and picture relocation use binary row/axis lookup. A far-object
+  regression moves an image to the last Excel cell and checks exact anchor/offsets/pixels and one-step
+  Undo/Redo; existing hidden/filtered geometry tests still pass. XLS app 27/0 and GNU all targets compile;
+  actual native picture/full-size repeats on this change remain pending.

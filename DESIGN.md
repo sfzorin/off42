@@ -961,3 +961,8 @@ raw errors; unrecognized literal XLSX error codes are refused. Native ODS litera
 surgical typed-input patcher. Ordinary error-looking strings stay strings. The disposable Calamine working copy
 also normalizes GETTING_DATA before restoring the original code, and the evaluator recognizes the supported
 modern errors without changing ERROR.TYPE's explicit mappings.
+
+Grid selection/frozen-row queries binary-search the shared physical-row map. Picture moves use the same
+sparse 64-bit axes as painting and hit testing for both prefix positions and destination lookup; no per-row
+walk is needed to move an object near the bottom of a large sheet. The existing visible-anchor/point-unit
+policy and one-transaction history remain intact.
