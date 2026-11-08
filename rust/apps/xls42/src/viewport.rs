@@ -25,6 +25,85 @@ mod tests {
         }
     }
     #[test]
+    fn technical_artwork_and_axis_geometry_can_extend_blank_space_without_extra_history_steps() {
+        let mut app = app();
+        let original = app.book.project_bytes().unwrap();
+        let range = Range {
+            top: 399,
+            left: 30,
+            bottom: 399,
+            right: 30,
+        };
+        app.choose_range(range, (399, 30)).unwrap();
+        let element = win42::TechnicalElement {
+            symbol_id: None,
+            code_type: win42::BarcodeFormat::Qr,
+            value: "PCB-0042".into(),
+            width_mm: 20.0,
+            caption: false,
+        };
+        app.apply_technical_element(
+            None,
+            win42::TechnicalRaster::render(element.clone()).unwrap(),
+        )
+        .unwrap();
+        let changed = app.book.project_bytes().unwrap();
+        assert_eq!((app.book.rows(), app.book.cols()), (400, 31));
+        let image = &app.book.images()[0];
+        assert_eq!((image.row, image.column), (399, 30));
+        assert_eq!(app.technical_targets()[0].element, element);
+        app.action(4).unwrap();
+        assert_eq!(app.book.project_bytes().unwrap(), original);
+        app.action(5).unwrap();
+        assert_eq!(app.book.project_bytes().unwrap(), changed);
+        for (kind, bytes) in [
+            ("xlsx", app.book.xlsx_bytes().unwrap()),
+            ("ods", app.book.ods_bytes().unwrap()),
+        ] {
+            let opened = Workbook::from_office_bytes(&bytes, kind).unwrap();
+            let image = &opened.images()[0];
+            assert_eq!((image.row, image.column), (399, 30));
+            assert_eq!(
+                win42::TechnicalElement::from_png(&image.data),
+                Some(element.clone())
+            );
+        }
+        let selection = app.book.selection();
+        app.extend_grid_view(449, 30);
+        app.resize_grid_column(40, 137).unwrap();
+        assert_eq!(app.book.cols(), 41);
+        assert_eq!(app.book.column_width(40), Some(137));
+        assert_eq!(app.book.selection(), selection);
+        app.action(4).unwrap();
+        assert_eq!(app.book.project_bytes().unwrap(), changed);
+        app.action(5).unwrap();
+        let wide = app.book.project_bytes().unwrap();
+        app.resize_grid_row(500, 37).unwrap();
+        assert_eq!(app.book.rows(), 501);
+        assert_eq!(app.book.row_height(500), Some(37));
+        assert_eq!(app.book.selection(), selection);
+        app.action(4).unwrap();
+        assert_eq!(app.book.project_bytes().unwrap(), wide);
+        let id = app.book.images()[0].id;
+        app.move_grid_picture(id, 800.0, 6000.0).unwrap();
+        let moved = app.book.project_bytes().unwrap();
+        let picture = &app.book.images()[0];
+        assert_eq!(
+            (
+                picture.row,
+                picture.column,
+                picture.offset_x,
+                picture.offset_y
+            ),
+            (699, 40, 0.0, 0.0)
+        );
+        assert_eq!((app.book.rows(), app.book.cols()), (700, 41));
+        app.action(4).unwrap();
+        assert_eq!(app.book.project_bytes().unwrap(), wide);
+        app.action(5).unwrap();
+        assert_eq!(app.book.project_bytes().unwrap(), moved);
+    }
+    #[test]
     fn scrolling_and_selecting_virtual_blanks_do_not_change_document_or_history_and_edit_is_atomic()
     {
         let mut app = app();

@@ -919,3 +919,8 @@ surgical package paths, and independent format tests verify far formulas/opaque 
 Saved project reopening restores the stored selection. Workspace tests pass; the new native scroll/edit/
 format/paste/Undo/Redo/reopen scenario awaits Windows verification. Some range tools still require allocated
 data; this is not a claim that every command or format supports unlimited areas.
+
+Technical-object/picture insertion and movement, the picture geometry prompt and row/column resizing now
+use the same atomic growth boundary for newly visible blank areas. Portable checks verify a distant QR
+recipe, exact image position/offsets/data, axis sizes, selection retention, complete Undo/Redo and Office
+round trips. The corresponding normal QR/geometry UI scenario awaits a compatible Windows build.

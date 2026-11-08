@@ -71,7 +71,10 @@ picker and bundled catalogs; menu/prompt checks pass on twenty languages in Wind
 are also implemented. PDF page-list extraction, per-page ZIP exports, editable page labels and engineering spreadsheet functions are also
 implemented on the development branch. Goal Seek has passed native value/history/reopen checks; a constrained
 Solver with persisted XLSX/ODS models has also passed native value/history and independent-import checks. These changes
-have not yet shipped in the downloadable Windows preview.
+have not yet shipped in the downloadable Windows preview. Full Excel-size sparse sheets and supported
+whole-row/column aggregates also pass Windows editing, saved-cache and complete-history checks. Standard
+XLSX/ODS selected-sheet state survives external saves. Blank viewport growth and atomic edits in newly
+visible areas are under native verification on the development branch.
 
 <a id="install"></a>
 

@@ -1201,8 +1201,16 @@ def audit_grid_expansion(process,main,binary,output,results):
     assert {(r,c):v['content']['value']['raw']for(r,c),v in cells(pasted).items()if r>=899}=={(899,50):'10',(899,51):'20',(900,50):'30',(900,51):'=1+2'}
     command(main,4);paste_undo=saved('paste-undo');assert paste_undo['sheets']==baseline['sheets']and paste_undo['selection']==baseline['selection'];command(main,5);paste_redo=saved('paste-redo');assert paste_redo['sheets']==pasted['sheets']and paste_redo['selection']==pasted['selection']
     open_fixture(process,main,output/'growth-paste-redo.xls42');wait_for(lambda:text(edit)=='10','expanded project reopens at saved selection',process)
+    fill_prompt(process,main,25,'Range (1-based)',['1200','81','1200','81']);fill_prompt(process,main,65509,'Symbol or Code',['QR','PCB-GROW-42','20','no'])
+    artwork=saved('artwork');assert (artwork['sheets'][0]['rows'],artwork['sheets'][0]['cols'])==(1200,81)
+    picture=artwork['sheets'][0]['images'][0];assert (picture['row'],picture['column'])==(1199,80)and picture['data']and'PCB-GROW-42'in picture['description'];assert artwork['sheets'][0]['cells']==pasted['sheets'][0]['cells']
+    command(main,4);art_undo=saved('artwork-undo');assert art_undo['sheets']==pasted['sheets']and art_undo['selection']==pasted['selection'];command(main,5);art_redo=saved('artwork-redo');assert art_redo['sheets']==artwork['sheets']and art_redo['selection']==artwork['selection']
+    fill_prompt(process,main,77,'Picture Position and Size',['1400','101','5','7','60','60']);moved=saved('artwork-moved');assert (moved['sheets'][0]['rows'],moved['sheets'][0]['cols'])==(1400,101)
+    next_picture=moved['sheets'][0]['images'][0];assert (next_picture['row'],next_picture['column'],next_picture['offset_x'],next_picture['offset_y'],next_picture['width_points'],next_picture['height_points'])==(1399,100,5,7,60,60)
+    assert {k:v for k,v in picture.items()if k not in('row','column','offset_x','offset_y','width_points','height_points')}=={k:v for k,v in next_picture.items()if k not in('row','column','offset_x','offset_y','width_points','height_points')}
+    command(main,4);move_undo=saved('artwork-move-undo');assert move_undo['sheets']==artwork['sheets']and move_undo['selection']==artwork['selection'];command(main,5);move_redo=saved('artwork-move-redo');assert move_redo['sheets']==moved['sheets']and move_redo['selection']==moved['selection']
     assert seed.read_bytes()==original
-    results['checks'].append('native scroll extends blank grid without document mutation; normal far-range selection remains virtual; actual text edit, empty-cell Bold and clipboard Paste allocate only written bounds with complete one-step dimensions/data/style/selection Undo/Redo and saved reopen; source unchanged')
+    results['checks'].append('native scroll extends blank grid without document mutation; normal far-range selection remains virtual; actual text edit, empty-cell Bold and clipboard Paste allocate only written bounds with complete one-step dimensions/data/style/selection Undo/Redo and saved reopen; technical QR insertion and geometry move extend allocation atomically with exact recipe/payload retention and complete history; source unchanged')
 
 
 def audit_sparse_capacity(process,main,binary,output,results):

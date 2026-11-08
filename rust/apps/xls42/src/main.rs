@@ -130,21 +130,11 @@ impl win42::App for Xls {
             picture.width_points = raster.width_points;
             picture.height_points = raster.height_points;
             picture.description = description;
-            self.book.update_image(picture).map_err(|e| e.to_string())?;
+            let range=Range{top:picture.row,left:picture.column,bottom:picture.row,right:picture.column};self.edit_range(range,|book|book.update_image(picture))?;
             self.selected_picture = Some(id);
         } else {
-            self.selected_picture = Some(
-                self.book
-                    .insert_image(
-                        self.row,
-                        self.col,
-                        raster.png,
-                        raster.width_points,
-                        raster.height_points,
-                        description,
-                    )
-                    .map_err(|e| e.to_string())?,
-            );
+            let (row,col)=(self.row,self.col);let range=Range{top:row,left:col,bottom:row,right:col};
+            self.selected_picture=Some(self.edit_range(range,|book|book.insert_image(row,col,raster.png,raster.width_points,raster.height_points,description))?);
         }
         self.preview = None;
         Ok(())
@@ -209,11 +199,8 @@ impl win42::App for Xls {
                 .map_err(|e| e.to_string())?;
             data = encoded.into_inner();
         }
-        self.selected_picture = Some(
-            self.book
-                .insert_image(self.row, self.col, data, width, height, description)
-                .map_err(|e| e.to_string())?,
-        );
+        let (row,col)=(self.row,self.col);let range=Range{top:row,left:col,bottom:row,right:col};
+        self.selected_picture=Some(self.edit_range(range,|book|book.insert_image(row,col,data,width,height,description))?);
         self.preview = None;
         Ok(())
     }
@@ -770,7 +757,7 @@ impl win42::App for Xls {
                 picture.offset_y = number(3)?;
                 picture.width_points = number(4)?;
                 picture.height_points = number(5)?;
-                self.book.update_image(picture).map_err(|e| e.to_string())?;
+                let range=Range{top:picture.row,left:picture.column,bottom:picture.row,right:picture.column};self.edit_range(range,|book|book.update_image(picture))?;
             }
             75 => {
                 let range = self.selection_range();
@@ -877,15 +864,11 @@ impl win42::App for Xls {
             }
             65 => {
                 let size = v[1].parse::<u16>().map_err(|_| "Invalid height")?;
-                self.book
-                    .set_row_height(n(0)?, size)
-                    .map_err(|e| e.to_string())?;
+                let row=n(0)?;let selection=self.book.selection();let range=Range{top:row,left:0,bottom:row,right:0};self.edit_range(range,|book|{let changed=book.set_row_height(row,size)?;if book.selection()!=selection{book.set_selection(selection)?;}Ok(changed)})?;
             }
             66 => {
                 let size = v[1].parse::<u16>().map_err(|_| "Invalid width")?;
-                self.book
-                    .set_column_width(n(0)?, size)
-                    .map_err(|e| e.to_string())?;
+                let col=n(0)?;let selection=self.book.selection();let range=Range{top:0,left:col,bottom:0,right:col};self.edit_range(range,|book|{let changed=book.set_column_width(col,size)?;if book.selection()!=selection{book.set_selection(selection)?;}Ok(changed)})?;
             }
             59 => {
                 let mut settings = self.book.print_settings().clone();
@@ -1146,17 +1129,13 @@ impl win42::App for Xls {
             .unwrap_or(20)
     }
     fn resize_grid_column(&mut self, column: usize, pixels: u16) -> Result<(), String> {
-        self.book
-            .set_column_width(column, pixels)
-            .map(|_| ())
-            .map_err(|e| e.to_string())
+        let range=Range{top:0,left:column,bottom:0,right:column};let selection=self.book.selection();
+        self.edit_range(range,|book|{let changed=book.set_column_width(column,pixels)?;book.set_selection(selection)?;Ok(changed)}).map(|_|())
     }
     fn resize_grid_row(&mut self, row: usize, pixels: u16) -> Result<(), String> {
         let actual = self.visible_at(row).ok_or("Invalid row")?;
-        self.book
-            .set_row_height(actual, pixels)
-            .map(|_| ())
-            .map_err(|e| e.to_string())
+        let range=Range{top:actual,left:0,bottom:actual,right:0};let selection=self.book.selection();
+        self.edit_range(range,|book|{let changed=book.set_row_height(actual,pixels)?;book.set_selection(selection)?;Ok(changed)}).map(|_|())
     }
     fn grid_row_label(&self, row: usize) -> String {
         self.visible_at(row)
@@ -1262,7 +1241,7 @@ impl win42::App for Xls {
         picture.row=visible[row];picture.column=column;
         picture.offset_x=(x-widths.offset(column)as f64)*0.75;
         picture.offset_y=(y-heights.offset(row)as f64)*0.75;
-        self.book.update_image(picture).map_err(|e| e.to_string())?;
+        let range=Range{top:picture.row,left:picture.column,bottom:picture.row,right:picture.column};self.edit_range(range,|book|book.update_image(picture))?;
         Ok(())
     }
     fn grid_pictures(&self) -> Vec<win42::GridPicture> {
