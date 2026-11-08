@@ -873,13 +873,14 @@ for distant sparse data. Oversized operations are refused before document mutati
 projections are test helpers; data-processing clients use `display_cells` or `calculated_cells`.
 
 Portable tests cover far references, independent XLSX/ODS edge imports, all native formats, validation,
-atomic operation refusals and selected-area printing. The full-size native UI scenario is pending its first
-compatible build. Automatic grid expansion and full-sheet formula semantics remain tracked in `PARITY.md`.
+atomic operation refusals and selected-area printing. The full-size native UI scenario passes in run 42521108743: far selection/scroll, edit, scalar summary
+caches, distinct error/text types and complete history/reopen. A flushed-paint pixel check is added for
+the next build. Automatic grid expansion and remaining full-sheet formula semantics remain in `PARITY.md`.
 
 Explicit reference aggregates (SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, PRODUCT and aggregate math) traverse
 stored values and spill results; COUNTBLANK computes implicit blanks without expanding the reference area.
 Full-sheet calculations preserve number/text/boolean/error distinctions and empty-string formula semantics.
-Whole-column syntax and other full-range functions remain separate work. The 492 fixed macOS formula cases
+Whole-row/column reference syntax and other full-range functions are described below. The 492 fixed macOS formula cases
 still match; the two locale/volatile examples remain explicitly skipped.
 
 Native XLSX/ODS exports now preserve literal error cells separately from error-looking text and keep cell
@@ -887,3 +888,12 @@ formatting. Standard and supported modern XLSX error codes retain their error ty
 error codes are refused. Independent packages without the private snapshot verify all sixteen supported
 codes, direct error propagation, ISERROR, ordinary strings and formatting. This does not expand the existing
 guards for external XLSX error-input edits or all ODS layout/style changes.
+
+
+Whole-column/row references such as `A:A`, `$A:$B`, `1:1` and `$2:$4` work with the supported sparse
+aggregates and reference metadata functions. Qualified quoted sheet names, INDIRECT and the reference
+form of INDEX are supported. Formula references use the global Excel address space, including implicit
+blank cells beyond a small sheet's displayed extent; references past XFD1048576 remain errors. Array and
+other materialized functions retain their existing budgets. XLSX/ODS formula and active-sheet metadata
+are checked after removing the optional native snapshot. External active-tab changes still need a separate
+persistence path; complete locale/function semantics and automatic viewport growth remain open.

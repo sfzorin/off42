@@ -726,3 +726,16 @@ after image selection; image unit regressions are now included in quick CI.
   regression moves an image to the last Excel cell and checks exact anchor/offsets/pixels and one-step
   Undo/Redo; existing hidden/filtered geometry tests still pass. XLS app 27/0 and GNU all targets compile;
   actual native picture/full-size repeats on this change remain pending.
+
+- Runs 42520609905 (6202605) and 42521108743 (08ac1e0) complete all 37 UI groups, respectively
+  544/0/1 and 546/0/1 MSVC tests. Actual full-size open, far selection/scroll, editing, saved scalar/SUM/
+  COUNTBLANK caches, literal error/text types and complete history/reopen pass. The far capture was taken
+  before the queued repaint and still showed A1; the audit now flushes the invalidated native paint and
+  checks actual selected-cell background pixels before capture. That stricter render check is pending.
+- Whole-row/column references, absolute markers, quoted sheet qualifiers, INDIRECT and reference INDEX
+  now use global bounds and sparse range consumers. Implicit empty references beyond loaded extent are
+  valid; the former `Z99` invalid-reference fixture is moved past the actual Excel boundary, with new valid
+  empty-edge and invalid-capacity assertions. Native XLSX/ODS standard axis formulas and active-sheet
+  metadata reopen without the private snapshot. Workspace 543/0/1, GNU all targets compile, Swift oracle
+  492 pass/0 gaps/2 explicit skips. New native whole-column/render checks await a compatible build.
+  External active-tab persistence, viewport growth and remaining large-reference functions are still open.

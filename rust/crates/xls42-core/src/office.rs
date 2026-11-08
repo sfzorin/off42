@@ -306,6 +306,7 @@ impl Workbook {
             BTreeMap::new();
         for (sheet_index, sheet) in state.sheets.iter().enumerate() {
             let ws = book.add_worksheet();
+            ws.set_active(sheet.id==state.active);
             ws.set_name(&sheet.name)
                 .map_err(|_| Error::Invalid("invalid XLSX sheet name"))?;
             if sheet.view.frozen_rows != 0 || sheet.view.frozen_columns != 0 {
@@ -927,7 +928,10 @@ fn ods_formula_to_a1(input: &str) -> Option<String> {
         if !in_string && b[i] == b'[' {
             let end = input[i + 1..].find(']')? + i + 1;
             let range = &input[i + 1..end];
-            let mut parts = range.split(':');
+            let operands=range.split(':').collect::<Vec<_>>();
+            let cells=operands.iter().map(|part|part.rfind('.').map(|dot|&part[dot+1..])).collect::<Option<Vec<_>>>()?;
+            let axis=if cells.len()==2 {parse_axis_range(&format!("{}:{}",cells[0],cells[1]),0).is_some_and(|(_,a,b,_,_,rows)|a<if rows{MAX_ROWS}else{MAX_COLS}&&b<if rows{MAX_ROWS}else{MAX_COLS})}else{false};
+            let mut parts = operands.into_iter();
             for (index, part) in parts.by_ref().enumerate() {
                 if index > 1 {
                     return None;
@@ -938,9 +942,7 @@ fn ods_formula_to_a1(input: &str) -> Option<String> {
                 let dot = part.rfind('.')?;
                 let sheet = &part[..dot];
                 let cell = &part[dot + 1..];
-                if parse_a1_endpoint(cell, 0).is_none_or(|v| v.0 != cell.len()) {
-                    return None;
-                }
+                if !axis&&parse_a1_endpoint(cell, 0).is_none_or(|v| v.0 != cell.len()) {return None;}
                 if !sheet.is_empty() && sheet != "$" {
                     out.push_str(sheet.trim_start_matches('$'));
                     out.push('!');
@@ -1073,6 +1075,9 @@ fn ods_formula(input: &str) -> Result<String, Error> {
             i += 1;
             continue;
         }
+        if let Some((end,_,_,_,_,_))=parse_axis_range(input,i).filter(|(_,a,b,_,_,rows)|*a<if *rows{MAX_ROWS}else{MAX_COLS}&&*b<if *rows{MAX_ROWS}else{MAX_COLS}) {
+            let raw=&input[i..end];let (left,right)=raw.split_once(':').unwrap();out.push_str(&format!("[.{left}:.{right}]"));i=end;continue;
+        }
         if b[i] == b'\'' || b[i].is_ascii_alphabetic() || b[i] == b'_' {
             let start = i;
             let mut j = i;
@@ -1101,6 +1106,10 @@ fn ods_formula(input: &str) -> Result<String, Error> {
             }
             if b.get(j) == Some(&b'!') {
                 let ref_start = j + 1;
+                if let Some((end,_,_,_,_,_))=parse_axis_range(input,ref_start) {
+                    let (left,right)=input[ref_start..end].split_once(':').unwrap();out.push_str(&format!("['{}'.{left}:.{right}]",name.replace('\'',"''")));i=end;continue;
+                }
+
                 let (mut end, _, _, _, _) = parse_a1_endpoint(input, ref_start)
                     .ok_or(Error::Invalid("Unsupported ODS sheet reference"))?;
                 out.push_str("['");
@@ -1343,6 +1352,7 @@ impl Workbook {
             return Err(Error::Invalid("ODS export of protection, unknown borders or number formats is unsupported"));
         }
         let mut book = WorkBook::default();
+        book.config_mut().active_table=state.sheet().name.clone();
         let mut styles = Vec::new();
         for (i, s) in state.styles.iter().enumerate() {
             let mut st = OdsStyle::new_empty();
@@ -1748,6 +1758,7 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
     use spreadsheet_ods::Length;
     let book = spreadsheet_ods::read_ods_buf(bytes)
         .map_err(|_| Error::Invalid("cannot parse ODS layout"))?;
+    if let Some(sheet)=state.sheets.iter().find(|s|s.name==book.config().active_table){state.active=sheet.id;}
     let mut archive =
         zip::ZipArchive::new(Cursor::new(bytes)).map_err(|_| Error::Invalid("invalid ODS"))?;
     let xml_content =
@@ -2317,6 +2328,7 @@ fn import_xlsx_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
             }
         }
     }
+    if let Some(sheet)=workbook.descendants().find(|n|n.has_tag_name("workbookView")).and_then(|n|n.attribute("activeTab")).and_then(|s|s.parse::<usize>().ok()).and_then(|i|state.sheets.get(i)){state.active=sheet.id;}
     let sheet_nodes: Vec<_> = workbook
         .descendants()
         .filter(|n| n.has_tag_name("sheet"))

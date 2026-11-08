@@ -12,6 +12,7 @@ mod statistics;
 mod text;
 mod units;
 mod sparse_ranges;
+mod axis_references;
 use crate::{CellContent, SheetId, Workbook};
 use std::collections::{HashMap, HashSet};
 
@@ -82,7 +83,7 @@ impl<'a> Eval<'a> {
             .sheets
             .iter()
             .find(|s| s.id == sheet)?;
-        if row >= s.rows || col >= s.cols {
+        if row >= crate::MAX_ROWS || col >= crate::MAX_COLS {
             return None;
         }
         Some(s.cells.get(&(row, col)).map_or("", |c| c.text.raw()))
@@ -582,6 +583,12 @@ impl Parser<'_, '_> {
         value
     }
     fn function(&mut self, name: &str) -> Value {
+        if name=="INDEX" {
+            let start=self.pos;
+            let reference=self.read_range().is_some()&&self.take(b',');
+            self.pos=start;
+            if reference{return self.reference_value(name)}
+        }
         if arrays::handles(name) {
             return self.array_function(name);
         }
@@ -1039,6 +1046,7 @@ impl Parser<'_, '_> {
             return Some(range);
         }
         self.pos = start;
+        if let Some(range)=self.read_whole_axis_range(){return Some(range)}
         let first = self.read_any_ref(self.sheet)?;
         let last = if self.take(b':') {
             self.read_any_ref(first.0)?
@@ -1048,7 +1056,7 @@ impl Parser<'_, '_> {
         if first.0 != last.0 || first.1 > last.1 || first.2 > last.2 {
             return None;
         }
-        let sheet = self
+        let _sheet = self
             .eval
             .book
             .history
@@ -1056,7 +1064,7 @@ impl Parser<'_, '_> {
             .sheets
             .iter()
             .find(|s| s.id == first.0)?;
-        if last.1 >= sheet.rows || last.2 >= sheet.cols {
+        if last.1 >= crate::MAX_ROWS || last.2 >= crate::MAX_COLS {
             return None;
         }
         Some((first.0, first.1, first.2, last.1, last.2))
@@ -1889,7 +1897,7 @@ impl Parser<'_, '_> {
             other => other,
         }
     }
-    fn read_qualified_ref(&mut self) -> Option<(SheetId, usize, usize)> {
+    fn read_sheet_qualifier(&mut self) -> Option<SheetId> {
         self.space();
         let start = self.pos;
         let name = if self.input.get(self.pos) == Some(&b'\'') {
@@ -1945,11 +1953,11 @@ impl Parser<'_, '_> {
             self.pos = start;
             return None;
         };
-        let Some((r, c)) = self.read_ref() else {
-            self.pos = start;
-            return None;
-        };
-        Some((id, r, c))
+        Some(id)
+    }
+    fn read_qualified_ref(&mut self)->Option<(SheetId,usize,usize)>{
+        let start=self.pos;let id=self.read_sheet_qualifier()?;
+        if let Some((r,c))=self.read_ref(){Some((id,r,c))}else{self.pos=start;None}
     }
     fn read_any_ref(&mut self, default: SheetId) -> Option<(SheetId, usize, usize)> {
         let start = self.pos;

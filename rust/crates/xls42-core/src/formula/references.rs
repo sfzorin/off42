@@ -99,7 +99,7 @@ impl Parser<'_, '_> {
         }
         let bottom = top.checked_add(height - 1).ok_or("#REF!")?;
         let right = left.checked_add(width - 1).ok_or("#REF!")?;
-        let s = self
+        let _s = self
             .eval
             .book
             .history
@@ -108,7 +108,7 @@ impl Parser<'_, '_> {
             .iter()
             .find(|s| s.id == sheet)
             .ok_or("#REF!")?;
-        if bottom >= s.rows as i64 || right >= s.cols as i64 {
+        if bottom >= crate::MAX_ROWS as i64 || right >= crate::MAX_COLS as i64 {
             return Err("#REF!");
         }
         Ok((
@@ -156,6 +156,9 @@ impl Parser<'_, '_> {
                     locals: self.locals.clone(),
                 };
                 // INDIRECT accepts addresses, never arbitrary formulas or external workbooks.
+                if let Some(range)=p.read_whole_axis_range(){p.space();return if p.pos==p.input.len(){Ok(range)}else{Err("#REF!")};}
+                p.pos=0;
+
                 let first = p.read_any_ref(p.sheet).ok_or("#REF!")?;
                 let last = if p.take(b':') {
                     p.read_any_ref(first.0).ok_or("#REF!")?

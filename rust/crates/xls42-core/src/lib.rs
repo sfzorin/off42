@@ -2187,7 +2187,7 @@ mod formula_regression {
     #[test]
     fn errors_cycles_recover_and_limits_are_bounded() {
         let mut b = Workbook::new(2, 4).unwrap();
-        for (c, value) in ["=B1", "=A1", "=1/0", "=Z99"].iter().enumerate() {
+        for (c, value) in ["=B1", "=A1", "=1/0", "=XFE1048577"].iter().enumerate() {
             b.set_cell(0, c, (*value).into()).unwrap();
         }
         assert_eq!(

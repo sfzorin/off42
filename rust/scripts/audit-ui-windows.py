@@ -1141,7 +1141,7 @@ def audit_sparse_capacity(process,main,binary,output,results):
     model=saved('seed');sheet=model['sheets'][0];sheet['rows']=1048576;sheet['cols']=16384
     sheet['cells'][0]['content']={'type':'Formula','value':{'raw':'=XFD1048576*3','crlf':False}}
     sheet['cells'].append({'row':1048575,'col':16383,'content':{'type':'Number','value':{'raw':'7','crlf':False}},'style':0})
-    for row,kind,raw,col in [(1,'Formula','=SUM(XFD1:XFD1048576)',0),(2,'Formula','=COUNTBLANK(XFD1:XFD1048576)',0),(3,'Error','#N/A',0),(1,'Text','#N/A',1)]:sheet['cells'].append({'row':row,'col':col,'content':{'type':kind,'value':{'raw':raw,'crlf':False}},'style':0})
+    for row,kind,raw,col in [(1,'Formula','=SUM(XFD:XFD)',0),(2,'Formula','=COUNTBLANK(XFD:XFD)',0),(3,'Error','#N/A',0),(1,'Text','#N/A',1)]:sheet['cells'].append({'row':row,'col':col,'content':{'type':kind,'value':{'raw':raw,'crlf':False}},'style':0})
     source=output/'sparse-full-size.xls42';source.write_text(json.dumps(model),encoding='utf-8');original=source.read_bytes();open_fixture(process,main,source)
     grid=u.GetDlgItem(main,102);assert classname(grid)=='Off42VariableGrid'
     fill_prompt(process,main,25,'Range (1-based)',['1048576','16384','1048576','16384'])
@@ -1151,6 +1151,14 @@ def audit_sparse_capacity(process,main,binary,output,results):
     def scroll_position(bar):
         info=ScrollInfo();info.cbSize=c.sizeof(info);info.fMask=0x17;assert u.GetScrollInfo(grid,bar,c.byref(info));return info.nPos
     wait_for(lambda:scroll_position(1)>20_000_000 and scroll_position(0)>1_300_000,'far range selection scrolls both native axes',process)
+    # Flush the invalidated paint before sampling; fast automation can otherwise capture the old A1 frame.
+    bounded_send(grid,0x000F)
+    rect=w.RECT();u.GetClientRect.argtypes=[w.HWND,c.POINTER(w.RECT)];assert u.GetClientRect(grid,c.byref(rect))
+    gdi=c.WinDLL('gdi32',use_last_error=True);gdi.GetPixel.argtypes=[w.HDC,c.c_int,c.c_int];gdi.GetPixel.restype=w.DWORD
+    u.GetDC.argtypes=[w.HWND];u.GetDC.restype=w.HDC;u.ReleaseDC.argtypes=[w.HWND,w.HDC]
+    dc=u.GetDC(grid)
+    try:assert gdi.GetPixel(dc,rect.right-5,rect.bottom-5)==(210|(228<<8)|(252<<16)),'Far selected cell did not render at the scrolled viewport edge'
+    finally:u.ReleaseDC(grid,dc)
     capture_window(grid,output/'XLS42-last-cell.bmp');before=saved('before')
     replace_editor_text(edit,'11');changed=saved('after')
     def cells(project):return {(v['row'],v['col']):v for v in project['sheets'][0]['cells']}

@@ -966,3 +966,12 @@ Grid selection/frozen-row queries binary-search the shared physical-row map. Pic
 sparse 64-bit axes as painting and hit testing for both prefix positions and destination lookup; no per-row
 walk is needed to move an object near the bottom of a large sheet. The existing visible-anchor/point-unit
 policy and one-transaction history remain intact.
+
+Whole-axis reference parsing accepts optional absolute markers, quoted sheet qualifiers and global Excel
+row/column endpoints. Valid formula references into unallocated blank area evaluate as blanks/zero without
+changing sheet data/extent; past-capacity references still fail. INDEX's reference form resolves its source
+rectangle before materializing only the chosen result; array-valued first arguments retain the array path.
+INDIRECT accepts whole-axis address text while still refusing arbitrary expressions. ODF conversion retains
+whole-axis operands in bracket notation, including row-only endpoints. Native Office writers and importers
+use the standard activeTab/ActiveTable metadata, independently of the private snapshot. External tab-state
+rewriting remains a separate change. Existing allocated-coordinate editing bounds and array budgets remain.
