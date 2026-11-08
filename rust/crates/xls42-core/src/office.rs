@@ -12,6 +12,7 @@ mod dynamic_arrays;
 mod sparse_import;
 mod sparse_ods;
 mod views;
+mod ods_formats;
 #[cfg(test)]
 mod literal_errors;
 fn xlsx_error(value:&str)->Result<&'static str,Error>{
@@ -1351,7 +1352,7 @@ impl Workbook {
         }) || state
             .styles
             .iter()
-            .any(|s| s.borders & !15 != 0 || !s.number_format.is_empty())
+            .any(|s| s.borders & !15 != 0 || !ods_formats::supported(&s.number_format))
         {
             return Err(Error::Invalid("ODS export of protection, unknown borders or number formats is unsupported"));
         }
@@ -1527,6 +1528,7 @@ impl Workbook {
         }
         let bytes = spreadsheet_ods::write_ods_buf(&mut book, Vec::new())
             .map_err(|_| Error::Invalid("cannot encode ODS"))?;
+        let bytes=ods_formats::patch_native(&bytes,&state.styles)?;
         let errors=state.sheets.iter().map(|s|s.cells.iter().filter_map(|(&p,c)|matches!(c.text,CellContent::Error(_)).then_some((p,Some(c.clone())))).collect()).collect::<Vec<_>>();
         let bytes=if errors.iter().any(|s:&Vec<_>|!s.is_empty()){dynamic_arrays::patch_ods_inputs(&bytes,&errors,state)?}else{bytes};
         let bytes=if state.sheets.iter().any(|s|s.filter.is_some()){add_ods_database_ranges(&bytes,state)?}else{bytes};
@@ -1760,6 +1762,7 @@ impl Workbook {
 
 fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
     use spreadsheet_ods::Length;
+    let number_formats=ods_formats::imported(bytes)?;
     let book = spreadsheet_ods::read_ods_buf(bytes)
         .map_err(|_| Error::Invalid("cannot parse ODS layout"))?;
     if let Some(name)=views::ods_active(bytes)?{if let Some(sheet)=state.sheets.iter().find(|s|s.name==name){state.active=sheet.id;}}
@@ -1856,6 +1859,7 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
                 if let Some(reference) = node.attribute((sparse_ods::TABLE,"style-name")) {
                     if let Some(style) = book.cellstyle(reference) {
                         let mut out = CellStyle::default();
+                        out.number_format=number_formats.get(reference).cloned().unwrap_or_default();
                         for (key, value) in style.textstyle().iter() {
                             match key.as_ref() {
                                 "fo:font-weight" => out.bold = value == "bold",

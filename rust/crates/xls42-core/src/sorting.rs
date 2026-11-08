@@ -368,8 +368,9 @@ mod tests {
         assert_eq!(opened.calculated_cells(), b.calculated_cells());
         assert!(opened.style(0, MAX_COLS - 1).unwrap().bold);
         assert_eq!(opened.style(0, MAX_COLS - 1).unwrap().number_format, "0.00");
-        // The pre-existing ODS format guard must still refuse this numeric format rather than lose it.
-        assert!(b.ods_bytes().is_err());
+        let ods = Workbook::from_office_bytes(&b.ods_bytes().unwrap(), "ods").unwrap();
+        assert_eq!(ods.calculated_cells(), b.calculated_cells());
+        assert_eq!(ods.style(0, MAX_COLS - 1).unwrap().number_format, "0.00");
         assert_eq!(b.project_bytes().unwrap(), changed);
     }
     #[test]

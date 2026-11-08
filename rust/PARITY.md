@@ -810,3 +810,15 @@ after image selection; image unit regressions are now included in quick CI.
   guarded. XLSX number formats persist; unsupported ODS numeric formats remain explicitly refused. Workspace
   566/0/1, GNU all targets pass; native advanced/horizontal/full-size sort and strengthened reopen await a
   compatible build. Foreign Office sorting, full locale collation and saved custom lists remain open.
+
+- Run 42529958919 (c512753) native artifacts pass all 37 groups, MSVC 571/0/1. Advanced multi-key
+  custom/natural sorting, horizontal exact formula moves and independent caches, full-sheet XFD data sort,
+  complete history and strengthened same-file/Office reopen pass.
+- Common ODS fixed decimals/zero-pad/grouping/percentage codes now have standard styles and linked
+  cell styles, unrounded numeric attributes and correctly formatted text caches/percentage types. Independent
+  imports resolve namespace prefixes/parent number styles. External value and formula/array cache updates
+  preserve formats, exact values, distinct text/Boolean/error types, unknown parts and byte-exact Undo.
+  Numeric-format sort now also round trips ODS. Workspace 568/0/1, GNU all targets compile; normal native
+  Number Format controls/ODS output, independent foreign edit and complete history/reopen audit is added.
+  Windows pending; remaining number-format families, locale/default-column/row styles and foreign format
+  changes stay open. Unsupported formats continue to refuse rather than lose formatting.

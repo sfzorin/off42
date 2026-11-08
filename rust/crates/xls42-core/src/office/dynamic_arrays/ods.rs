@@ -216,6 +216,16 @@ fn cell(source: &str, node: roxmltree::Node<'_, '_>, update: &Update) -> Result<
             );
         }
     }
+    if let Some(code)=&update.number_format{
+        let value=attrs.iter().rev().find(|(ns,key,_)|*ns==O&&*key=="value").map(|(_,_,v)|v.clone()).unwrap_or_else(||node.attribute((O,"value")).map(str::to_owned));
+        let kind=attrs.iter().rev().find(|(ns,key,_)|*ns==O&&*key=="value-type").map(|(_,_,v)|v.clone()).unwrap_or_else(||node.attribute((O,"value-type")).map(str::to_owned));
+        if matches!(kind.as_deref(),Some("float"|"percentage")){
+            if let Some((percent,text))=value.as_deref().and_then(|raw|ods_formats::presentation(code,raw)){
+                attrs.retain(|(ns,key,_)|!(*ns==O&&*key=="value-type"));attrs.push((O,"value-type",Some(if percent{"percentage"}else{"float"}.into())));
+                remove.push(("urn:oasis:names:tc:opendocument:xmlns:text:1.0","p"));body=format!("<text:p xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\">{}</text:p>",escape_xml(&text));
+            }
+        }
+    }
     attrs.push((T, "number-columns-repeated", None));
     xml_nodes::edit(source, node, &attrs, &remove, &body)
 }

@@ -1016,3 +1016,11 @@ and columns share the same permutation, with optional headers, multiple directio
 segments and custom priorities. Key slots and evaluation work are independently bounded; failed rules,
 merged/array/spill blocks and unsupported external sources leave the original history untouched. The basic
 sort dialog stays compact; advanced options have their own menu dialog.
+
+Common ODS numeric formats are encoded as standard number-style/percentage-style definitions with
+explicit decimal/minimum digit/grouping and en-US punctuation. Native cell styles reference deduplicated
+definitions; numeric values remain unrounded while numeric text caches are formatted independently.
+Import resolves namespace-qualified definitions and parent number styles. Surgical input/array/scalar cache
+updates carry number-format context, keeping percentage type and display text separate from numeric data.
+Formatting changes are bounded by XML size and unique-style counts; unsupported code families remain
+guarded. Unchanged style definitions and unknown ZIP parts survive value-only external saves.

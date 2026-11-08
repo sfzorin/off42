@@ -1177,6 +1177,49 @@ def audit_sheet_tabs(process,main,binary,output,results):
     results['checks'].append('normal add/switch-sheet commands and actual editor text; native and independent XLSX/ODS active-sheet import, external tab-only saves and standard single-tab flags, unchanged worksheet data/styles/unknown parts, complete Undo/Redo with byte-exact original restoration and saved reopen')
 
 
+def audit_ods_number_formats(process,main,binary,output,results):
+    import xml.etree.ElementTree as ET
+    seed=output/'numbers-source.csv';seed.write_text('0.123456789,1.23456789,42\n=1/3,12345.6789,7\n',encoding='utf-8');original=seed.read_bytes();open_fixture(process,main,seed)
+    def saved(name,kind='XLS42 workbook',extension='xls42'):
+        path=output/('numbers-'+name+'.'+extension);save_as(main);choose_file(process,path,format_name=kind);output_ready(process,main,path,b'{'if extension=='xls42'else b'PK');return json.loads(path.read_text(encoding='utf-8'))if extension=='xls42'else path
+    cases=[(0,0,'0.00%','12.35%',0.123456789),(1,0,'0.000','0.333',1/3),(0,1,'0.00','1.23',1.23456789),(1,1,'#,##0.00','12,345.68',12345.6789),(0,2,'000000','000042',42),(1,2,'00','07',7)]
+    for i,(row,col,code,_,_)in enumerate(cases):
+        fill_prompt(process,main,25,'Range (1-based)',[str(row+1),str(col+1),str(row+1),str(col+1)])
+        if i==len(cases)-1:before=saved('before-last-format')
+        fill_prompt(process,main,38,'Number format',[code])
+    changed=saved('formatted');command(main,4);undone=saved('format-undo');assert undone['sheets']==before['sheets']and undone['styles']==before['styles']and undone['selection']==before['selection'];command(main,5);redone=saved('format-redo');assert redone['sheets']==changed['sheets']and redone['styles']==changed['styles']and redone['selection']==changed['selection']
+    native=saved('native','OpenDocument spreadsheet','ods');ns={'o':'urn:oasis:names:tc:opendocument:xmlns:office:1.0','s':'urn:oasis:names:tc:opendocument:xmlns:style:1.0','t':'urn:oasis:names:tc:opendocument:xmlns:table:1.0','n':'urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0','p':'urn:oasis:names:tc:opendocument:xmlns:text:1.0'}
+    def inspect(path):
+        with zipfile.ZipFile(path)as archive:root=ET.fromstring(archive.read('content.xml'))
+        table=root.find('.//t:table',ns);rows=table.findall('t:table-row',ns);cells={(r,c):v for r,row in enumerate(rows)for c,v in enumerate(row.findall('t:table-cell',ns))};styles={v.attrib['{'+ns['s']+'}name']:v for v in root.findall('.//s:style',ns)};formats={v.attrib['{'+ns['s']+'}name']:v for v in root.iter()if v.tag in('{'+ns['n']+'}number-style','{'+ns['n']+'}percentage-style')}
+        return cells,styles,formats
+    cells,styles,formats=inspect(native)
+    for row,col,code,display,value in cases:
+        cell=cells[(row,col)];assert cell.findtext('p:p',namespaces=ns)==display,(row,col,ET.tostring(cell));assert float(cell.attrib['{'+ns['o']+'}value'])==value
+        style=styles[cell.attrib['{'+ns['t']+'}style-name']];fmt=formats[style.attrib['{'+ns['s']+'}data-style-name']];assert fmt.tag=='{'+ns['n']+'}'+('percentage-style'if code.endswith('%')else'number-style');assert cell.attrib['{'+ns['o']+'}value-type']==('percentage'if code.endswith('%')else'float')
+    replace_editor_text(u.GetDlgItem(main,101),'REOPEN-STALE');open_fixture(process,main,native);restored=saved('reopened');assert restored['sheets']==changed['sheets']and restored['styles']==changed['styles']
+    independent=output/'numbers-independent.ods'
+    with zipfile.ZipFile(native)as archive,zipfile.ZipFile(independent,'w')as out:
+        for entry in archive.infolist():
+            if entry.filename=='xls42/project.json':continue
+            data=archive.read(entry)
+            if entry.filename=='META-INF/manifest.xml':
+                manifest='urn:oasis:names:tc:opendocument:xmlns:manifest:1.0';ET.register_namespace('manifest',manifest);root=ET.fromstring(data)
+                for child in list(root):
+                    if any(v.lstrip('/')=='xls42/project.json'for v in child.attrib.values()):root.remove(child)
+                data=ET.tostring(root,encoding='utf-8',xml_declaration=True)
+            out.writestr(entry,data)
+        out.writestr('custom/number-opaque.bin',b'keep foreign number part')
+    source_bytes=independent.read_bytes();open_fixture(process,main,independent);wait_for(lambda:text(u.GetDlgItem(main,101))=='0.123456789','independent ODS full precision input',process)
+    replace_editor_text(u.GetDlgItem(main,101),'0.987654321');edited=saved('edited','OpenDocument spreadsheet','ods');cells,_,_=inspect(edited);assert cells[(0,0)].findtext('p:p',namespaces=ns)=='98.77%'and float(cells[(0,0)].attrib['{'+ns['o']+'}value'])==0.987654321;assert cells[(0,0)].attrib['{'+ns['o']+'}value-type']=='percentage';assert cells[(1,0)].findtext('p:p',namespaces=ns)=='0.333'
+    with zipfile.ZipFile(edited)as archive:assert archive.read('custom/number-opaque.bin')==b'keep foreign number part'and'xls42/project.json'not in archive.namelist()
+    command(main,4);undo=saved('external-undo','OpenDocument spreadsheet','ods');assert undo.read_bytes()==source_bytes
+    command(main,5);redo=saved('external-redo','OpenDocument spreadsheet','ods');assert inspect(redo)[0][(0,0)].findtext('p:p',namespaces=ns)=='98.77%'
+    replace_editor_text(u.GetDlgItem(main,101),'STALE');open_fixture(process,main,edited);wait_for(lambda:text(u.GetDlgItem(main,101))=='0.987654321','independent formatted ODS edited value reopens',process)
+    assert independent.read_bytes()==source_bytes and seed.read_bytes()==original
+    results['checks'].append('normal Number Format controls for fixed decimals, grouped numbers, percentages and zero padding; complete style/value/selection Undo/Redo; standard ODS number-style links, formatted text caches and exact unrounded numeric attributes independently checked; native and snapshot-free foreign reopen, percentage and scalar-formula cache edits, unknown part preserved, byte-exact external Undo and unchanged sources')
+
+
 def audit_advanced_sort(process,main,binary,output,results):
     import xml.etree.ElementTree as ET
     seed=output/'sort-source.csv';seed.write_text('Priority,Part,ID\nlow,R10,first\nHIGH,R2,second\nMedium,R1,third\nlow,R02,fourth\n',encoding='utf-8');original=seed.read_bytes();open_fixture(process,main,seed)
@@ -2639,6 +2682,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_sheet_tabs(process,main,binary,output,results)
             audit_grid_expansion(process,main,binary,output,results)
             audit_advanced_sort(process,main,binary,output,results)
+            audit_ods_number_formats(process,main,binary,output,results)
         if statistical_formulas and binary.stem.lower()=="xls42":
             audit_statistical_formulas(process,main,output,binary,results)
         if array_formulas and binary.stem.lower()=="xls42":

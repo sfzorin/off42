@@ -965,3 +965,18 @@ Run 42528597238 (a7e4302) passes all 37 Windows UI groups, MSVC 566/0/1: new gri
 QR insertion/geometry, serial identifiers, localized formula entry/cache/history and PDF area gestures pass.
 The inspected expanded-grid capture shows AE501 = 30 with correct scroll and selection. The next audit
 strengthens same-file reopen cases by first making a distinct unsaved change and explicitly discarding it.
+
+Native ODS output now supports fixed-decimal numbers, leading zeroes, grouping and percentages using
+standard number/percentage styles. Decimal precision and grouping are explicit; numeric attributes retain
+unrounded values, and text caches contain formatted presentation. Independent ODS import resolves these
+styles, namespace aliases and parent number styles. Edited literal/formula/array numeric caches keep their
+presentation and percentage type without changing their exact values. Numeric-looking strings, Boolean
+values and errors remain distinct. Unsupported date/currency/scientific/conditional/optional-digit formats
+keep their existing refusal; broader locale/default-row/column style semantics remain open. Bounded XML
+updates preserve unrelated parts, and independent external Undo restores the byte-exact source. Portable
+workspace 568/0/1 and GNU all targets pass. A normal Number Format/ODS/native-and-foreign reopen/cache/
+Undo/Redo audit is added; actual Windows verification awaits a compatible build.
+
+Run 42529958919 (c512753) passes all 37 UI groups and MSVC 571/0/1. Advanced multi-key/custom/natural
+sort, horizontal formula shifts with independent XLSX caches, full-sheet XFD-data sort and complete history
+pass, including strengthened same-file discard/reopen and XLSX/ODS outputs.

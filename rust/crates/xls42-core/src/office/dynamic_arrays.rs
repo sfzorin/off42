@@ -237,6 +237,7 @@ pub(super) fn rewrite_zip(bytes: &[u8], mut entries: BTreeMap<String, Vec<u8>>) 
 
 #[derive(Default)]
 struct Update {
+    number_format: Option<String>,
     input: Option<Option<CellContent>>,
     cm: Option<usize>,
     style: Option<Option<String>>,
@@ -247,7 +248,7 @@ pub(super) fn patch_ods_inputs(bytes:&[u8],changes:&[Vec<((usize,usize),Option<C
     let mut archive=zip::ZipArchive::new(Cursor::new(bytes)).map_err(|_|Error::Invalid("invalid ODS package"))?;
     let text=zip_text(&mut archive,"content.xml")?.ok_or(Error::Invalid("missing ODS content"))?;
     let changes=state.sheets.iter().zip(changes).map(|(sheet,cells)|{
-        let cells=cells.iter().map(|(p,cell)|(*p,Update{input:Some(cell.as_ref().map(|c|c.text.clone())),..Default::default()})).collect();
+        let cells=cells.iter().map(|(p,cell)|(*p,Update{input:Some(cell.as_ref().map(|c|c.text.clone())),number_format:cell.as_ref().and_then(|c|state.styles.get(c.style)).map(|s|s.number_format.clone()),..Default::default()})).collect();
         (sheet.name.clone(),cells)
     }).collect();
     let output=ods::patch(&text,&changes)?;
@@ -258,6 +259,7 @@ fn updates(
     sheet: &Sheet,
     spans: &[Span],
     calculation: &formula::Calculation,
+    styles: Option<&[CellStyle]>,
 ) -> BTreeMap<(usize, usize), Update> {
     let mut updates = BTreeMap::new();
     for span in spans.iter().filter(|s| s.dynamic) {
@@ -307,6 +309,13 @@ fn updates(
             }
         }
     }
+    if let Some(styles)=styles{
+        for(&coord,value)in &calculation.values{
+            if !matches!(value,formula::Value::Number(_)){continue}
+            let code=sheet.cells.get(&coord).and_then(|c|styles.get(c.style)).map(|s|s.number_format.as_str()).unwrap_or("");
+            if !code.is_empty()&&ods_formats::presentation(code,"0").is_some(){updates.entry(coord).or_default().number_format=Some(code.into());}
+        }
+    }
     updates
 }
 pub(super) fn refresh(
@@ -353,7 +362,7 @@ pub(super) fn refresh(
             let calc = calculations
                 .get(&sheet.name)
                 .ok_or(Error::Invalid("Missing array calculation"))?;
-            let changes = updates(sheet, &old_spans, calc);
+            let changes = updates(sheet, &old_spans, calc, None);
             if changes.is_empty() {
                 continue;
             }
@@ -392,7 +401,7 @@ pub(super) fn refresh(
             let calc = calculations
                 .get(&sheet.name)
                 .ok_or(Error::Invalid("Missing ODS array calculation"))?;
-            let update = updates(sheet, spans, calc);
+            let update = updates(sheet, spans, calc, Some(&book.history.current().styles));
             if !update.is_empty() {
                 changes.insert(sheet.name.clone(), update);
             }
