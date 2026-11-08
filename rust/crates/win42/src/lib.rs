@@ -1193,6 +1193,7 @@ pub enum ReportEvent {
 }
 #[derive(Clone, Debug)]
 pub enum DialogRequest {
+    Confirmation { title: &'static str, text: String },
     Report(ReportRequest),
     CombineFiles{input:FileAction,output:FileAction},
     BatchFolder {
@@ -1206,6 +1207,7 @@ pub enum DialogRequest {
 }
 #[derive(Clone, Debug)]
 pub enum DialogResult {
+    Confirmed(bool),
     Files{inputs:Vec<std::path::PathBuf>,output:std::path::PathBuf},
     Color([u8; 3]),
     Font(FontChoice),

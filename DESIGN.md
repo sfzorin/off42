@@ -843,3 +843,9 @@ record and the common hashed journal. It bypasses export codecs, retains 16-bit 
 and captures readonly references to all active/inactive frames without consuming a pending save. Decoders
 bound frames, dimensions, lengths, metadata counts and aggregate allocation; normal recovery produces a fresh
 model and the shared host supplies the unsaved-copy lifecycle. Original paths are not output destinations.
+
+Goal Seek freezes a workbook task before starting a cancelable worker. Numerical trials use a private model
+with the ordinary formula evaluator and frozen calculation time; no trial writes enter live history or export
+caches. A sealed result carries its source state/history identity and can be committed only against that state
+through normal cell validation. The host's confirmation contract delivers an explicit boolean result; closing
+or declining it does not apply the proposed change. Worker/session disposal signals cancellation without a UI join.

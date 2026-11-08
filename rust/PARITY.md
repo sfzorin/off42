@@ -557,3 +557,7 @@ after image selection; image unit regressions are now included in quick CI.
   frames, delays/loops, active frame, density, 16-bit data and conversion guards. Portable regressions
   cover exact state, no save/history mutation and malformed records; workspace 490/0/1 and GNU compilation
   pass. The real crash/Cancel/save/pixel/reopen scenario is added; native execution is still pending.
+- One-variable Goal Seek now has a menu/prompt, cancelable readonly worker, explicit result confirmation,
+  stale-state refusal and one-step validated commit. Portable Mac loan/root and cross-sheet/bisection/
+  validation/cancellation/history regressions pass; workspace 496/0/1, GNU targets compile. Native GUI
+  scenarios are added and await Windows execution. Full multivariable Solver remains incomplete.

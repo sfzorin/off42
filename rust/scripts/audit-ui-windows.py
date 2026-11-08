@@ -916,6 +916,46 @@ def audit_rich_search(process,main,binary,output,results):
     results["checks"].append("structured body/table/image statistics retain Unicode grapheme counts through replace/history/reopen; native rich Find traverses body/table/image offsets and wraps; Replace All retains table/image bytes, complete Undo/Redo/save and dirty/discard/reopen")
 
 
+def audit_goal_seek(process,main,binary,output,results):
+    source=output/'goal-seek-source.csv'
+    with source.open('w',encoding='utf-8',newline='')as stream:
+        csv.writer(stream).writerows([['1','=A1^2','UNCHANGED'],['1000','=PMT(0.05/12,120,A2)','OTHER'],['0','=1','CONSTANT']])
+    original=source.read_bytes();command(main,1);choose_file(process,source)
+    discard=next((h for h in windows(process.pid)if classname(h)=='#32770'and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
+    if discard:click(discard,7)
+    wait_for(lambda:source.name in text(main)and u.IsWindowEnabled(main),'Goal Seek fixture opened',process)
+    caption=text(main)
+    fill_prompt(process,main,79,'Goal Seek',['B1','2','A1'])
+    found=modal(process,title='Goal Seek found a solution',native_class='#32770')
+    assert text(main)==caption and source.read_bytes()==original,'Trial calculations changed the live workbook'
+    assert 'A1' in' '.join(text(h)for h in windows_for_dialog(found))
+    click(found,7);wait_for(lambda:u.IsWindowEnabled(main),'Goal Seek result discarded',process);assert text(main)==caption
+    def saved(name):
+        path=output/name;save_as(main);choose_file(process,path,format_name='XLS42 workbook');output_ready(process,main,path,b'{')
+        return json.loads(path.read_text(encoding='utf-8'))
+    baseline=saved('goal-seek-before.xls42')
+    fill_prompt(process,main,79,'Goal Seek',['B1','2','A1']);found=modal(process,title='Goal Seek found a solution',native_class='#32770');click(found,6)
+    wait_for(lambda:u.IsWindowEnabled(main)and' * - 'in text(main),'Goal Seek value accepted',process)
+    changed=saved('goal-seek-after.xls42')
+    cells={(cell['row'],cell['col']):cell for cell in changed['sheets'][0]['cells']}
+    assert cells[(0,0)]['content']['type']=='Number'and abs(float(cells[(0,0)]['content']['value']['raw'])-2**0.5)<1e-8
+    assert cells[(0,1)]['content']['value']['raw']=='=A1^2'
+    before={(cell['row'],cell['col']):cell for cell in baseline['sheets'][0]['cells']}
+    assert {key:value for key,value in cells.items()if key!=(0,0)}=={key:value for key,value in before.items()if key!=(0,0)}
+    command(main,4);assert saved('goal-seek-undo.xls42')['sheets']==baseline['sheets']
+    command(main,5);assert saved('goal-seek-redo.xls42')['sheets']==changed['sheets']
+    caption=text(main);fill_prompt(process,main,79,'Goal Seek',['B3','2','A3'])
+    failed=modal(process,title='Goal Seek',native_class='#32770');click(failed,1);wait_for(lambda:u.IsWindowEnabled(main),'unsolvable Goal Seek closed',process);assert text(main)==caption
+    command(main,32);wait_for(lambda:u.GetMenuState(u.GetMenu(main),79,0)&3,'protected Goal Seek disabled',process)
+    command(main,33);wait_for(lambda:u.GetMenuState(u.GetMenu(main),79,0)&3==0,'Goal Seek enabled after unprotect',process)
+    dirty=' * - 'in text(main);command(main,1);choose_file(process,output/'goal-seek-after.xls42')
+    if dirty:
+        discard=wait_for(lambda:next((h for h in windows(process.pid)if classname(h)=='#32770'and all(u.GetDlgItem(h,i)for i in(2,6,7))),None),'discard protection history',process);click(discard,7)
+    wait_for(lambda:'goal-seek-after.xls42'in text(main)and' * - 'not in text(main),'Goal Seek result reopened',process)
+    assert saved('goal-seek-reopened.xls42')['sheets']==changed['sheets'] and source.read_bytes()==original
+    results['checks'].append('background Goal Seek trials and No preserve the clean source, accepted square-root value changes one numeric cell, complete one-step Undo/Redo and reopen retain formulas and other cells, unsolvable trials are readonly, and protected sheets disable the command')
+
+
 def audit_engineering_formulas(process, main, binary, output, results, include_extended=False):
     source = output / "engineering-formulas.csv"
     records = [
@@ -2198,6 +2238,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_rich_format(process, main, binary, output, results)
         if engineering and binary.stem.lower() == "xls42":
             audit_engineering_formulas(process, main, binary, output, results, include_extended=extended_formulas)
+            audit_goal_seek(process,main,binary,output,results)
         if statistical_formulas and binary.stem.lower()=="xls42":
             audit_statistical_formulas(process,main,output,binary,results)
         if array_formulas and binary.stem.lower()=="xls42":

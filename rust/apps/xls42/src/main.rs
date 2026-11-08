@@ -1,6 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 mod charts;
 mod print;
+mod goal_seek;
 use std::path::Path;
 use xls42_core::{
     Chart, ChartKind, ChartSeries, Condition, ConditionalFormat, DataValidation, Pivot,
@@ -8,6 +9,7 @@ use xls42_core::{
 };
 type PictureCache = std::collections::BTreeMap<u64, (std::sync::Arc<[u8]>, std::sync::Arc<[u8]>)>;
 struct Xls {
+    goal_seek:goal_seek::Session,
     book: Workbook,
     row: usize,
     col: usize,
@@ -85,6 +87,9 @@ impl Xls {
     }
 }
 impl win42::App for Xls {
+    fn poll_background(&mut self)->bool{self.goal_seek.poll()}
+    fn take_pending_command(&mut self)->Option<u16>{self.goal_seek.take_command()}
+    fn toolbar_command_visible(&self,id:u16)->bool{matches!(id,25|31|34|38|39|40|50)}
     fn supports_technical_elements(&self) -> bool {
         true
     }
@@ -288,6 +293,7 @@ impl win42::App for Xls {
         true
     }
     fn new_document(&mut self) -> Result<(), String> {
+        self.goal_seek.cancel();
         self.book = Workbook::new(20, 8).map_err(|e| e.to_string())?;
         self.selected_picture = None;
         self.clear_visible_cache();
@@ -355,6 +361,8 @@ impl win42::App for Xls {
             (75, "Fill Serial Numbers…"),
             (77, "Picture position and size…"),
             (78, "Delete picture"),
+            (79,"Goal Seek…"),
+            (80,"Cancel Goal Seek"),
         ]
         .into_iter()
         .map(|(id, title)| win42::CommandSpec {
@@ -365,6 +373,7 @@ impl win42::App for Xls {
                 0..=24 => "Sheets",
                 75 => "Production",
                 77 | 78 => "Pictures",
+                79|80=>"Tools",
                 _ => "Cells",
             },
         })
@@ -434,6 +443,7 @@ impl win42::App for Xls {
         Ok(())
     }
     fn dialog_request(&self, id: u16) -> Option<win42::DialogRequest> {
+        if id==goal_seek::RESULT{return self.goal_seek.dialog();}
         if id == 60 {
             let p = self.book.print_settings();
             let mm = |v: i32| ((v as i64 * 2540 + 720) / 1440) as i32;
@@ -462,6 +472,7 @@ impl win42::App for Xls {
         }
     }
     fn dialog_result(&mut self, id: u16, result: win42::DialogResult) -> Result<(), String> {
+        if let (goal_seek::RESULT,win42::DialogResult::Confirmed(keep))=(id,&result){self.goal_seek.accept(&mut self.book,*keep)?;self.clear_visible_cache();return Ok(());}
         if let (60, win42::DialogResult::PageSetup(p)) = (id, &result) {
             let twips = |v: i32| ((v as i64 * 1440 + 1270) / 2540) as i32;
             let mut s = self.book.print_settings().clone();
@@ -503,6 +514,7 @@ impl win42::App for Xls {
         Ok(())
     }
     fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+        if id==goal_seek::START{return Some(win42::InputRequest{title:"Goal Seek",fields:vec![("Formula cell:",goal_seek::reference((self.row,self.col))),("Target value:","0".into()),("Variable cell:",String::new())]});}
         if id == 77 {
             let picture = self
                 .book
@@ -722,6 +734,12 @@ impl win42::App for Xls {
         Some(win42::InputRequest { title, fields })
     }
     fn input_action(&mut self, id: u16, v: &[String]) -> Result<(), String> {
+        if id==goal_seek::START{
+            if !self.enabled(id)||v.len()!=3{return Err("Goal Seek is unavailable".into());}
+            let formula=goal_seek::parse_reference(&v[0],&self.book)?;let variable=goal_seek::parse_reference(&v[2],&self.book)?;
+            let target=v[1].trim().replace(',',".").parse::<f64>().map_err(|_|"Enter a finite target value")?;
+            return self.goal_seek.start(self.book.goal_seek_task(formula,target,variable).map_err(|error|error.to_string())?);
+        }
         let n = |i: usize| -> Result<usize, String> {
             v.get(i)
                 .and_then(|x| x.parse::<usize>().ok())
@@ -1424,6 +1442,7 @@ impl win42::App for Xls {
             .unwrap_or_default()
     }
     fn status(&self) -> String {
+        if self.goal_seek.running(){return format!("{}…",win42::localization::text("Goal Seek"));}
         let sheet = self
             .book
             .sheets()
@@ -1507,6 +1526,7 @@ impl win42::App for Xls {
             }
         }
         self.book = book;
+        self.goal_seek.cancel();
         self.selected_picture = None;
         self.preview = None;
         self.clear_visible_cache();
@@ -1542,6 +1562,9 @@ impl win42::App for Xls {
     }
     fn enabled(&self, id: u16) -> bool {
         match id {
+            goal_seek::START=>!self.goal_seek.running()&&!self.book.is_read_only()&&!self.book.is_protected()&&self.preview.is_none(),
+            goal_seek::CANCEL=>self.goal_seek.running(),
+            goal_seek::RESULT=>self.goal_seek.has_outcome(),
             10 => self.book.can_add_row(),
             11 => self.book.can_add_column(),
             75 => !self.book.is_read_only() && !self.book.is_protected(),
@@ -1563,6 +1586,7 @@ impl win42::App for Xls {
             return Err("Command unavailable".into());
         }
         match id {
+            goal_seek::CANCEL=>self.goal_seek.cancel(),
             78 => {
                 self.book
                     .delete_image(self.selected_picture.ok_or("Select a picture")?)
@@ -1697,6 +1721,7 @@ impl win42::App for Xls {
 }
 fn main() {
     win42::run(Box::new(Xls {
+        goal_seek:Default::default(),
         book: Workbook::new(20, 8).unwrap(),
         row: 0,
         col: 0,
@@ -1715,6 +1740,7 @@ mod tests {
         let mut b = Workbook::new(1, 1).unwrap();
         b.set_cell(0, 0, "a\r\nb".into()).unwrap();
         let mut a = Xls {
+            goal_seek:Default::default(),
             book: b,
             row: 0,
             col: 0,
@@ -1737,6 +1763,7 @@ mod regression {
     #[test]
     fn typed_copy_translates_formula_while_external_text_keeps_its_reference() {
         let mut app = Xls {
+            goal_seek:Default::default(),
             book: Workbook::new(4, 4).unwrap(),
             row: 0,
             col: 1,
@@ -1807,6 +1834,7 @@ mod regression {
         }))
         .unwrap();
         let mut app = Xls {
+            goal_seek:Default::default(),
             book,
             row: 1,
             col: 1,
@@ -1895,6 +1923,7 @@ mod regression {
         book.set_sheet_view(view).unwrap();
         book.set_selection(range).unwrap();
         let app = Xls {
+            goal_seek:Default::default(),
             book,
             row: 0,
             col: 0,
@@ -1940,6 +1969,7 @@ mod regression {
         view.frozen_rows = 4;
         book.set_sheet_view(view).unwrap();
         let mut app = Xls {
+            goal_seek:Default::default(),
             book,
             row: 1,
             col: 0,
@@ -2024,6 +2054,7 @@ mod regression {
         }))
         .unwrap();
         let mut app = Xls {
+            goal_seek:Default::default(),
             book,
             row: 1,
             col: 1,
@@ -2068,6 +2099,7 @@ mod regression {
     #[test]
     fn view_commands_preserve_hidden_cell_destinations_and_history() {
         let mut app = Xls {
+            goal_seek:Default::default(),
             book: Workbook::new(6, 5).unwrap(),
             row: 0,
             col: 0,
@@ -2119,6 +2151,7 @@ mod regression {
     #[test]
     fn table_commands_create_style_and_convert_to_range() {
         let mut app = Xls {
+            goal_seek:Default::default(),
             book: Workbook::new(5, 2).unwrap(),
             row: 0,
             col: 0,
@@ -2156,6 +2189,7 @@ mod regression {
         let input = root.join("input.csv");
         std::fs::write(&input, "a,b\nc,d\n").unwrap();
         let mut app = Xls {
+            goal_seek:Default::default(),
             book: Workbook::new(2, 2).unwrap(),
             row: 0,
             col: 0,
@@ -2195,6 +2229,7 @@ mod regression {
     #[test]
     fn selection_survives_structure_and_history_and_saves_exact_destination() {
         let mut a = Xls {
+            goal_seek:Default::default(),
             book: Workbook::new(2, 2).unwrap(),
             row: 0,
             col: 0,
@@ -2236,6 +2271,7 @@ mod regression {
         let mut b = Workbook::new(1, 2).unwrap();
         b.set_cell(0, 0, "a\r\nb".into()).unwrap();
         let mut a = Xls {
+            goal_seek:Default::default(),
             book: b,
             row: 0,
             col: 0,
@@ -2261,6 +2297,7 @@ mod regression {
     #[test]
     fn limits_disable_and_refuse_additions() {
         let mut a = Xls {
+            goal_seek:Default::default(),
             book: Workbook::new(1000, 100).unwrap(),
             row: 0,
             col: 0,
@@ -2285,6 +2322,7 @@ mod policy_regression {
         let mut b = Workbook::new(1, 2).unwrap();
         b.set_cell(0, 0, "a\r\nb".into()).unwrap();
         let mut a = Xls {
+            goal_seek:Default::default(),
             book: b,
             row: 0,
             col: 0,
@@ -2341,6 +2379,7 @@ mod filter_ui_regression {
         }))
         .unwrap();
         let mut app = Xls {
+            goal_seek:Default::default(),
             book: b,
             row: 0,
             col: 0,
@@ -2382,6 +2421,7 @@ mod custom_grid_regression {
         }))
         .unwrap();
         let mut app = Xls {
+            goal_seek:Default::default(),
             book: b,
             row: 0,
             col: 0,
@@ -2423,6 +2463,7 @@ mod picture_regression {
     #[test]
     fn technical_picture_keeps_recipe_size_and_moves_over_visible_cells_only() {
         let mut app = Xls {
+            goal_seek:Default::default(),
             book: Workbook::new(8, 8).unwrap(),
             row: 2,
             col: 2,
@@ -2500,6 +2541,7 @@ mod technical_edit_regression {
     #[test]
     fn editing_a_code_is_one_transaction_and_keeps_its_anchor() {
         let mut app = Xls {
+            goal_seek:Default::default(),
             book: Workbook::new(8, 8).unwrap(),
             row: 3,
             col: 4,

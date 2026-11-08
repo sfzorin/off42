@@ -2404,6 +2404,13 @@ pub(super) struct Calculation {
     pub values: std::collections::BTreeMap<(usize, usize), Value>,
     pub spills: std::collections::BTreeMap<(usize, usize), crate::Range>,
 }
+pub(super) fn numeric_cell_at(book:&Workbook,cell:(usize,usize),now:chrono::NaiveDateTime)->Result<f64,&'static str>{
+    let mut eval=Eval::new(book,now);
+    match eval.cell(book.active_sheet(),cell.0,cell.1,0){
+        Value::Number(value)if value.is_finite()=>Ok(value),
+        Value::Error(error)=>Err(error),_=>Err("The formula must return a finite number"),
+    }
+}
 pub(super) fn calculation_at(book: &Workbook, now: chrono::NaiveDateTime) -> Calculation {
     let sheet = book.active_sheet();
     let mut eval = Eval::new(book, now);

@@ -1,5 +1,7 @@
 //! Bounded sparse workbook. Raw text remains authoritative for editing and CSV.
 mod analytics;
+mod goal_seek;
+pub use goal_seek::{GoalSeekResult, GoalSeekTask};
 mod clipboard;
 mod tables;
 pub use tables::SpreadsheetTable;

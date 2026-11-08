@@ -718,3 +718,21 @@ Frame counts, dimensions, byte lengths, metadata and memory use are checked befo
 The portable workspace passes 490 tests (zero failures, one optional test ignored); GNU Windows targets
 compile. The forced-termination native recovery audit now includes IMG42 and verifies exact rotated PNG
 pixels, Cancel, independent save, cleanup and reopen. This new adapter awaits its Windows run.
+
+### Goal Seek (Windows GUI audit pending)
+
+XLS42's **Tools → Goal Seek…** accepts a formula cell, numeric target and one empty/numeric variable cell
+on the current sheet. It computes on a frozen workbook in a cancelable background job; the live cells,
+source file and history remain unchanged until the user accepts the result. The confirmation shows the
+variable, calculated formula value and target. No discards the proposal. Accepted results use the normal
+cell validation/protection path and form one Undo step; a changed workbook refuses a stale proposal.
+**Cancel Goal Seek** stops the pending job. These commands stay in the menu; XLS42's primary toolbar is compact.
+
+The bounded calculation uses the macOS secant method with a bisection fallback. It freezes calculation time,
+retains cross-sheet dependencies and full precision, and refuses nonnumeric/unsupported formulas and false
+convergence across a discontinuity. Limits are 1,000 evaluations and ten seconds; cancellation is checked
+between evaluations. This implements one-variable Goal Seek; the multivariable Solver remains open.
+Portable regressions cover the Mac square-root/loan examples, cross-sheet references, blank-cell semantics,
+bisection, cancellation, stale state, final validation, protection and complete Undo/Redo. Workspace:
+496 passed, zero failed, one optional test ignored; Windows GNU targets compile. Native confirmation,
+No/Yes, saved values, source preservation, protection, Undo/Redo and reopen checks await Windows CI.

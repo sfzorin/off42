@@ -2787,6 +2787,9 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 STATE.with(|s| s.borrow().as_ref().unwrap().app.dialog_request(id));
             if let Some(request) = dialog_request {
                 let result = match request {
+                    crate::DialogRequest::Confirmation{title,text}=>Some(crate::DialogResult::Confirmed(
+                        MessageBoxW(hwnd,wide(&text).as_ptr(),wide(&crate::localization::text(title)).as_ptr(),MB_YESNO|MB_ICONQUESTION)==IDYES
+                    )),
                     crate::DialogRequest::BatchFolder{input,title}=>{
                         match pick_multiple_files(hwnd,input){
                             Ok(Some(inputs)) if !inputs.is_empty()=>pick_folder(hwnd,title).map(|output|crate::DialogResult::Files{inputs,output:output.into()}),
