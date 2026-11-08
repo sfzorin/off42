@@ -18,6 +18,10 @@ impl Workbook {
                     })
         })
     }
+    /// Stored editor inputs in all sheets; implicit blank coordinates require no validation or allocation.
+    pub fn cell_inputs(&self)->impl Iterator<Item=(SheetId,usize,usize,&str)>+'_ {
+        self.history.current().sheets.iter().flat_map(|sheet|sheet.cells.iter().map(move|(&(r,c),cell)|(sheet.id,r,c,cell.text.raw())))
+    }
     pub fn display_cells(&self) -> BTreeMap<(usize, usize), String> {
         let calculation = formula::calculation_at(self, chrono::Local::now().naive_local());
         self.display_cells_with(&calculation)

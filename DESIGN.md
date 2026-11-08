@@ -944,3 +944,7 @@ maximum independently of sheet dimensions. Dense text APIs compile only for core
 consumers use sparse projections. Grid refresh brings a changed focus into view without snapping ordinary
 scrolling back to an unchanged focus; headers fit seven-digit row numbers. Automatic viewport expansion
 and full-column formula aggregation remain separate work.
+
+The Windows XLS open boundary validates stored editor inputs from `Workbook::cell_inputs` across all
+sheets before replacing the live session. It does not iterate the logical worksheet rectangle; implicit
+blanks cannot contain unsupported control characters. Refusal preserves the previous document and caches.

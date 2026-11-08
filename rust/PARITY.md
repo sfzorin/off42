@@ -704,3 +704,9 @@ after image selection; image unit regressions are now included in quick CI.
   header deliberately grew to 64 pixels to fit seven-digit row labels. Picture sample/drag coordinates
   move by the exact 16 pixels; geometry/history/reopen assertions remain unchanged. Full-size UI
   verification remains pending a repeat.
+
+- Focused run 42520207999 reaches the full-size scenario after the corrected picture test, then times
+  out opening its project. The app open boundary still validated every logical coordinate (17 billion
+  cells). It now iterates stored inputs from every sheet before replacing the session. A real App::open
+  regression opens the full-size file and refuses bad text in a nonactive sheet without replacing the
+  live book: app 26/0; GNU all targets compile. A compatible native repeat is still required.

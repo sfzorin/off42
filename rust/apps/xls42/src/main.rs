@@ -1528,11 +1528,7 @@ impl win42::App for Xls {
             _ => return Err("Unsupported workbook format".into()),
         }
         .map_err(|e| e.to_string())?;
-        for r in 0..book.rows() {
-            for c in 0..book.cols() {
-                win42::validate_editable(book.cell(r, c).unwrap_or(""))?;
-            }
-        }
+        for (_,_,_,text) in book.cell_inputs(){win42::validate_editable(text)?;}
         self.book = book;
         self.goal_seek.cancel();
         self.solver.cancel();
@@ -2623,5 +2619,26 @@ mod technical_edit_regression {
                 Some(next.clone())
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod sparse_open_regression {
+    use super::*;use win42::App;
+    #[test]
+    fn actual_open_validates_sparse_inputs_and_refuses_bad_far_text_without_replacing_the_live_book(){
+        let mut source=Workbook::new(xls42_core::MAX_ROWS,xls42_core::MAX_COLS).unwrap();
+        source.set_cell(xls42_core::MAX_ROWS-1,xls42_core::MAX_COLS-1,"LAST".into()).unwrap();
+        let path=std::env::temp_dir().join(format!("off42-sparse-open-{}.xls42",std::process::id()));
+        std::fs::write(&path,source.project_bytes().unwrap()).unwrap();
+        let mut app=Xls{goal_seek:Default::default(),solver:Default::default(),book:Workbook::new(2,2).unwrap(),row:0,col:0,preview:None,visible_cache:Default::default(),picture_cache:Default::default(),selected_picture:None};
+        app.open(&path).unwrap();let table=app.sparse_table().unwrap();assert_eq!(table.cell(1_048_575,16_383),"LAST");
+        let before=app.book.project_bytes().unwrap();
+        source.add_sheet("Other").unwrap();
+        source.set_cell(xls42_core::MAX_ROWS-1,xls42_core::MAX_COLS-1,"bad\0text".into()).unwrap();
+        source.select_sheet(1).unwrap();
+        std::fs::write(&path,source.project_bytes().unwrap()).unwrap();
+        assert!(app.open(&path).is_err());assert_eq!(app.book.project_bytes().unwrap(),before);
+        std::fs::remove_file(path).unwrap();
     }
 }
