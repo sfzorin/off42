@@ -1793,6 +1793,38 @@ def audit_label_preview(process,main,binary,output,results):
     saved=output/'labels-preview-first.pdf';choose_file(process,saved,keep_preview=True)
     wait_for(lambda:saved.is_file()and u.IsWindowEnabled(preview),'preview explicit Save',process)
     assert not u.IsWindowEnabled(main)and pdf_text(binary.parent/'pdfium.dll',saved).count('PREVIEW-AUDIT')==2
+    # Only an explicitly identified virtual queue may receive unattended jobs.
+    # Both calls use the product's real Print button and standard PRINTDLG.
+    click(preview,3)
+    printer=modal(process,title='Print',native_class='#32770')
+    capture_window(printer,output/'labels-preview-print-dialog.bmp')
+    controls=[(u.GetDlgCtrlID(h),classname(h),text(h))for h in windows_for_dialog(printer)]
+    (output/'labels-print-controls.json').write_text(json.dumps(controls,ensure_ascii=False,indent=2),encoding='utf-8')
+    click(printer,2);wait_for(lambda:u.IsWindowEnabled(preview),'Print Cancel returns to preview',process)
+    assert not u.IsWindowEnabled(main)
+    click(preview,3);printer=modal(process,title='Print',native_class='#32770')
+    combo=u.GetDlgItem(printer,1139);assert combo,controls
+    selected=u.SendMessageW(combo,0x147,0,0);assert selected>=0
+    value=c.create_unicode_buffer(512);u.SendMessageW(combo,0x148,selected,c.cast(value,c.c_void_p).value)
+    assert value.value=='Microsoft Print to PDF',('Refusing a job to an unidentified/physical printer',value.value)
+    click(printer,1058)
+    wait_for(lambda:u.SendMessageW(u.GetDlgItem(printer,1058),0xF0,0,0)==1,'Print page range selected',process)
+    set_text(u.GetDlgItem(printer,1152),'2');set_text(u.GetDlgItem(printer,1153),'2')
+    click(printer,1)
+    printed=output/'labels-native-printed-page-2.pdf';choose_file(process,printed,keep_preview=True)
+    wait_for(lambda:printed.is_file()and printed.stat().st_size>100 and u.IsWindowEnabled(preview),'native PDF printer completes',process,timeout=60)
+    assert printed.read_bytes().startswith(b'%PDF-')
+    assert len(pdf_text(binary.parent/'pdfium.dll',printed,by_page=True))==1,'Page range was not honored'
+    ow,oh,op=pdf_pixels(binary.parent/'pdfium.dll',printed,0);rw,rh,rp=pdf_pixels(binary.parent/'pdfium.dll',saved,1)
+    assert(ow,oh)==(rw,rh)==(595,842),'Label job did not default to A4'
+    def ink_bounds(width,height,pixels):
+        points=[(i%width,i//width)for i in range(width*height)if min(pixels[i*4:i*4+3])<160]
+        assert len(points)>15,'Printed label is blank'
+        return(min(x for x,y in points),min(y for x,y in points),max(x for x,y in points),max(y for x,y in points))
+    actual=ink_bounds(ow,oh,op);expected=ink_bounds(rw,rh,rp)
+    assert all(abs(a-b)<=2 for a,b in zip(actual,expected)),('Native printer changed physical label placement/scale',actual,expected)
+    assert not u.IsWindowEnabled(main)
+    results['checks'].append('real Print button supports Cancel and Microsoft Print to PDF output, restricts to page 2, defaults to A4 and preserves independently measured actual-size label ink bounds')
     click(preview,4);settings=modal(process,title='Create Label Sheet',native_class='Suite42InputDialog');click(settings,2)
     wait_for(lambda:u.IsWindowEnabled(preview),'preview settings Cancel',process)
     click(preview,4);finish_prompt(process,'Create Label Sheet',['UPDATED-PREVIEW','','QR','70, 37, 0, 0','1, 1'])

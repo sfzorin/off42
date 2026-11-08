@@ -275,7 +275,7 @@ jobs:
           if ($env:QUICK_UI -eq 'true') { $extra += '--ocr-only' }
           if ($env:AUDIT_PICTURES -eq 'true') { $extra += '--pictures' }
           if ($env:AUDIT_TECHNICAL -eq 'true') { $extra += '--technical-objects' }
-          if ($env:AUDIT_LABELS -eq 'true') { $extra += '--label-sources' }
+          if ($env:AUDIT_LABELS -eq 'true') { $extra += @('--label-sources', '--label-preview') }
           if ($env:AUDIT_LANGUAGES -eq 'true') { $extra += '--languages' }
           if ($env:AUDIT_PAGES -eq 'true') { $extra += '--page-exports' }
           if ($env:AUDIT_HOST_COMMANDS -eq 'true') { $extra += '--host-commands' }
