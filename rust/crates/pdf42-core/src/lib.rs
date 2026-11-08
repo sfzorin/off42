@@ -3415,7 +3415,8 @@ impl PdfDocument {
         if index >= state.pages.len() {
             return Err("page index out of range".into());
         }
-        state.pages.remove(index);
+        let removed = state.pages.remove(index);
+        state.ocr_layers.remove(&removed);
         state.selected = state.pages[index.min(state.pages.len() - 1)];
         let candidate = Self {
             source_identity: self.source_identity,

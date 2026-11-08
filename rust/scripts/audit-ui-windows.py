@@ -1545,7 +1545,79 @@ def audit_array_formulas(process,main,binary,output,results):
     results["checks"].append("dynamic arrays render/spill with empty child inputs, rounded General/clipboard text with full-precision numeric file caches, independent XLSX typed values/array ranges/metadata and ODS matrix spans, conflict errors, complete one-step Undo/Redo, saved/reopened results, standard external XLSX/ODS without private snapshots, resize/cache cleanup/blocking with complete Undo/Redo/reopening and unchanged sources")
 
 
-def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False):
+def audit_bundled_ocr(process,main,binary,output,results):
+    fixture=Path(__file__).resolve().parent.parent/'crates/win42/fixtures/ocr-english.png'
+    original=fixture.read_bytes()
+    dll=binary.parent/'pdfium.dll'
+    def status():return ' '.join(text(h)for h in windows(process.pid,main))
+    def open_pdf(path):
+        command(main,1);choose_file(process,path)
+        def state():
+            if path.name in text(main) and ' * - 'not in text(main) and u.IsWindowEnabled(main):return (True,None)
+            prompt=next((h for h in windows(process.pid)if classname(h)=='#32770'and u.IsWindowEnabled(h)and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
+            return (False,prompt)if prompt else None
+        opened,prompt=wait_for(state,'OCR source open/discard',process)
+        if not opened:
+            click(prompt,7);wait_for(lambda:path.name in text(main)and' * - 'not in text(main)and u.IsWindowEnabled(main),'OCR PDF opened',process)
+    is_pdf=binary.stem.lower()=='pdf42'
+    if is_pdf:
+        width,height,rgba=png_pixels(fixture)
+        rgb=b''.join(rgba[i:i+3]for i in range(0,len(rgba),4));image=zlib.compress(rgb)
+        body=b'q 600 0 0 160 10 20 cm /Image Do Q\n'
+        objects=[b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Count 2 /Kids [3 0 R 4 0 R] >>']
+        for rotation in(0,90):
+            objects.append(f'<< /Type /Page /Parent 2 0 R /MediaBox [10 20 610 180] /CropBox [20 30 600 170] /Rotate {rotation} /Resources << /XObject << /Image 5 0 R >> >> /Contents 6 0 R >>'.encode())
+        objects.extend([f'<< /Type /XObject /Subtype /Image /Width {width} /Height {height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length {len(image)} >>\nstream\n'.encode()+image+b'\nendstream',f'<< /Length {len(body)} >>\nstream\n'.encode()+body+b'endstream'])
+        data=bytearray(b'%PDF-1.4\n');offsets=[0]
+        for number,obj in enumerate(objects,1):offsets.append(len(data));data.extend(f'{number} 0 obj\n'.encode()+obj+b'\nendobj\n')
+        xref=len(data);data.extend(f'xref\n0 {len(offsets)}\n0000000000 65535 f \n'.encode())
+        for offset in offsets[1:]:data.extend(f'{offset:010d} 00000 n \n'.encode())
+        data.extend(f'trailer\n<< /Root 1 0 R /Size {len(offsets)} >>\nstartxref\n{xref}\n%%EOF\n'.encode())
+        source=output/'ocr-image-source.pdf';source.write_bytes(data);before_source=source.read_bytes();open_pdf(source)
+    else:
+        command(main,20);choose_file(process,fixture)
+        wait_for(lambda:status().startswith('2 pages |')or'2 pages |'in status(),'OCR image imported as second page',process)
+    def save(name):
+        path=output/f'{binary.stem}-ocr-{name}.pdf'
+        if is_pdf:save_as(main)
+        else:command(main,21)
+        choose_file(process,path,format_name='PDF document'if is_pdf else None);output_ready(process,main,path,b'%PDF-');return path
+    baseline=save('baseline');assert '1234567890'not in pdf_text(dll,baseline)
+    if is_pdf:
+        caption=text(main);command(main,114);dialog=modal(process,title='Recognize PDF Text',native_class='Suite42InputDialog');click(dialog,2)
+        wait_for(lambda:u.IsWindowEnabled(main),'OCR settings cancelled',process);assert text(main)==caption
+        fill_prompt(process,main,114,'Recognize PDF Text',['2','eng','180'])
+        wait_for(lambda:'Text recognized on 1 of 1 pages'in status(),'PDF real OCR completed',process,timeout=90)
+    else:
+        fill_prompt(process,main,38,'Built-in OCR (offline; up to 3 languages)',['en-US','2','2'])
+        wait_for(lambda:'Recognition complete'in status(),'scan real OCR completed',process,timeout=90)
+    recognized=save('recognized');pages=pdf_text(dll,recognized,by_page=True)
+    assert len(pages)==2 and '1234567890'not in pages[0],pages
+    assert 'offline text recognition'in pages[1]and'1234567890'in pages[1],pages
+    for i in range(2):assert pdf_pixels(dll,baseline,i)==pdf_pixels(dll,recognized,i),(binary.stem,i)
+    command(main,4);undone=save('undo');assert '1234567890'not in pdf_text(dll,undone)
+    command(main,5);redone=save('redo');assert pdf_text(dll,redone,by_page=True)==pages
+    if is_pdf:
+        open_pdf(redone)
+        fill_prompt(process,main,114,'Recognize PDF Text',['2','eng','180'])
+        wait_for(lambda:'Text recognized on 1 of 1 pages'in status(),'reopened PDF re-recognition',process,timeout=90)
+        replaced=save('replaced');assert pdf_text(dll,replaced,by_page=True)==pages
+        assert pdf_pixels(dll,replaced,1)==pdf_pixels(dll,baseline,1)
+        open_pdf(source)
+        fill_prompt(process,main,114,'Recognize PDF Text',['1-2','eng','180'])
+        command(main,115)
+        wait_for(lambda:'recognition cancelled'in status().lower(),'PDF OCR cancellation',process)
+        cancelled=save('cancelled');assert '1234567890'not in pdf_text(dll,cancelled)
+        assert source.read_bytes()==before_source
+    else:
+        project=output/'ocr-scan.scn42';save_as(main);choose_file(process,project);output_ready(process,main,project,b'SCN42')
+        command(main,1);choose_file(process,project);wait_for(lambda:project.name in text(main)and u.IsWindowEnabled(main),'OCR scan reopened',process)
+        reopened=save('reopened');assert pdf_text(dll,reopened,by_page=True)==pages
+    assert fixture.read_bytes()==original
+    results['checks'].append('bundled static OCR recognizes real image pixels offline through native settings; selected page only, independent PDFium text/exact pixels, one-step Undo/Redo and saved reopen'+('; PDF crop/rotation retained, own layer replaced without duplicate text, settings and worker Cancel leave no OCR'if is_pdf else '; project retains recognized text'))
+
+
+def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False, ocr=False):
     startup = None
     if extended:
         if binary.stem.lower() == "pdf42":
@@ -1688,6 +1760,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_pdf_merge(process,main,binary,output,results)
         if pdf_batch_headers and binary.stem.lower()=="pdf42":
             audit_pdf_batch_headers(process,main,binary,output,results)
+        if ocr and binary.stem.lower()in{'pdf42','scn42'}:
+            audit_bundled_ocr(process,main,binary,output,results)
         return results
     finally:
         if process.poll() is None:
@@ -2118,6 +2192,7 @@ def main():
     parser.add_argument("--pdf-batch-headers", action="store_true")
     parser.add_argument("--statistical-formulas", action="store_true")
     parser.add_argument("--array-formulas", action="store_true")
+    parser.add_argument("--ocr", action="store_true")
     parser.add_argument("--page-exports", action="store_true")
     parser.add_argument("--host-commands", action="store_true")
     parser.add_argument("--engineering", action="store_true")
@@ -2131,7 +2206,7 @@ def main():
     try:
         for app in ["DOC42", "XLS42", "PDF42", "IMG42", "PPT42", "SCN42"]:
             try:
-                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge, args.pdf_batch_headers, args.array_formulas))
+                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge, args.pdf_batch_headers, args.array_formulas, args.ocr))
             except Exception as error:
                 results.append({"app": app, "error": str(error), "traceback": traceback.format_exc()})
             print(json.dumps(results[-1]), flush=True)

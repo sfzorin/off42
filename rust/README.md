@@ -536,3 +536,11 @@ supported. Missing or altered bundled models produce an error. No runtime downlo
 Current portable verification: 457 tests pass, zero fail, one external OCR fixture remains ignored; GNU
 Windows all-targets compilation passes. Real engine pixels, packaged UI and static runtime checks are
 pending a new Windows run; this implementation is not yet the public preview.
+
+Independent OCR-layer interoperability: `pdf42-core` and `scn42-core` `ocr-fixtures` examples plus
+`scripts/audit-ocr-pdf.py` verify extraction using Poppler 26.10.0. Latin, Russian, Chinese, Thai and emoji
+remain extractable; original/replaced/undone PDF layers retain identical rendered pixels for all four
+rotations with nonzero crop origins. Uncompressed and compressed scanned-PDF pixels also match exactly.
+Evidence: `build/ocr-interop-v1/poppler-v1/results.json` (local, not a shipped artifact). The native audit now
+includes real image OCR through PDF/scan menus, selected-page scope, PDFium text/pixels, history and reopen;
+those new GUI checks are pending Windows CI.

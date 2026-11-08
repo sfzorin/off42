@@ -433,3 +433,8 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 - 457 portable tests pass, zero fail, one external OCR fixture remains ignored; GNU all targets compile.
   The pinned static backend build, real image recognition and packaged native OCR UI are not yet verified.
   Public preview, main and website remain unchanged.
+
+- Independent Poppler 26.10.0 extraction/rendering passes for OCR Unicode (Latin/Russian/Chinese/Thai/emoji),
+  four rotations/crop origins, exact original pixels, own-layer replacement, complete Undo and scan output
+  with/without compression. Local evidence: `build/ocr-interop-v1/poppler-v1/results.json`. New native menu
+  scenarios cover real OCR pixels, selected-page scope, PDFium text/pixels, history and reopen; still pending.

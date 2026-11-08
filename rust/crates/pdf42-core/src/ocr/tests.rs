@@ -146,31 +146,63 @@ fn replacing_own_saved_layer_keeps_one_reachable_layer_and_foreign_visible_conte
 }
 
 fn extracted(doc: &Document) -> String {
-    let id = doc.get_pages()[&1];
-    let mut text = doc.extract_text(&[1]).unwrap();
-    let resources = decorations::inherited_resources(doc, id).unwrap();
-    if let Ok(objects) = resources.get(b"XObject") {
-        let objects = doc.dereference(objects).unwrap().1.as_dict().unwrap();
-        for (_, value) in objects.iter() {
-            let (id, object) = doc.dereference(value).unwrap();
-            let Ok(form) = object.as_stream() else {
-                continue;
-            };
-            if form
-                .dict
-                .get(b"Off42OCR")
-                .ok()
-                .and_then(|v| v.as_bool().ok())
-                != Some(true)
-            {
-                continue;
+    let pages = doc.get_pages();
+    let mut text = doc
+        .extract_text(&pages.keys().copied().collect::<Vec<_>>())
+        .unwrap();
+    for (&number, &page_id) in &pages {
+        let resources = decorations::inherited_resources(doc, page_id).unwrap();
+        if let Ok(objects) = resources.get(b"XObject") {
+            let objects = doc.dereference(objects).unwrap().1.as_dict().unwrap();
+            for (_, value) in objects.iter() {
+                let (id, object) = doc.dereference(value).unwrap();
+                let Ok(form) = object.as_stream() else {
+                    continue;
+                };
+                if form
+                    .dict
+                    .get(b"Off42OCR")
+                    .ok()
+                    .and_then(|v| v.as_bool().ok())
+                    != Some(true)
+                {
+                    continue;
+                }
+                let mut projected = doc.clone();
+                let page = projected.get_dictionary_mut(page_id).unwrap();
+                page.set("Contents", id.unwrap());
+                page.set("Resources", form.dict.get(b"Resources").unwrap().clone());
+                text.push_str(&projected.extract_text(&[number]).unwrap());
             }
-            let mut projected = doc.clone();
-            let page = projected.get_dictionary_mut(doc.get_pages()[&1]).unwrap();
-            page.set("Contents", id.unwrap());
-            page.set("Resources", form.dict.get(b"Resources").unwrap().clone());
-            text.push_str(&projected.extract_text(&[1]).unwrap());
         }
     }
     text
+}
+
+#[test]
+fn layers_follow_page_identity_through_insert_move_delete_and_history() {
+    let (mut doc, _) = source(0);
+    let capture = doc.capture_ocr(&[0]).unwrap();
+    doc.apply_ocr(&capture.source, vec![page("OCR-travels")])
+        .unwrap();
+    doc.insert_blank_after(0).unwrap();
+    doc.move_page(0, 1).unwrap();
+    let saved = Document::load_mem(&doc.save_snapshot().unwrap().0).unwrap();
+    let extraction = doc.prepare_page_extraction().unwrap();
+    let first = Document::load_mem(&extraction.extract(&[0]).unwrap()).unwrap();
+    let second = Document::load_mem(&extraction.extract(&[1]).unwrap()).unwrap();
+    assert!(!extracted(&first).contains("OCR-travels"));
+    assert!(extracted(&second).contains("OCR-travels"));
+    assert!(extracted(&saved).contains("OCR-travels"));
+    doc.delete(1).unwrap();
+    assert!(doc.history.current().ocr_layers.is_empty());
+    assert!(
+        !extracted(&Document::load_mem(&doc.save_snapshot().unwrap().0).unwrap())
+            .contains("OCR-travels")
+    );
+    doc.undo();
+    assert!(
+        extracted(&Document::load_mem(&doc.save_snapshot().unwrap().0).unwrap())
+            .contains("OCR-travels")
+    );
 }
