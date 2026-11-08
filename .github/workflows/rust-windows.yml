@@ -158,7 +158,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force target/x86_64-pc-windows-msvc/debug/deps | Out-Null
           Copy-Item build/off42/pdfium.dll target/x86_64-pc-windows-msvc/debug/deps/pdfium.dll
-          cargo test --locked -p win42 -p pdf42-core -p pdf42 -p doc42-core -p xls42-core -p ppt42-core -p ppt42 -p scn42-core -p scn42 -p img42-core -p img42 -p label42
+          cargo test --locked -p win42 -p pdf42-core -p pdf42 -p doc42-core -p xls42-core -p ppt42-core -p ppt42 -p scn42-core -p scn42 -p img42-core -p img42 -p label42 2>&1 | Tee-Object -FilePath build/native-ui/msvc-tests.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Record available Windows print devices
         if: always()

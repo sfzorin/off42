@@ -246,17 +246,37 @@ unsafe fn render(parent: HWND, rtf: &[u8], width_twips: u32) -> Result<crate::La
         surface.bits.cast::<u8>(),
         width as usize * height as usize * 4,
     );
-    let mut rgba = Vec::with_capacity(pixels.len());
-    for pixel in pixels.chunks_exact(4) {
-        rgba.extend_from_slice(&[pixel[2], pixel[1], pixel[0], 255]);
+    // RichEdit records a white line background across the full container width.
+    // Measure visible pixels after replay so this background cannot turn a short
+    // selected fragment into a full-width, mostly empty label.
+    let mut right = 0usize;
+    let mut bottom = 0usize;
+    for (y, row) in pixels.chunks_exact(width as usize * 4).enumerate() {
+        for (x, pixel) in row.chunks_exact(4).enumerate() {
+            if pixel[..3].iter().any(|v| *v < 254) {
+                right = right.max(x + 1);
+                bottom = bottom.max(y + 1);
+            }
+        }
+    }
+    if right == 0 || bottom == 0 {
+        return Err("The selected content has no visible artwork".into());
+    }
+    let cropped_width = (right + 2).min(width as usize);
+    let cropped_height = (bottom + 2).min(height as usize);
+    let mut rgba = Vec::with_capacity(cropped_width * cropped_height * 4);
+    for row in pixels.chunks_exact(width as usize * 4).take(cropped_height) {
+        for pixel in row[..cropped_width * 4].chunks_exact(4) {
+            rgba.extend_from_slice(&[pixel[2], pixel[1], pixel[0], 255]);
+        }
     }
     let bytes = label42::bitmap_artwork_pdf(
-        width as u32,
-        height as u32,
+        cropped_width as u32,
+        cropped_height as u32,
         &rgba,
         (
-            f64::from(width) / scale / f64::from(dx) * 72.,
-            f64::from(height) / scale / f64::from(dy) * 72.,
+            cropped_width as f64 / scale / f64::from(dx) * 72.,
+            cropped_height as f64 / scale / f64::from(dy) * 72.,
         ),
     )?;
     Ok(crate::LabelSource::PdfArtwork {
