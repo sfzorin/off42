@@ -1642,6 +1642,13 @@ def audit_image_live_text(process,main,binary,output,results):
     wait_for(lambda:not(u.GetMenuState(u.GetMenu(main),44,0)&3),'copy command enabled after text selection',process)
     command(main,44);wait_for(lambda:clipboard_text()=='offline','native double-click recognized word',process)
     command(main,46);command(main,44);wait_for(lambda:clipboard_text()==all_text,'native select all recognized text',process)
+    u.SetForegroundWindow(main)
+    u.RedrawWindow.argtypes=[w.HWND,c.c_void_p,w.HANDLE,w.UINT]
+    assert u.RedrawWindow(canvas,None,None,0x185)  # invalidate/erase/update now, including children
+    capture_window(canvas,output/'IMG42-live-text-canvas.bmp')
+    raster=(output/'IMG42-live-text-canvas.bmp').read_bytes()[54:]
+    assert sum(raster[i]>raster[i+2]+30 and raster[i]>raster[i+1]+30 for i in range(0,len(raster),4))>2000,'Recognized selection is not visibly painted'
+    assert sum(max(raster[i:i+3])<160 for i in range(0,len(raster),4))>500,'Image text glyphs are not visibly painted'
     capture_window(main,output/'IMG42-live-text-selection.bmp')
     u.SendMessageW(canvas,0x100,27,0)
     wait_for(lambda:bool(u.GetMenuState(u.GetMenu(main),44,0)&3),'Escape clears recognized selection',process)
