@@ -14,7 +14,8 @@
     "Label Sheet Preview": "Предпросмотр этикеток",
     "Preparing preview…": "Подготовка предпросмотра…",
     "Print at actual size": "Печать в натуральную величину",
-    "Fit Page": "Вписать страницу"
+    "Fit Page": "Вписать страницу",
+    "Create Labels from PDF Area…": "Создать этикетки из области PDF…"
   },
   "zh-Hans": {
     "Symbol or Code": "符号或条码",
@@ -31,7 +32,8 @@
     "Label Sheet Preview": "标签纸预览",
     "Preparing preview…": "正在准备预览…",
     "Print at actual size": "按实际大小打印",
-    "Fit Page": "适合页面"
+    "Fit Page": "适合页面",
+    "Create Labels from PDF Area…": "从 PDF 区域创建标签…"
   },
   "zh-Hant": {
     "Symbol or Code": "符號或條碼",
@@ -48,7 +50,8 @@
     "Label Sheet Preview": "標籤紙預覽",
     "Preparing preview…": "正在準備預覽…",
     "Print at actual size": "以實際大小列印",
-    "Fit Page": "符合頁面"
+    "Fit Page": "符合頁面",
+    "Create Labels from PDF Area…": "從 PDF 區域建立標籤…"
   },
   "es": {
     "Symbol or Code": "Símbolo o código",
@@ -65,7 +68,8 @@
     "Label Sheet Preview": "Vista previa de etiquetas",
     "Preparing preview…": "Preparando la vista previa…",
     "Print at actual size": "Imprimir a tamaño real",
-    "Fit Page": "Ajustar página"
+    "Fit Page": "Ajustar página",
+    "Create Labels from PDF Area…": "Crear etiquetas desde un área del PDF…"
   },
   "ar": {
     "Symbol or Code": "رمز أو باركود",
@@ -82,7 +86,8 @@
     "Label Sheet Preview": "معاينة ورقة الملصقات",
     "Preparing preview…": "جارٍ إعداد المعاينة…",
     "Print at actual size": "الطباعة بالحجم الفعلي",
-    "Fit Page": "ملاءمة الصفحة"
+    "Fit Page": "ملاءمة الصفحة",
+    "Create Labels from PDF Area…": "إنشاء ملصقات من منطقة PDF…"
   },
   "fr": {
     "Symbol or Code": "Symbole ou code",
@@ -99,7 +104,8 @@
     "Label Sheet Preview": "Aperçu de la feuille d’étiquettes",
     "Preparing preview…": "Préparation de l’aperçu…",
     "Print at actual size": "Imprimer à taille réelle",
-    "Fit Page": "Ajuster à la page"
+    "Fit Page": "Ajuster à la page",
+    "Create Labels from PDF Area…": "Créer des étiquettes depuis une zone PDF…"
   },
   "pt": {
     "Symbol or Code": "Símbolo ou código",
@@ -116,7 +122,8 @@
     "Label Sheet Preview": "Pré-visualização da folha de etiquetas",
     "Preparing preview…": "Preparando a pré-visualização…",
     "Print at actual size": "Imprimir em tamanho real",
-    "Fit Page": "Ajustar à página"
+    "Fit Page": "Ajustar à página",
+    "Create Labels from PDF Area…": "Criar etiquetas de uma área do PDF…"
   },
   "id": {
     "Symbol or Code": "Simbol atau kode",
@@ -133,7 +140,8 @@
     "Label Sheet Preview": "Pratinjau lembar label",
     "Preparing preview…": "Menyiapkan pratinjau…",
     "Print at actual size": "Cetak ukuran sebenarnya",
-    "Fit Page": "Sesuaikan halaman"
+    "Fit Page": "Sesuaikan halaman",
+    "Create Labels from PDF Area…": "Buat Label dari Area PDF…"
   },
   "de": {
     "Symbol or Code": "Symbol oder Code",
@@ -150,7 +158,8 @@
     "Label Sheet Preview": "Etikettenbogen-Vorschau",
     "Preparing preview…": "Vorschau wird vorbereitet…",
     "Print at actual size": "In Originalgröße drucken",
-    "Fit Page": "Seite einpassen"
+    "Fit Page": "Seite einpassen",
+    "Create Labels from PDF Area…": "Etiketten aus PDF-Bereich erstellen…"
   },
   "ja": {
     "Symbol or Code": "記号またはコード",
@@ -167,7 +176,8 @@
     "Label Sheet Preview": "ラベルシートのプレビュー",
     "Preparing preview…": "プレビューを準備中…",
     "Print at actual size": "実際のサイズで印刷",
-    "Fit Page": "ページ全体"
+    "Fit Page": "ページ全体",
+    "Create Labels from PDF Area…": "PDFの範囲からラベルを作成…"
   },
   "vi": {
     "Symbol or Code": "Ký hiệu hoặc mã",
@@ -184,7 +194,8 @@
     "Label Sheet Preview": "Xem trước trang nhãn",
     "Preparing preview…": "Đang chuẩn bị bản xem trước…",
     "Print at actual size": "In theo kích thước thực",
-    "Fit Page": "Vừa trang"
+    "Fit Page": "Vừa trang",
+    "Create Labels from PDF Area…": "Tạo nhãn từ vùng PDF…"
   },
   "tr": {
     "Symbol or Code": "Sembol veya kod",
@@ -201,7 +212,8 @@
     "Label Sheet Preview": "Etiket sayfası önizlemesi",
     "Preparing preview…": "Önizleme hazırlanıyor…",
     "Print at actual size": "Gerçek boyutta yazdır",
-    "Fit Page": "Sayfaya sığdır"
+    "Fit Page": "Sayfaya sığdır",
+    "Create Labels from PDF Area…": "PDF Alanından Etiket Oluştur…"
   },
   "fil": {
     "Symbol or Code": "Simbolo o code",
@@ -218,7 +230,8 @@
     "Label Sheet Preview": "Preview ng pahina ng mga label",
     "Preparing preview…": "Inihahanda ang preview…",
     "Print at actual size": "I-print sa aktuwal na laki",
-    "Fit Page": "Iakma sa pahina"
+    "Fit Page": "Iakma sa pahina",
+    "Create Labels from PDF Area…": "Gumawa ng mga Label mula sa Bahagi ng PDF…"
   },
   "ko": {
     "Symbol or Code": "기호 또는 코드",
@@ -235,7 +248,8 @@
     "Label Sheet Preview": "라벨 시트 미리보기",
     "Preparing preview…": "미리보기를 준비하는 중…",
     "Print at actual size": "실제 크기로 인쇄",
-    "Fit Page": "페이지에 맞춤"
+    "Fit Page": "페이지에 맞춤",
+    "Create Labels from PDF Area…": "PDF 영역에서 라벨 만들기…"
   },
   "th": {
     "Symbol or Code": "สัญลักษณ์หรือรหัส",
@@ -252,7 +266,8 @@
     "Label Sheet Preview": "แสดงตัวอย่างแผ่นป้าย",
     "Preparing preview…": "กำลังเตรียมตัวอย่าง…",
     "Print at actual size": "พิมพ์ตามขนาดจริง",
-    "Fit Page": "พอดีกับหน้า"
+    "Fit Page": "พอดีกับหน้า",
+    "Create Labels from PDF Area…": "สร้างป้ายจากพื้นที่ PDF…"
   },
   "it": {
     "Symbol or Code": "Simbolo o codice",
@@ -269,7 +284,8 @@
     "Label Sheet Preview": "Anteprima del foglio di etichette",
     "Preparing preview…": "Preparazione dell’anteprima…",
     "Print at actual size": "Stampa in dimensioni reali",
-    "Fit Page": "Adatta alla pagina"
+    "Fit Page": "Adatta alla pagina",
+    "Create Labels from PDF Area…": "Crea etichette da un’area PDF…"
   },
   "pl": {
     "Symbol or Code": "Symbol lub kod",
@@ -286,7 +302,8 @@
     "Label Sheet Preview": "Podgląd arkusza etykiet",
     "Preparing preview…": "Przygotowywanie podglądu…",
     "Print at actual size": "Drukuj w rzeczywistym rozmiarze",
-    "Fit Page": "Dopasuj stronę"
+    "Fit Page": "Dopasuj stronę",
+    "Create Labels from PDF Area…": "Utwórz etykiety z obszaru PDF…"
   },
   "ms": {
     "Symbol or Code": "Simbol atau kod",
@@ -303,7 +320,8 @@
     "Label Sheet Preview": "Pratonton helaian label",
     "Preparing preview…": "Menyediakan pratonton…",
     "Print at actual size": "Cetak pada saiz sebenar",
-    "Fit Page": "Muatkan halaman"
+    "Fit Page": "Muatkan halaman",
+    "Create Labels from PDF Area…": "Cipta Label daripada Kawasan PDF…"
   },
   "hu": {
     "Symbol or Code": "Szimbólum vagy kód",
@@ -320,6 +338,7 @@
     "Label Sheet Preview": "Címkeív előnézete",
     "Preparing preview…": "Előnézet előkészítése…",
     "Print at actual size": "Nyomtatás tényleges méretben",
-    "Fit Page": "Oldalhoz igazítás"
+    "Fit Page": "Oldalhoz igazítás",
+    "Create Labels from PDF Area…": "Címkék készítése PDF-területről…"
   }
 }

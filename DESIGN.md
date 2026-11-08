@@ -798,3 +798,8 @@ A shared PDFium mutex now covers search/edit/preview/printing initialization and
 preview documents live on workers; only one BGRA page buffer enters the modal preview. UI callbacks run
 outside window-state borrows, allowing standard save/print/settings dialogs without retaining engine locks.
 Actual-size PDF print jobs retain immutable bytes and native document/font resources until spooling ends.
+
+A document gesture may queue the shared label action and provide one ephemeral source override. The host
+consumes it once, outside document-state borrows and after normal mouse release. PDF area selection
+checks document epoch, save-state identity and current page before extracting an immutable single-page
+snapshot. Selection outlines are display items only; cancellation or rerender clears the queued area.

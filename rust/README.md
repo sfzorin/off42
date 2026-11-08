@@ -618,3 +618,10 @@ preview pixel, navigation, resize, save/settings tests and available-printer inv
 The preceding 6f1854c run 42433032037 succeeds: 412 targeted MSVC tests, zero failures, one optional external
 OCR fixture ignored; all 30 native groups and static runtime gate. Its PDF page/region label and DOC picture
 label scenarios actually execute and pass. Portable workspace remains 466/0/1; GNU all-targets checks pass.
+
+PDF42 also has **Create Labels from PDF Area…** in its menu. Drag a graphic/text region on the current
+page; Escape cancels. The area uses unrotated PDF coordinates after crop/rotation mapping and opens the
+shared artwork settings/preview after releasing the pointer. It does not add an annotation or history
+step. A changed document invalidates the one-shot source. Portable geometry/source tests pass; the native
+mouse/preview-output scenario awaits Windows CI. Run 42435906021 failed the new EMF probe; direct printing
+and preview are not yet counted as verified.

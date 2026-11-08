@@ -42,7 +42,7 @@ const EDIT: usize = 101;
 const TABLE: usize = 102;
 const TOOLBAR_MORE: u16 = 65520;
 const CANCEL_OPEN: u16 = 65519;
-const CREATE_LABEL_SHEET: u16 = 65518;
+const CREATE_LABEL_SHEET: u16 = crate::CREATE_LABEL_SHEET_COMMAND;
 const CREATE_BARCODE: u16 = 65517;
 const IMPORT_MARK: u16 = 65516;
 const INSERT_MARK: u16 = 65515;
@@ -1482,7 +1482,10 @@ unsafe fn apply_requested_rich_selection() {
 unsafe fn production_command(hwnd: HWND, id: u16) -> Result<(), String> {
     use crate::{production, LabelSource};
     let is_sheet = id == CREATE_LABEL_SHEET;
-    let source = if is_sheet {
+    let source_override = if is_sheet {
+        STATE.with(|state| state.borrow_mut().as_mut().unwrap().app.take_label_source_override())?
+    } else { None };
+    let source = if let Some(source) = source_override { source } else if is_sheet {
         let mut sources =
             STATE.with(|state| state.borrow().as_ref().unwrap().app.label_sources())?;
         if sources.is_empty() {
@@ -2817,7 +2820,7 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
             }
             if !crate::report::is_open() && IsWindowEnabled(h)!=0 {
                 let command=STATE.with(|s|s.borrow_mut().as_mut().and_then(|s|s.app.take_pending_command()));
-                if let Some(id)=command.filter(|id|crate::application_command_id(*id)) { PostMessageW(h,WM_COMMAND,id as usize,0); }
+                if let Some(id)=command.filter(|id|crate::application_command_id(*id)||*id==CREATE_LABEL_SHEET) { PostMessageW(h,WM_COMMAND,id as usize,0); }
             }
             sync_rulers(h);
             let pending = STATE.with(|s| {

@@ -1,5 +1,6 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 mod decorations;
+mod label_region;
 mod comparison;
 mod ocr;
 mod merge;
@@ -152,6 +153,9 @@ struct Pdf {
     pan_drag: Option<(win42::Point, win42::Point)>,
     tool: Option<pdf42_core::AnnotationKind>,
     annotation_drag: Option<win42::Point>,
+    label_region_tool: bool,
+    label_region_drag: Option<(win42::Point,win42::Point)>,
+    pending_label_region: Option<(u64,pdf42_core::SaveState,usize,[f64;4])>,
     ink_points: Vec<win42::Point>,
     annotation_contents: String,
     stamp_image: Option<pdf42_core::ImageStamp>,
@@ -206,16 +210,7 @@ impl Pdf {
             .ok_or("Wait for the page to render")?;
         let doc = self.doc.as_ref().ok_or("Open a PDF first")?;
         let b = doc.page_box(doc.current())?;
-        let u = (p.x / *width as f64).clamp(0., 1.);
-        let v = (p.y / *height as f64).clamp(0., 1.);
-        let (x, y) = match doc.rotation(doc.current())? {
-            0 => (u, 1. - v),
-            90 => (v, u),
-            180 => (1. - u, v),
-            270 => (1. - v, 1. - u),
-            _ => return Err("Invalid page rotation".into()),
-        };
-        Ok([b[0] + x * (b[2] - b[0]), b[1] + y * (b[3] - b[1])])
+        label_region::page_point(b,doc.rotation(doc.current())?,[*width,*height],[p.x,p.y])
     }
     fn install_flattened(
         &mut self,
@@ -319,6 +314,10 @@ impl Pdf {
         }
     }
     fn request_render(&mut self) -> Result<(), String> {
+        self.label_region_tool=false;
+        self.label_region_drag=None;
+        self.pending_label_region=None;
+        if self.pending_command==Some(win42::CREATE_LABEL_SHEET_COMMAND){self.pending_command=None;}
         #[cfg(windows)]
         {
             if self.ocr_worker.as_ref().is_some_and(|w|w.epoch!=self.current_epoch||!self.doc.as_ref().is_some_and(|d|d.matches_snapshot(&w.source))){
@@ -464,6 +463,16 @@ impl win42::App for Pdf {
     }
     fn supports_production(&self) -> bool {
         true
+    }
+    fn take_label_source_override(&mut self)->Result<Option<win42::LabelSource>,String>{
+        let Some((epoch,source,page,region))=self.pending_label_region.take() else{return Ok(None)};
+        let doc=self.doc.as_ref().ok_or("Open a PDF first")?;
+        if epoch!=self.current_epoch||page!=doc.current()||!doc.matches_snapshot(&source){
+            return Err("The PDF changed after selecting the label area; select it again".into());
+        }
+        let bytes=doc.prepare_page_extraction()?.extract(&[page])?;
+        #[cfg(windows)] let bytes=pdfium_edit::flatten_for_artwork(&bytes)?;
+        Ok(Some(win42::LabelSource::PdfArtwork{bytes,region:Some(region)}))
     }
     fn label_sources(&self)->Result<Vec<(String,win42::LabelSource)>,String>{
         let mut sources=vec![("Custom Text".into(),self.label_source()?)];
@@ -1204,6 +1213,9 @@ impl win42::App for Pdf {
                     }
                 }
             }
+            if let Some((a,b))=self.label_region_drag {
+                items.push(win42::SceneItem::Path{points:vec![a,win42::Point{x:b.x,y:a.y},b,win42::Point{x:a.x,y:b.y}],color:[0,100,220],closed:true});
+            }
             if self.ink_points.len() > 1 {
                 items.push(win42::SceneItem::Path {
                     points: self.ink_points.clone(),
@@ -1227,6 +1239,10 @@ impl win42::App for Pdf {
     fn canvas_event(&mut self, event: win42::CanvasEvent) -> Result<(), String> {
         match event {
             win42::CanvasEvent::PointerDown(p) => {
+                if self.label_region_tool {
+                    self.label_region_drag=Some((p,p));
+                    return Ok(());
+                }
                 if self.protected_readonly && !self.select_text && !self.object_tool {
                     self.pan_drag = Some((p, self.pan));
                     return Ok(());
@@ -1248,6 +1264,7 @@ impl win42::App for Pdf {
                 }
             }
             win42::CanvasEvent::PointerMove(p) => {
+                if let Some((_,end))=self.label_region_drag.as_mut(){*end=p;return Ok(());}
                 if self.annotation_drag.is_some()
                     && self.tool == Some(pdf42_core::AnnotationKind::Ink)
                     && self.ink_points.len() < 100_000
@@ -1260,6 +1277,21 @@ impl win42::App for Pdf {
                 }
             }
             win42::CanvasEvent::PointerUp(p) => {
+                if let Some((anchor,_))=self.label_region_drag.take(){
+                    self.label_region_tool=false;
+                    self.operation_error=None;
+                    #[cfg(windows)] {
+                        let a=self.page_point(anchor)?;
+                        let b=self.page_point(p)?;
+                        let region=label_region::rectangle(a,b)?;
+                        let doc=self.doc.as_ref().ok_or("Open a PDF first")?;
+                        let source=doc.save_snapshot()?.1;
+                        self.pending_label_region=Some((self.current_epoch,source,doc.current(),region));
+                        self.pending_command=Some(win42::CREATE_LABEL_SHEET_COMMAND);
+                    }
+                    #[cfg(not(windows))] let _=(anchor,p);
+                    return Ok(());
+                }
                 if let Some(anchor) = self.annotation_drag.take() {
                     #[cfg(windows)]
                     {
@@ -1453,6 +1485,11 @@ impl win42::App for Pdf {
                 self.pan_drag = None;
             }
             win42::CanvasEvent::Cancel => {
+                if self.label_region_tool||self.label_region_drag.is_some(){self.operation_error=None;}
+                self.label_region_tool=false;
+                self.label_region_drag=None;
+                self.pending_label_region=None;
+                if self.pending_command==Some(win42::CREATE_LABEL_SHEET_COMMAND){self.pending_command=None;}
                 self.annotation_drag = None;
                 self.ink_points.clear();
                 if let Some((_, original)) = self.pan_drag.take() {
@@ -2527,6 +2564,7 @@ impl win42::App for Pdf {
     }
     fn actions(&self) -> &'static [(u16, &'static str)] {
         &[
+            (117,"Create Labels from PDF Area…"),
             (114,"Recognize PDF Text…"),
             (115,"Cancel Text Recognition"),
             (116,"Built-in OCR Languages…"),
@@ -2687,6 +2725,9 @@ impl win42::App for Pdf {
         if self.encrypted_session {
             return "Encrypted PDF copy: Save preserves password protection".into();
         }
+        if self.label_region_tool {
+            return "Drag an area for labels; press Escape to cancel".into();
+        }
         if self.redact_tool {
             return "Drag the area to redact. All pages will be flattened at 150 DPI; text, forms, links and metadata will be removed.".into();
         }
@@ -2775,6 +2816,7 @@ impl win42::App for Pdf {
         let n = d.page_count();
         let index = d.current();
         match id {
+            117=>{#[cfg(windows)]{self.rendered.is_some()&&self.object_edit.is_none()&&self.flatten_pending.is_none()}#[cfg(not(windows))]{false}},
             114=>{#[cfg(windows)]{self.ocr_worker.is_none()&&self.object_edit.is_none()&&self.flatten_pending.is_none()&&d.allows_changes()}#[cfg(not(windows))]{false}},
             97 => {
                 #[cfg(windows)]
@@ -3001,9 +3043,17 @@ impl win42::App for Pdf {
     fn text_readonly(&self) -> bool {
         true
     }
+    fn toolbar_command_visible(&self,id:u16)->bool{id!=117}
     fn action(&mut self, id: u16) -> Result<(), String> {
         if id >= 10 && !self.enabled(id) {
             return Err("Command unavailable".into());
+        }
+        self.label_region_tool=false;
+        self.label_region_drag=None;
+        if id==117{
+            self.tool=None;self.select_text=false;self.object_tool=false;self.select_annotations=false;self.redact_tool=false;self.capture_signature=false;self.place_signature=false;
+            self.annotation_drag=None;self.pan_drag=None;self.ink_points.clear();self.pending_label_region=None;
+            self.operation_error=None;self.label_region_tool=true;return Ok(());
         }
         if id==115{#[cfg(windows)]{self.ocr_worker=None;self.operation_error=Some("Text recognition cancelled; no pages changed".into());return Ok(());}}
         if id==116{#[cfg(windows)]{let(tx,rx)=std::sync::mpsc::channel();std::thread::spawn(move||{let _=tx.send(win42::ocr::installed_languages());});self.ocr_languages=Some(rx);self.operation_error=Some("Finding built-in OCR languages…".into());return Ok(());}}
@@ -3543,6 +3593,29 @@ mod tests {
         assert!(!bytes
             .windows(b"SOURCE-SECRET-MARKER".len())
             .any(|v| v == b"SOURCE-SECRET-MARKER"));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn label_area_source_is_one_shot_readonly_and_rejects_stale_history(){
+        let dir=std::env::temp_dir().join(format!("pdf42-label-area-{}",std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path=dir.join("source.pdf");
+        let mut scan=scn42_core::ScanDocument::new();
+        scan.add_rgba(1,1,vec![255,0,0,255]).unwrap();scan.export_pdf(&path).unwrap();
+        let original=std::fs::read(&path).unwrap();
+        let mut app=Pdf::default();app.open(&path).unwrap();
+        let doc=app.doc.as_ref().unwrap();let before=doc.save_snapshot().unwrap();
+        let bounds=doc.page_box(0).unwrap();
+        app.pending_label_region=Some((app.current_epoch,doc.save_snapshot().unwrap().1,0,bounds));
+        let source=app.take_label_source_override().unwrap().unwrap();
+        let win42::LabelSource::PdfArtwork{bytes,region}=source else{panic!("Expected PDF artwork")};
+        assert_eq!(region,Some(bounds));assert_eq!(lopdf::Document::load_mem(&bytes).unwrap().get_pages().len(),1);
+        assert!(app.take_label_source_override().unwrap().is_none());
+        assert!(app.doc.as_ref().unwrap().matches_snapshot(&before.1));assert!(!app.dirty());assert!(!app.can_undo());
+        app.pending_label_region=Some((app.current_epoch,before.1,0,bounds));
+        app.doc.as_mut().unwrap().rotate(0,90).unwrap();
+        assert!(app.take_label_source_override().is_err());assert!(app.take_label_source_override().unwrap().is_none());
+        assert_eq!(std::fs::read(&path).unwrap(),original);
         std::fs::remove_dir_all(dir).unwrap();
     }
     #[test]

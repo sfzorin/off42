@@ -82,6 +82,9 @@ pub struct FileAction {
     pub pattern: &'static str,
 }
 
+/// Shared host action requested after a document gesture has released mouse capture.
+pub const CREATE_LABEL_SHEET_COMMAND: u16 = 65518;
+
 pub enum LabelSource {
     Text(String),
     /// Keep other source choices usable if an individual artwork capture fails.
@@ -260,6 +263,10 @@ pub trait App {
         _raster: TechnicalRaster,
     ) -> Result<(), String> {
         Err("Technical elements are unavailable".into())
+    }
+    /// Consume a one-shot immutable source selected by an explicit document gesture.
+    fn take_label_source_override(&mut self) -> Result<Option<LabelSource>, String> {
+        Ok(None)
     }
     fn label_sources(&self) -> Result<Vec<(String, LabelSource)>, String> {
         Ok(vec![("Document".into(), self.label_source()?)])

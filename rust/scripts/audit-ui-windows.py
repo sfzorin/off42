@@ -1713,6 +1713,35 @@ def audit_pdf_label_artwork(process,main,binary,output,results):
     command(main,4);without=sheet('undo');red2,blue2=colors(without);assert red2>10 and blue2==0,(red2,blue2)
     command(main,5);redone=sheet('redo');assert pdf_pixels(dll,redone,1)==pdf_pixels(dll,full,1)
     region=sheet('region','30, 730, 450, 70','1, 1');assert 'ARTWORK-TARGET'in pdf_text(dll,region)and'PRIVATE-OTHER'not in pdf_text(dll,region)
+    # Native mouse selection on the rotated, cropped page must follow the same
+    # unrotated PDF geometry as an independently entered region.
+    for _ in range(4):
+        command(main,16)
+        wait_for(lambda:not(u.GetMenuState(u.GetMenu(main),117,0)&3),'render before region gesture',process)
+    canvas=next(h for h in windows(process.pid,main)if classname(h)=='Suite42Canvas')
+    command(main,117)
+    u.SendMessageW(canvas,0x201,1,(280<<16)|430);u.SendMessageW(canvas,0x200,1,(5<<16)|380)
+    u.SendMessageW(canvas,0x100,27,0)
+    wait_for(lambda:not any('Drag an area for labels'in text(h)for h in windows(process.pid,main)),'Escape cancels PDF label region',process)
+    assert not any(classname(h)=='Suite42InputDialog'for h in windows(process.pid))
+    command(main,117)
+    u.SendMessageW(canvas,0x201,1,(280<<16)|430);u.SendMessageW(canvas,0x200,1,(5<<16)|380)
+    u.RedrawWindow.argtypes=[w.HWND,c.c_void_p,w.HANDLE,w.UINT]
+    assert u.RedrawWindow(canvas,None,None,0x185)
+    capture_window(main,output/'PDF42-label-area-drag.bmp')
+    u.SendMessageW(canvas,0x202,0,(5<<16)|380)
+    finish_prompt(process,'Create Artwork Label Sheet',['','70, 37, 0, 0','1, 1'])
+    mouse=output/'artwork-labels-mouse.pdf';choose_file(process,mouse);output_ready(process,main,mouse,b'%PDF-')
+    assert text(main)==caption and'ARTWORK-TARGET'in pdf_text(dll,mouse)
+    # WinRT reports the 90-degree CropBox in 96-DPI units; four zoom-outs give 437 x 303 pixels.
+    left=20+5/303*555;bottom=20+380/437*800;right=20+280/303*555;top=20+430/437*800
+    manual=sheet('mouse-reference',f'{left}, {bottom}, {right-left}, {top-bottom}','1, 1')
+    mw,mh,mp=pdf_pixels(dll,mouse,0);rw,rh,rp=pdf_pixels(dll,manual,0)
+    assert(mw,mh)==(rw,rh)
+    difference=sum(abs(a-b)for a,b in zip(mp,rp))/(255*len(mp))
+    assert difference<0.001,('Mouse region differs from independent PDF-point region',difference)
+    assert source.read_bytes()==original
+    results['checks'].append('PDF area gesture supports reverse drag and Escape, opens the common preview after release, maps rotated/cropped pixels to independently checked PDF geometry and preserves live history/source')
     assert source.read_bytes()==original
     results['checks'].append('current unsaved PDF artwork and optional region retain vector text, rotation/crop, visible annotations, repeated copies/first slot and no other page payload; label export preserves source/history, Undo removes only the watermark and Redo restores exact PDFium pixels')
 
