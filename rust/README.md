@@ -636,7 +636,8 @@ Windows native selection/pixel/offset tests are added; runtime verification is p
 
 ### Automatic recovery copies (Windows crash audit pending)
 
-DOC42, XLS42, PPT42, PDF42 and SCN42 take local recovery snapshots every thirty seconds while modified.
+All six apps take local recovery snapshots every thirty seconds while modified. Protected PDFs remain
+excluded until their encrypted recovery path is implemented.
 This matches the thirty-second backup policy configured in the macOS document apps and also covers scan
 projects. The File menu has **Recover Unsaved Document…**; a launch without a file offers inactive copies
 left by a terminated process. Cancel retains them. Recovery opens an independent, unsaved document;
@@ -704,3 +705,16 @@ Run 42443183563 on 0daaf47 passes 486 targeted MSVC tests (zero failures, one op
 all 35 native audit groups, including common Ctrl+P, ordinary PDF virtual-driver output, print flags,
 crop/rotation/fit/range/source/history, damaged recovery deletion and clipboard contention. The DOC
 recovery screenshot confirms one primary toolbar row. This precedes the native caret-formatting change.
+
+### Lossless image recovery (native crash audit pending)
+
+IMG42's journal stores all current pages/frames, the active frame, exact 8/16-bit samples, density,
+retained EXIF/ICC/PNG color/TIFF text metadata, animation timing/loops and conversion/precision guards.
+It uses a bounded private snapshot instead of exporting through a potentially lossy image codec.
+Snapshot capture leaves pending saves, dirty state and Undo/Redo untouched. Restoration opens an
+independent unsaved copy; a normal Save still asks for an image destination. The original stays untouched.
+Frame counts, dimensions, byte lengths, metadata and memory use are checked before publication/restoration.
+
+The portable workspace passes 490 tests (zero failures, one optional test ignored); GNU Windows targets
+compile. The forced-termination native recovery audit now includes IMG42 and verifies exact rotated PNG
+pixels, Cancel, independent save, cleanup and reopen. This new adapter awaits its Windows run.

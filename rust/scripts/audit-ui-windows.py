@@ -2639,7 +2639,7 @@ def audit_recovery(binary,output):
     """Kill only the isolated audit process and recover through the real file/menu UI."""
     app=binary.stem;root=output/('recovery-settings-'+app);root.mkdir(exist_ok=True)
     environment=os.environ.copy();environment['LOCALAPPDATA']=str(root);environment['OFF42_RECOVERY_INTERVAL_MS']='1000'
-    marker='RECOVERED-'+app;extension={'DOC42':'doc42','XLS42':'xls42','PDF42':'pdf','PPT42':'json','SCN42':'scn42'}[app]
+    marker='RECOVERED-'+app;extension={'DOC42':'doc42','XLS42':'xls42','PDF42':'pdf','PPT42':'json','SCN42':'scn42','IMG42':'png'}[app]
     source=None;process=None;child=None
     if app=='DOC42':
         source=output/'recovery-original.rtf';source.write_bytes(br'{\rtf1\ansi ORIGINAL-DOC}')
@@ -2647,7 +2647,7 @@ def audit_recovery(binary,output):
         source=output/'recovery-original.csv';source.write_text('ORIGINAL-XLS,SECOND\n',encoding='utf-8')
     elif app=='PDF42':
         source=output/'recovery-original.pdf';minimal_pdf(source,['ORIGINAL-PDF'])
-    elif app=='SCN42':
+    elif app in{'SCN42','IMG42'}:
         source=output/'recovery-original.png';rgba=b''.join(bytes([255,0,0,255]if x<32 else[0,0,255,255])for y in range(32)for x in range(64));write_png(source,64,32,rgba)
     def launch(path=None):
         process=subprocess.Popen([str(binary),'--language','en']+(['--',str(path)]if path else[]),env=environment)
@@ -2679,6 +2679,7 @@ def audit_recovery(binary,output):
             wait_for(lambda:source.name in text(main)and' * - 'not in text(main),'baseline saved before crash',process)
         original=source.read_bytes()
         if app in {'PDF42','SCN42'}:u.SendMessageW(main,WM_COMMAND,10,0)
+        elif app=='IMG42':u.SendMessageW(main,WM_COMMAND,11,0)
         elif app=='PPT42':fill_prompt(process,main,24,'Edit slide text',[marker,'LATEST'])
         else:replace_editor_text(u.GetDlgItem(main,101),marker)
         wait_for(lambda:' * - 'in text(main),'document edited before backup',process)
@@ -2702,7 +2703,7 @@ def audit_recovery(binary,output):
         click(confirmation,2);wait_for(lambda:u.IsWindowEnabled(main),'recovered close Cancel',process)
         command(main,2);dialog=modal(process,title='Save As',native_class='#32770');click(dialog,2)
         wait_for(lambda:u.IsWindowEnabled(main)and' * - 'in text(main),'recovered Save Cancel stays dirty',process)
-        saved=output/('recovery-saved-'+app+'.'+extension);command(main,2);choose_file(process,saved);output_ready(process,main,saved,b'%PDF-'if app=='PDF42'else(b'SCN42\0\x04\0'if app=='SCN42'else b'{'))
+        saved=output/('recovery-saved-'+app+'.'+extension);command(main,2);choose_file(process,saved);output_ready(process,main,saved,b'%PDF-'if app=='PDF42'else(b'SCN42\0\x04\0'if app=='SCN42'else(b'\x89PNG\r\n\x1a\n'if app=='IMG42'else b'{')))
         wait_for(lambda:saved.name in text(main)and' * - 'not in text(main),'recovery saved at the chosen destination',process)
         if app in {'DOC42','XLS42','PPT42'}:assert marker in saved.read_text(encoding='utf-8')
         elif app=='PDF42':
@@ -2711,8 +2712,10 @@ def audit_recovery(binary,output):
             pdf.FPDF_InitLibrary();document=pdf.FPDF_LoadDocument(str(saved).encode(),None);assert document;page=pdf.FPDF_LoadPage(document,0);assert page
             try:assert pdf.FPDFPage_GetRotation(page)==1,'Recovered rotation lost'
             finally:pdf.FPDF_ClosePage(page);pdf.FPDF_CloseDocument(document)
-        else:
-            png=output/'recovery-scan-rotated.png';command(main,31);choose_file(process,png);output_ready(process,main,png,b'\x89PNG\r\n\x1a\n')
+        elif app in{'SCN42','IMG42'}:
+            if app=='IMG42':png=saved
+            else:
+                png=output/'recovery-scan-rotated.png';command(main,31);choose_file(process,png);output_ready(process,main,png,b'\x89PNG\r\n\x1a\n')
             width,height,pixels=png_pixels(png);expected=b''.join(rgba[((31-x)*64+y)*4:((31-x)*64+y)*4+4]for y in range(64)for x in range(32))
             assert(width,height,pixels)==(32,64,expected),'Recovered scan pixels lost'
         wait_for(lambda:not records(),'saved backups removed',process);assert source.read_bytes()==original
@@ -2785,7 +2788,7 @@ def main():
     finally:
         (args.output / "results.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
     if args.recovery:
-        for app in['DOC42','XLS42','PDF42','PPT42','SCN42']:
+        for app in['DOC42','XLS42','PDF42','PPT42','SCN42','IMG42']:
             try:results.append(audit_recovery(args.bin_dir/(app+'.exe'),args.output))
             except Exception as error:results.append({'app':app,'scenario':'crash recovery','error':str(error),'traceback':traceback.format_exc()})
             print(json.dumps(results[-1]),flush=True)

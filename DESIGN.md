@@ -837,3 +837,9 @@ attributes elsewhere. Empty selections set typing attributes without a model/his
 selections pass through the existing guarded projection adapter exactly once; generated control notifications
 are suppressed during this operation, and a rejected projection restores the native snapshot and range.
 Successful character formatting avoids a model-to-control reload, which would erase insertion attributes.
+
+Image recovery uses an internal versioned sample/metadata record per frame, wrapped in an animation/session
+record and the common hashed journal. It bypasses export codecs, retains 16-bit samples and conversion guards,
+and captures readonly references to all active/inactive frames without consuming a pending save. Decoders
+bound frames, dimensions, lengths, metadata counts and aggregate allocation; normal recovery produces a fresh
+model and the shared host supplies the unsaved-copy lifecycle. Original paths are not output destinations.

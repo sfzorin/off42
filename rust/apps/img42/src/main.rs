@@ -2,6 +2,7 @@
 mod batch;
 mod pdf_view;
 mod live_text;
+mod recovery;
 use img42_core::ImageDocument;
 use std::path::Path;
 #[derive(Default)]
@@ -239,6 +240,10 @@ impl win42::App for Img {
     }
     fn can_save_in_place(&self) -> bool {
         !self.conversion_risk && !self.loses_precision()
+    }
+    fn supports_recovery(&self)->bool{true}
+    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
+        recovery::snapshot(self)
     }
     fn save_snapshot_to(
         &mut self,
@@ -850,6 +855,9 @@ impl win42::App for Img {
         }
     }
     fn open(&mut self, p: &Path) -> Result<(), String> {
+        if p.extension().and_then(|e|e.to_str()).is_some_and(|e|e.eq_ignore_ascii_case("img42r")){
+            *self=recovery::open(p)?;return Ok(());
+        }
         if p.extension()
             .and_then(|e| e.to_str())
             .is_some_and(|e| e.eq_ignore_ascii_case("pdf"))

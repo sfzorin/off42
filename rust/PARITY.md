@@ -6,7 +6,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 
 | Area | Current Windows coverage | Remaining work |
 | --- | --- | --- |
-| Files and document lifecycle | Open/save snapshots, conflict detection, Undo/Redo, successful-file recents with clear menu; verified independent New/New Window sessions in all six apps | Encrypted-PDF/image recovery, drag/drop and associations |
+| Files and document lifecycle | Open/save snapshots, conflict detection, Undo/Redo, recents; five verified crash-recovery adapters; IMG lossless recovery implemented with native audit pending | Encrypted-PDF recovery, drag/drop verification and associations |
 | Localization and appearance | Twenty bundled catalogs, verified shared picker/restart and process language override; prompt label measurement and verified outer window placement | Complete Windows-specific translations, dark mode, panel visibility/splits and multi-display DPI |
 | Text proofing | System Rich Edit proofing integration in DOC42/PPT42; native flags verified | Actual suggestions and installed-language behavior; full grammar and other editors |
 | Signatures and stamps | Shared PNG/JPEG library in all six apps; optional white-paper removal; Undo/Redo for placement | Generators, sample learning and full geometry parity |
@@ -553,3 +553,7 @@ after image selection; image unit regressions are now included in quick CI.
   verifies crop/rotation, page range, no-upscale fit, unsaved edits and print-only/nonprinting appearances,
   with source/history and Undo/Redo intact. Damaged-copy deletion and clipboard contention pass.
   The recovered DOC screenshot confirms one primary toolbar row; native caret formatting is a later change.
+- IMG42 now participates in common recovery with a bounded lossless sample/metadata snapshot across all
+  frames, delays/loops, active frame, density, 16-bit data and conversion guards. Portable regressions
+  cover exact state, no save/history mutation and malformed records; workspace 490/0/1 and GNU compilation
+  pass. The real crash/Cancel/save/pixel/reopen scenario is added; native execution is still pending.

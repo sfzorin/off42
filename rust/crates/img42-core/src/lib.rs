@@ -1,5 +1,6 @@
 //! Portable raster editor with bounded codecs and versioned image snapshots.
 mod exif_metadata;
+mod recovery;
 use image::{ImageFormat, ImageReader, Limits};
 use std::{
     fmt,
