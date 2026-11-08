@@ -11,6 +11,7 @@ const EM_SETUNDOLIMIT: u32 = WM_USER + 82;
 const EM_GETEVENTMASK: u32 = WM_USER + 59;
 const EM_SETEVENTMASK: u32 = WM_USER + 69;
 const ENM_CHANGE: usize = 1;
+const ENM_SELCHANGE: usize = 0x0008_0000;
 const SF_RTF: usize = 2;
 #[repr(C)]
 struct CharRange {
@@ -54,7 +55,7 @@ pub unsafe fn disable_undo(hwnd: HWND) {
 /// Unlike EDIT, RichEdit sends EN_CHANGE only when ENM_CHANGE is in its event mask.
 pub unsafe fn notify_changes(hwnd: HWND) {
     let mask = SendMessageW(hwnd, EM_GETEVENTMASK, 0, 0) as usize;
-    SendMessageW(hwnd, EM_SETEVENTMASK, 0, (mask | ENM_CHANGE) as LPARAM);
+    SendMessageW(hwnd, EM_SETEVENTMASK, 0, (mask | ENM_CHANGE | ENM_SELCHANGE) as LPARAM);
 }
 /// Retain the user's IME/language options while enabling system spelling and TSF tips.
 pub unsafe fn set_proofing(hwnd: HWND, enabled: bool) {

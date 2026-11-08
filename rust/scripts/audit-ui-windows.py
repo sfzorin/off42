@@ -771,6 +771,75 @@ def clipboard_text():
     finally:u.CloseClipboard()
 
 
+def audit_rich_format(process,main,binary,output,results):
+    picture=output/'format-picture.png'
+    write_png(picture,2,2,bytes([80,30,180,255])*4)
+    source=output/'rich-format-source.rtf'
+    source.write_bytes(br'{\rtf1\ansi\deff0{\fonttbl{\f0 Arial;}}\pard Head \u-10179?\u-8704?\par '
+        +br'\trowd\cellx2000\cellx4000\pard\intbl Cell\cell Other\cell\row '
+        +br'\pard {\pict\pngblip\picw2\pich2\picwgoal240\pichgoal240 '+picture.read_bytes().hex().encode('ascii')
+        +br'}\par After\par Tail\par}')
+    original=source.read_bytes()
+    command(main,1);choose_file(process,source)
+    discard=next((h for h in windows(process.pid)if classname(h)=='#32770'and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
+    if discard:click(discard,7)
+    wait_for(lambda:source.name in text(main)and u.IsWindowEnabled(main),'format fixture opened',process)
+    edit=u.GetDlgItem(main,101)
+    def saved(name):
+        path=output/name;save_as(main);choose_file(process,path,format_name='DOC42 project');output_ready(process,main,path,b'{')
+        return json.loads(path.read_text(encoding='utf-8'))['state']
+    def selection():
+        packed=u.SendMessageW(edit,0xB0,0,0);return packed&0xffff,(packed>>16)&0xffff
+    def find(query):
+        fill_prompt(process,main,7,'Find next',[query])
+        wait_for(lambda:copied_selection(edit)==query,'native formatting selection '+query,process)
+        return selection()
+    def runs(state):
+        paragraphs=[]
+        for block in state['blocks']:
+            if 'Paragraph'in block:paragraphs.append(block['Paragraph'])
+            if 'Table'in block:
+                for row in block['Table']['rows']:
+                    for cell in row:paragraphs.extend(cell['paragraphs'])
+        return [run for paragraph in paragraphs for run in paragraph['runs']]
+    baseline=saved('rich-format-before.doc42')
+    _,end=find('After');u.SendMessageW(edit,0xB1,end,end)
+    assert u.GetMenuState(u.GetMenu(main),300,0)&3==0,'Bold is unavailable at the insertion point'
+    caption=text(main)
+    command(main,300)
+    wait_for(lambda:u.GetMenuState(u.GetMenu(main),300,0)&8,'bold insertion attributes enabled',process)
+    assert text(main)==caption,'Changing typing attributes dirtied existing content'
+    command(main,303);font=modal(process,native_class='#32770');click(font,2)
+    wait_for(lambda:u.IsWindowEnabled(main),'font Cancel',process);assert text(main)==caption
+    data=c.create_unicode_buffer(' typed');u.SendMessageW(edit,0xC2,0,c.cast(data,c.c_void_p).value)
+    wait_for(lambda:' * - 'in text(main),'typed styled text committed',process)
+    typed=saved('rich-format-typed.doc42')
+    assert any('typed'in run['text']and run['style']['bold']for run in runs(typed)),runs(typed)
+    assert any(run['text']=='After'and not run['style']['bold']for run in runs(typed)),runs(typed)
+    command(main,4);assert saved('rich-format-typing-undo.doc42')['blocks']==baseline['blocks']
+    command(main,5);assert saved('rich-format-typing-redo.doc42')['blocks']==typed['blocks']
+    find('Cell');assert u.GetMenuState(u.GetMenu(main),300,0)&3==0,'Bold unavailable in a table cell'
+    command(main,300);wait_for(lambda:' * - 'in text(main),'table character style committed',process)
+    table=saved('rich-format-table.doc42')
+    assert any(run['text']=='Cell'and run['style']['bold']for run in runs(table)),runs(table)
+    assert any(run['text']=='Other'and not run['style']['bold']for run in runs(table)),runs(table)
+    assert [b for b in table['blocks']if 'Image'in b]==[b for b in baseline['blocks']if 'Image'in b]
+    command(main,4);assert saved('rich-format-table-undo.doc42')['blocks']==typed['blocks']
+    command(main,5);assert saved('rich-format-table-redo.doc42')['blocks']==table['blocks']
+    start,_=find('After');_,end=find('Tail');u.SendMessageW(edit,0xB1,start,end)
+    command(main,301);wait_for(lambda:' * - 'in text(main),'multiple paragraph character style',process)
+    multi=saved('rich-format-multiple.doc42')
+    for word in('After','typed','Tail'):
+        assert any(word in run['text']and run['style']['italic']for run in runs(multi)),(word,runs(multi))
+    command(main,4);assert saved('rich-format-multiple-undo.doc42')['blocks']==table['blocks']
+    command(main,5);assert saved('rich-format-multiple-redo.doc42')['blocks']==multi['blocks']
+    reopened=output/'rich-format-multiple.doc42';command(main,1);choose_file(process,reopened)
+    wait_for(lambda:reopened.name in text(main)and' * - 'not in text(main),'formatted document reopened',process)
+    assert saved('rich-format-reopened.doc42')['blocks']==multi['blocks']
+    assert source.read_bytes()==original
+    results['checks'].append('insertion-point formatting leaves existing content clean, typed bold after a picture survives save/Undo/Redo, Font Cancel is readonly, table formatting preserves other cells/images, and a multi-paragraph italic selection survives Undo/Redo and reopen')
+
+
 def audit_rich_search(process,main,binary,output,results):
     picture=output/"search-picture.png"
     write_png(picture,2,2,bytes([20,40,60,255])*4)
@@ -2126,6 +2195,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_table_labels(process, main, binary, output, results)
         if rich_search and binary.stem.lower() == "doc42":
             audit_rich_search(process, main, binary, output, results)
+            audit_rich_format(process, main, binary, output, results)
         if engineering and binary.stem.lower() == "xls42":
             audit_engineering_formulas(process, main, binary, output, results, include_extended=extended_formulas)
         if statistical_formulas and binary.stem.lower()=="xls42":

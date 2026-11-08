@@ -830,3 +830,10 @@ queued background print jobs wait until the owner is enabled. Raster printing re
 Presentation scenes read an active inline text draft for both display and print while keeping the model's
 history unchanged. Recovery deletion takes an exclusive claim and validates the record envelope but does
 not require decoding/checksumming a damaged payload; recovery itself still verifies the full payload hash.
+
+Apps may opt individual character commands into native Rich Edit formatting. The host derives command
+states from the current native range and applies only the requested character mask, preserving mixed
+attributes elsewhere. Empty selections set typing attributes without a model/history mutation. Nonempty
+selections pass through the existing guarded projection adapter exactly once; generated control notifications
+are suppressed during this operation, and a rejected projection restores the native snapshot and range.
+Successful character formatting avoids a model-to-control reload, which would erase insertion attributes.

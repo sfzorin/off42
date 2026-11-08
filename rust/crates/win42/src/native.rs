@@ -844,6 +844,7 @@ unsafe fn refresh() {
     );
     SendMessageW(list, LB_SETCURSEL, selected, 0);
     for (id, state) in actions {
+        let state=effective_command_state(id,state);
         STATE.with(|s| {
             if let Some((_, button)) = s
                 .borrow()
@@ -2184,6 +2185,60 @@ unsafe extern "system" fn plain_edit_proc(
     result
 }
 
+unsafe fn effective_command_state(id: u16, fallback: crate::CommandState) -> crate::CommandState {
+    let native = STATE.with(|slot| {
+        let state = slot.borrow();
+        let state = state.as_ref()?;
+        Some((
+            state.edit,
+            state.app.rich_format_command(id)?,
+            !state.app.text_readonly(),
+        ))
+    });
+    match native {
+        Some((edit, command, editable)) if !edit.is_null() => {
+            crate::rich_format::state(edit, command, editable && IsWindowVisible(edit) != 0)
+        }
+        _ => fallback,
+    }
+}
+
+unsafe fn native_rich_format(
+    hwnd: HWND,
+    edit: HWND,
+    command: crate::RichFormatCommand,
+) -> Result<(), String> {
+    let Some(format) = crate::rich_format::prepare(hwnd, edit, command)? else {
+        return Ok(());
+    };
+    let selection = crate::rich_edit::selection(edit);
+    let before = crate::rich_edit::extract(edit)?;
+    let previous = REFRESHING.with(|flag| flag.replace(true));
+    let result = (|| {
+        crate::rich_format::apply(edit, &format)?;
+        if selection.0 != selection.1 {
+            let bytes = crate::rich_edit::extract(edit)?;
+            STATE.with(|slot| {
+                slot.borrow_mut()
+                    .as_mut()
+                    .unwrap()
+                    .app
+                    .edit_rich_text(&bytes, selection)
+            })?;
+        }
+        Ok(())
+    })();
+    if result.is_err() {
+        let _ = crate::rich_edit::load(edit, &before);
+        crate::rich_edit::set_selection(edit, selection);
+    }
+    REFRESHING.with(|flag| flag.set(previous));
+    flush_deferred_commands();
+    SetFocus(edit);
+    update_caption();
+    result
+}
+
 unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
     trace_command("received", id, notify);
     if REFRESHING.with(|refreshing| refreshing.get()) {
@@ -2263,6 +2318,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
         if !items.is_empty() {
             let menu = CreatePopupMenu();
             for (id, title, state) in items {
+                let state=effective_command_state(id,state);
                 let flags = MF_STRING
                     | if state.enabled { MF_ENABLED } else { MF_GRAYED }
                     | if state.checked {
@@ -2583,7 +2639,12 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                     a.command_state(id).enabled,
                 )
             });
-            if !enabled {
+            if !effective_command_state(id,crate::CommandState{enabled,checked:false}).enabled {
+                return;
+            }
+            let native_format=STATE.with(|slot|slot.borrow().as_ref().unwrap().app.rich_format_command(id));
+            if let Some(format)=native_format{
+                if let Err(error)=native_rich_format(hwnd,edit,format){msg(hwnd,&error,MB_OK|MB_ICONERROR);}
                 return;
             }
             if let Some(a) = file_action {
@@ -2940,6 +3001,7 @@ unsafe fn update_caption() {
         )
     });
     for (id, state) in actions {
+        let state=effective_command_state(id,state);
         EnableMenuItem(
             menu,
             id as u32,
@@ -3092,6 +3154,12 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
         WM_NOTIFY => {
             if !REFRESHING.with(|x| x.get()) && !l.eq(&0) {
                 let header = &*(l as *const NMHDR);
+                if header.idFrom==EDIT&&header.code==0x702 {
+                    let selection=crate::rich_edit::selection(header.hwndFrom);
+                    STATE.with(|slot|slot.borrow_mut().as_mut().unwrap().app.set_rich_selection(selection));
+                    update_caption();
+                    return 0;
+                }
                 if header.idFrom == TABLE {
                     if header.code == NM_CUSTOMDRAW {
                         let draw = &mut *(l as *mut NMLVCUSTOMDRAW);

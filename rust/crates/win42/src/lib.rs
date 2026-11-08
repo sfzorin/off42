@@ -343,6 +343,8 @@ pub trait App {
     }
     /// Ordinary document printing, shared by File > Print and Ctrl+P.
     fn default_print_command(&self)->Option<u16>{None}
+    /// Use the native selection and insertion-point formatting rules for this command.
+    fn rich_format_command(&self, _id: u16) -> Option<RichFormatCommand> { None }
     fn print_job(&self, _id: u16) -> Option<PrintJob> {
         None
     }
@@ -555,6 +557,8 @@ mod production;
 mod prompt;
 #[cfg(windows)]
 mod rich_edit;
+#[cfg(windows)]
+mod rich_format;
 #[cfg(windows)]
 mod rich_notes;
 #[cfg(windows)]
@@ -1166,6 +1170,8 @@ pub struct FontChoice {
     pub underline: bool,
     pub color: [u8; 3],
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RichFormatCommand { Bold, Italic, Underline, Font, Color }
 #[derive(Clone, Debug)]
 pub struct ReportRequest {
     pub title: String,

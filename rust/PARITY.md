@@ -6,13 +6,13 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 
 | Area | Current Windows coverage | Remaining work |
 | --- | --- | --- |
-| Files and document lifecycle | Open/save snapshots, conflict detection, Undo/Redo, successful-file recents with clear menu; verified independent New/New Window sessions in all six apps | Encrypted-PDF/image recovery, drag/drop and associations; later damaged-copy cleanup verification |
+| Files and document lifecycle | Open/save snapshots, conflict detection, Undo/Redo, successful-file recents with clear menu; verified independent New/New Window sessions in all six apps | Encrypted-PDF/image recovery, drag/drop and associations |
 | Localization and appearance | Twenty bundled catalogs, verified shared picker/restart and process language override; prompt label measurement and verified outer window placement | Complete Windows-specific translations, dark mode, panel visibility/splits and multi-display DPI |
 | Text proofing | System Rich Edit proofing integration in DOC42/PPT42; native flags verified | Actual suggestions and installed-language behavior; full grammar and other editors |
 | Signatures and stamps | Shared PNG/JPEG library in all six apps; optional white-paper removal; Undo/Redo for placement | Generators, sample learning and full geometry parity |
 | Technical objects | Four barcode encoders, fourteen symbols, reusable PNG recipes, insertion/editing in PDF/DOC/XLS/PPT and document round trips | Full technical-object selection/placement controls and richer label artwork sources |
-| Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers, PDF page/region and DOC picture artwork | Vector fidelity for mixed DOC selections; precise picture/caret integration and mouse-area Escape verification |
-| Printing | Native dialogs, actual-size PDF scene path, optional per-printer calibration and measurement sheet | Printer copies/calibration scenarios and physical driver checks |
+| Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers, PDF page/region and DOC picture artwork | Vector fidelity for mixed DOC selections; precise picture/caret integration |
+| Printing | Verified File/Ctrl+P dialogs in all six apps; actual-size label and centered/shrink-only PDF paths, per-printer calibration and measurement sheet | Printer copies/calibration scenarios and physical driver checks |
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction and bounded offline OCR | Decoration font choices, richer forms, certificate signing and validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
 | XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout | Full formula semantics/syntax and locale formats, capacity/automatic expansion, legacy arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, goal seek/solver, split panes, per-cell/password protection and fuller format fidelity |
@@ -543,3 +543,13 @@ after image selection; image unit regressions are now included in quick CI.
   with Mac-style centered/no-upscale fit and native ranges; explicit image/DPI fallback remains. PPT scenes
   include an inline draft without committing it. DOC's primary toolbar is compact. Placement/draft tests pass;
   real keyboard, new PDF print-flag/geometry/history and damaged-backup deletion checks await Windows CI.
+- DOC character commands now use the native caret/selection for insertion attributes, table cells and
+  cross-paragraph ranges, with guarded one-step projection commits and native rollback on failure.
+  Font initializes from the selection; Cancel is readonly. The corresponding native unit/UI checks are
+  included; runtime verification awaits a compatible Windows build.
+
+- Run 42443183563 (0daaf47) artifacts record 486 MSVC tests (zero failures, one optional test ignored)
+  and all 35 native groups passing. Ctrl+P works in all six apps. The actual Microsoft PDF-driver output
+  verifies crop/rotation, page range, no-upscale fit, unsaved edits and print-only/nonprinting appearances,
+  with source/history and Undo/Redo intact. Damaged-copy deletion and clipboard contention pass.
+  The recovered DOC screenshot confirms one primary toolbar row; native caret formatting is a later change.

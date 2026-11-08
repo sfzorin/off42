@@ -686,3 +686,21 @@ including ordinary app audits). DOC/SCN recovery screenshots were inspected. The
 42439920521 independently decodes as PCB-PRINT-42 using ZXing-C++ 2.3.0 after Poppler rendering at 300 DPI.
 A later cleanup fix permits deletion of a damaged recovery payload without loading it; its core test passes
 and a native damaged-copy/source-safety check is added for the next build. No public release has changed.
+
+### Character formatting at the native caret (Windows audit pending)
+
+DOC42's Bold, Italic, Underline, Font and Text Color commands use the actual Rich Edit selection.
+They support the insertion point, table-cell text and selections spanning paragraphs or following pictures.
+Changing insertion-point attributes leaves existing content and document history clean; subsequent typing
+uses those attributes. Selected formatting is committed once through the guarded RTF projection adapter.
+If the adapter refuses an unsupported structure, the native editor restores its previous contents and selection.
+Font opens with the current selection's attributes; Cancel changes nothing. Native selection notifications keep
+menus, shortcuts and toolbar overflow states in sync. Core formatting remains available to portable callers.
+
+The Windows unit and GUI scenarios cover typing attributes, mixed selection, table/image preservation,
+multiple paragraphs, Cancel, complete Undo/Redo and save/reopen. Windows runtime verification is pending.
+
+Run 42443183563 on 0daaf47 passes 486 targeted MSVC tests (zero failures, one optional test ignored) and
+all 35 native audit groups, including common Ctrl+P, ordinary PDF virtual-driver output, print flags,
+crop/rotation/fit/range/source/history, damaged recovery deletion and clipboard contention. The DOC
+recovery screenshot confirms one primary toolbar row. This precedes the native caret-formatting change.
