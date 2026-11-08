@@ -833,8 +833,9 @@ not require decoding/checksumming a damaged payload; recovery itself still verif
 
 Apps may opt individual character commands into native Rich Edit formatting. The host derives command
 states from the current native range and applies only the requested character mask, preserving mixed
-attributes elsewhere. Empty selections set typing attributes without a model/history mutation. Nonempty
-selections pass through the existing guarded projection adapter exactly once; generated control notifications
+attributes elsewhere. Empty character selections set typing attributes without a model/history mutation;
+paragraph alignment changes its paragraphs even with a collapsed caret. Content changes pass through the
+existing guarded projection adapter exactly once; generated control notifications
 are suppressed during this operation, and a rejected projection restores the native snapshot and range.
 Successful character formatting avoids a model-to-control reload, which would erase insertion attributes.
 
@@ -849,3 +850,10 @@ with the ordinary formula evaluator and frozen calculation time; no trial writes
 caches. A sealed result carries its source state/history identity and can be committed only against that state
 through normal cell validation. The host's confirmation contract delivers an explicit boolean result; closing
 or declining it does not apply the proposed change. Worker/session disposal signals cancellation without a UI join.
+
+Rich Edit's projection may inject fixed view defaults and re-encode PNG resources. Only known default
+padding and inline-picture properties are accepted in projection mode; regular imports stay strict.
+The picture matcher tries exact resources first, then compares bounded decoded sample hashes and geometry,
+restoring original compressed data/MIME/metadata on a match. It caches each source digest and bounds aggregate
+pixel work; any removed or visually changed source picture still rejects the transaction. Unknown placement
+properties are not silently discarded. Regression fixtures are the exact isolated native-audit source/RTF.

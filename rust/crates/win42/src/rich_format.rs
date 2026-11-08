@@ -1,4 +1,4 @@
-//! Character formatting belongs to the native projection, including table cells and
+//! Text formatting belongs to the native projection, including table cells and
 //! insertion-point attributes. The host commits selected changes through the app's
 //! existing guarded projection adapter, once per user action.
 use crate::{CommandState, FontChoice, RichFormatCommand};
@@ -27,6 +27,51 @@ pub(super) struct CharacterFormat {
     pitch: u8,
     face: [u16; 32],
 }
+#[repr(C)]
+pub(super) struct ParagraphFormat {
+    size: u32,
+    mask: u32,
+    numbering: u16,
+    effects: u16,
+    start: i32,
+    right: i32,
+    offset: i32,
+    alignment: u16,
+    tab_count: i16,
+    tabs: [i32; 32],
+    space_before: i32,
+    space_after: i32,
+    line_spacing: i32,
+    style: i16,
+    line_rule: u8,
+    outline_level: u8,
+    shading_weight: u16,
+    shading_style: u16,
+    numbering_start: u16,
+    numbering_style: u16,
+    numbering_tab: u16,
+    border_space: u16,
+    border_width: u16,
+    borders: u16,
+}
+pub(super) enum Change {
+    Character(CharacterFormat),
+    Paragraph(ParagraphFormat),
+}
+impl Change {
+    pub(super) fn affects_document(&self, selection: (usize, usize)) -> bool {
+        matches!(self, Self::Paragraph(_)) || selection.0 != selection.1
+    }
+}
+fn alignment(command: RichFormatCommand) -> Option<u16> {
+    Some(match command {
+        RichFormatCommand::AlignLeft => 1,
+        RichFormatCommand::AlignRight => 2,
+        RichFormatCommand::AlignCenter => 3,
+        RichFormatCommand::Justify => 4,
+        _ => return None,
+    })
+}
 
 unsafe fn current(edit: HWND) -> CharacterFormat {
     let mut format: CharacterFormat = zeroed();
@@ -45,6 +90,15 @@ fn effect(command: RichFormatCommand) -> u32 {
 }
 
 pub(super) unsafe fn state(edit: HWND, command: RichFormatCommand, editable: bool) -> CommandState {
+    if let Some(value) = alignment(command) {
+        let mut paragraph: ParagraphFormat = zeroed();
+        paragraph.size = size_of::<ParagraphFormat>() as u32;
+        SendMessageW(edit, 1024 + 61, 0, &mut paragraph as *mut _ as isize);
+        return CommandState {
+            enabled: editable,
+            checked: paragraph.mask & 8 != 0 && paragraph.alignment == value,
+        };
+    }
     let format = current(edit);
     let flag = effect(command);
     CommandState {
@@ -81,7 +135,14 @@ pub(super) unsafe fn prepare(
     owner: HWND,
     edit: HWND,
     command: RichFormatCommand,
-) -> Result<Option<CharacterFormat>, String> {
+) -> Result<Option<Change>, String> {
+    if let Some(value) = alignment(command) {
+        let mut paragraph: ParagraphFormat = zeroed();
+        paragraph.size = size_of::<ParagraphFormat>() as u32;
+        paragraph.mask = 8;
+        paragraph.alignment = value;
+        return Ok(Some(Change::Paragraph(paragraph)));
+    }
     let old = current(edit);
     let mut next: CharacterFormat = zeroed();
     next.size = size_of::<CharacterFormat>() as u32;
@@ -129,12 +190,16 @@ pub(super) unsafe fn prepare(
         next.mask |= COLOR;
         next.color = u32::from(color[0]) | u32::from(color[1]) << 8 | u32::from(color[2]) << 16;
     }
-    Ok(Some(next))
+    Ok(Some(Change::Character(next)))
 }
 
-pub(super) unsafe fn apply(edit: HWND, format: &CharacterFormat) -> Result<(), String> {
-    if SendMessageW(edit, SET, 1, format as *const _ as isize) == 0 {
-        Err("Windows could not apply the character format".into())
+pub(super) unsafe fn apply(edit: HWND, format: &Change) -> Result<(), String> {
+    let result = match format {
+        Change::Character(format) => SendMessageW(edit, SET, 1, format as *const _ as isize),
+        Change::Paragraph(format) => SendMessageW(edit, 1024 + 71, 0, format as *const _ as isize),
+    };
+    if result == 0 {
+        Err("Windows could not apply the text format".into())
     } else {
         Ok(())
     }
@@ -186,6 +251,31 @@ mod tests {
             apply(edit, &next).unwrap();
             assert!(state(edit, RichFormatCommand::Bold, true).checked);
             assert!(!state(edit, RichFormatCommand::Bold, false).enabled);
+            assert_eq!(size_of::<ParagraphFormat>(), 188);
+            crate::rich_edit::load(edit, br"{\rtf1\ansi First\par Second\par}").unwrap();
+            crate::rich_edit::set_selection(edit, (6, 6));
+            let before = crate::rich_edit::extract(edit).unwrap();
+            let right = prepare(std::ptr::null_mut(), edit, RichFormatCommand::AlignRight)
+                .unwrap()
+                .unwrap();
+            assert!(right.affects_document((6, 6)));
+            apply(edit, &right).unwrap();
+            assert_ne!(crate::rich_edit::extract(edit).unwrap(), before);
+            assert!(state(edit, RichFormatCommand::AlignRight, true).checked);
+            crate::rich_edit::set_selection(edit, (0, 5));
+            assert!(state(edit, RichFormatCommand::AlignLeft, true).checked);
+            crate::rich_edit::set_selection(edit, (0, 12));
+            assert!(!state(edit, RichFormatCommand::AlignRight, true).checked);
+            let center = prepare(std::ptr::null_mut(), edit, RichFormatCommand::AlignCenter)
+                .unwrap()
+                .unwrap();
+            apply(edit, &center).unwrap();
+            assert!(state(edit, RichFormatCommand::AlignCenter, true).checked);
+            let justify = prepare(std::ptr::null_mut(), edit, RichFormatCommand::Justify)
+                .unwrap()
+                .unwrap();
+            apply(edit, &justify).unwrap();
+            assert!(state(edit, RichFormatCommand::Justify, true).checked);
             DestroyWindow(edit);
         }
     }

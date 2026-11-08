@@ -2209,6 +2209,8 @@ unsafe fn native_rich_format(
     command: crate::RichFormatCommand,
 ) -> Result<(), String> {
     let Some(format) = crate::rich_format::prepare(hwnd, edit, command)? else {
+        SetFocus(edit);
+        update_caption();
         return Ok(());
     };
     let selection = crate::rich_edit::selection(edit);
@@ -2216,7 +2218,7 @@ unsafe fn native_rich_format(
     let previous = REFRESHING.with(|flag| flag.replace(true));
     let result = (|| {
         crate::rich_format::apply(edit, &format)?;
-        if selection.0 != selection.1 {
+        if format.affects_document(selection) {
             let bytes = crate::rich_edit::extract(edit)?;
             STATE.with(|slot| {
                 slot.borrow_mut()

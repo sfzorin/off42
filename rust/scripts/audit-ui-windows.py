@@ -846,8 +846,13 @@ def audit_rich_format(process,main,binary,output,results):
     command(main,300)
     wait_for(lambda:u.GetMenuState(u.GetMenu(main),300,0)&8,'bold insertion attributes enabled',process)
     assert text(main)==caption,'Changing typing attributes dirtied existing content'
-    command(main,303);font=modal(process,native_class='#32770');click(font,2)
+    click(main,303);font=modal(process,native_class='#32770');click(font,2)
     wait_for(lambda:u.IsWindowEnabled(main),'font Cancel',process);assert text(main)==caption
+    class GuiThreadInfo(c.Structure):
+        _fields_=[('size',w.DWORD),('flags',w.DWORD)]+[(name,w.HWND)for name in['active','focus','capture','menu_owner','move_size','caret']]+[('caret_rect',w.RECT)]
+    info=GuiThreadInfo();info.size=c.sizeof(info);u.GetGUIThreadInfo.argtypes=[w.DWORD,c.POINTER(GuiThreadInfo)]
+    assert u.GetGUIThreadInfo(u.GetWindowThreadProcessId(main,None),c.byref(info))and info.focus==edit,'Font Cancel did not return keyboard focus to the document'
+    assert u.GetMenuState(u.GetMenu(main),300,0)&8,'Font Cancel changed insertion formatting'
     replace_selection(edit,' typed',undoable=0)
     wait_for(lambda:' * - 'in text(main),'typed styled text committed',process)
     typed=saved('rich-format-typed.doc42')
@@ -873,8 +878,27 @@ def audit_rich_format(process,main,binary,output,results):
     reopened=output/'rich-format-multiple.doc42';command(main,1);choose_file(process,reopened)
     wait_for(lambda:reopened.name in text(main)and' * - 'not in text(main),'formatted document reopened',process)
     assert saved('rich-format-reopened.doc42')['blocks']==multi['blocks']
+    _,end=find('After');u.SendMessageW(edit,0xB1,end,end)
+    command(main,307);wait_for(lambda:' * - 'in text(main),'caret paragraph aligned right',process)
+    right=saved('rich-paragraph-right.doc42')
+    def paragraph(state,word):
+        return next(block['Paragraph']for block in state['blocks']if'Paragraph'in block and word in''.join(run['text']for run in block['Paragraph']['runs']))
+    assert paragraph(right,'After')['style']['alignment']=='Right'
+    assert paragraph(right,'Tail')['style']['alignment']=='Left'
+    command(main,4);assert saved('rich-paragraph-right-undo.doc42')['blocks']==multi['blocks']
+    command(main,5);assert saved('rich-paragraph-right-redo.doc42')['blocks']==right['blocks']
+    start,_=find('After');_,end=find('Tail');u.SendMessageW(edit,0xB1,start,end)
+    command(main,306);wait_for(lambda:' * - 'in text(main),'paragraph range centered',process)
+    centered=saved('rich-paragraph-centered.doc42')
+    for word in('After','Tail'):assert paragraph(centered,word)['style']['alignment']=='Center'
+    assert [block for block in centered['blocks']if'Table'in block]==[block for block in right['blocks']if'Table'in block]
+    command(main,4);assert saved('rich-paragraph-centered-undo.doc42')['blocks']==right['blocks']
+    command(main,5);assert saved('rich-paragraph-centered-redo.doc42')['blocks']==centered['blocks']
+    open_fixture(process,main,output/'rich-paragraph-centered.doc42')
+    assert saved('rich-paragraph-reopened.doc42')['blocks']==centered['blocks']
+    capture_window(main,output/'DOC42-rich-formatted.bmp')
     assert source.read_bytes()==original
-    results['checks'].append('insertion-point formatting leaves existing content clean, typed bold after a picture survives save/Undo/Redo, Font Cancel is readonly, table formatting preserves other cells/images, and a multi-paragraph italic selection survives Undo/Redo and reopen')
+    results['checks'].append('insertion-point formatting leaves existing content clean, typed bold after a picture survives save/Undo/Redo, Font Cancel is readonly, table formatting preserves other cells/images, multi-paragraph italic and caret/range paragraph alignment survive complete Undo/Redo and reopen')
 
 
 def audit_rich_search(process,main,binary,output,results):
@@ -1094,7 +1118,7 @@ def audit_preset_shapes(process,main,output,results):
     def current():
         def available():
             try:source=project.read_text(encoding="utf-8")
-            except PermissionError:return None
+            except (PermissionError,FileNotFoundError):return None
             objects=json.loads(source)["slides"][0]["objects"]
             return next(o for o in objects if o.get("preset"))
         return wait_for(available,"read preset project after atomic save",process)

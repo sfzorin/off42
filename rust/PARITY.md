@@ -6,7 +6,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 
 | Area | Current Windows coverage | Remaining work |
 | --- | --- | --- |
-| Files and document lifecycle | Open/save snapshots, conflict detection, Undo/Redo, recents; five verified crash-recovery adapters; IMG lossless recovery implemented with native audit pending | Encrypted-PDF recovery, drag/drop verification and associations |
+| Files and document lifecycle | Open/save snapshots, conflict detection, Undo/Redo, recents; verified crash recovery in all six apps, including IMG lossless snapshots | Encrypted-PDF recovery, drag/drop verification and associations |
 | Localization and appearance | Twenty bundled catalogs, verified shared picker/restart and process language override; prompt label measurement and verified outer window placement | Complete Windows-specific translations, dark mode, panel visibility/splits and multi-display DPI |
 | Text proofing | System Rich Edit proofing integration in DOC42/PPT42; native flags verified | Actual suggestions and installed-language behavior; full grammar and other editors |
 | Signatures and stamps | Shared PNG/JPEG library in all six apps; optional white-paper removal; Undo/Redo for placement | Generators, sample learning and full geometry parity |
@@ -572,3 +572,14 @@ after image selection; image unit regressions are now included in quick CI.
   including braces/backslashes inside payloads; truncated, negative and mixed encodings are refused.
   Portable import/ordering/body-preservation regressions pass. Actual rejected Windows RTF capture is
   still needed to confirm which producer representation caused the native typing failure.
+- Focused run 42445809138 succeeds on the exact 8437ea8 Windows package: all six app groups pass.
+  XLS Goal Seek actually exercises readonly trials/No, explicit Yes, a full-precision numeric square-root
+  result, unchanged formulas/other cells/source, one-step Undo/Redo, save/reopen, an unreachable target
+  and protection. Written A1 is Number 1.414213562373095. No complete-suite parity is implied.
+- Run 42445530680 verifies actual recovery in all six apps; IMG recovered pixels/save/reopen pass and its
+  screenshot was inspected. Run 42445939068 records 500/0/1 MSVC tests and 36 GUI groups with one DOC error.
+  Actual captured RTF reveals default table padding, inline picprop metadata and equivalent PNG re-encoding.
+  The guarded adapter now retains exact source picture bytes/metadata by bounded sample matching, refuses
+  changed samples/nondefault layout, and passes the exact native fixture with Undo/Redo. Paragraph alignment
+  uses native caret/ranges; Font Cancel returns keyboard focus. Portable workspace 501/0/1; GNU compiles.
+  The new real toolbar/focus/paragraph-history/persistence scenarios await Windows execution.

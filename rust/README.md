@@ -745,3 +745,22 @@ regression. The new DOC diagnostic retains rejected fixture RTF only when OFF42_
 The RTF picture reader also handles nested BLIP identifiers and bounded binary image payloads. It keeps
 following body text separate and refuses truncated/mixed encodings. Portable regressions pass; the exact
 Windows typing failure remains under native verification.
+
+Focused native run 42445809138 passes all six app groups on 8437ea8. Goal Seek's No/Yes, unchanged
+source/formulas/other cells, numeric square-root value (1.414213562373095), complete one-step Undo/Redo,
+save/reopen, unreachable target and protection checks actually pass. The full multivariable Solver is pending.
+
+### Native document projection compatibility
+
+Run 42445530680 verifies crash/restart/recover/save/reopen in all six apps, including IMG42's exact rotated
+pixels; its recovery screenshot was inspected. Run 42445939068 records 500 passing MSVC tests (zero
+failures, one optional skip) and leaves one actual DOC failure in its 36 native groups. The captured Windows
+RTF adds standard table padding, inline-picture properties and a PNG rewrite with identical decoded pixels.
+
+The projection adapter now accepts only those known view defaults/properties and restores original picture
+bytes, format, metadata and description after bounded sample comparison. Changed picture samples or other
+placement/padding values still refuse the edit without changing model/history. The exact captured fixture
+now passes portable text/style/table/picture/Undo/Redo regressions. Paragraph alignment also uses the native
+caret/range, including content changes with a collapsed caret; Font Cancel restores editor focus. New native
+formatting/focus/alignment checks await the next compatible Windows build. Portable workspace: 501/0/1;
+Windows GNU targets compile. This is development work, not a public release or complete parity.

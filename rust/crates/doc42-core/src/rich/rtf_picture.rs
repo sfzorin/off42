@@ -81,6 +81,47 @@ pub(super) fn write(image: &Image) -> Result<String, Error> {
     Ok(out)
 }
 pub(super) fn parse(bytes: &[u8], id: u64) -> Result<Image, Error> {
+    parse_inner(bytes, id, false)
+}
+pub(super) fn parse_projection(bytes: &[u8], id: u64) -> Result<Image, Error> {
+    parse_inner(bytes, id, true)
+}
+fn projection_properties(bytes: &[u8]) -> Result<(), Error> {
+    let mut properties = bytes
+        .strip_prefix(br"{\*\picprop")
+        .and_then(|v| v.strip_suffix(b"}"))
+        .ok_or_else(|| Error::Unsupported("RTF picture properties".into()))?
+        .trim_ascii();
+    while !properties.is_empty() {
+        let end = group_end(properties, 0)?;
+        let property = properties[..end]
+            .strip_prefix(br"{\sp")
+            .and_then(|v| v.strip_suffix(b"}"))
+            .ok_or_else(|| Error::Unsupported("RTF picture property".into()))?
+            .trim_ascii();
+        let name_end = group_end(property, 0)?;
+        let name = property[..name_end]
+            .strip_prefix(br"{\sn ")
+            .and_then(|v| v.strip_suffix(b"}"))
+            .ok_or_else(|| Error::Unsupported("RTF picture property name".into()))?;
+        let value = property[name_end..].trim_ascii();
+        let value_end = group_end(value, 0)?;
+        if !value[value_end..].trim_ascii().is_empty() {
+            return Err(Error::Unsupported("RTF picture property tail".into()));
+        }
+        let value = value[..value_end]
+            .strip_prefix(br"{\sv ")
+            .and_then(|v| v.strip_suffix(b"}"))
+            .ok_or_else(|| Error::Unsupported("RTF picture property value".into()))?;
+        // Native inline objects add a placeholder description and the default vertical anchor.
+        if name != b"wzDescription" && !(name == b"posv" && value.trim_ascii() == b"1") {
+            return Err(Error::Unsupported("RTF picture placement property".into()));
+        }
+        properties = properties[end..].trim_ascii();
+    }
+    Ok(())
+}
+fn parse_inner(bytes: &[u8], id: u64, projection: bool) -> Result<Image, Error> {
     if !bytes.starts_with(b"{\\pict") || !bytes.ends_with(b"}") {
         return Err(Error::Invalid("invalid picture destination".into()));
     }
@@ -102,7 +143,9 @@ pub(super) fn parse(bytes: &[u8], id: u64) -> Result<Image, Error> {
             let uid = bytes[start..end]
                 .strip_prefix(br"{\*\blipuid ")
                 .and_then(|v| v.strip_suffix(b"}"));
-            if !uid
+            if projection && bytes[start..end].starts_with(br"{\*\picprop") {
+                projection_properties(&bytes[start..end])?;
+            } else if !uid
                 .is_some_and(|value| value.len() == 32 && value.iter().all(u8::is_ascii_hexdigit))
             {
                 return Err(Error::Unsupported("RTF picture metadata group".into()));

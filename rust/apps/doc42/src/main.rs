@@ -623,7 +623,7 @@ impl App for Doc {
     fn toolbar_command_visible(&self,id:u16)->bool{matches!(id,300..=303|305|306|313)}
     fn rich_format_command(&self,id:u16)->Option<win42::RichFormatCommand>{
         use win42::RichFormatCommand::*;
-        Some(match id{300=>Bold,301=>Italic,302=>Underline,303=>Font,304=>Color,_=>return None})
+        Some(match id{300=>Bold,301=>Italic,302=>Underline,303=>Font,304=>Color,305=>AlignLeft,306=>AlignCenter,307=>AlignRight,308=>Justify,_=>return None})
     }
     fn name(&self) -> &'static str {
         "DOC42"

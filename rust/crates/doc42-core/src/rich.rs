@@ -10,6 +10,7 @@ mod rtf;
 mod rtf_field;
 mod rtf_lists;
 mod rtf_picture;
+mod projection_pictures;
 mod rtf_read;
 mod search;
 mod statistics;
@@ -1514,7 +1515,7 @@ impl RichDocument {
             }
         }
         let mut next_id = old.next_id;
-        let mut used_images = std::collections::HashSet::new();
+        let mut images=projection_pictures::Matcher::new(&old.blocks);
         for (i, block) in parsed.blocks.iter_mut().enumerate() {
             match block {
                 Block::Paragraph(p) => {
@@ -1579,21 +1580,7 @@ impl RichDocument {
                     }
                 }
                 Block::Image(image) => {
-                    let previous = old.blocks.iter().find_map(|b| match b {
-                        Block::Image(old)
-                            if !used_images.contains(&old.id)
-                                && old.mime == image.mime
-                                && old.data == image.data =>
-                        {
-                            Some(old)
-                        }
-                        _ => None,
-                    });
-                    if let Some(previous) = previous {
-                        image.id = previous.id;
-                        image.alt = previous.alt.clone();
-                        used_images.insert(previous.id);
-                    } else {
+                    if !images.restore(image)? {
                         image.id = next_id;
                         next_id = next_id.checked_add(1).ok_or(Error::Limit)?;
                     }
@@ -1611,7 +1598,7 @@ impl RichDocument {
                     None
                 }
             })
-            .any(|id| !used_images.contains(&id))
+            .any(|id| !images.used(id))
         {
             return Err(Error::Unsupported(
                 "RichEdit removed or transformed a picture".into(),

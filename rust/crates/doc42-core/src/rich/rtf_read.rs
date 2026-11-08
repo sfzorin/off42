@@ -425,6 +425,8 @@ impl Reader {
             "deff" => self.default_font = arg.ok_or_else(|| fail("default font"))?,
             "deflang" | "viewkind" | "viewscale" | "nouicompat" | "fet" => {}
             "lang" | "langfe" if self.projection => {}
+            "trgaph"|"trpaddl"|"trpaddr" if self.projection&&matches!(arg,Some(0|10))=>{},
+            "trpaddfl"|"trpaddfr" if self.projection&&arg==Some(3)=>{},
             "cf" | "highlight" => {
                 self.flush()?;
                 let n = usize::try_from(arg.ok_or_else(|| fail("color index"))?)
@@ -879,7 +881,7 @@ fn decode_inner(bytes: &[u8], projection: bool) -> Result<State, Error> {
                     if !r.in_table { r.flush_table()?; }
                     let start = i - 1;
                     let end = super::rtf_picture::group_end(bytes,start)?;
-                    let image = super::rtf_picture::parse(&bytes[start..end], r.next_id)?;
+                    let image = if r.projection{super::rtf_picture::parse_projection(&bytes[start..end],r.next_id)?}else{super::rtf_picture::parse(&bytes[start..end], r.next_id)?};
                     r.next_id += 1;
                     r.blocks.push(Block::Image(image));
                     r.image_pending = true;
@@ -1190,6 +1192,30 @@ mod tests {
         assert!(matches!(&document.state().blocks[..],[Block::Paragraph(_),Block::Table(_),Block::Image(_),Block::Paragraph(_)]));
         assert_eq!(document.state().blocks[1],before.blocks[1]);assert_eq!(document.state().blocks[2],before.blocks[2]);
         document.undo();assert_eq!(document.state(),&before);
+    }
+    #[test]
+    fn actual_native_typing_retains_original_picture_bytes_table_and_history(){
+        let mut document=RichDocument::decode(include_bytes!("../../fixtures/native-rich-edit-picture.doc42"),Format::Project).unwrap();
+        let before=document.state().clone();
+        document.apply_rich_edit_projection(include_bytes!("../../fixtures/native-rich-edit-picture.rtf"),(0,0)).unwrap();
+        assert_eq!(document.state().blocks[1],before.blocks[1]);assert_eq!(document.state().blocks[2],before.blocks[2]);
+        assert!(document.state().blocks.iter().any(|block|matches!(block,Block::Paragraph(p)if p.runs.iter().any(|run|run.text.contains("typed")&&run.style.bold))));
+        let after=document.state().clone();document.undo();assert_eq!(document.state(),&before);document.redo();assert_eq!(document.state(),&after);
+    }
+    #[test]
+    fn native_projection_refuses_changed_picture_samples_and_nondefault_layout_properties(){
+        let source=include_bytes!("../../fixtures/native-rich-edit-picture.doc42");
+        let projection=include_bytes!("../../fixtures/native-rich-edit-picture.rtf");
+        for altered in[String::from_utf8_lossy(projection).replace("trgaph10","trgaph99"),String::from_utf8_lossy(projection).replace("{\\sn posv}{\\sv 1}","{\\sn posv}{\\sv 2}")]{
+            let mut document=RichDocument::decode(source,Format::Project).unwrap();let before=document.state().clone();
+            assert!(document.apply_rich_edit_projection(altered.as_bytes(),(0,0)).is_err());assert_eq!(document.state(),&before);assert!(!document.can_undo());
+        }
+        let mut parsed=decode_projection(projection).unwrap();
+        let image=parsed.blocks.iter_mut().find_map(|block|match block{Block::Image(image)=>Some(image),_=>None}).unwrap();
+        let mut bytes=Vec::new();use image::ImageEncoder;
+        image::codecs::png::PngEncoder::new(&mut bytes).write_image(&[1,2,3,255].repeat(4),2,2,image::ExtendedColorType::Rgba8).unwrap();image.data=bytes;
+        let altered=super::super::rtf::rtf_export(&parsed).unwrap();let mut document=RichDocument::decode(source,Format::Project).unwrap();let before=document.state().clone();
+        assert!(document.apply_rich_edit_projection(&altered,(0,0)).is_err());assert_eq!(document.state(),&before);assert!(!document.can_undo());
     }
     #[test]
     fn windows_rtf_header_colors_and_codepage() {

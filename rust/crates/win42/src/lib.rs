@@ -1173,7 +1173,7 @@ pub struct FontChoice {
     pub color: [u8; 3],
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RichFormatCommand { Bold, Italic, Underline, Font, Color }
+pub enum RichFormatCommand { Bold, Italic, Underline, Font, Color, AlignLeft, AlignCenter, AlignRight, Justify }
 #[derive(Clone, Debug)]
 pub struct ReportRequest {
     pub title: String,
