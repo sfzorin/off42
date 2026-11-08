@@ -1650,7 +1650,12 @@ def audit_image_live_text(process,main,binary,output,results):
     p=point(330,110)
     u.SendMessageW(canvas,0x201,1,p);u.SendMessageW(canvas,0x203,1,p);u.SendMessageW(canvas,0x202,0,p)
     wait_for(lambda:not(u.GetMenuState(u.GetMenu(main),44,0)&3),'copy command enabled after text selection',process)
-    command(main,44);wait_for(lambda:clipboard_text()=='offline','native double-click recognized word',process)
+    # A brief clipboard lease in another process must not turn Copy into an error dialog.
+    api=c.WinDLL('user32',use_last_error=True);api.OpenClipboard.argtypes=[w.HWND]
+    wait_for(lambda:bool(api.OpenClipboard(None)),'temporary clipboard contention',process)
+    try:command(main,44);time.sleep(0.05)
+    finally:assert api.CloseClipboard()
+    wait_for(lambda:clipboard_text()=='offline','native double-click recognized word after clipboard contention',process)
     u.SendMessageW(canvas,0x201,1,point(330,110));u.SendMessageW(canvas,0x200,1,point(500,110));u.SendMessageW(canvas,0x202,0,point(500,110))
     command(main,44);wait_for(lambda:clipboard_text()=='offline text','native drag across recognized words',process)
     command(main,46);command(main,44);wait_for(lambda:clipboard_text()==all_text,'native select all recognized text',process)
@@ -2481,7 +2486,7 @@ def audit_recovery(binary,output):
         source=output/'recovery-original.png';rgba=b''.join(bytes([255,0,0,255]if x<32 else[0,0,255,255])for y in range(32)for x in range(64));write_png(source,64,32,rgba)
     def launch(path=None):
         process=subprocess.Popen([str(binary),'--language','en']+(['--',str(path)]if path else[]),env=environment)
-        main=modal(process,native_class='Suite42Native')
+        main=wait_for(lambda:next((h for h in windows(process.pid)if classname(h)=='Suite42Native'),None),'recovery main window (possibly behind startup dialog)',process)
         if path:
             if app=='SCN42':wait_for(lambda:any('1 pages |'in text(h)for h in windows(process.pid,main)),'scan recovery fixture imported',process)
             else:wait_for(lambda:path.name in text(main)and u.IsWindowEnabled(main),'recovery source opened',process)
@@ -2505,7 +2510,7 @@ def audit_recovery(binary,output):
     try:
         process,main=launch(source)
         if app in {'PPT42','SCN42'}:
-            source=output/('recovery-original-'+app+'.'+extension);save_as(main);choose_file(process,source);output_ready(process,main,source,b'{')
+            source=output/('recovery-original-'+app+'.'+extension);save_as(main);choose_file(process,source);output_ready(process,main,source,b'SCN42\0\x04\0'if app=='SCN42'else b'{')
             wait_for(lambda:source.name in text(main)and' * - 'not in text(main),'baseline saved before crash',process)
         original=source.read_bytes()
         if app in {'PDF42','SCN42'}:u.SendMessageW(main,WM_COMMAND,10,0)
@@ -2532,7 +2537,7 @@ def audit_recovery(binary,output):
         click(confirmation,2);wait_for(lambda:u.IsWindowEnabled(main),'recovered close Cancel',process)
         command(main,2);dialog=modal(process,title='Save As',native_class='#32770');click(dialog,2)
         wait_for(lambda:u.IsWindowEnabled(main)and' * - 'in text(main),'recovered Save Cancel stays dirty',process)
-        saved=output/('recovery-saved-'+app+'.'+extension);command(main,2);choose_file(process,saved);output_ready(process,main,saved,b'%PDF-'if app=='PDF42'else b'{')
+        saved=output/('recovery-saved-'+app+'.'+extension);command(main,2);choose_file(process,saved);output_ready(process,main,saved,b'%PDF-'if app=='PDF42'else(b'SCN42\0\x04\0'if app=='SCN42'else b'{'))
         wait_for(lambda:saved.name in text(main)and' * - 'not in text(main),'recovery saved at the chosen destination',process)
         if app in {'DOC42','XLS42','PPT42'}:assert marker in saved.read_text(encoding='utf-8')
         elif app=='PDF42':
