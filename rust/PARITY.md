@@ -674,3 +674,13 @@ after image selection; image unit regressions are now included in quick CI.
   rectangle. An independent edge-coordinate workbook checks literal formula-looking text, booleans,
   calculated caches, editing/Undo/Redo/reopen and exact unknown ZIP part preservation. Core 144/0;
   GNU all targets compile. Existing dimensions remain unchanged until remaining paths are bounded.
+
+- Runs 42516256451 (1030c81) and 42516717268 (c3f27da) both succeed: 37 UI groups each, respectively
+  533/0/1 and 535/0/1 MSVC tests. Sparse text and virtualized geometry retain the existing actual native
+  edit/filter/clipboard/array/history/save/reopen/print scenarios. The arrays grid capture was inspected.
+- ODS record import, style/merge projection and style preservation checks skip empty rectangular area.
+  Bounded repetition/text decoding and value-only surgical XML updates preserve untouched rich text and
+  unknown ZIP data. New independent ODF tests cover repeats, errors, dates, booleans, literal formula-looking
+  text, separated gaps, exact unedited markup, complete history/reopen and invalid/oversized repeats.
+  Workspace 534/0/1, GNU all targets compile; native repeat pending. Filter/layout/style/structural edits
+  retain conservative reconstruction guards. Existing core dimensions remain unchanged for now.

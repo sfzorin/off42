@@ -870,3 +870,9 @@ file-adapter work; native verification of this geometry change is tracked separa
 XLSX import reads actual cell records without expanding the bounding rectangle between distant cells.
 Literal text, typed values, shared formulas, caches and untouched package parts retain their existing handling.
 ODS/XLS import and large-operation limits are being addressed separately.
+
+ODS import now skips empty repeated gaps, reads actual value records and handles bounded repetitions of
+populated cells. Text spaces, tabs, line breaks and paragraphs retain their text semantics. Value-only edits
+with unchanged layout/styles and no active filter preserve untouched XML directly, including neighboring rich
+text; other ODS changes retain their existing preservation guards. The worksheet dimension limit is still
+unchanged while remaining dense operations are being bounded.

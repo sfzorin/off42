@@ -925,3 +925,13 @@ stream, one actual XML cell record at a time. No worksheet-range matrix is const
 modern error substitutions, per-cell formula caches, layout imports and original-package preservation retain
 existing policy; record count and cumulative input text are checked before model insertion. ODS and XLS
 still use their existing readers pending separate migrations.
+
+ODS import visits namespace-qualified XML cell records and expands only meaningful bounded repetitions
+(up to one million records, four MB cumulative text). Empty repeated rows/columns advance coordinates.
+ODF text spaces, tabs, line breaks and paragraphs are decoded explicitly with a bounded depth. Style/merge
+projection and unedited-style verification visit actual coordinates; structural style shifts visit explicit styles.
+Value-only ODS changes with unchanged sheet layout/styles and no active filter use the existing surgical XML
+patcher extended with typed inputs. Unedited rich text, metadata and ZIP parts remain byte-for-byte; scalar
+and dynamic-array caches still refresh through the common pipeline. Layout/style/structural/filter edits retain
+the existing reconstruction and preservation guards. Missing XML attribute namespaces are introduced locally,
+and nonexistent attribute removals need no namespace declaration. Newly materialized gaps use ODF repetition.

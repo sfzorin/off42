@@ -94,6 +94,76 @@ fn cell(source: &str, node: roxmltree::Node<'_, '_>, update: &Update) -> Result<
     let mut attrs = Vec::new();
     let mut remove = Vec::new();
     let mut body = String::new();
+    if let Some(input) = &update.input {
+        const CALC: &str = "urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0";
+        for name in [
+            "value-type",
+            "value",
+            "string-value",
+            "boolean-value",
+            "date-value",
+            "time-value",
+            "currency",
+        ] {
+            attrs.push((O, name, None));
+        }
+        attrs.push((CALC, "value-type", None));
+        attrs.push((T, "formula", None));
+        remove.push(("urn:oasis:names:tc:opendocument:xmlns:text:1.0", "p"));
+        let value = match input {
+            None => None,
+            Some(CellContent::Formula(v)) => {
+                attrs.retain(|(ns, key, _)| !(*ns == T && *key == "formula"));
+                attrs.push((T, "formula", Some(ods_formula(v.raw())?)));
+                None
+            }
+            Some(CellContent::Text(v)) => {
+                Some(("string", "string-value", v.raw().to_owned(), false))
+            }
+            Some(CellContent::Number(v)) => Some((
+                "float",
+                "value",
+                v.raw()
+                    .parse::<f64>()
+                    .ok()
+                    .filter(|n| n.is_finite())
+                    .ok_or(Error::Invalid("invalid ODS numeric input"))?
+                    .to_string(),
+                false,
+            )),
+            Some(CellContent::Boolean(v)) => Some((
+                "boolean",
+                "boolean-value",
+                v.raw().eq_ignore_ascii_case("true").to_string(),
+                false,
+            )),
+            Some(CellContent::Date(v)) => Some((
+                "date",
+                "date-value",
+                date_time(v.raw())?
+                    .format("%Y-%m-%dT%H:%M:%S%.f")
+                    .to_string(),
+                false,
+            )),
+            Some(CellContent::Error(v)) => Some(("string", "string-value", v.raw().into(), true)),
+        };
+        if let Some((kind, key, raw, error)) = value {
+            attrs.retain(|(ns, name, _)| !(*ns == O && (*name == "value-type" || *name == key)));
+            attrs.push((O, "value-type", Some(kind.into())));
+            attrs.push((O, key, Some(raw.clone())));
+            if error {
+                attrs.retain(|(ns, key, _)| !(*ns == CALC && *key == "value-type"));
+                attrs.push((CALC, "value-type", Some("error".into())));
+            }
+            body = format!(
+                "<text:p xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\">{}</text:p>",
+                escape_xml(&raw)
+                    .replace('\r', "&#13;")
+                    .replace('\n', "<text:line-break/>")
+                    .replace('\t', "<text:tab/>")
+            );
+        }
+    }
     if let Some(style) = &update.style {
         attrs.push((T, "style-name", style.clone()));
     }
@@ -148,6 +218,9 @@ fn cell(source: &str, node: roxmltree::Node<'_, '_>, update: &Update) -> Result<
     }
     attrs.push((T, "number-columns-repeated", None));
     xml_nodes::edit(source, node, &attrs, &remove, &body)
+}
+fn empty_cells(count: usize) -> String {
+    format!("<table:table-cell xmlns:table=\"{T}\" table:number-columns-repeated=\"{count}\"/>")
 }
 fn new_cell(update: Option<&Update>) -> Result<String, Error> {
     let raw = format!("<table:table-cell xmlns:table=\"{T}\" xmlns:office=\"{O}\"/>");
@@ -205,12 +278,11 @@ fn edited_row(
     }
     let mut missing = String::new();
     for (&c, update) in changes.range(col..) {
-        while col < c {
-            missing.push_str(&new_cell(None)?);
-            col += 1;
+        if col < c {
+            missing.push_str(&empty_cells(c - col));
         }
         missing.push_str(&new_cell(Some(update))?);
-        col += 1;
+        col = c + 1;
     }
     let raw = &source[node.range()];
     if !missing.is_empty() {
@@ -288,24 +360,25 @@ pub(super) fn patch(
         }
         let mut missing = String::new();
         for (&r, u) in by_row.range(row..) {
-            while row < r {
-                missing.push_str(&format!("<table:table-row xmlns:table=\"{T}\"/>"));
-                row += 1;
+            if row < r {
+                missing.push_str(&format!(
+                    "<table:table-row xmlns:table=\"{T}\" table:number-rows-repeated=\"{}\"/>",
+                    r - row
+                ));
             }
             let mut cells = String::new();
             let mut c = 0;
             for (&col, update) in u {
-                while c < col {
-                    cells.push_str(&new_cell(None)?);
-                    c += 1;
+                if c < col {
+                    cells.push_str(&empty_cells(col - c));
                 }
                 cells.push_str(&new_cell(Some(update))?);
-                c += 1;
+                c = col + 1;
             }
             missing.push_str(&format!(
                 "<table:table-row xmlns:table=\"{T}\">{cells}</table:table-row>"
             ));
-            row += 1;
+            row = r + 1;
         }
         if !missing.is_empty() {
             let at = last_end.unwrap_or_else(|| {

@@ -237,11 +237,23 @@ fn rewrite_zip(bytes: &[u8], mut entries: BTreeMap<String, Vec<u8>>) -> Result<V
 
 #[derive(Default)]
 struct Update {
+    input: Option<Option<CellContent>>,
     cm: Option<usize>,
     style: Option<Option<String>>,
     cache: Option<Option<formula::Value>>,
     array: Option<Option<Range>>,
 }
+pub(super) fn patch_ods_inputs(bytes:&[u8],changes:&[Vec<((usize,usize),Option<Cell>)>],state:&State)->Result<Vec<u8>,Error>{
+    let mut archive=zip::ZipArchive::new(Cursor::new(bytes)).map_err(|_|Error::Invalid("invalid ODS package"))?;
+    let text=zip_text(&mut archive,"content.xml")?.ok_or(Error::Invalid("missing ODS content"))?;
+    let changes=state.sheets.iter().zip(changes).map(|(sheet,cells)|{
+        let cells=cells.iter().map(|(p,cell)|(*p,Update{input:Some(cell.as_ref().map(|c|c.text.clone())),..Default::default()})).collect();
+        (sheet.name.clone(),cells)
+    }).collect();
+    let output=ods::patch(&text,&changes)?;
+    rewrite_zip(bytes,BTreeMap::from([("content.xml".into(),output.into_bytes())]))
+}
+
 fn updates(
     sheet: &Sheet,
     spans: &[Span],

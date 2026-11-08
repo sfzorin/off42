@@ -29,10 +29,14 @@ pub(super) fn edit(
     let at = if closed { end - 1 } else { end };
     let mut changes = Vec::new();
     let mut add = String::new();
+    let mut namespaces = BTreeMap::<String, String>::new();
     for (ns, name, value) in attrs {
         let existing = node
             .attributes()
             .find(|a| a.name() == *name && a.namespace().unwrap_or("") == *ns);
+        if existing.is_none() && value.is_none() {
+            continue;
+        }
         let qualified = if let Some(a) = existing {
             source[a.range()]
                 .split('=')
@@ -43,9 +47,25 @@ pub(super) fn edit(
         } else if ns.is_empty() {
             (*name).into()
         } else {
-            let p = node
-                .lookup_prefix(ns)
-                .ok_or(Error::Invalid("Missing Office attribute namespace"))?;
+            let p = if let Some(prefix) = node.lookup_prefix(ns) {
+                prefix.to_owned()
+            } else if let Some(prefix) = namespaces.get(*ns) {
+                prefix.clone()
+            } else {
+                let mut i = 0usize;
+                let prefix = loop {
+                    let p = format!("off42ns{i}");
+                    if node.lookup_namespace_uri(Some(&p)).is_none()
+                        && !namespaces.values().any(|v| v == &p)
+                    {
+                        break p;
+                    }
+                    i += 1;
+                };
+                add.push_str(&format!(" xmlns:{prefix}=\"{}\"", escape_xml(ns)));
+                namespaces.insert((*ns).into(), prefix.clone());
+                prefix
+            };
             format!("{p}:{name}")
         };
         if let Some(a) = existing {

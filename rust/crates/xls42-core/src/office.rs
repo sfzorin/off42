@@ -10,6 +10,7 @@ mod formula_cache;
 mod filters;
 mod dynamic_arrays;
 mod sparse_import;
+mod sparse_ods;
 fn date_time(raw: &str) -> Result<chrono::NaiveDateTime, Error> {
     chrono::NaiveDateTime::parse_from_str(raw, "%Y-%m-%dT%H:%M:%S%.f")
         .ok()
@@ -1598,6 +1599,8 @@ impl Workbook {
         let (reader_bytes, modern_errors) = dynamic_arrays::working_copy(bytes, kind)?;
         let (sheets,cache)=if kind=="xlsx" {
             sparse_import::xlsx(reader_bytes.as_ref(),&modern_errors)?
+        }else if kind=="ods" {
+            sparse_ods::ods(bytes)?
         }else{
         let mut source = calamine::open_workbook_auto_from_rs(Cursor::new(reader_bytes.as_ref()))
             .map_err(|_| Error::Invalid("unsupported or invalid spreadsheet"))?;
@@ -1771,6 +1774,7 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
     if book.num_sheets() != state.sheets.len() {
         return Err(Error::Invalid("inconsistent ODS sheets"));
     }
+    let mut layout_budget=0usize;
     for i in 0..state.sheets.len() {
         let source = book.sheet(i);
         let sheet = &mut state.sheets[i];
@@ -1819,10 +1823,10 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
                 }
             }
         }
-        for r in 0..sheet.rows {
-            for c in 0..sheet.cols {
-                let rs = source.row_span(r as u32, c as u32) as usize;
-                let cs = source.col_span(r as u32, c as u32) as usize;
+        let table=sparse_ods::tables(&document).nth(i).ok_or(Error::Invalid("missing ODS layout table"))?;
+        sparse_ods::visit(table,&mut layout_budget,|r,c,node| {
+                let rs=node.attribute((sparse_ods::TABLE,"number-rows-spanned")).unwrap_or("1").parse::<usize>().map_err(|_|Error::Invalid("invalid ODS row span"))?;
+                let cs=node.attribute((sparse_ods::TABLE,"number-columns-spanned")).unwrap_or("1").parse::<usize>().map_err(|_|Error::Invalid("invalid ODS column span"))?;
                 if rs > 1 || cs > 1 {
                     let m = Range {
                         top: r,
@@ -1834,8 +1838,8 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
                         sheet.merges.push(m)
                     }
                 }
-                if let Some(reference) = source.cellstyle(r as u32, c as u32) {
-                    if let Some(style) = book.cellstyle(reference.as_ref()) {
+                if let Some(reference) = node.attribute((sparse_ods::TABLE,"style-name")) {
+                    if let Some(style) = book.cellstyle(reference) {
                         let mut out = CellStyle::default();
                         for (key, value) in style.textstyle().iter() {
                             match key.as_ref() {
@@ -1905,11 +1909,12 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
                         }
                     }
                 }
-            }
-        }
+            Ok(())
+        })?;
     }
     Ok(())
 }
+
 fn parse_rgb(s: &str) -> Option<u32> {
     let s = s.strip_prefix('#')?;
     if s.len() != 6 {
@@ -3213,6 +3218,16 @@ fn patch_ods(
     current: &State,
     changes: &[Vec<((usize, usize), Option<Cell>)>],
 ) -> Result<Vec<u8>, Error> {
+    // A value-only edit can preserve every unedited XML node directly, including rich text and metadata.
+    // Layout/style/filter/structural edits keep their existing stronger reconstruction checks.
+    let mut shape=current.clone();shape.selection=old.selection;
+    if shape.sheets.len()==old.sheets.len() {
+        for (after,before)in shape.sheets.iter_mut().zip(&old.sheets){after.cells=before.cells.clone();}
+        let styles_unchanged=changes.iter().enumerate().all(|(i,cells)|cells.iter().all(|(p,c)|old.sheets[i].cells.get(p).map_or(0,|c|c.style)==c.as_ref().map_or(0,|c|c.style)));
+        if &shape==old&&styles_unchanged&&current.sheets.iter().all(|s|s.filter.is_none()) {
+            return dynamic_arrays::patch_ods_inputs(bytes,changes,current);
+        }
+    }
     use spreadsheet_ods::Value;
     let mut book = spreadsheet_ods::read_ods_buf(bytes)
         .map_err(|_| Error::Invalid("cannot read original ODS"))?;
@@ -3272,22 +3287,14 @@ fn patch_ods(
         if !after.source_structure {
             continue;
         }
-        style_scan = style_scan.saturating_add(before.rows.saturating_mul(before.cols));
-        if style_scan > 1_000_000 {
-            return Err(Error::Limit);
-        }
-        let mut styles = Vec::new();
-        for row in 0..before.rows {
-            for col in 0..before.cols {
-                if let Some(reference) = book.sheet(i).cellstyle(row as u32, col as u32).cloned() {
-                    let id = before.cells.get(&(row, col)).map_or(0, |c| c.style);
-                    styles.push((
-                        (row, col),
-                        shift_ods_cell(row, col, &after.source_edits),
-                        reference,
-                        id,
-                    ));
-                }
+        style_scan = style_scan.saturating_add(book.sheet(i).cell_count());
+        if style_scan>1_000_000{return Err(Error::Limit)}
+        let mut styles=Vec::new();
+        for ((row,col),cell) in book.sheet(i).iter(){
+            let (row,col)=(row as usize,col as usize);
+            if let Some(reference)=cell.style().cloned(){
+                let id=before.cells.get(&(row,col)).map_or(0,|c|c.style);
+                styles.push(((row,col),shift_ods_cell(row,col,&after.source_edits),reference,id));
             }
         }
         for ((row, col), _, _, _) in &styles {
@@ -5628,8 +5635,10 @@ fn verify_ods_untouched_styles(
                 "ODS style grid exceeds safe preservation limits",
             ));
         }
-        for r in 0..rows {
-            for c in 0..cols {
+        let coordinates=a.sheet(i).iter().map(|(p,_)|p).chain(b.sheet(i).iter().map(|(p,_)|p)).collect::<std::collections::BTreeSet<_>>();
+        if coordinates.len()>1_000_000{return Err(Error::Limit)}
+        for (r,c) in coordinates {
+            let (r,c)=(r as usize,c as usize);
                 let merge_changed = sheet
                     .merges
                     .iter()
@@ -5660,7 +5669,6 @@ fn verify_ods_untouched_styles(
                         "ODS rewriting changed an unedited cell style",
                     ));
                 }
-            }
         }
     }
     Ok(())
