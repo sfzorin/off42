@@ -16,7 +16,17 @@
     "Print at actual size": "Печать в натуральную величину",
     "Fit Page": "Вписать страницу",
     "Create Labels from PDF Area…": "Создать этикетки из области PDF…",
-    "Selected Content Artwork": "Выделенный фрагмент с оформлением"
+    "Selected Content Artwork": "Выделенный фрагмент с оформлением",
+    "Recover Unsaved Document…": "Восстановить несохранённый документ…",
+    "Recovery copy": "Резервная копия",
+    "Action": "Действие",
+    "Recover": "Восстановить",
+    "Delete Recovery Copy": "Удалить резервную копию",
+    "No recovery copies are available.": "Нет копий для восстановления.",
+    "Recovered copy; save to keep your changes": "Документ восстановлен; сохраните изменения",
+    "Choose a save destination outside the automatic recovery folder.": "Выберите место сохранения вне папки автоматического восстановления.",
+    "Recovery": "Восстановление",
+    "Recover Unsaved Document": "Восстановить несохранённый документ"
   },
   "zh-Hans": {
     "Symbol or Code": "符号或条码",
@@ -35,7 +45,17 @@
     "Print at actual size": "按实际大小打印",
     "Fit Page": "适合页面",
     "Create Labels from PDF Area…": "从 PDF 区域创建标签…",
-    "Selected Content Artwork": "所选内容图稿"
+    "Selected Content Artwork": "所选内容图稿",
+    "Recover Unsaved Document…": "恢复未保存的文档…",
+    "Recovery copy": "恢复副本",
+    "Action": "操作",
+    "Recover": "恢复",
+    "Delete Recovery Copy": "删除恢复副本",
+    "No recovery copies are available.": "没有可用的恢复副本。",
+    "Recovered copy; save to keep your changes": "已恢复副本；请保存更改",
+    "Choose a save destination outside the automatic recovery folder.": "请选择自动恢复文件夹以外的保存位置。",
+    "Recovery": "恢复",
+    "Recover Unsaved Document": "恢复未保存的文档"
   },
   "zh-Hant": {
     "Symbol or Code": "符號或條碼",
@@ -54,7 +74,17 @@
     "Print at actual size": "以實際大小列印",
     "Fit Page": "符合頁面",
     "Create Labels from PDF Area…": "從 PDF 區域建立標籤…",
-    "Selected Content Artwork": "所選內容圖稿"
+    "Selected Content Artwork": "所選內容圖稿",
+    "Recover Unsaved Document…": "復原未儲存的文件…",
+    "Recovery copy": "復原副本",
+    "Action": "動作",
+    "Recover": "復原",
+    "Delete Recovery Copy": "刪除復原副本",
+    "No recovery copies are available.": "沒有可用的復原副本。",
+    "Recovered copy; save to keep your changes": "已復原副本；請儲存變更",
+    "Choose a save destination outside the automatic recovery folder.": "請選擇自動復原資料夾以外的儲存位置。",
+    "Recovery": "復原",
+    "Recover Unsaved Document": "復原未儲存的文件"
   },
   "es": {
     "Symbol or Code": "Símbolo o código",
@@ -73,7 +103,17 @@
     "Print at actual size": "Imprimir a tamaño real",
     "Fit Page": "Ajustar página",
     "Create Labels from PDF Area…": "Crear etiquetas desde un área del PDF…",
-    "Selected Content Artwork": "Diseño del contenido seleccionado"
+    "Selected Content Artwork": "Diseño del contenido seleccionado",
+    "Recover Unsaved Document…": "Recuperar documento sin guardar…",
+    "Recovery copy": "Copia de recuperación",
+    "Action": "Acción",
+    "Recover": "Recuperar",
+    "Delete Recovery Copy": "Eliminar copia de recuperación",
+    "No recovery copies are available.": "No hay copias de recuperación disponibles.",
+    "Recovered copy; save to keep your changes": "Copia recuperada; guarda los cambios",
+    "Choose a save destination outside the automatic recovery folder.": "Elige un destino fuera de la carpeta de recuperación automática.",
+    "Recovery": "Recuperación",
+    "Recover Unsaved Document": "Recuperar documento sin guardar"
   },
   "ar": {
     "Symbol or Code": "رمز أو باركود",
@@ -92,7 +132,17 @@
     "Print at actual size": "الطباعة بالحجم الفعلي",
     "Fit Page": "ملاءمة الصفحة",
     "Create Labels from PDF Area…": "إنشاء ملصقات من منطقة PDF…",
-    "Selected Content Artwork": "رسم المحتوى المحدد"
+    "Selected Content Artwork": "رسم المحتوى المحدد",
+    "Recover Unsaved Document…": "استرداد مستند غير محفوظ…",
+    "Recovery copy": "نسخة الاسترداد",
+    "Action": "الإجراء",
+    "Recover": "استرداد",
+    "Delete Recovery Copy": "حذف نسخة الاسترداد",
+    "No recovery copies are available.": "لا توجد نسخ متاحة للاسترداد.",
+    "Recovered copy; save to keep your changes": "تم استرداد النسخة؛ احفظ التغييرات",
+    "Choose a save destination outside the automatic recovery folder.": "اختر مكان حفظ خارج مجلد الاسترداد التلقائي.",
+    "Recovery": "الاسترداد",
+    "Recover Unsaved Document": "استرداد مستند غير محفوظ"
   },
   "fr": {
     "Symbol or Code": "Symbole ou code",
@@ -111,7 +161,17 @@
     "Print at actual size": "Imprimer à taille réelle",
     "Fit Page": "Ajuster à la page",
     "Create Labels from PDF Area…": "Créer des étiquettes depuis une zone PDF…",
-    "Selected Content Artwork": "Contenu sélectionné avec sa mise en forme"
+    "Selected Content Artwork": "Contenu sélectionné avec sa mise en forme",
+    "Recover Unsaved Document…": "Récupérer un document non enregistré…",
+    "Recovery copy": "Copie de récupération",
+    "Action": "Action",
+    "Recover": "Récupérer",
+    "Delete Recovery Copy": "Supprimer la copie de récupération",
+    "No recovery copies are available.": "Aucune copie de récupération disponible.",
+    "Recovered copy; save to keep your changes": "Copie récupérée ; enregistrez les modifications",
+    "Choose a save destination outside the automatic recovery folder.": "Choisissez une destination hors du dossier de récupération automatique.",
+    "Recovery": "Récupération",
+    "Recover Unsaved Document": "Récupérer un document non enregistré"
   },
   "pt": {
     "Symbol or Code": "Símbolo ou código",
@@ -130,7 +190,17 @@
     "Print at actual size": "Imprimir em tamanho real",
     "Fit Page": "Ajustar à página",
     "Create Labels from PDF Area…": "Criar etiquetas de uma área do PDF…",
-    "Selected Content Artwork": "Arte do conteúdo selecionado"
+    "Selected Content Artwork": "Arte do conteúdo selecionado",
+    "Recover Unsaved Document…": "Recuperar documento não salvo…",
+    "Recovery copy": "Cópia de recuperação",
+    "Action": "Ação",
+    "Recover": "Recuperar",
+    "Delete Recovery Copy": "Excluir cópia de recuperação",
+    "No recovery copies are available.": "Não há cópias de recuperação disponíveis.",
+    "Recovered copy; save to keep your changes": "Cópia recuperada; salve as alterações",
+    "Choose a save destination outside the automatic recovery folder.": "Escolha um destino fora da pasta de recuperação automática.",
+    "Recovery": "Recuperação",
+    "Recover Unsaved Document": "Recuperar documento não salvo"
   },
   "id": {
     "Symbol or Code": "Simbol atau kode",
@@ -149,7 +219,17 @@
     "Print at actual size": "Cetak ukuran sebenarnya",
     "Fit Page": "Sesuaikan halaman",
     "Create Labels from PDF Area…": "Buat Label dari Area PDF…",
-    "Selected Content Artwork": "Tampilan Konten Terpilih"
+    "Selected Content Artwork": "Tampilan Konten Terpilih",
+    "Recover Unsaved Document…": "Pulihkan Dokumen yang Belum Disimpan…",
+    "Recovery copy": "Salinan pemulihan",
+    "Action": "Tindakan",
+    "Recover": "Pulihkan",
+    "Delete Recovery Copy": "Hapus Salinan Pemulihan",
+    "No recovery copies are available.": "Tidak ada salinan pemulihan yang tersedia.",
+    "Recovered copy; save to keep your changes": "Salinan dipulihkan; simpan perubahan Anda",
+    "Choose a save destination outside the automatic recovery folder.": "Pilih tujuan penyimpanan di luar folder pemulihan otomatis.",
+    "Recovery": "Pemulihan",
+    "Recover Unsaved Document": "Pulihkan Dokumen yang Belum Disimpan"
   },
   "de": {
     "Symbol or Code": "Symbol oder Code",
@@ -168,7 +248,17 @@
     "Print at actual size": "In Originalgröße drucken",
     "Fit Page": "Seite einpassen",
     "Create Labels from PDF Area…": "Etiketten aus PDF-Bereich erstellen…",
-    "Selected Content Artwork": "Gestaltung des ausgewählten Inhalts"
+    "Selected Content Artwork": "Gestaltung des ausgewählten Inhalts",
+    "Recover Unsaved Document…": "Ungespeichertes Dokument wiederherstellen…",
+    "Recovery copy": "Wiederherstellungskopie",
+    "Action": "Aktion",
+    "Recover": "Wiederherstellen",
+    "Delete Recovery Copy": "Wiederherstellungskopie löschen",
+    "No recovery copies are available.": "Keine Wiederherstellungskopien verfügbar.",
+    "Recovered copy; save to keep your changes": "Kopie wiederhergestellt; Änderungen speichern",
+    "Choose a save destination outside the automatic recovery folder.": "Wählen Sie einen Speicherort außerhalb des automatischen Wiederherstellungsordners.",
+    "Recovery": "Wiederherstellung",
+    "Recover Unsaved Document": "Ungespeichertes Dokument wiederherstellen"
   },
   "ja": {
     "Symbol or Code": "記号またはコード",
@@ -187,7 +277,17 @@
     "Print at actual size": "実際のサイズで印刷",
     "Fit Page": "ページ全体",
     "Create Labels from PDF Area…": "PDFの範囲からラベルを作成…",
-    "Selected Content Artwork": "選択した内容のデザイン"
+    "Selected Content Artwork": "選択した内容のデザイン",
+    "Recover Unsaved Document…": "未保存の書類を復元…",
+    "Recovery copy": "復元用コピー",
+    "Action": "操作",
+    "Recover": "復元",
+    "Delete Recovery Copy": "復元用コピーを削除",
+    "No recovery copies are available.": "復元できるコピーはありません。",
+    "Recovered copy; save to keep your changes": "コピーを復元しました。変更を保存してください",
+    "Choose a save destination outside the automatic recovery folder.": "自動復元フォルダー以外の保存先を選択してください。",
+    "Recovery": "復元",
+    "Recover Unsaved Document": "未保存の書類を復元"
   },
   "vi": {
     "Symbol or Code": "Ký hiệu hoặc mã",
@@ -206,7 +306,17 @@
     "Print at actual size": "In theo kích thước thực",
     "Fit Page": "Vừa trang",
     "Create Labels from PDF Area…": "Tạo nhãn từ vùng PDF…",
-    "Selected Content Artwork": "Hình thức nội dung đã chọn"
+    "Selected Content Artwork": "Hình thức nội dung đã chọn",
+    "Recover Unsaved Document…": "Khôi phục tài liệu chưa lưu…",
+    "Recovery copy": "Bản sao khôi phục",
+    "Action": "Thao tác",
+    "Recover": "Khôi phục",
+    "Delete Recovery Copy": "Xóa bản sao khôi phục",
+    "No recovery copies are available.": "Không có bản sao để khôi phục.",
+    "Recovered copy; save to keep your changes": "Đã khôi phục bản sao; hãy lưu thay đổi",
+    "Choose a save destination outside the automatic recovery folder.": "Chọn nơi lưu ngoài thư mục khôi phục tự động.",
+    "Recovery": "Khôi phục",
+    "Recover Unsaved Document": "Khôi phục tài liệu chưa lưu"
   },
   "tr": {
     "Symbol or Code": "Sembol veya kod",
@@ -225,7 +335,17 @@
     "Print at actual size": "Gerçek boyutta yazdır",
     "Fit Page": "Sayfaya sığdır",
     "Create Labels from PDF Area…": "PDF Alanından Etiket Oluştur…",
-    "Selected Content Artwork": "Seçili İçeriğin Görünümü"
+    "Selected Content Artwork": "Seçili İçeriğin Görünümü",
+    "Recover Unsaved Document…": "Kaydedilmemiş Belgeyi Kurtar…",
+    "Recovery copy": "Kurtarma kopyası",
+    "Action": "İşlem",
+    "Recover": "Kurtar",
+    "Delete Recovery Copy": "Kurtarma Kopyasını Sil",
+    "No recovery copies are available.": "Kullanılabilir kurtarma kopyası yok.",
+    "Recovered copy; save to keep your changes": "Kopya kurtarıldı; değişikliklerinizi kaydedin",
+    "Choose a save destination outside the automatic recovery folder.": "Otomatik kurtarma klasörü dışında bir kayıt konumu seçin.",
+    "Recovery": "Kurtarma",
+    "Recover Unsaved Document": "Kaydedilmemiş Belgeyi Kurtar"
   },
   "fil": {
     "Symbol or Code": "Simbolo o code",
@@ -244,7 +364,17 @@
     "Print at actual size": "I-print sa aktuwal na laki",
     "Fit Page": "Iakma sa pahina",
     "Create Labels from PDF Area…": "Gumawa ng mga Label mula sa Bahagi ng PDF…",
-    "Selected Content Artwork": "Disenyo ng Napiling Nilalaman"
+    "Selected Content Artwork": "Disenyo ng Napiling Nilalaman",
+    "Recover Unsaved Document…": "Ibalik ang Hindi Na-save na Dokumento…",
+    "Recovery copy": "Kopya para sa pagbawi",
+    "Action": "Aksyon",
+    "Recover": "Ibalik",
+    "Delete Recovery Copy": "Tanggalin ang Kopya para sa Pagbawi",
+    "No recovery copies are available.": "Walang magagamit na kopya para sa pagbawi.",
+    "Recovered copy; save to keep your changes": "Naibalik ang kopya; i-save ang mga pagbabago",
+    "Choose a save destination outside the automatic recovery folder.": "Pumili ng lokasyon sa labas ng folder ng awtomatikong pagbawi.",
+    "Recovery": "Pagbawi",
+    "Recover Unsaved Document": "Ibalik ang Hindi Na-save na Dokumento"
   },
   "ko": {
     "Symbol or Code": "기호 또는 코드",
@@ -263,7 +393,17 @@
     "Print at actual size": "실제 크기로 인쇄",
     "Fit Page": "페이지에 맞춤",
     "Create Labels from PDF Area…": "PDF 영역에서 라벨 만들기…",
-    "Selected Content Artwork": "선택한 콘텐츠의 모양"
+    "Selected Content Artwork": "선택한 콘텐츠의 모양",
+    "Recover Unsaved Document…": "저장하지 않은 문서 복구…",
+    "Recovery copy": "복구 사본",
+    "Action": "작업",
+    "Recover": "복구",
+    "Delete Recovery Copy": "복구 사본 삭제",
+    "No recovery copies are available.": "사용할 수 있는 복구 사본이 없습니다.",
+    "Recovered copy; save to keep your changes": "사본을 복구했습니다. 변경 사항을 저장하세요",
+    "Choose a save destination outside the automatic recovery folder.": "자동 복구 폴더 밖의 저장 위치를 선택하세요.",
+    "Recovery": "복구",
+    "Recover Unsaved Document": "저장하지 않은 문서 복구"
   },
   "th": {
     "Symbol or Code": "สัญลักษณ์หรือรหัส",
@@ -282,7 +422,17 @@
     "Print at actual size": "พิมพ์ตามขนาดจริง",
     "Fit Page": "พอดีกับหน้า",
     "Create Labels from PDF Area…": "สร้างป้ายจากพื้นที่ PDF…",
-    "Selected Content Artwork": "รูปแบบเนื้อหาที่เลือก"
+    "Selected Content Artwork": "รูปแบบเนื้อหาที่เลือก",
+    "Recover Unsaved Document…": "กู้คืนเอกสารที่ยังไม่ได้บันทึก…",
+    "Recovery copy": "สำเนาสำหรับกู้คืน",
+    "Action": "การดำเนินการ",
+    "Recover": "กู้คืน",
+    "Delete Recovery Copy": "ลบสำเนาสำหรับกู้คืน",
+    "No recovery copies are available.": "ไม่มีสำเนาสำหรับกู้คืน",
+    "Recovered copy; save to keep your changes": "กู้คืนสำเนาแล้ว โปรดบันทึกการเปลี่ยนแปลง",
+    "Choose a save destination outside the automatic recovery folder.": "เลือกตำแหน่งบันทึกนอกโฟลเดอร์กู้คืนอัตโนมัติ",
+    "Recovery": "การกู้คืน",
+    "Recover Unsaved Document": "กู้คืนเอกสารที่ยังไม่ได้บันทึก"
   },
   "it": {
     "Symbol or Code": "Simbolo o codice",
@@ -301,7 +451,17 @@
     "Print at actual size": "Stampa in dimensioni reali",
     "Fit Page": "Adatta alla pagina",
     "Create Labels from PDF Area…": "Crea etichette da un’area PDF…",
-    "Selected Content Artwork": "Grafica del contenuto selezionato"
+    "Selected Content Artwork": "Grafica del contenuto selezionato",
+    "Recover Unsaved Document…": "Recupera documento non salvato…",
+    "Recovery copy": "Copia di recupero",
+    "Action": "Azione",
+    "Recover": "Recupera",
+    "Delete Recovery Copy": "Elimina copia di recupero",
+    "No recovery copies are available.": "Nessuna copia di recupero disponibile.",
+    "Recovered copy; save to keep your changes": "Copia recuperata; salva le modifiche",
+    "Choose a save destination outside the automatic recovery folder.": "Scegli una destinazione fuori dalla cartella di recupero automatico.",
+    "Recovery": "Recupero",
+    "Recover Unsaved Document": "Recupera documento non salvato"
   },
   "pl": {
     "Symbol or Code": "Symbol lub kod",
@@ -320,7 +480,17 @@
     "Print at actual size": "Drukuj w rzeczywistym rozmiarze",
     "Fit Page": "Dopasuj stronę",
     "Create Labels from PDF Area…": "Utwórz etykiety z obszaru PDF…",
-    "Selected Content Artwork": "Wygląd zaznaczonej zawartości"
+    "Selected Content Artwork": "Wygląd zaznaczonej zawartości",
+    "Recover Unsaved Document…": "Odzyskaj niezapisany dokument…",
+    "Recovery copy": "Kopia odzyskiwania",
+    "Action": "Działanie",
+    "Recover": "Odzyskaj",
+    "Delete Recovery Copy": "Usuń kopię odzyskiwania",
+    "No recovery copies are available.": "Brak dostępnych kopii odzyskiwania.",
+    "Recovered copy; save to keep your changes": "Odzyskano kopię; zapisz zmiany",
+    "Choose a save destination outside the automatic recovery folder.": "Wybierz miejsce zapisu poza folderem automatycznego odzyskiwania.",
+    "Recovery": "Odzyskiwanie",
+    "Recover Unsaved Document": "Odzyskaj niezapisany dokument"
   },
   "ms": {
     "Symbol or Code": "Simbol atau kod",
@@ -339,7 +509,17 @@
     "Print at actual size": "Cetak pada saiz sebenar",
     "Fit Page": "Muatkan halaman",
     "Create Labels from PDF Area…": "Cipta Label daripada Kawasan PDF…",
-    "Selected Content Artwork": "Rupa Kandungan Dipilih"
+    "Selected Content Artwork": "Rupa Kandungan Dipilih",
+    "Recover Unsaved Document…": "Pulihkan Dokumen Belum Disimpan…",
+    "Recovery copy": "Salinan pemulihan",
+    "Action": "Tindakan",
+    "Recover": "Pulihkan",
+    "Delete Recovery Copy": "Padam Salinan Pemulihan",
+    "No recovery copies are available.": "Tiada salinan pemulihan tersedia.",
+    "Recovered copy; save to keep your changes": "Salinan dipulihkan; simpan perubahan anda",
+    "Choose a save destination outside the automatic recovery folder.": "Pilih lokasi simpanan di luar folder pemulihan automatik.",
+    "Recovery": "Pemulihan",
+    "Recover Unsaved Document": "Pulihkan Dokumen Belum Disimpan"
   },
   "hu": {
     "Symbol or Code": "Szimbólum vagy kód",
@@ -358,6 +538,16 @@
     "Print at actual size": "Nyomtatás tényleges méretben",
     "Fit Page": "Oldalhoz igazítás",
     "Create Labels from PDF Area…": "Címkék készítése PDF-területről…",
-    "Selected Content Artwork": "Kijelölt tartalom megjelenése"
+    "Selected Content Artwork": "Kijelölt tartalom megjelenése",
+    "Recover Unsaved Document…": "Nem mentett dokumentum helyreállítása…",
+    "Recovery copy": "Helyreállítási másolat",
+    "Action": "Művelet",
+    "Recover": "Helyreállítás",
+    "Delete Recovery Copy": "Helyreállítási másolat törlése",
+    "No recovery copies are available.": "Nincs elérhető helyreállítási másolat.",
+    "Recovered copy; save to keep your changes": "Másolat helyreállítva; mentse a módosításokat",
+    "Choose a save destination outside the automatic recovery folder.": "Válasszon az automatikus helyreállítás mappáján kívüli mentési helyet.",
+    "Recovery": "Helyreállítás",
+    "Recover Unsaved Document": "Nem mentett dokumentum helyreállítása"
   }
 }

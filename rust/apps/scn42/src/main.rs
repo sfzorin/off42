@@ -186,6 +186,10 @@ impl win42::App for Scn {
         }
         true
     }
+    fn supports_recovery(&self)->bool{true}
+    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
+        Ok(Some(win42::recovery::Snapshot::new("scn42",(&self.doc).save_snapshot().0)))
+    }
     fn save_formats(&self) -> Vec<win42::FileFormat> {
         vec![win42::FileFormat {
             id: "scn42",

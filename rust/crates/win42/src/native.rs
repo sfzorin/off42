@@ -54,6 +54,7 @@ const TOGGLE_PROOFING: u16 = 65510;
 const INSERT_TECHNICAL: u16 = 65509;
 const EDIT_TECHNICAL: u16 = 65508;
 const NEW_WINDOW: u16 = 65506;
+const RECOVER_DOCUMENT:u16=65505;
 const LANGUAGE_FIRST: u16 = 64000;
 const RECENT_FIRST: u16 = 62000;
 const CLEAR_RECENTS: u16 = RECENT_FIRST + crate::recents::LIMIT as u16;
@@ -73,6 +74,11 @@ struct State {
     calibrate_print: bool,
     deferred_commands: Vec<(u16, u16)>,
     close_confirmed: bool,
+    recovery:Option<crate::recovery::Journal>,
+    recovery_last:std::time::Instant,
+    recovery_unsaved:bool,
+    recovered_copy:Option<crate::recovery::Claim>,
+    recovery_error:Option<String>,
     path: Option<PathBuf>,
     session: suite42_core::session::DocumentSession,
     async_open: Option<AsyncOpen>,
@@ -93,6 +99,201 @@ struct State {
     ruler_format: Option<(crate::PrintGeometry, u16, i32, i32, i32)>,
     fullscreen: Option<(isize, WINDOWPLACEMENT)>,
 }
+impl State {
+    fn dirty(&self) -> bool {
+        self.app.dirty() || self.recovery_unsaved
+    }
+    fn status_text(&self) -> String {
+        if self.async_open.is_some() {
+            format!("{} · Opening… (Esc to cancel)", self.app.status())
+        } else if let Some(error) = &self.recovery_error {
+            format!("{} · {}: {error}",self.app.status(),crate::localization::text("Recovery"))
+        } else if self.recovery_unsaved {
+            format!(
+                "{} · {}",
+                self.app.status(),
+                crate::localization::text("Recovered copy; save to keep your changes")
+            )
+        } else {
+            self.app.status()
+        }
+    }
+    fn clear_recovery(&mut self) {
+        self.recovery_unsaved = false;
+        if let Some(journal) = self.recovery.as_mut() {
+            if let Err(error) = journal.clear() {
+                self.recovery_error = Some(error);
+            }
+        }
+        if let Some(copy) = self.recovered_copy.take() {
+            if let Err(error) = copy.discard() {
+                self.recovery_error = Some(error);
+            }
+        }
+    }
+}
+unsafe fn poll_recovery() {
+    let previous = STATE.with(|slot| {
+        slot.borrow()
+            .as_ref()
+            .and_then(|state| state.recovery_error.clone())
+    });
+    STATE.with(|slot| {
+        let mut slot = slot.borrow_mut();
+        let Some(state) = slot.as_mut() else {
+            return;
+        };
+        if !state.app.supports_recovery() {
+            return;
+        }
+        if let Some(journal) = state.recovery.as_mut() {
+            while let Some(result) = journal.poll() {
+                state.recovery_error = result.err();
+            }
+        }
+        if !state.dirty() {
+            if let Some(journal) = state.recovery.as_mut() {
+                if let Err(error) = journal.clear() {
+                    state.recovery_error = Some(error);
+                }
+            }
+            return;
+        }
+        let delay = std::env::var("OFF42_RECOVERY_INTERVAL_MS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(30000)
+            .clamp(1000, 30000);
+        if state.recovery_last.elapsed() < std::time::Duration::from_millis(delay)
+            || state.async_open.is_some()
+        {
+            return;
+        }
+        state.recovery_last = std::time::Instant::now();
+        let result = (|| -> Result<(), String> {
+            let Some(snapshot) = state.app.recovery_snapshot()? else {
+                return Ok(());
+            };
+            if state.recovery.is_none() {
+                let root =
+                    crate::recovery::directory().ok_or("Local recovery storage is unavailable")?;
+                state.recovery = Some(crate::recovery::Journal::start(&root, state.app.name())?);
+            }
+            let origin = state.path.clone().or_else(|| {
+                state
+                    .recovered_copy
+                    .as_ref()
+                    .and_then(|copy| copy.origin().map(Path::to_path_buf))
+            });
+            state.recovery.as_mut().unwrap().record(snapshot, origin)?;
+            Ok(())
+        })();
+        if let Err(error) = result {
+            state.recovery_error = Some(error);
+        }
+    });
+    if STATE.with(|slot| {
+        slot.borrow()
+            .as_ref()
+            .and_then(|state| state.recovery_error.clone())
+    }) != previous
+    {
+        update_caption();
+    }
+}
+unsafe fn recover_document(hwnd: HWND) -> Result<(), String> {
+    let (app, supported) = STATE.with(|slot| {
+        let slot = slot.borrow();
+        let state = slot.as_ref().unwrap();
+        (state.app.name(), state.app.supports_recovery())
+    });
+    if !supported {
+        return Ok(());
+    }
+    let root = crate::recovery::directory().ok_or("Local recovery storage is unavailable")?;
+    let copies = crate::recovery::copies(&root, app);
+    if copies.is_empty() {
+        msg(
+            hwnd,
+            &crate::localization::text("No recovery copies are available."),
+            MB_OK | MB_ICONINFORMATION,
+        );
+        return Ok(());
+    }
+    let choices = copies
+        .iter()
+        .enumerate()
+        .map(|(index, copy)| format!("{}. {}", index + 1, copy.title()))
+        .collect::<Vec<_>>();
+    let request = crate::InputRequest {
+        title: "Recover Unsaved Document",
+        fields: vec![
+            ("Recovery copy", choices[0].clone()),
+            ("Action", "Recover".into()),
+        ],
+    };
+    let Some(values) = crate::prompt::show_choices(
+        hwnd,
+        &request,
+        false,
+        false,
+        &[
+            (0, choices.clone()),
+            (1, vec!["Recover".into(), "Delete Recovery Copy".into()]),
+        ],
+    ) else {
+        return Ok(());
+    };
+    let index = choices
+        .iter()
+        .position(|v| v == &values[0])
+        .ok_or("Choose a recovery copy")?;
+    let claim = copies[index].acquire()?;
+    if values[1] == "Delete Recovery Copy" {
+        claim.discard()?;
+        return Ok(());
+    }
+    if values[1] != "Recover" {
+        return Err("Choose a recovery action".into());
+    }
+    if !confirm(hwnd) {
+        return Ok(());
+    }
+    let allowed = STATE.with(|slot| {
+        let slot = slot.borrow();
+        let app = &slot.as_ref().unwrap().app;
+        app.open_formats()
+            .iter()
+            .chain(app.save_formats().iter())
+            .any(|format| {
+                format
+                    .extensions
+                    .iter()
+                    .any(|extension| extension.eq_ignore_ascii_case(claim.extension()))
+            })
+    });
+    if !allowed {
+        return Err("This recovery format is unavailable in this application".into());
+    }
+    let path = claim.materialize()?;
+    cancel_pending_open();
+    STATE.with(|slot| -> Result<(), String> {
+        let mut slot = slot.borrow_mut();
+        let state = slot.as_mut().unwrap();
+        state.app.open(&path)?;
+        state.clear_recovery();
+        state.path = None;
+        state.session = Default::default();
+        state.recovery_unsaved = true;
+        state.recovered_copy = Some(claim);
+        state.recovery_error = None;
+        state.recovery_last = std::time::Instant::now() - std::time::Duration::from_secs(30);
+        Ok(())
+    })?;
+    refresh();
+    Ok(())
+}
+
 thread_local! { static STATE:RefCell<Option<State>>=const { RefCell::new(None) }; static REFRESHING:Cell<bool>=const {Cell::new(false)}; static DRAGGING:Cell<bool>=const {Cell::new(false)}; static POLL_MS:Cell<u32>=const {Cell::new(100)}; }
 
 unsafe fn msg(hwnd: HWND, s: &str, flags: MESSAGEBOX_STYLE) -> MESSAGEBOX_RESULT {
@@ -264,11 +465,14 @@ unsafe fn save_mode(hwnd: HWND, save_as: bool) -> bool {
 }
 unsafe fn save_snapshot(hwnd: HWND, save_as: bool) -> bool {
     use suite42_core::session::{publish_bundle, FileIdentity};
-    let (formats, existing) = STATE.with(|s| {
+    let (mut formats, existing, recovery_extension) = STATE.with(|s| {
         let s = s.borrow();
         let s = s.as_ref().unwrap();
-        (s.app.save_formats(), s.session.location().cloned())
+        (s.app.save_formats(), s.session.location().cloned(),s.recovered_copy.as_ref().map(|copy|copy.extension().to_owned()))
     });
+    if existing.is_none(){if let Some(extension)=recovery_extension{
+        if let Some(index)=formats.iter().position(|format|format.extensions.iter().any(|value|value.eq_ignore_ascii_case(&extension))){formats.swap(0,index);}
+    }}
     if formats.is_empty() {
         return false;
     }
@@ -289,6 +493,9 @@ unsafe fn save_snapshot(hwnd: HWND, save_as: bool) -> bool {
         }
     };
     let format = &formats[index];
+    if crate::recovery::directory().is_some_and(|root|crate::recovery::owns_destination(&root,&path)){
+        msg(hwnd,&crate::localization::text("Choose a save destination outside the automatic recovery folder."),MB_OK|MB_ICONWARNING);return false;
+    }
     if !path
         .extension()
         .and_then(|v| v.to_str())
@@ -375,6 +582,7 @@ unsafe fn save_snapshot(hwnd: HWND, save_as: bool) -> bool {
             .published(path.clone(), format.id.into(), revision);
         if result.is_ok() {
             s.app.saved_snapshot(revision);
+            s.clear_recovery();
             s.path = Some(path);
         }
         result
@@ -420,6 +628,7 @@ unsafe fn legacy_save(hwnd: HWND) -> bool {
             let s = s.as_mut().unwrap();
             let r = s.app.save(&p);
             if r.is_ok() {
+                s.clear_recovery();
                 s.path = Some(p)
             }
             r
@@ -437,7 +646,7 @@ unsafe fn legacy_save(hwnd: HWND) -> bool {
     }
 }
 unsafe fn confirm(hwnd: HWND) -> bool {
-    if !STATE.with(|s| s.borrow().as_ref().unwrap().app.dirty()) {
+    if !STATE.with(|s| s.borrow().as_ref().unwrap().dirty()) {
         return true;
     }
     match msg(
@@ -487,7 +696,7 @@ unsafe fn refresh() {
                     .and_then(|p| p.file_name())
                     .map(|n| n.to_string_lossy().into_owned())
                     .unwrap_or_else(|| crate::localization::text("Untitled")),
-                if s.app.dirty() { " *" } else { "" },
+                if s.dirty() { " *" } else { "" },
                 s.app.name()
             ),
             s.app
@@ -495,11 +704,7 @@ unsafe fn refresh() {
                 .map(|v| v.0)
                 .unwrap_or_else(|| s.app.items()),
             s.app.text(),
-            if s.async_open.is_some() {
-                format!("{} · Opening… (Esc to cancel)", s.app.status())
-            } else {
-                s.app.status()
-            },
+            s.status_text(),
             s.app.can_undo(),
             s.app.can_redo(),
             s.app.list_visible(),
@@ -1295,6 +1500,7 @@ unsafe fn open_document_path(path: PathBuf) -> Result<(), String> {
         let s = s.as_mut().unwrap();
         let result = s.app.open(&path);
         if result.is_ok() && !s.app.open_is_add() {
+            s.clear_recovery();
             s.session = Default::default();
             let formats = s.app.save_formats();
             let extension = path.extension().and_then(|v| v.to_str());
@@ -1438,6 +1644,7 @@ unsafe fn poll_pending_open(hwnd: HWND) {
                         trace_command("open_commit_begin", OPEN, 0);
                         let revision = s.app.commit_async_open()?;
                         trace_command("open_commit_end", OPEN, 0);
+                        s.clear_recovery();
                         s.session = suite42_core::session::DocumentSession::opened_with_identity(
                             pending.path.clone(),
                             format,
@@ -2117,6 +2324,9 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
         refresh();
         return;
     }
+    if id==RECOVER_DOCUMENT{
+        if let Err(error)=recover_document(hwnd){msg(hwnd,&error,MB_OK|MB_ICONERROR);}return;
+    }
     if matches!(id, NEW | NEW_WINDOW) {
         if id == NEW && !STATE.with(|s| s.borrow().as_ref().unwrap().app.supports_new()) {
             return;
@@ -2703,14 +2913,10 @@ unsafe fn update_caption() {
                     .and_then(|p| p.file_name())
                     .map(|x| x.to_string_lossy().into_owned())
                     .unwrap_or_else(|| crate::localization::text("Untitled")),
-                if s.app.dirty() { " *" } else { "" },
+                if s.dirty() { " *" } else { "" },
                 s.app.name()
             ),
-            if s.async_open.is_some() {
-                format!("{} · Opening… (Esc to cancel)", s.app.status())
-            } else {
-                s.app.status()
-            },
+            s.status_text(),
             s.app.can_undo(),
             s.app.can_redo(),
             s.app
@@ -2817,6 +3023,7 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
                     .as_mut()
                     .is_some_and(|s| s.app.poll_background())
             });
+            poll_recovery();
             if changed {
                 refresh();
             }
@@ -3225,6 +3432,7 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
             if confirmed || confirm(h) {
                 cancel_pending_open();
                 remember_window_layout(h);
+                STATE.with(|slot|{if let Some(state)=slot.borrow_mut().as_mut(){state.clear_recovery();}});
                 DestroyWindow(h);
             }
             0
@@ -3309,6 +3517,7 @@ pub fn run(app: Box<dyn App>) {
         item(file, CANCEL_OPEN, "Cancel opening\tEsc");
         item(file, SAVE, "&Save\tCtrl+S");
         item(file, SAVE_AS, "Save &As...\tCtrl+Shift+S");
+        if app.supports_recovery(){item(file,RECOVER_DOCUMENT,"Recover Unsaved Document…");}
         for a in app.file_actions() {
             item(file, a.id, a.title);
         }
@@ -3461,6 +3670,11 @@ pub fn run(app: Box<dyn App>) {
                 calibrate_print: false,
                 deferred_commands: Vec::new(),
                 close_confirmed: false,
+                recovery:None,
+                recovery_last:std::time::Instant::now(),
+                recovery_unsaved:false,
+                recovered_copy:None,
+                recovery_error:None,
                 path: None,
                 session: Default::default(),
                 async_open: None,
@@ -3744,7 +3958,10 @@ pub fn run(app: Box<dyn App>) {
         DragAcceptFiles(h, 1);
         match crate::localization::launch_arguments(std::env::args_os().skip(1)) {
             Ok(arguments) if !arguments.files.is_empty() => open_paths(h, arguments.files),
-            Ok(_) => {}
+            Ok(_) => {
+                let should_recover=STATE.with(|slot|{let slot=slot.borrow();let state=slot.as_ref().unwrap();state.app.supports_recovery()&&crate::recovery::directory().is_some_and(|root|!crate::recovery::copies(&root,state.app.name()).is_empty())});
+                if should_recover{PostMessageW(h,WM_COMMAND,RECOVER_DOCUMENT as usize,0);}
+            }
             Err(error) => {
                 msg(h, &error, MB_OK | MB_ICONERROR);
             }
@@ -3805,6 +4022,8 @@ pub fn run(app: Box<dyn App>) {
             }
         }
         DestroyAcceleratorTable(a);
+        // Flush normal-close cleanup before the process releases its recovery lock.
+        STATE.with(|slot|{slot.borrow_mut().take();});
     }
 }
 
@@ -3825,6 +4044,7 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                     .canvas_event(crate::CanvasEvent::Cancel)
             });
         }
+        update_caption();
         InvalidateRect(h, null(), 0);
         return 0;
     }
@@ -3851,6 +4071,7 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
         if let Err(e) = result {
             msg(h, &e, MB_OK | MB_ICONERROR);
         }
+        if w as u32==27&&DRAGGING.with(|dragging|dragging.get()){ReleaseCapture();}
         let pending=STATE.with(|s|s.borrow_mut().as_mut().unwrap().app.take_pending_open());
         if let Some(path)=pending {
             let owner=GetAncestor(h,GA_ROOT);
@@ -3994,6 +4215,8 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
         if m == WM_LBUTTONUP {
             DRAGGING.with(|d| d.set(false));
             ReleaseCapture();
+            let command=STATE.with(|slot|slot.borrow_mut().as_mut().and_then(|state|state.app.take_pending_command()));
+            if let Some(id)=command.filter(|id|crate::application_command_id(*id)||*id==CREATE_LABEL_SHEET){PostMessageW(GetAncestor(h,GA_ROOT),WM_COMMAND,id as usize,0);}
         }
         return 0;
     }

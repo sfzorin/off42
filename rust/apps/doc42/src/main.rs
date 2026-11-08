@@ -872,6 +872,10 @@ impl App for Doc {
     fn open_formats(&self) -> Vec<FileFormat> {
         self.save_formats()
     }
+    fn supports_recovery(&self)->bool{true}
+    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
+        Ok(Some(win42::recovery::Snapshot::new("doc42",self.doc.encode(Format::Project).map_err(|e|e.to_string())?)))
+    }
     fn save_formats(&self) -> Vec<FileFormat> {
         vec![
             FileFormat {
@@ -3757,5 +3761,17 @@ mod picture_label_source_tests {
         let sources=app.label_sources().unwrap();let source=&sources.iter().find(|(name,_)|name=="Picture 1 Artwork").unwrap().1;
         let win42::LabelSource::PictureArtwork{bytes:encoded,width_points,height_points}=source else{panic!("Missing picture artwork")};assert_eq!(encoded,&bytes);assert_eq!((*width_points,*height_points),(1.5,0.75));
         assert_eq!(app.doc.state(),&before);assert_eq!(app.dirty(),dirty);
+    }
+}
+
+#[cfg(test)]mod recovery_tests{
+    use super::*;
+    #[test]fn recovery_keeps_latest_rich_content_and_does_not_mark_a_pending_revision_saved(){
+        let mut app=Doc::new();app.edit("BEFORE".into()).unwrap();
+        let(revision,_)=app.save_snapshot("doc42").unwrap().unwrap();app.edit("AFTER 😀".into()).unwrap();
+        let before=app.doc.snapshot();let snapshot=app.recovery_snapshot().unwrap().unwrap();
+        assert_eq!(snapshot.extension,"doc42");let restored=RichDocument::decode(&snapshot.bytes,Format::Project).unwrap();
+        assert_eq!(restored.state(),&before);assert_eq!(app.doc.state(),&before);
+        app.saved_snapshot(revision);assert!(app.dirty());app.doc.undo();assert!(!app.dirty());
     }
 }

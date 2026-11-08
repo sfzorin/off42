@@ -246,6 +246,11 @@ impl win42::App for Xls {
         }
         Ok(win42::LabelSource::Rows(rows))
     }
+    fn supports_recovery(&self)->bool{true}
+    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
+        let(extension,bytes)=self.book.recovery_bytes().map_err(|e|e.to_string())?;
+        Ok(Some(win42::recovery::Snapshot::new(&extension,bytes)))
+    }
     fn save_formats(&self) -> Vec<win42::FileFormat> {
         vec![
             win42::FileFormat {

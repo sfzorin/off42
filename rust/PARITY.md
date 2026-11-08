@@ -6,13 +6,13 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 
 | Area | Current Windows coverage | Remaining work |
 | --- | --- | --- |
-| Files and document lifecycle | Open/save snapshots, conflict detection, Undo/Redo, successful-file recents with clear menu; verified independent New/New Window sessions in all six apps | Verify drag/drop, recovery reference behavior and associations |
+| Files and document lifecycle | Open/save snapshots, conflict detection, Undo/Redo, successful-file recents with clear menu; verified independent New/New Window sessions in all six apps | Native crash-recovery verification, encrypted-PDF/image recovery, drag/drop and associations |
 | Localization and appearance | Twenty bundled catalogs, verified shared picker/restart and process language override; prompt label measurement and verified outer window placement | Complete Windows-specific translations, dark mode, panel visibility/splits and multi-display DPI |
 | Text proofing | System Rich Edit proofing integration in DOC42/PPT42; native flags verified | Actual suggestions and installed-language behavior; full grammar and other editors |
 | Signatures and stamps | Shared PNG/JPEG library in all six apps; optional white-paper removal; Undo/Redo for placement | Generators, sample learning and full geometry parity |
 | Technical objects | Four barcode encoders, fourteen symbols, reusable PNG recipes, insertion/editing in PDF/DOC/XLS/PPT and document round trips | Full technical-object selection/placement controls and richer label artwork sources |
-| Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers, PDF page/region and DOC picture artwork | Mixed selected DOC content and precise picture/caret selection; new mouse-area/preview/direct-print native verification |
-| Printing | Native dialogs, actual-size PDF scene path, optional per-printer calibration and measurement sheet | Native print-to-file output and physical driver checks |
+| Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers, PDF page/region and DOC picture artwork | Vector fidelity for mixed DOC selections; precise picture/caret integration and mouse-area Escape verification |
+| Printing | Native dialogs, actual-size PDF scene path, optional per-printer calibration and measurement sheet | Printer copies/calibration scenarios and physical driver checks |
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction and bounded offline OCR | Decoration font choices, richer forms, certificate signing and validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
 | XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout | Full formula semantics/syntax and locale formats, capacity/automatic expansion, legacy arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, goal seek/solver, split panes, per-cell/password protection and fuller format fidelity |
@@ -516,3 +516,18 @@ after image selection; image unit regressions are now included in quick CI.
   clipboard and history remain outside that capture. Native unit/UI regressions cover colored images,
   surrounding-content exclusion, UTF-16 offsets after pictures and source/history. GNU targets compile;
   Windows execution is pending. Vector fidelity for mixed selected text is still incomplete.
+
+- The macOS DOC/XLS/PPT/PDF app delegates explicitly set backup autosaving to thirty seconds. Shared
+  Windows journals now implement that interval in those four apps plus SCN projects: bounded atomic
+  records, exclusive live-session locks, original-container exports, readonly draft capture, inactive-copy
+  startup/File-menu UI, independent unsaved restoration and normal save/discard cleanup. Protected PDFs
+  are excluded rather than backed up as plaintext; IMG recovery remains open.
+- Portable regressions check damaged/truncated records, stale replacement, lock/claim exclusion, quota,
+  normal cleanup after a failed write, source safety, cache save destinations, pending-save identity,
+  XLSX/ODS opaque parts and PPT inline-draft Cancel. Native forced-termination/restart checks for all five
+  adapters are added and await Windows CI. Source implementation does not establish crash runtime parity.
+- Run 42438400230 passes 418 targeted MSVC tests; DOC native mixed selection actually passes. PDF label
+  area Escape fails because the key event did not reach Cancel; the dispatcher/source fix is included.
+  Focused run 42439054997 succeeds on the same binaries: six actual app groups, Print Cancel, explicit
+  Microsoft Print to PDF, page 2 only, A4 and actual-size ink bounds. Poppler separately confirms the
+  driver-created nonblank single-page A4 output. Main, release assets and the site remain unchanged.

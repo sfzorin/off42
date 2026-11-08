@@ -633,3 +633,32 @@ reduce resolution to stay under sixteen million pixels. This first path rasteriz
 fidelity remains open. It leaves the clipboard, selection, document and history untouched. Selected-text
 labels use native UTF-16 ranges, including offsets after objects/tables, instead of the plain model view.
 Windows native selection/pixel/offset tests are added; runtime verification is pending.
+
+### Automatic recovery copies (Windows crash audit pending)
+
+DOC42, XLS42, PPT42, PDF42 and SCN42 take local recovery snapshots every thirty seconds while modified.
+This matches the thirty-second backup policy configured in the macOS document apps and also covers scan
+projects. The File menu has **Recover Unsaved Document…**; a launch without a file offers inactive copies
+left by a terminated process. Cancel retains them. Recovery opens an independent, unsaved document;
+Save and closing still ask for a destination or confirmation. The original source is never a backup target.
+Saving, discarding or normally closing clears that session's recovery copy. Other live windows retain
+exclusive locks on their own copies. Interface labels cover all twenty languages.
+
+Backups are bounded to 256 MB each, one GiB per app and 128 sessions. A single atomic record carries
+metadata, payload length and SHA-256; incomplete or damaged records cannot be restored. Disk writes run
+on a serial worker; failed replacement does not erase the last complete snapshot. Office spreadsheets
+and presentations retain their original container. A presentation's inline draft enters a temporary
+export copy without changing live Undo/Cancel or pending Save revisions. Protected/encrypted PDF
+sessions are excluded from automatic plaintext backups. IMG42 recovery is not implemented yet.
+
+Portable storage/history/Office-container regressions pass and Windows GNU targets compile. The new
+native audit kills only its own isolated processes, then checks startup/menu recovery, active-window
+exclusion, Cancel, unsaved state, save destination, content/pixels, cleanup and reopen. Runtime execution
+of that audit is pending; this is not a published release.
+
+Native run 42438400230 passes 418 targeted MSVC tests, including tight mixed-selection artwork. Its DOC
+mixed-selection GUI scenario passes; the PDF area scenario catches a real Escape-dispatch defect. The
+source now handles Escape and releases mouse capture, with the same native regression retained.
+Focused run 42439054997 succeeds on those 48db96f binaries: all six audit groups pass, including the real
+Microsoft Print to PDF queue, page-two range, A4 and actual-size ink bounds. Earlier Poppler inspection
+independently confirms a nonblank one-page printer PDF with placement within about one point.

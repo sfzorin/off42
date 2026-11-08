@@ -1484,7 +1484,7 @@ impl win42::App for Pdf {
                 }
                 self.pan_drag = None;
             }
-            win42::CanvasEvent::Cancel => {
+            win42::CanvasEvent::Cancel|win42::CanvasEvent::Key{code:27,..} => {
                 if self.label_region_tool||self.label_region_drag.is_some(){self.operation_error=None;}
                 self.label_region_tool=false;
                 self.label_region_drag=None;
@@ -2435,6 +2435,12 @@ impl win42::App for Pdf {
             title: "PDF document",
             extensions: &["pdf"],
         }]
+    }
+    fn supports_recovery(&self)->bool{true}
+    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
+        // An encrypted/protected session must never leave an automatic plaintext copy.
+        if self.protected_session||self.encrypted_session||self.protected_readonly{return Ok(None);}
+        self.doc.as_ref().map(|doc|doc.save_snapshot().map(|(bytes,_)|Some(win42::recovery::Snapshot::new("pdf",bytes)))).unwrap_or(Ok(None))
     }
     fn save_formats(&self) -> Vec<win42::FileFormat> {
         vec![
@@ -3774,5 +3780,19 @@ mod technical_regression {
         let restored = PdfDocument::open(&output).unwrap();
         assert_eq!(restored.technical_stamps(0).len(), 1);
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+}
+
+#[cfg(test)]mod recovery_tests{
+    use super::*;use win42::App;
+    #[test]fn recovery_keeps_unsaved_rotation_and_never_writes_plaintext_for_protected_sessions(){
+        let path=std::env::temp_dir().join(format!("pdf42-recovery-{}.pdf",std::process::id()));
+        let mut scan=scn42_core::ScanDocument::new();scan.add_rgba(1,1,vec![255,0,0,255]).unwrap();scan.export_pdf(&path).unwrap();
+        let original=std::fs::read(&path).unwrap();let mut app=Pdf::default();app.open(&path).unwrap();app.action(10).unwrap();
+        let before=app.doc.as_ref().unwrap().save_snapshot().unwrap().1;
+        let snapshot=app.recovery_snapshot().unwrap().unwrap();assert_eq!(snapshot.extension,"pdf");let restored=PdfDocument::probe_open_bytes(&snapshot.bytes).unwrap();let pdf42_core::PdfOpenProbe::Ready(restored)=restored else{panic!("Expected plain recovery fixture")};
+        assert_eq!(restored.rotation(0).unwrap(),90);assert!(app.doc.as_ref().unwrap().matches_snapshot(&before));assert!(app.dirty());
+        app.encrypted_session=true;assert!(app.recovery_snapshot().unwrap().is_none());app.encrypted_session=false;app.protected_session=true;assert!(app.recovery_snapshot().unwrap().is_none());
+        assert_eq!(std::fs::read(&path).unwrap(),original);std::fs::remove_file(path).unwrap();
     }
 }

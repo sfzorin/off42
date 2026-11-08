@@ -809,3 +809,14 @@ A temporary EMF measures actual ink before allocating one bounded bitmap; the PD
 resulting selected pixels. No clipboard round trip or live-editor layout mutation is needed. Native
 selected-text label sources use the same editor's UTF-16 projection rather than model-only offsets.
 The initial mixed-content output is raster artwork; vector text fidelity remains a separate parity gap.
+
+Recovery uses a readonly app snapshot contract, separate from user-save revision capture. Imported Office
+containers remain in their original format; an inline presentation draft is applied only to an independent
+state copy. The shared host tracks a recovered document's unsaved state independently of its newly decoded
+model, so it cannot silently close or save over the original. Protected PDF sessions do not produce automatic
+plaintext copies. File-menu/startup recovery is limited to inactive sessions holding no exclusive file lock.
+
+Each journal writes one bounded, length/hash-checked atomic record on a serial worker. A failed write leaves
+the previous record intact; a later Save/Discard still queues its cleanup. Claimed copies stay locked until
+saved/discarded. Recovery storage is an owned cache, never an allowed document-save destination; cleanup
+removes only known journal/materialization files and preserves unrelated files. Errors appear in status.

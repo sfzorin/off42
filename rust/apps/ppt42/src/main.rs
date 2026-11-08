@@ -1772,6 +1772,14 @@ impl win42::App for Ppt {
         }
         Ok(())
     }
+    fn supports_recovery(&self)->bool{true}
+    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
+        let mut copy=self.deck.snapshot_copy();
+        if let Some(draft)=&self.rich_draft{copy.update_object(draft.clone())?;}
+        let(extension,bytes)=if let Some(source)=&self.pptx_source{("pptx",ppt42_core::pptx::export(&copy,source)?)}
+        else if let Some(source)=&self.odp_source{("odp",ppt42_core::odp::export_overlay(&copy,source)?)}else{("json",copy.save_snapshot()?.0)};
+        Ok(Some(win42::recovery::Snapshot::new(extension,bytes)))
+    }
     fn save_formats(&self) -> Vec<win42::FileFormat> {
         if self.odp_source.is_some() {
             return vec![win42::FileFormat {
@@ -3108,5 +3116,20 @@ mod preset_ui_tests {
             i,
             win42::SceneItem::Image { .. } | win42::SceneItem::ImageScaled { .. }
         )));
+    }
+}
+
+#[cfg(test)]mod recovery_tests{
+    use super::*;use win42::App;
+    #[test]fn recovery_includes_inline_draft_without_committing_or_losing_cancel(){
+        let mut app=Ppt::new(Presentation::new());let id=app.deck.insert_object(ppt42_core::ObjectKind::Text,"hello".into()).unwrap();
+        let(_,saved)=app.deck.save_snapshot().unwrap();app.deck.mark_saved_snapshot(saved);
+        app.selected_object=Some(id);app.action(58).unwrap();app.set_rich_selection((0,5));app.action(59).unwrap();
+        let original=app.deck.save_snapshot().unwrap().0;let draft=app.rich_draft.clone();
+        let snapshot=app.recovery_snapshot().unwrap().unwrap();assert_eq!(snapshot.extension,"json");assert_ne!(snapshot.bytes,original);
+        let path=std::env::temp_dir().join(format!("ppt42-recovery-draft-{}.json",std::process::id()));std::fs::write(&path,&snapshot.bytes).unwrap();
+        let restored=Presentation::open(&path).unwrap();std::fs::remove_file(path).unwrap();assert!(restored.slides()[0].objects[0].paragraphs[0].runs[0].style.bold);
+        assert_eq!(app.deck.save_snapshot().unwrap().0,original);assert_eq!(app.rich_draft,draft);assert!(app.dirty());
+        app.finish_inline_rich(false).unwrap();assert!(!app.dirty());assert_eq!(app.deck.save_snapshot().unwrap().0,original);
     }
 }

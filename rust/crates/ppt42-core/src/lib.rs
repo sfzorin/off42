@@ -324,6 +324,8 @@ impl Presentation {
             ),
         }
     }
+    /// Independent current state for readonly exports, with no live history mutations.
+    pub fn snapshot_copy(&self)->Self{Self{history:SnapshotHistory::new(self.history.snapshot(),HISTORY_LIMIT)}}
     pub fn slides(&self) -> &[Slide] {
         &self.history.current().deck.slides
     }

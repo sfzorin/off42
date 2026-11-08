@@ -1805,7 +1805,7 @@ def audit_doc_picture_labels(process,main,binary,output,results):
 
 def audit_label_preview(process,main,binary,output,results):
     caption=text(main)
-    command(main,65518);finish_prompt(process,'Label Source',['Custom Text']);finish_prompt(process,'Create Label Sheet',['PREVIEW-AUDIT','','QR','100, 140, 2, 2','2, 4'])
+    command(main,65518);finish_prompt(process,'Label Source',['Custom Text']);finish_prompt(process,'Create Label Sheet',['PREVIEW-AUDIT','PCB-PRINT-42','QR','100, 140, 2, 2','2, 4'])
     preview=modal(process,title='Label Sheet Preview',native_class='Off42PdfPreviewWindow')
     def ready(page,pages):return lambda:f'Page {page} of {pages}'in text(u.GetDlgItem(preview,100))
     wait_for(ready(1,2),'first label preview page',process)
@@ -2465,6 +2465,97 @@ def audit_language_picker(bin_dir, output):
             child.close_handle()
 
 
+def audit_recovery(binary,output):
+    """Kill only the isolated audit process and recover through the real file/menu UI."""
+    app=binary.stem;root=output/('recovery-settings-'+app);root.mkdir(exist_ok=True)
+    environment=os.environ.copy();environment['LOCALAPPDATA']=str(root);environment['OFF42_RECOVERY_INTERVAL_MS']='1000'
+    marker='RECOVERED-'+app;extension={'DOC42':'doc42','XLS42':'xls42','PDF42':'pdf','PPT42':'json','SCN42':'scn42'}[app]
+    source=None;process=None;child=None
+    if app=='DOC42':
+        source=output/'recovery-original.rtf';source.write_bytes(br'{\rtf1\ansi ORIGINAL-DOC}')
+    elif app=='XLS42':
+        source=output/'recovery-original.csv';source.write_text('ORIGINAL-XLS,SECOND\n',encoding='utf-8')
+    elif app=='PDF42':
+        source=output/'recovery-original.pdf';minimal_pdf(source,['ORIGINAL-PDF'])
+    elif app=='SCN42':
+        source=output/'recovery-original.png';rgba=b''.join(bytes([255,0,0,255]if x<32 else[0,0,255,255])for y in range(32)for x in range(64));write_png(source,64,32,rgba)
+    def launch(path=None):
+        process=subprocess.Popen([str(binary),'--language','en']+(['--',str(path)]if path else[]),env=environment)
+        main=modal(process,native_class='Suite42Native')
+        if path:
+            if app=='SCN42':wait_for(lambda:any('1 pages |'in text(h)for h in windows(process.pid,main)),'scan recovery fixture imported',process)
+            else:wait_for(lambda:path.name in text(main)and u.IsWindowEnabled(main),'recovery source opened',process)
+        return process,main
+    def check_latest(process,main):
+        if app in {'DOC42','XLS42'}:assert marker in text(u.GetDlgItem(main,101))
+        elif app=='PPT42':
+            command(main,24);dialog=modal(process,title='Edit slide text',native_class='Suite42InputDialog')
+            assert text(u.GetDlgItem(dialog,100))==marker and text(u.GetDlgItem(dialog,101))=='LATEST'
+            click(dialog,2);wait_for(lambda:u.IsWindowEnabled(main),'recovered slide text inspected',process)
+    def records():return list((root/'off42'/'Recovery'/app).glob('*/document.off42r'))
+    def complete_record():
+        for path in records():
+            try:
+                data=path.read_bytes()
+                if data[:8]!=b'OFF42RC1'or len(data)<12:continue
+                size=struct.unpack_from('<I',data,8)[0];header=json.loads(data[12:12+size]);payload=data[12+size:]
+                if len(payload)==header['length']and hashlib.sha256(payload).hexdigest()==header['sha256']:return path
+            except(OSError,ValueError,KeyError):pass
+        return None
+    try:
+        process,main=launch(source)
+        if app in {'PPT42','SCN42'}:
+            source=output/('recovery-original-'+app+'.'+extension);save_as(main);choose_file(process,source);output_ready(process,main,source,b'{')
+            wait_for(lambda:source.name in text(main)and' * - 'not in text(main),'baseline saved before crash',process)
+        original=source.read_bytes()
+        if app in {'PDF42','SCN42'}:u.SendMessageW(main,WM_COMMAND,10,0)
+        elif app=='PPT42':fill_prompt(process,main,24,'Edit slide text',[marker,'LATEST'])
+        else:replace_editor_text(u.GetDlgItem(main,101),marker)
+        wait_for(lambda:' * - 'in text(main),'document edited before backup',process)
+        backup=wait_for(complete_record,'atomic recovery backup written',process,timeout=15)
+        assert source.read_bytes()==original,'Backup changed the source'
+        child,child_main=launch();time.sleep(0.25)
+        assert u.IsWindowEnabled(child_main)and not any(classname(h)=='Suite42InputDialog'for h in windows(child.pid)),'Live session offered for recovery'
+        u.PostMessageW(child_main,WM_CLOSE,0,0);child.wait(timeout=10);child=None
+        process.terminate();process.wait(timeout=5);assert backup.is_file()
+        if app=='DOC42':source.write_bytes(br'{\rtf1\ansi EXTERNAL-CHANGE}');original=source.read_bytes()
+        process,main=launch();picker=modal(process,title='Recover Unsaved Document',native_class='Suite42InputDialog')
+        selected=text(u.GetDlgItem(picker,100));assert source.name in selected
+        click(picker,2);wait_for(lambda:u.IsWindowEnabled(main),'recovery Cancel',process);assert backup.is_file()
+        command(main,65505);finish_prompt(process,'Recover Unsaved Document',[selected,'Recover'])
+        wait_for(lambda:text(main).startswith('Untitled *')and u.IsWindowEnabled(main),'recovered independent dirty copy',process)
+        assert source.read_bytes()==original
+        check_latest(process,main)
+        capture_window(main,output/(app+'-recovered.bmp'))
+        u.PostMessageW(main,WM_CLOSE,0,0)
+        confirmation=wait_for(lambda:next((h for h in windows(process.pid)if classname(h)=='#32770'and all(u.GetDlgItem(h,i)for i in(2,6,7))),None),'close recovered copy asks to save',process)
+        click(confirmation,2);wait_for(lambda:u.IsWindowEnabled(main),'recovered close Cancel',process)
+        command(main,2);dialog=modal(process,title='Save As',native_class='#32770');click(dialog,2)
+        wait_for(lambda:u.IsWindowEnabled(main)and' * - 'in text(main),'recovered Save Cancel stays dirty',process)
+        saved=output/('recovery-saved-'+app+'.'+extension);command(main,2);choose_file(process,saved);output_ready(process,main,saved,b'%PDF-'if app=='PDF42'else b'{')
+        wait_for(lambda:saved.name in text(main)and' * - 'not in text(main),'recovery saved at the chosen destination',process)
+        if app in {'DOC42','XLS42','PPT42'}:assert marker in saved.read_text(encoding='utf-8')
+        elif app=='PDF42':
+            pdf=c.WinDLL(str(binary.parent/'pdfium.dll'));pdf.FPDF_LoadDocument.argtypes,pdf.FPDF_LoadDocument.restype=[c.c_char_p,c.c_char_p],c.c_void_p
+            pdf.FPDF_LoadPage.argtypes,pdf.FPDF_LoadPage.restype=[c.c_void_p,c.c_int],c.c_void_p;pdf.FPDFPage_GetRotation.argtypes=[c.c_void_p];pdf.FPDF_ClosePage.argtypes=[c.c_void_p];pdf.FPDF_CloseDocument.argtypes=[c.c_void_p]
+            pdf.FPDF_InitLibrary();document=pdf.FPDF_LoadDocument(str(saved).encode(),None);assert document;page=pdf.FPDF_LoadPage(document,0);assert page
+            try:assert pdf.FPDFPage_GetRotation(page)==1,'Recovered rotation lost'
+            finally:pdf.FPDF_ClosePage(page);pdf.FPDF_CloseDocument(document)
+        else:
+            png=output/'recovery-scan-rotated.png';command(main,31);choose_file(process,png);output_ready(process,main,png,b'\x89PNG\r\n\x1a\n')
+            width,height,pixels=png_pixels(png);expected=b''.join(rgba[((31-x)*64+y)*4:((31-x)*64+y)*4+4]for y in range(64)for x in range(32))
+            assert(width,height,pixels)==(32,64,expected),'Recovered scan pixels lost'
+        wait_for(lambda:not records(),'saved backups removed',process);assert source.read_bytes()==original
+        u.PostMessageW(main,WM_CLOSE,0,0);process.wait(timeout=10)
+        process,main=launch(saved);assert' * - 'not in text(main)and not records()
+        check_latest(process,main)
+        u.PostMessageW(main,WM_CLOSE,0,0);process.wait(timeout=10)
+        return{'app':app,'scenario':'crash recovery','checks':['normal backup path with a one-second audit interval, active-window exclusion, forced process loss, startup/menu recovery, Cancel, independent dirty copy, close/Save Cancel, latest persisted data, selected destination, cleanup and reopen preserve the original']}
+    finally:
+        for target in(process,child):
+            if target and target.poll()is None:target.terminate();target.wait(timeout=5)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bin-dir", type=Path, required=True)
@@ -2489,6 +2580,7 @@ def main():
     parser.add_argument("--ocr-only", action="store_true")
     parser.add_argument("--label-artwork", action="store_true")
     parser.add_argument("--label-preview", action="store_true")
+    parser.add_argument("--recovery",action="store_true")
     parser.add_argument("--page-exports", action="store_true")
     parser.add_argument("--host-commands", action="store_true")
     parser.add_argument("--engineering", action="store_true")
@@ -2508,6 +2600,12 @@ def main():
             print(json.dumps(results[-1]), flush=True)
     finally:
         (args.output / "results.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
+    if args.recovery:
+        for app in['DOC42','XLS42','PDF42','PPT42','SCN42']:
+            try:results.append(audit_recovery(args.bin_dir/(app+'.exe'),args.output))
+            except Exception as error:results.append({'app':app,'scenario':'crash recovery','error':str(error),'traceback':traceback.format_exc()})
+            print(json.dumps(results[-1]),flush=True)
+            (args.output/'results.json').write_text(json.dumps(results,indent=2),encoding='utf-8')
     if args.languages:
         languages = ["en", "zh-Hans", "zh-Hant", "es", "ar", "fr", "pt", "id", "ru", "de", "ja", "vi", "tr", "fil", "ko", "th", "it", "pl", "ms", "hu"]
         for index, code in enumerate(languages):

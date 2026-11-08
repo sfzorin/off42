@@ -1,4 +1,5 @@
 pub mod ocr;
+pub mod recovery;
 #[cfg(windows)]
 pub mod pdfium;
 #[cfg(windows)]
@@ -190,6 +191,9 @@ pub trait App {
     fn open_formats(&self) -> Vec<FileFormat> {
         vec![]
     }
+    /// Readonly backup encoding; never marks a user revision as saved.
+    fn recovery_snapshot(&self)->Result<Option<recovery::Snapshot>,String>{Ok(None)}
+    fn supports_recovery(&self)->bool{false}
     fn save_formats(&self) -> Vec<FileFormat> {
         vec![]
     }
