@@ -152,6 +152,10 @@ jobs:
           python scripts/audit-windows-runtime.py --bin-dir build/off42 --output build/runtime-dependencies.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Compress-Archive -Path build/off42 -DestinationPath build/off42-windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: off42-windows-x64
+          path: rust/build/off42-windows-x64.zip
       - name: Test shared host and PDF/spreadsheet changes in quick builds
         if: inputs.quick_ui == true
         shell: pwsh
@@ -162,13 +166,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Record available Windows print devices
         if: always()
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force build/native-ui | Out-Null
-          $record = @{}
-          try { $record.printers = @(Get-Printer -ErrorAction Stop | Select-Object Name,DriverName,PortName) } catch { $record.printer_error = $_.Exception.Message }
-          try { $record.drivers = @(Get-PrinterDriver -ErrorAction Stop | Select-Object Name,MajorVersion) } catch { $record.driver_error = $_.Exception.Message }
-          $record | ConvertTo-Json -Depth 5 | Out-File -Encoding utf8 build/native-ui/printing-environment.json
+        timeout-minutes: 2
+        run: python scripts/audit-print-environment.py --output build/native-ui/printing-environment.json
       - name: Audit native commands in the packaged apps
         run: python scripts/audit-ui-windows.py --bin-dir build/off42 --output build/native-ui --extended --pictures --technical-objects --label-sources --languages --recents --page-exports --host-commands --engineering --text-exports --extended-formulas --multiwindow --window-layout --rich-search --preset-shapes --pdf-decorations --statistical-formulas --pdf-comparison --pdf-merge --pdf-batch-headers --array-formulas --ocr --label-artwork --label-preview --recovery --native-print
       - uses: actions/upload-artifact@v4
@@ -176,12 +175,6 @@ jobs:
         with:
           name: native-windows-ui-built
           path: rust/build/native-ui
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: off42-windows-x64
-          path: rust/build/off42-windows-x64.zip
-
       - uses: actions/upload-artifact@v4
         if: always()
         with:
