@@ -803,3 +803,9 @@ A document gesture may queue the shared label action and provide one ephemeral s
 consumes it once, outside document-state borrows and after normal mouse release. PDF area selection
 checks document epoch, save-state identity and current page before extracting an immutable single-page
 snapshot. Selection outlines are display items only; cancellation or rerender clears the queued area.
+
+Native rich-content label capture streams only the current selection, then formats an isolated editor.
+A temporary EMF measures actual ink before allocating one bounded bitmap; the PDF stores only the
+resulting selected pixels. No clipboard round trip or live-editor layout mutation is needed. Native
+selected-text label sources use the same editor's UTF-16 projection rather than model-only offsets.
+The initial mixed-content output is raster artwork; vector text fidelity remains a separate parity gap.

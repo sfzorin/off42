@@ -625,3 +625,11 @@ shared artwork settings/preview after releasing the pointer. It does not add an 
 step. A changed document invalidates the one-shot source. Portable geometry/source tests pass; the native
 mouse/preview-output scenario awaits Windows CI. Run 42435906021 failed the new EMF probe; direct printing
 and preview are not yet counted as verified.
+
+DOC42 now offers **Selected Content Artwork** for a nonempty native selection. It freezes only that
+selection as RTF and lays it out in a disposable Rich Edit control at the body width. Styled text and
+pictures render together into a bounded, white-paper PDF image at up to 300 DPI; very large selections
+reduce resolution to stay under sixteen million pixels. This first path rasterizes text, so full vector
+fidelity remains open. It leaves the clipboard, selection, document and history untouched. Selected-text
+labels use native UTF-16 ranges, including offsets after objects/tables, instead of the plain model view.
+Windows native selection/pixel/offset tests are added; runtime verification is pending.

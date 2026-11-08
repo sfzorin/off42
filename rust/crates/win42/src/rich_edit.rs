@@ -154,13 +154,20 @@ pub unsafe fn load(hwnd: HWND, bytes: &[u8]) -> Result<(), String> {
     }
 }
 pub unsafe fn extract(hwnd: HWND) -> Result<Vec<u8>, String> {
+    extract_format(hwnd,SF_RTF)
+}
+/// Freeze exactly the current selection, leaving the live editor and its clipboard untouched.
+pub unsafe fn extract_selection(hwnd:HWND,rtf:bool)->Result<Vec<u8>,String>{
+    extract_format(hwnd,0x8000|if rtf {SF_RTF}else{1|0x10})
+}
+unsafe fn extract_format(hwnd:HWND,format:usize)->Result<Vec<u8>,String>{
     let mut bytes = Vec::new();
     let mut stream = EditStream {
         cookie: &mut bytes as *mut Vec<u8> as usize,
         error: 0,
         callback: Some(write),
     };
-    SendMessageW(hwnd, EM_STREAMOUT, SF_RTF, &mut stream as *mut _ as LPARAM);
+    SendMessageW(hwnd, EM_STREAMOUT, format, &mut stream as *mut _ as LPARAM);
     let error = stream.error;
     if error != 0 {
         Err(format!("RichEdit stream-out failed: {error}"))

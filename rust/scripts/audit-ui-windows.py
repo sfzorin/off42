@@ -144,7 +144,7 @@ def fill_prompt(process, main, identifier, title, values):
     return dialog
 
 
-def choose_file(process, path, format_name=None, keep_preview=False):
+def choose_file(process, path, format_name=None, keep_preview=False, open_preview=True):
     preview=[None]
     def filename_control():
         for dialog in windows(process.pid):
@@ -154,7 +154,7 @@ def choose_file(process, path, format_name=None, keep_preview=False):
             control = next((h for h in edits if u.GetDlgCtrlID(h) in (1148, 1001)), edits[0] if len(edits) == 1 else None)
             if control:
                 return dialog, control
-        if preview[0]is None:
+        if open_preview and preview[0]is None:
             window=next((h for h in windows(process.pid)if classname(h)=="Off42PdfPreviewWindow"and u.IsWindowEnabled(h)),None)
             if window:
                 preview[0]=window;click(window,1)
@@ -1769,6 +1769,38 @@ def audit_doc_picture_labels(process,main,binary,output,results):
         assert red>8000 and blue>8000,(index,red,blue)
     assert text(main)==caption and source.read_bytes()==original
     results['checks'].append('DOC picture artwork uses displayed aspect ratio and original pixels/alpha on paper, supports stock copies/first slot, omits surrounding document text and preserves source/save state')
+    mixed_source=output/'doc-mixed-artwork-source.rtf'
+    mixed_source.write_bytes(br'{\rtf1\ansi{\colortbl;\red0\green200\blue0;}\cf1 PRIVATE-BEFORE \u-10179?\u-8704?\par\cf0\fs40\b MIXED-SELECTED\b0\par{\pict\pngblip\picw100\pich50\picwgoal2400\pichgoal1200 '+picture.read_bytes().hex().encode()+br'}\par\cf1 PRIVATE-AFTER\par}')
+    mixed_original=mixed_source.read_bytes();command(main,1);choose_file(process,mixed_source)
+    wait_for(lambda:mixed_source.name in text(main)and' * - 'not in text(main)and u.IsWindowEnabled(main),'mixed content source opened',process)
+    edit=u.GetDlgItem(main,101)
+    def selection():
+        value=u.SendMessageW(edit,0xB0,0,0);return(value&0xffff,(value>>16)&0xffff)
+    fill_prompt(process,main,7,'Find next',['PRIVATE-AFTER']);end=selection()[0]
+    fill_prompt(process,main,7,'Find next',['MIXED-SELECTED']);start=selection()[0];assert start<end
+    u.SendMessageW(edit,0xB1,start,end);selected_range=selection();caption=text(main)
+    command(main,65518);finish_prompt(process,'Label Source',['Selected Content Artwork']);finish_prompt(process,'Create Artwork Label Sheet',['','70, 37, 0, 0','2, 24'])
+    mixed=output/'DOC42-selected-mixed-labels.pdf';choose_file(process,mixed);output_ready(process,main,mixed,b'%PDF-')
+    assert len(pdf_text(binary.parent/'pdfium.dll',mixed,by_page=True))==2
+    for index in range(2):
+        _,_,pixels=pdf_pixels(binary.parent/'pdfium.dll',mixed,index)
+        red=sum(pixels[i+2]>pixels[i]+40 and pixels[i+2]>pixels[i+1]+40 for i in range(0,len(pixels),4))
+        blue=sum(pixels[i]>pixels[i+2]+40 and pixels[i]>pixels[i+1]+40 for i in range(0,len(pixels),4))
+        green=sum(pixels[i+1]>pixels[i]+30 and pixels[i+1]>pixels[i+2]+30 for i in range(0,len(pixels),4))
+        assert red>1000 and blue>1000 and green==0,('Selection lost picture or included surrounding green text',index,red,blue,green)
+    assert text(main)==caption and selection()==selected_range and mixed_source.read_bytes()==mixed_original
+    assert u.GetMenuState(u.GetMenu(main),4,0)&3,'Readonly label creation added a history step'
+    command(main,65518);finish_prompt(process,'Label Source',['Selected Text']);finish_prompt(process,'Create Label Sheet',['MIXED-SELECTED','','QR','70, 37, 0, 0','1, 1'])
+    # Check the actual prefilled native text before accepting custom label text in a separate scenario below.
+    text_sheet=output/'DOC42-selected-text-labels.pdf';choose_file(process,text_sheet);output_ready(process,main,text_sheet,b'%PDF-')
+    fill_prompt(process,main,7,'Find next',['PRIVATE-AFTER'])
+    command(main,65518);finish_prompt(process,'Label Source',['Selected Text'])
+    settings=modal(process,title='Create Label Sheet',native_class='Suite42InputDialog')
+    assert text(u.GetDlgItem(settings,100))=='PRIVATE-AFTER','Native text selection after an image uses the wrong offsets'
+    click(settings,2);wait_for(lambda:u.IsWindowEnabled(main),'native selected text label Cancel',process)
+    assert mixed_source.read_bytes()==mixed_original and text(main)==caption
+    results['checks'].append('native mixed-content selection after surrogate text preserves selected text styling/picture colors, omits surrounding green paragraphs, honors copies/first slot and keeps selection/history/source; selected-text labels after an image use actual native UTF-16 ranges')
+
 
 
 def audit_label_preview(process,main,binary,output,results):
@@ -1834,7 +1866,7 @@ def audit_label_preview(process,main,binary,output,results):
         entry=next(h for h in windows_for_dialog(printer)if u.GetDlgCtrlID(h)==1152)
         set_text(entry,'2')
     click(printer,1)
-    printed=output/'labels-native-printed-page-2.pdf';choose_file(process,printed,keep_preview=True)
+    printed=output/'labels-native-printed-page-2.pdf';choose_file(process,printed,keep_preview=True,open_preview=False)
     wait_for(lambda:printed.is_file()and printed.stat().st_size>100 and u.IsWindowEnabled(preview),'native PDF printer completes',process,timeout=60)
     assert printed.read_bytes().startswith(b'%PDF-')
     assert len(pdf_text(binary.parent/'pdfium.dll',printed,by_page=True))==1,'Page range was not honored'

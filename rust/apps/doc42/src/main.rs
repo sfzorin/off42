@@ -600,6 +600,10 @@ impl App for Doc {
         ));
         Ok(sources)
     }
+    fn label_rich_selection_width(&self)->Option<u32>{
+        let page=&self.doc.state().sections.first()?.page;
+        page.width_twips.checked_sub(page.margin_left)?.checked_sub(page.margin_right)
+    }
     fn label_source(&self) -> Result<win42::LabelSource, String> {
         let (start, end) = self.selection;
         let text = if end > start {

@@ -1491,13 +1491,30 @@ unsafe fn production_command(hwnd: HWND, id: u16) -> Result<(), String> {
         if sources.is_empty() {
             return Err("There are no label sources in this document".into());
         }
-        let index = if sources.len() == 1 {
+        let rich_selection=STATE.with(|state|{
+            let state=state.borrow();let state=state.as_ref().unwrap();
+            let width=state.app.label_rich_selection_width()?;
+            if state.edit.is_null(){return None;}
+            let range=crate::rich_edit::selection(state.edit);
+            (range.0<range.1).then_some((state.edit,range,width))
+        });
+        // Native offsets include table delimiters and object characters that are absent
+        // from the model's plain-text projection. Use the actual selected text here.
+        if let Some((edit,_,_))=rich_selection {
+            let bytes=crate::rich_edit::extract_selection(edit,false)?;
+            if bytes.len()%2!=0||bytes.len()>2*1024*1024{return Err("Selected label text exceeds one million characters".into());}
+            let units=bytes.chunks_exact(2).map(|b|u16::from_le_bytes([b[0],b[1]])).collect::<Vec<_>>();
+            let selected=String::from_utf16(&units).map_err(|_|"Select complete text characters")?.replace('\u{fffc}',"").replace("\r\n","\n").replace('\r',"\n");
+            for(_,source)in &mut sources {if let LabelSource::Text(text)=source{*text=selected.clone();}}
+        }
+        let index = if sources.len() == 1&&rich_selection.is_none() {
             0
         } else {
-            let choices = sources
+            let mut choices = sources
                 .iter()
                 .map(|(title, _)| title.clone())
                 .collect::<Vec<_>>();
+            if rich_selection.is_some(){choices.push("Selected Content Artwork".into());}
             let request = crate::InputRequest {
                 title: "Label Source",
                 fields: vec![("Source", choices[0].clone())],
@@ -1512,7 +1529,11 @@ unsafe fn production_command(hwnd: HWND, id: u16) -> Result<(), String> {
                 .position(|choice| choice == &values[0])
                 .ok_or("Choose a label source")?
         };
-        sources.remove(index).1
+        if index==sources.len(){
+            let(edit,range,width)=rich_selection.ok_or("Select document content first")?;
+            if crate::rich_edit::selection(edit)!=range{return Err("The selection changed; select the label content again".into());}
+            crate::rich_artwork::capture(edit,width)?
+        }else{sources.remove(index).1}
     } else {
         LabelSource::Text(String::new())
     };

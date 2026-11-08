@@ -271,6 +271,8 @@ pub trait App {
     fn label_sources(&self) -> Result<Vec<(String, LabelSource)>, String> {
         Ok(vec![("Document".into(), self.label_source()?)])
     }
+    /// Width available to an independently rendered native rich-text selection, in twips.
+    fn label_rich_selection_width(&self)->Option<u32>{None}
     fn label_source(&self) -> Result<LabelSource, String> {
         Ok(LabelSource::Text(String::new()))
     }
@@ -549,6 +551,8 @@ mod rich_edit;
 mod rich_notes;
 #[cfg(windows)]
 mod rich_preview;
+#[cfg(windows)]
+mod rich_artwork;
 #[cfg(windows)]
 mod rich_print;
 #[cfg(windows)]

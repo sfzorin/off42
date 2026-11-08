@@ -15,7 +15,8 @@
     "Preparing preview…": "Подготовка предпросмотра…",
     "Print at actual size": "Печать в натуральную величину",
     "Fit Page": "Вписать страницу",
-    "Create Labels from PDF Area…": "Создать этикетки из области PDF…"
+    "Create Labels from PDF Area…": "Создать этикетки из области PDF…",
+    "Selected Content Artwork": "Выделенный фрагмент с оформлением"
   },
   "zh-Hans": {
     "Symbol or Code": "符号或条码",
@@ -33,7 +34,8 @@
     "Preparing preview…": "正在准备预览…",
     "Print at actual size": "按实际大小打印",
     "Fit Page": "适合页面",
-    "Create Labels from PDF Area…": "从 PDF 区域创建标签…"
+    "Create Labels from PDF Area…": "从 PDF 区域创建标签…",
+    "Selected Content Artwork": "所选内容图稿"
   },
   "zh-Hant": {
     "Symbol or Code": "符號或條碼",
@@ -51,7 +53,8 @@
     "Preparing preview…": "正在準備預覽…",
     "Print at actual size": "以實際大小列印",
     "Fit Page": "符合頁面",
-    "Create Labels from PDF Area…": "從 PDF 區域建立標籤…"
+    "Create Labels from PDF Area…": "從 PDF 區域建立標籤…",
+    "Selected Content Artwork": "所選內容圖稿"
   },
   "es": {
     "Symbol or Code": "Símbolo o código",
@@ -69,7 +72,8 @@
     "Preparing preview…": "Preparando la vista previa…",
     "Print at actual size": "Imprimir a tamaño real",
     "Fit Page": "Ajustar página",
-    "Create Labels from PDF Area…": "Crear etiquetas desde un área del PDF…"
+    "Create Labels from PDF Area…": "Crear etiquetas desde un área del PDF…",
+    "Selected Content Artwork": "Diseño del contenido seleccionado"
   },
   "ar": {
     "Symbol or Code": "رمز أو باركود",
@@ -87,7 +91,8 @@
     "Preparing preview…": "جارٍ إعداد المعاينة…",
     "Print at actual size": "الطباعة بالحجم الفعلي",
     "Fit Page": "ملاءمة الصفحة",
-    "Create Labels from PDF Area…": "إنشاء ملصقات من منطقة PDF…"
+    "Create Labels from PDF Area…": "إنشاء ملصقات من منطقة PDF…",
+    "Selected Content Artwork": "رسم المحتوى المحدد"
   },
   "fr": {
     "Symbol or Code": "Symbole ou code",
@@ -105,7 +110,8 @@
     "Preparing preview…": "Préparation de l’aperçu…",
     "Print at actual size": "Imprimer à taille réelle",
     "Fit Page": "Ajuster à la page",
-    "Create Labels from PDF Area…": "Créer des étiquettes depuis une zone PDF…"
+    "Create Labels from PDF Area…": "Créer des étiquettes depuis une zone PDF…",
+    "Selected Content Artwork": "Contenu sélectionné avec sa mise en forme"
   },
   "pt": {
     "Symbol or Code": "Símbolo ou código",
@@ -123,7 +129,8 @@
     "Preparing preview…": "Preparando a pré-visualização…",
     "Print at actual size": "Imprimir em tamanho real",
     "Fit Page": "Ajustar à página",
-    "Create Labels from PDF Area…": "Criar etiquetas de uma área do PDF…"
+    "Create Labels from PDF Area…": "Criar etiquetas de uma área do PDF…",
+    "Selected Content Artwork": "Arte do conteúdo selecionado"
   },
   "id": {
     "Symbol or Code": "Simbol atau kode",
@@ -141,7 +148,8 @@
     "Preparing preview…": "Menyiapkan pratinjau…",
     "Print at actual size": "Cetak ukuran sebenarnya",
     "Fit Page": "Sesuaikan halaman",
-    "Create Labels from PDF Area…": "Buat Label dari Area PDF…"
+    "Create Labels from PDF Area…": "Buat Label dari Area PDF…",
+    "Selected Content Artwork": "Tampilan Konten Terpilih"
   },
   "de": {
     "Symbol or Code": "Symbol oder Code",
@@ -159,7 +167,8 @@
     "Preparing preview…": "Vorschau wird vorbereitet…",
     "Print at actual size": "In Originalgröße drucken",
     "Fit Page": "Seite einpassen",
-    "Create Labels from PDF Area…": "Etiketten aus PDF-Bereich erstellen…"
+    "Create Labels from PDF Area…": "Etiketten aus PDF-Bereich erstellen…",
+    "Selected Content Artwork": "Gestaltung des ausgewählten Inhalts"
   },
   "ja": {
     "Symbol or Code": "記号またはコード",
@@ -177,7 +186,8 @@
     "Preparing preview…": "プレビューを準備中…",
     "Print at actual size": "実際のサイズで印刷",
     "Fit Page": "ページ全体",
-    "Create Labels from PDF Area…": "PDFの範囲からラベルを作成…"
+    "Create Labels from PDF Area…": "PDFの範囲からラベルを作成…",
+    "Selected Content Artwork": "選択した内容のデザイン"
   },
   "vi": {
     "Symbol or Code": "Ký hiệu hoặc mã",
@@ -195,7 +205,8 @@
     "Preparing preview…": "Đang chuẩn bị bản xem trước…",
     "Print at actual size": "In theo kích thước thực",
     "Fit Page": "Vừa trang",
-    "Create Labels from PDF Area…": "Tạo nhãn từ vùng PDF…"
+    "Create Labels from PDF Area…": "Tạo nhãn từ vùng PDF…",
+    "Selected Content Artwork": "Hình thức nội dung đã chọn"
   },
   "tr": {
     "Symbol or Code": "Sembol veya kod",
@@ -213,7 +224,8 @@
     "Preparing preview…": "Önizleme hazırlanıyor…",
     "Print at actual size": "Gerçek boyutta yazdır",
     "Fit Page": "Sayfaya sığdır",
-    "Create Labels from PDF Area…": "PDF Alanından Etiket Oluştur…"
+    "Create Labels from PDF Area…": "PDF Alanından Etiket Oluştur…",
+    "Selected Content Artwork": "Seçili İçeriğin Görünümü"
   },
   "fil": {
     "Symbol or Code": "Simbolo o code",
@@ -231,7 +243,8 @@
     "Preparing preview…": "Inihahanda ang preview…",
     "Print at actual size": "I-print sa aktuwal na laki",
     "Fit Page": "Iakma sa pahina",
-    "Create Labels from PDF Area…": "Gumawa ng mga Label mula sa Bahagi ng PDF…"
+    "Create Labels from PDF Area…": "Gumawa ng mga Label mula sa Bahagi ng PDF…",
+    "Selected Content Artwork": "Disenyo ng Napiling Nilalaman"
   },
   "ko": {
     "Symbol or Code": "기호 또는 코드",
@@ -249,7 +262,8 @@
     "Preparing preview…": "미리보기를 준비하는 중…",
     "Print at actual size": "실제 크기로 인쇄",
     "Fit Page": "페이지에 맞춤",
-    "Create Labels from PDF Area…": "PDF 영역에서 라벨 만들기…"
+    "Create Labels from PDF Area…": "PDF 영역에서 라벨 만들기…",
+    "Selected Content Artwork": "선택한 콘텐츠의 모양"
   },
   "th": {
     "Symbol or Code": "สัญลักษณ์หรือรหัส",
@@ -267,7 +281,8 @@
     "Preparing preview…": "กำลังเตรียมตัวอย่าง…",
     "Print at actual size": "พิมพ์ตามขนาดจริง",
     "Fit Page": "พอดีกับหน้า",
-    "Create Labels from PDF Area…": "สร้างป้ายจากพื้นที่ PDF…"
+    "Create Labels from PDF Area…": "สร้างป้ายจากพื้นที่ PDF…",
+    "Selected Content Artwork": "รูปแบบเนื้อหาที่เลือก"
   },
   "it": {
     "Symbol or Code": "Simbolo o codice",
@@ -285,7 +300,8 @@
     "Preparing preview…": "Preparazione dell’anteprima…",
     "Print at actual size": "Stampa in dimensioni reali",
     "Fit Page": "Adatta alla pagina",
-    "Create Labels from PDF Area…": "Crea etichette da un’area PDF…"
+    "Create Labels from PDF Area…": "Crea etichette da un’area PDF…",
+    "Selected Content Artwork": "Grafica del contenuto selezionato"
   },
   "pl": {
     "Symbol or Code": "Symbol lub kod",
@@ -303,7 +319,8 @@
     "Preparing preview…": "Przygotowywanie podglądu…",
     "Print at actual size": "Drukuj w rzeczywistym rozmiarze",
     "Fit Page": "Dopasuj stronę",
-    "Create Labels from PDF Area…": "Utwórz etykiety z obszaru PDF…"
+    "Create Labels from PDF Area…": "Utwórz etykiety z obszaru PDF…",
+    "Selected Content Artwork": "Wygląd zaznaczonej zawartości"
   },
   "ms": {
     "Symbol or Code": "Simbol atau kod",
@@ -321,7 +338,8 @@
     "Preparing preview…": "Menyediakan pratonton…",
     "Print at actual size": "Cetak pada saiz sebenar",
     "Fit Page": "Muatkan halaman",
-    "Create Labels from PDF Area…": "Cipta Label daripada Kawasan PDF…"
+    "Create Labels from PDF Area…": "Cipta Label daripada Kawasan PDF…",
+    "Selected Content Artwork": "Rupa Kandungan Dipilih"
   },
   "hu": {
     "Symbol or Code": "Szimbólum vagy kód",
@@ -339,6 +357,7 @@
     "Preparing preview…": "Előnézet előkészítése…",
     "Print at actual size": "Nyomtatás tényleges méretben",
     "Fit Page": "Oldalhoz igazítás",
-    "Create Labels from PDF Area…": "Címkék készítése PDF-területről…"
+    "Create Labels from PDF Area…": "Címkék készítése PDF-területről…",
+    "Selected Content Artwork": "Kijelölt tartalom megjelenése"
   }
 }

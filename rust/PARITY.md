@@ -505,3 +505,14 @@ after image selection; image unit regressions are now included in quick CI.
   source/history token feed the same artwork preview. Portable tests cover all four rotations, degenerate
   bounds, immutable source/history, one-shot consumption and stale-state refusal. Workspace: 469/0/1;
   GNU targets compile. Real Windows mouse/output checks are added and await the next compatible build.
+
+- Run 42436434958 (4ffa65b) succeeds: the embedded preview's page/zoom/resize/save/regeneration assertions
+  actually execute; inspected fit/narrow screenshots show the page and controls. The EMF contains one
+  triangle path, a native brush rectangle and zero bitmap transfers. This establishes native vector
+  output for the opaque fixture, not arbitrary transparency or a printer spool. Inventory confirms the
+  runner has only Microsoft Print to PDF. Source-area and virtual-print audit races are being corrected.
+- DOC mixed-selection artwork and native selected-text offsets are implemented. Selection RTF is isolated,
+  measured natively and rendered at up to 300 DPI within a sixteen-million-pixel bound. Live content,
+  clipboard and history remain outside that capture. Native unit/UI regressions cover colored images,
+  surrounding-content exclusion, UTF-16 offsets after pictures and source/history. GNU targets compile;
+  Windows execution is pending. Vector fidelity for mixed selected text is still incomplete.
