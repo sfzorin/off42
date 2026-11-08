@@ -16,4 +16,5 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg"]
 suite42-core = { path = "../suite42-core" }
 
 [dev-dependencies]
+doc42-core = { path = "../doc42-core" }
 tempfile = "3"

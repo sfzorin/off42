@@ -826,14 +826,14 @@ interface translation does not install a spelling dictionary, and this feature d
 Native engine/range and actual DOC correction/format/table/image/history/reopen assertions are added but pending.
 
 
-### Shared window panels (native verification pending)
+### Shared window panels
 
 View offers checked entries for the sidebar, toolbar, status bar and available document rulers. Hidden panels
 release their space to the document; normal application commands stay in their menus. Each app remembers these
 choices with its window placement without changing document contents or Undo history. Old placement files keep
 all panels enabled by default; unavailable panels are disabled in the menu. Fullscreen slide shows retain their
 existing presentation layout. Portable preference round trips/corruption checks pass; native six-app toggle,
-geometry, history and relaunch assertions are added and await a compatible Windows build.
+geometry, history and relaunch assertions pass in run 42512382933.
 
 
 Run 42453756002 verifies the actual en-US dictionary and native table/image UTF-16 positions (523 passing

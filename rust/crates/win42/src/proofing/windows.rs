@@ -378,6 +378,20 @@ mod tests {
         }
     }
     #[test]
+    fn prepared_core_correction_matches_actual_image_table_projection_without_importing_native_fonts(){unsafe{
+        use windows_sys::Win32::{System::LibraryLoader::LoadLibraryW,UI::WindowsAndMessaging::*};
+        use doc42_core::rich::{RichDocument,Format,Block};
+        let mut doc=RichDocument::decode(include_bytes!("../../../doc42-core/fixtures/native-rich-edit-picture.doc42"),Format::Project).unwrap();
+        doc.transact(|s|{let Block::Paragraph(p)=&mut s.blocks[0]else{panic!()};p.runs[0].text="😀 speling world".into();p.runs[0].style.bold=true;let Block::Table(t)=&mut s.blocks[1]else{panic!()};t.rows[0][0].paragraphs[0].runs[0].text="hello speling".into();Ok(())}).unwrap();
+        LoadLibraryW(wide("Msftedit.dll").as_ptr());let edit=CreateWindowExW(0,wide("RICHEDIT50W").as_ptr(),null(),WS_POPUP|ES_MULTILINE as u32,0,0,400,200,null_mut(),null_mut(),null_mut(),null());assert!(!edit.is_null());crate::rich_edit::load(edit,&doc.rich_edit_projection().unwrap()).unwrap();
+        for _ in 0..2{
+            let text=raw_text(edit).unwrap();let range=crate::rich_edit::find_next(edit,"speling",0).unwrap().unwrap();
+            let proposal=doc.prepare_word_edit(&text,range,"speling","spelling").unwrap_or_else(|e|panic!("{e}: {:?}",String::from_utf16(&text)));
+            crate::rich_edit::load(edit,proposal.projection()).unwrap();let mut expected=text;expected.splice(range.0..range.1,"spelling".encode_utf16());assert_eq!(raw_text(edit).unwrap(),expected);doc.commit_word_edit(proposal).unwrap();
+        }
+        let Block::Paragraph(p)=&doc.state().blocks[0]else{panic!()};assert_eq!(p.runs.len(),1);assert_eq!(p.runs[0].style.font,"Arial");assert!(p.runs[0].style.bold);assert_eq!(p.runs[0].text,"😀 spelling world");DestroyWindow(edit);
+    }}
+    #[test]
     fn installed_windows_dictionary_returns_real_errors_and_suggestions() {
         unsafe {
             use windows_sys::Win32::System::Com::{

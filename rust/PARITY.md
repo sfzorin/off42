@@ -7,7 +7,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Area | Current Windows coverage | Remaining work |
 | --- | --- | --- |
 | Files and document lifecycle | Open/save snapshots, conflict detection, Undo/Redo, recents; verified crash recovery in all six apps, including IMG lossless snapshots | Encrypted-PDF recovery, drag/drop verification and associations |
-| Localization and appearance | Twenty bundled catalogs, verified shared picker/restart and process language override; prompt label measurement and verified outer window placement | Complete Windows-specific translations, dark mode, panel visibility verification/splits and multi-display DPI |
+| Localization and appearance | Twenty bundled catalogs, verified shared picker/restart and process language override; prompt label measurement and verified window placement and panel visibility | Complete Windows-specific translations, dark mode, splits and multi-display DPI |
 | Text proofing | System Rich Edit proofing integration in DOC42/PPT42; native flags verified | Actual suggestions and installed-language behavior; full grammar and other editors |
 | Signatures and stamps | Shared PNG/JPEG library in all six apps; optional white-paper removal; Undo/Redo for placement | Generators, sample learning and full geometry parity |
 | Technical objects | Four barcode encoders, fourteen symbols, reusable PNG recipes, insertion/editing in PDF/DOC/XLS/PPT and document round trips | Full technical-object selection/placement controls and richer label artwork sources |
@@ -626,3 +626,9 @@ after image selection; image unit regressions are now included in quick CI.
   and GNU targets compile. Native repeats remain pending. The panel audit passed DOC/XLS before reaching an
   unavailable PDF toolbar; it now verifies disabled entries against absent controls rather than requiring a
   toolbar in every application. Actual panel persistence/layout assertions are retained for available panels.
+
+- Run 42512382933 (1b49d26): 527/0/1 MSVC tests, all six panel visibility/geometry/history/relaunch scenarios
+  pass. The word correction guard refuses an image-paragraph placeholder space absent from model text;
+  the original document is preserved. Mapping now permits at most one such space after each expected image
+  marker, rejects extra spaces/unmatched objects, and has a new actual Rich Edit/core integration regression.
+  Complete correction assertions remain unchanged; the new native repeat is pending.

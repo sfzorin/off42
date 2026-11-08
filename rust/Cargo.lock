@@ -2668,6 +2668,7 @@ checksum = "d4ca08e5ef825b65b056d9efbd95c8750683f0a6d0466d02e96dc2e4e360f3d2"
 name = "win42"
 version = "0.1.0"
 dependencies = [
+ "doc42-core",
  "image",
  "label42",
  "serde",

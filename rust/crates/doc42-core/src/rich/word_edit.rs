@@ -23,17 +23,26 @@ impl PreparedWordEdit {
 fn structural(c: u16) -> bool {
     matches!(c, 7 | 9 | 10 | 11 | 12 | 13 | 0xFFFC | 0xFDD0..=0xFDEF)
 }
-fn paragraphs(state: &State) -> impl Iterator<Item = &Paragraph> {
-    state.blocks.iter().flat_map(|block| match block {
-        Block::Paragraph(p) => vec![p],
-        Block::Table(t) => t
-            .rows
-            .iter()
-            .flatten()
-            .flat_map(|cell| &cell.paragraphs)
-            .collect(),
-        _ => vec![],
-    })
+enum Piece<'a> {
+    Paragraph(&'a Paragraph),
+    Image,
+}
+fn pieces(state: &State) -> Vec<Piece<'_>> {
+    state
+        .blocks
+        .iter()
+        .flat_map(|block| match block {
+            Block::Paragraph(p) => vec![Piece::Paragraph(p)],
+            Block::Table(t) => t
+                .rows
+                .iter()
+                .flatten()
+                .flat_map(|cell| cell.paragraphs.iter().map(Piece::Paragraph))
+                .collect(),
+            Block::Image(_) => vec![Piece::Image],
+            _ => vec![],
+        })
+        .collect()
 }
 fn byte_at(text: &str, offset: usize) -> Option<usize> {
     let mut units = 0;
@@ -54,10 +63,29 @@ fn locate(
     range: (usize, usize),
 ) -> Result<(u64, std::ops::Range<usize>), Error> {
     let invalid = || Error::Invalid("native word projection no longer matches the document".into());
-    let mut cursor = 0usize;
+    // Rich Edit emits an object marker and may add one placeholder space to an image paragraph.
+    // Admit that space only in a gap containing the expected source image, never as arbitrary ignored text.
+    fn gap(c: u16, images: usize, seen: &mut usize, spaces: &mut usize) -> bool {
+        if c == 0xFFFC {
+            *seen += 1;
+            *seen <= images
+        } else if c == 32 {
+            *spaces += 1;
+            *seen > 0 && *spaces <= images
+        } else {
+            structural(c)
+        }
+    }
+    let (mut cursor, mut work, mut images) = (0usize, 0usize, 0usize);
     let mut target = None;
-    let mut work = 0usize;
-    for p in paragraphs(state) {
+    for piece in pieces(state) {
+        let p = match piece {
+            Piece::Image => {
+                images += 1;
+                continue;
+            }
+            Piece::Paragraph(p) => p,
+        };
         let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
         if text.is_empty() {
             continue;
@@ -66,6 +94,7 @@ fn locate(
             .encode_utf16()
             .map(|c| if c == 10 { 11 } else { c })
             .collect();
+        let (mut seen, mut spaces) = (0, 0);
         loop {
             work = work
                 .checked_add(projected.len())
@@ -76,12 +105,20 @@ fn locate(
             {
                 break;
             }
-            if native.get(cursor).copied().is_some_and(structural) {
+            if native
+                .get(cursor)
+                .copied()
+                .is_some_and(|c| gap(c, images, &mut seen, &mut spaces))
+            {
                 cursor += 1
             } else {
                 return Err(invalid());
             }
         }
+        if seen != images {
+            return Err(invalid());
+        }
+        images = 0;
         let end = cursor + projected.len();
         if range.0 >= cursor && range.1 <= end {
             if target.is_some() {
@@ -93,11 +130,17 @@ fn locate(
         }
         cursor = end;
     }
-    if native[cursor..].iter().any(|&c| !structural(c)) {
+    let (mut seen, mut spaces) = (0, 0);
+    if native[cursor..]
+        .iter()
+        .any(|&c| !gap(c, images, &mut seen, &mut spaces))
+        || seen != images
+    {
         return Err(invalid());
     }
     target.ok_or_else(invalid)
 }
+
 impl RichDocument {
     pub fn prepare_word_edit(
         &self,
@@ -303,6 +346,16 @@ mod tests {
     fn stale_wrong_or_structural_ranges_refuse_without_mutating_model() {
         let (mut doc, native) = fixture();
         let before = doc.state().clone();
+        let mut object_space = native.clone();
+        let at = object_space.iter().position(|&c| c == 0xFFFC).unwrap() + 1;
+        object_space.insert(at, 32);
+        assert!(doc
+            .prepare_word_edit(&object_space, (3, 10), "speling", "spelling")
+            .is_ok());
+        object_space.insert(at, 32);
+        assert!(doc
+            .prepare_word_edit(&object_space, (3, 10), "speling", "spelling")
+            .is_err());
         assert!(doc.prepare_word_edit(&native, (1, 2), "x", "y").is_err());
         assert!(doc
             .prepare_word_edit(&native, (3, 10), "wrong", "y")
