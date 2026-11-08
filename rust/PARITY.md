@@ -7,7 +7,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Area | Current Windows coverage | Remaining work |
 | --- | --- | --- |
 | Files and document lifecycle | Open/save snapshots, conflict detection, Undo/Redo, recents; verified crash recovery in all six apps, including IMG lossless snapshots | Encrypted-PDF recovery, drag/drop verification and associations |
-| Localization and appearance | Twenty bundled catalogs, verified shared picker/restart and process language override; prompt label measurement and verified outer window placement | Complete Windows-specific translations, dark mode, panel visibility/splits and multi-display DPI |
+| Localization and appearance | Twenty bundled catalogs, verified shared picker/restart and process language override; prompt label measurement and verified outer window placement | Complete Windows-specific translations, dark mode, panel visibility verification/splits and multi-display DPI |
 | Text proofing | System Rich Edit proofing integration in DOC42/PPT42; native flags verified | Actual suggestions and installed-language behavior; full grammar and other editors |
 | Signatures and stamps | Shared PNG/JPEG library in all six apps; optional white-paper removal; Undo/Redo for placement | Generators, sample learning and full geometry parity |
 | Technical objects | Four barcode encoders, fourteen symbols, reusable PNG recipes, insertion/editing in PDF/DOC/XLS/PPT and document round trips | Full technical-object selection/placement controls and richer label artwork sources |
@@ -612,3 +612,8 @@ after image selection; image unit regressions are now included in quick CI.
   installed dictionaries determine language availability, and this adds no full-grammar claim. New UI strings
   cover the twenty interface languages. Portable workspace 520/0/1 and GNU all-targets compile; native dictionary,
   raw Rich Edit table/image offsets and complete DOC correction/history/reopen checks await Windows execution.
+
+- Shared View panel visibility now controls the available sidebar, toolbar, status bar and document rulers.
+  Existing DPI layout reclaims the space, focus leaves hidden controls, and preferences persist with per-app
+  placement while default panels retain old preference JSON. Portable preference checks and GNU compilation
+  pass; native six-app toggle/geometry/unchanged-history/relaunch assertions await the next compatible build.

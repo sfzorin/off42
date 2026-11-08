@@ -56,6 +56,10 @@ const EDIT_TECHNICAL: u16 = 65508;
 const NEW_WINDOW: u16 = 65506;
 const RECOVER_DOCUMENT:u16=65505;
 const CHECK_SPELLING:u16=65504;
+const TOGGLE_SIDEBAR:u16=65503;
+const TOGGLE_TOOLBAR:u16=65502;
+const TOGGLE_STATUS:u16=65501;
+const TOGGLE_RULERS:u16=65500;
 const LANGUAGE_FIRST: u16 = 64000;
 const RECENT_FIRST: u16 = 62000;
 const CLEAR_RECENTS: u16 = RECENT_FIRST + crate::recents::LIMIT as u16;
@@ -73,6 +77,7 @@ enum AsyncOpenPhase {
 struct State {
     app: Box<dyn App>,
     calibrate_print: bool,
+    panels:crate::window_layout::Panels,
     deferred_commands: Vec<(u16, u16)>,
     close_confirmed: bool,
     recovery:Option<crate::recovery::Journal>,
@@ -906,6 +911,7 @@ unsafe fn refresh() {
     );
     REFRESHING.with(|x| x.set(false));
     sync_presentation(hwnd);
+    sync_panel_menu();
     DrawMenuBar(hwnd);
     layout(hwnd);
     flush_deferred_commands();
@@ -999,6 +1005,7 @@ unsafe fn layout(hwnd: HWND) {
         ruler_horizontal,
         ruler_vertical,
         has_ruler,
+        panels,
     ) = STATE.with(|s| {
         let s = s.borrow();
         let s = s.as_ref().unwrap();
@@ -1008,15 +1015,16 @@ unsafe fn layout(hwnd: HWND) {
             s.edit,
             s.canvas,
             s.status,
-            s.app.list_visible(),
+            s.app.list_visible()&&s.panels.sidebar,
             s.grid_cache.is_some(),
             s.toolbar.clone(),
             s.toolbar_more,
             s.ruler_horizontal,
             s.ruler_vertical,
-            s.app.rich_ruler().is_some()
+            s.panels.rulers && s.app.rich_ruler().is_some()
                 && s.app.canvas_scene().is_none()
                 && s.app.image().is_none(),
+            s.panels,
         )
     });
     let mut r: RECT = zeroed();
@@ -1046,20 +1054,21 @@ unsafe fn layout(hwnd: HWND) {
         SetFocus(canvas);
         return;
     }
-    ShowWindow(status, SW_SHOW);
+    ShowWindow(status, if panels.status{SW_SHOW}else{SW_HIDE});
     let dpi = GetDpiForWindow(hwnd) as i32;
-    let sh = 24 * dpi / 96;
+    let sh = if panels.status{24 * dpi / 96}else{0};
     let row_height = (32 * dpi / 96).max(1);
     let button_width = (105 * dpi / 96).max(1);
     let columns = (r.right.max(1) / button_width).max(1) as usize;
     let max_rows =
         ((r.bottom - sh - (80 * dpi / 96)).max(row_height) / row_height).clamp(1, 3) as usize;
     let capacity = columns.saturating_mul(max_rows);
-    let overflow = toolbar.len() > capacity;
+    let toolbar_len=if panels.toolbar{toolbar.len()}else{0};
+    let overflow = toolbar_len > capacity;
     let visible_count = if overflow {
         capacity.saturating_sub(1)
     } else {
-        toolbar.len()
+        toolbar_len
     };
     let occupied = visible_count + usize::from(overflow);
     let rows = if occupied == 0 {
@@ -1100,6 +1109,7 @@ unsafe fn layout(hwnd: HWND) {
         ShowWindow(toolbar_more, SW_HIDE);
     }
     if grid {
+        ShowWindow(list,if visible&&STATE.with(|s|s.borrow().as_ref().unwrap().app.grid_sheets().is_some()){SW_SHOW}else{SW_HIDE});
         if !ruler_horizontal.is_null() {
             ShowWindow(ruler_horizontal, SW_HIDE);
             ShowWindow(ruler_vertical, SW_HIDE);
@@ -1107,7 +1117,7 @@ unsafe fn layout(hwnd: HWND) {
         let height = (r.bottom - sh - bar_height).max(0);
         let top = height * 3 / 4;
         let sheet_width =
-            if STATE.with(|s| s.borrow().as_ref().unwrap().app.grid_sheets().is_some()) {
+            if visible && STATE.with(|s| s.borrow().as_ref().unwrap().app.grid_sheets().is_some()) {
                 (180 * dpi / 96).min(r.right / 3)
             } else {
                 0
@@ -1132,6 +1142,7 @@ unsafe fn layout(hwnd: HWND) {
         MoveWindow(status, 0, r.bottom - sh, r.right, sh, 1);
         return;
     }
+    ShowWindow(list,if visible{SW_SHOW}else{SW_HIDE});
     let left = if visible {
         (240 * dpi / 96).min(r.right / 2)
     } else {
@@ -1439,9 +1450,10 @@ unsafe fn remember_window_layout(hwnd: HWND) {
     let maximized = placement.showCmd == SW_SHOWMAXIMIZED as u32
         || (placement.showCmd == SW_SHOWMINIMIZED as u32
             && placement.flags & WPF_RESTORETOMAXIMIZED != 0);
-    if let Some(layout) =
+    if let Some(mut layout) =
         crate::window_layout::Layout::new([r.left, r.top, r.right, r.bottom], maximized)
     {
+        layout.panels=STATE.with(|state|state.borrow().as_ref().unwrap().panels);
         // A preference write failure must not prevent closing a saved document.
         let _ = crate::window_layout::save(app, &layout);
     }
@@ -2371,6 +2383,24 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
         }
         return;
     }
+    if matches!(id,TOGGLE_SIDEBAR|TOGGLE_TOOLBAR|TOGGLE_STATUS|TOGGLE_RULERS){
+        STATE.with(|slot|{
+            let mut slot=slot.borrow_mut();let s=slot.as_mut().unwrap();if s.fullscreen.is_some(){return}
+            match id{
+                TOGGLE_SIDEBAR if s.app.list_visible()=>s.panels.sidebar=!s.panels.sidebar,
+                TOGGLE_TOOLBAR=>s.panels.toolbar=!s.panels.toolbar,
+                TOGGLE_STATUS=>s.panels.status=!s.panels.status,
+                TOGGLE_RULERS if s.app.rich_ruler().is_some()=>s.panels.rulers=!s.panels.rulers,
+                _=>{}
+            }
+        });
+        let previous_focus=GetFocus();
+        layout(hwnd);sync_panel_menu();remember_window_layout(hwnd);
+        if previous_focus.is_null()||IsWindowVisible(previous_focus)==0{
+            let target=STATE.with(|slot|{let slot=slot.borrow();let s=slot.as_ref().unwrap();if IsWindowVisible(s.table)!=0{s.table}else if IsWindowVisible(s.edit)!=0{s.edit}else{s.canvas}});SetFocus(target);
+        }
+        DrawMenuBar(hwnd);return;
+    }
     if id==CHECK_SPELLING{
         let edit=STATE.with(|slot|{let slot=slot.borrow();let state=slot.as_ref().unwrap();(state.app.uses_rich_edit()&&!state.app.text_readonly()&&IsWindowVisible(state.edit)!=0&&state.async_open.is_none()).then_some(state.edit)});
         if let Some(edit)=edit{if let Err(error)=crate::proofing::show(hwnd,edit,|range,value,expected|native_spelling_replace(edit,range,value,expected)){msg(hwnd,&crate::localization::text(&error),MB_OK|MB_ICONERROR);}}
@@ -2987,6 +3017,13 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
         }
     }
 }
+unsafe fn sync_panel_menu(){
+    let (menu,items)=STATE.with(|slot|{let slot=slot.borrow();let s=slot.as_ref().unwrap();(s.menu,[(TOGGLE_SIDEBAR,s.app.list_visible(),s.panels.sidebar),(TOGGLE_TOOLBAR,!s.toolbar.is_empty(),s.panels.toolbar),(TOGGLE_STATUS,true,s.panels.status),(TOGGLE_RULERS,s.app.rich_ruler().is_some(),s.panels.rulers)])});
+    for (id,available,shown) in items{
+        EnableMenuItem(menu,id as u32,MF_BYCOMMAND|if available{MF_ENABLED}else{MF_GRAYED});
+        CheckMenuItem(menu,id as u32,MF_BYCOMMAND|if available&&shown{MF_CHECKED}else{MF_UNCHECKED});
+    }
+}
 unsafe fn update_caption() {
     let (h, status, menu, title, info, u, r, actions) = STATE.with(|s| {
         let s = s.borrow();
@@ -3065,6 +3102,7 @@ unsafe fn update_caption() {
         CANCEL_OPEN as u32,
         MF_BYCOMMAND | if opening { MF_ENABLED } else { MF_GRAYED },
     );
+    sync_panel_menu();
     DrawMenuBar(h);
 }
 unsafe fn select_grid_cell(row: usize, col: Option<usize>) {
@@ -3659,6 +3697,8 @@ pub fn run(app: Box<dyn App>) {
             wide(&crate::localization::menu("&Edit")).as_ptr(),
         );
         let view = CreatePopupMenu();
+        for (id,title) in [(TOGGLE_SIDEBAR,"Show Sidebar"),(TOGGLE_TOOLBAR,"Show Toolbar"),(TOGGLE_STATUS,"Show Status Bar"),(TOGGLE_RULERS,"Show Rulers")]{item(view,id,title);}
+        AppendMenuW(view,MF_SEPARATOR,0,null());
         for &(id, title) in app.view_actions() {
             item(view, id, title);
         }
@@ -3756,6 +3796,7 @@ pub fn run(app: Box<dyn App>) {
         );
         STATE.with(|s| {
             *s.borrow_mut() = Some(State {
+                panels:crate::window_layout::load(app.name()).map(|layout|layout.panels).unwrap_or_default(),
                 app,
                 calibrate_print: false,
                 deferred_commands: Vec::new(),

@@ -4,12 +4,37 @@ use std::{
     io::Read,
     path::{Path, PathBuf},
 };
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+pub(crate) struct Panels {
+    pub sidebar: bool,
+    pub toolbar: bool,
+    pub status: bool,
+    pub rulers: bool,
+}
+impl Default for Panels {
+    fn default() -> Self {
+        Self {
+            sidebar: true,
+            toolbar: true,
+            status: true,
+            rulers: true,
+        }
+    }
+}
+impl Panels {
+    fn is_default(&self) -> bool {
+        *self == Self::default()
+    }
+}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Layout {
     version: u8,
     pub normal: [i32; 4],
     pub maximized: bool,
+    #[serde(default, skip_serializing_if = "Panels::is_default")]
+    pub panels: Panels,
 }
 impl Layout {
     pub fn new(normal: [i32; 4], maximized: bool) -> Option<Self> {
@@ -17,6 +42,7 @@ impl Layout {
             version: 1,
             normal,
             maximized,
+            panels: Panels::default(),
         };
         layout.valid().then_some(layout)
     }
@@ -91,9 +117,18 @@ mod tests {
         let layout = Layout::new([-800, 40, 0, 640], true).unwrap();
         write_at(&path, &layout).unwrap();
         assert_eq!(read_at(&path), Some(layout));
-        let second = Layout::new([40, 50, 940, 650], false).unwrap();
+        let mut second = Layout::new([40, 50, 940, 650], false).unwrap();
+        second.panels = Panels {
+            sidebar: false,
+            toolbar: false,
+            status: false,
+            rulers: false,
+        };
         write_at(&path, &second).unwrap();
         assert_eq!(read_at(&path), Some(second));
+        let old = r#"{"version":1,"normal":[0,0,800,600],"maximized":false}"#;
+        std::fs::write(&path, old).unwrap();
+        assert_eq!(read_at(&path).unwrap().panels, Panels::default());
         for text in [
             r#"{"version":2,"normal":[0,0,800,600],"maximized":false}"#,
             r#"{"version":1,"normal":[0,0,-1,600],"maximized":false}"#,

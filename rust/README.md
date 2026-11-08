@@ -719,7 +719,7 @@ The portable workspace passes 490 tests (zero failures, one optional test ignore
 compile. The forced-termination native recovery audit now includes IMG42 and verifies exact rotated PNG
 pixels, Cancel, independent save, cleanup and reopen. This new adapter awaits its Windows run.
 
-### Goal Seek (Windows GUI audit pending)
+### Goal Seek
 
 XLS42's **Tools → Goal Seek…** accepts a formula cell, numeric target and one empty/numeric variable cell
 on the current sheet. It computes on a frozen workbook in a cancelable background job; the live cells,
@@ -731,11 +731,11 @@ cell validation/protection path and form one Undo step; a changed workbook refus
 The bounded calculation uses the macOS secant method with a bisection fallback. It freezes calculation time,
 retains cross-sheet dependencies and full precision, and refuses nonnumeric/unsupported formulas and false
 convergence across a discontinuity. Limits are 1,000 evaluations and ten seconds; cancellation is checked
-between evaluations. This implements one-variable Goal Seek; the multivariable Solver remains open.
+between evaluations. The multivariable constrained Solver is described below.
 Portable regressions cover the Mac square-root/loan examples, cross-sheet references, blank-cell semantics,
 bisection, cancellation, stale state, final validation, protection and complete Undo/Redo. Workspace:
 496 passed, zero failed, one optional test ignored; Windows GNU targets compile. Native confirmation,
-No/Yes, saved values, source preservation, protection, Undo/Redo and reopen checks await Windows CI.
+No/Yes, saved values, source preservation, protection, Undo/Redo and reopen checks pass in Windows run 42445809138.
 
 Focused Windows run 42445175112 catches a native DOC picture-projection refusal and the IMG recovery
 extension guard; those GUI scenarios are not yet verified. The private IMG extension now has an explicit
@@ -748,7 +748,7 @@ Windows typing failure remains under native verification.
 
 Focused native run 42445809138 passes all six app groups on 8437ea8. Goal Seek's No/Yes, unchanged
 source/formulas/other cells, numeric square-root value (1.414213562373095), complete one-step Undo/Redo,
-save/reopen, unreachable target and protection checks actually pass. The full multivariable Solver is pending.
+save/reopen, unreachable target and protection checks actually pass. Constrained Solver verification is recorded below.
 
 ### Native document projection compatibility
 
@@ -786,7 +786,7 @@ Cancel/focus, insertion/table/range styles, paragraph alignment, original pictur
 and persistence pass; the resulting document screenshot was inspected. This precedes the rescan addition.
 Native formatting toggle buttons now display their authoritative checked state in the compact toolbar.
 
-### Constrained Solver (Windows native audit pending)
+### Constrained Solver
 
 XLS42's **Tools → Solver…** edits a sheet's objective (maximum, minimum or target value), variable cells,
 constraints (`<=`, `>=`, `=`, `integer`, `binary`), non-negative assumption and linear/nonlinear method in
@@ -804,7 +804,7 @@ names/package parts stay intact; unsupported or invalid models remain opaque. St
 model references; deleting its objective clears the model. Portable tests cover linear/integer/binary/free
 variables, numeric/reference RHS, nonlinear/target cases, infeasible versus unbounded integer relaxations,
 readonly trials, cancel, stale state, final validation, history and independent Office imports. Native UI
-assertions are added; actual Windows dispatch and rendered dialog coverage await the next compatible build.
+assertions pass in run 42453016096, including actual Windows dispatch and the inspected dialog capture.
 
 
 Windows run 42453016096 (558ea36) passes all 37 native groups with 520 passing MSVC tests, no failures and one
@@ -823,3 +823,13 @@ It checks a selected range or the current editor's text. Work is bounded to a mi
 check chunks, eight million checked units and 1,000 review steps. Windows language-pack availability applies;
 interface translation does not install a spelling dictionary, and this feature does not promise full grammar review.
 Native engine/range and actual DOC correction/format/table/image/history/reopen assertions are added but pending.
+
+
+### Shared window panels (native verification pending)
+
+View offers checked entries for the sidebar, toolbar, status bar and available document rulers. Hidden panels
+release their space to the document; normal application commands stay in their menus. Each app remembers these
+choices with its window placement without changing document contents or Undo history. Old placement files keep
+all panels enabled by default; unavailable panels are disabled in the menu. Fullscreen slide shows retain their
+existing presentation layout. Portable preference round trips/corruption checks pass; native six-app toggle,
+geometry, history and relaunch assertions are added and await a compatible Windows build.

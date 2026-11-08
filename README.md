@@ -70,7 +70,7 @@ scanner hardware and full macOS feature parity remain unverified. The developmen
 picker and bundled catalogs; menu/prompt checks pass on twenty languages in Windows CI. Successful-file recents
 are also implemented. PDF page-list extraction, per-page ZIP exports, editable page labels and engineering spreadsheet functions are also
 implemented on the development branch. Goal Seek has passed native value/history/reopen checks; a constrained
-Solver with persisted XLSX/ODS models is implemented and awaiting its native audit. These changes
+Solver with persisted XLSX/ODS models has also passed native value/history and independent-import checks. These changes
 have not yet shipped in the downloadable Windows preview.
 
 <a id="install"></a>

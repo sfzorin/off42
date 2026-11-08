@@ -881,3 +881,9 @@ validates returned ranges. Dialogs expose only installed languages and readonly 
 revalidates the original projection, captures native RTF, suppresses generated control notifications, and commits
 through the app's guarded rich-text adapter; refusal restores the native projection and selection. No dictionary
 writes or automatic correction are performed; Skip All is limited to that checker session.
+
+Shared Windows panel visibility belongs to each native window, separately from document history. It combines
+application availability with user visibility, and the existing DPI layout reclaims sidebar/toolbar/status/ruler
+space. `Window Layout` preferences persist the visibility flags with the normal placement; default flags are
+omitted to retain the old placement representation. Generated UI controls still exist while hidden, so their
+commands and document models remain available. Menu checks reflect availability and current visibility.

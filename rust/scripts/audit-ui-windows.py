@@ -2747,6 +2747,33 @@ def audit_window_layout(bin_dir,output):
             assert u.SetWindowPos(main,None,70,80,800,560,0x14)
             expected=placement(main)
             assert expected[2]-expected[0]==800 and expected[3]-expected[1]==560
+            def body_rect():
+                children=windows(process.pid,main)
+                body=next((h for h in children if u.IsWindowVisible(h)and u.GetDlgCtrlID(h)==102),None)or next((h for h in children if u.IsWindowVisible(h)and u.GetDlgCtrlID(h)==101),None)or next(h for h in children if u.IsWindowVisible(h)and'canvas'in classname(h).lower())
+                value=w.RECT();assert u.GetWindowRect(body,c.byref(value));return(value.left,value.top,value.right-value.left,value.bottom-value.top)
+            def hidden_panels():
+                children=windows(process.pid,main)
+                return not any(u.IsWindowVisible(h)for h in children if classname(h).lower()in{'button','static'})
+            caption=text(main);history=[u.GetMenuState(u.GetMenu(main),i,0)for i in(4,5)];before=body_rect()
+            toggles=[i for i in(65503,65502,65501,65500)if u.GetMenuState(u.GetMenu(main),i,0)&3==0]
+            assert 65502 in toggles and 65501 in toggles
+            names={65503:'sidebar',65502:'toolbar',65501:'status',65500:'rulers'}
+            for identifier in toggles:
+                assert u.GetMenuState(u.GetMenu(main),identifier,0)&8
+                command(main,identifier);wait_for(lambda:u.GetMenuState(u.GetMenu(main),identifier,0)&8==0,'panel hidden '+str(identifier)+' '+app,process)
+            wait_for(hidden_panels,'toolbar/status hidden '+app,process)
+            after=body_rect();assert after[0]<=before[0]and after[1]<=before[1]and after[2]>=before[2]and after[3]>=before[3],(app,before,after)
+            assert text(main)==caption and[u.GetMenuState(u.GetMenu(main),i,0)for i in(4,5)]==history
+            stored=json.loads(preferences.read_text(encoding='utf-8'));assert all(stored['panels'][names[i]]is False for i in toggles)
+            if app in{'DOC42','XLS42'}:capture_window(main,output/(app+'-panels-hidden.bmp'))
+            u.PostMessageW(main,WM_CLOSE,0,0);process.wait(timeout=5)
+            process,main=launch();wait_for(hidden_panels,'panel preferences restored '+app,process)
+            assert all(u.GetMenuState(u.GetMenu(main),i,0)&8==0 for i in toggles)
+            for identifier in toggles:
+                command(main,identifier);wait_for(lambda:u.GetMenuState(u.GetMenu(main),identifier,0)&8,'panel restored '+str(identifier)+' '+app,process)
+            wait_for(lambda:body_rect()==before,'exact document area restored '+app,process)
+            assert text(main)==caption and[u.GetMenuState(u.GetMenu(main),i,0)for i in(4,5)]==history
+            result['checks'].append(app+': toolbar/status and available sidebar/rulers toggle through View, reclaim document area, preserve caption/history, persist across relaunch and restore exact geometry')
             u.PostMessageW(main,WM_CLOSE,0,0);process.wait(timeout=5)
             saved=json.loads(preferences.read_text(encoding="utf-8"))
             assert saved=={"version":1,"normal":expected,"maximized":False}
