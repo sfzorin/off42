@@ -80,7 +80,7 @@ mod tests {
     use std::io::{Cursor, Read, Write};
     #[test]
     fn whole_axis_ranges_qualified_names_and_implicit_empty_references_have_excel_boundaries() {
-        let mut b = Workbook::new(20, 8).unwrap();
+        let mut b = Workbook::new(40, 8).unwrap();
         b.rename_sheet(1, "Data's sheet").unwrap();
         for (r, c, text) in [(0, 0, "10"), (19, 0, "20"), (2, 1, "text"), (3, 1, "=\"\"")] {
             b.set_cell(r, c, text.into()).unwrap();
@@ -103,6 +103,30 @@ mod tests {
             ("=OFFSET(A1048576,1,0)", "#REF!"),
             ("=XFE1", "#REF!"),
             ("=A1048577", "#REF!"),
+            ("=COUNTIF('Data''s sheet'!A:A,\">10\")", "1"),
+            ("=COUNTIF('Data''s sheet'!B:B,\"\")", "1048575"),
+            (
+                "=COUNTIFS('Data''s sheet'!A:A,\"\",'Data''s sheet'!B:B,\"\")",
+                "1048573",
+            ),
+            (
+                "=SUMIFS('Data''s sheet'!A:A,'Data''s sheet'!B:B,\"\")",
+                "30",
+            ),
+            (
+                "=AVERAGEIF('Data''s sheet'!B:B,\"\",'Data''s sheet'!A:A)",
+                "15",
+            ),
+            (
+                "=MAXIFS('Data''s sheet'!A:A,'Data''s sheet'!B:B,\"\")",
+                "20",
+            ),
+            (
+                "=MINIFS('Data''s sheet'!A:A,'Data''s sheet'!B:B,\"\")",
+                "10",
+            ),
+            ("=COUNTIF('Data''s sheet'!1:1,\"\")", "16383"),
+            ("=COUNTIF('Data''s sheet'!B:B,\"te?t\")", "1"),
         ];
         for (r, (f, _)) in cases.iter().enumerate() {
             b.set_cell(r, 0, (*f).into()).unwrap();

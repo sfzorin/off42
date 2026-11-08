@@ -12,6 +12,7 @@ mod statistics;
 mod text;
 mod units;
 mod sparse_ranges;
+mod conditional_ranges;
 mod axis_references;
 use crate::{CellContent, SheetId, Workbook};
 use std::collections::{HashMap, HashSet};
@@ -1389,7 +1390,10 @@ impl Parser<'_, '_> {
             if !self.take(b')') {
                 return Value::Error("#ERROR!");
             }
-            Some(selected)
+            match conditional_ranges::aligned_target(selected, criteria[0].0) {
+                Ok(target) => Some(target),
+                Err(e) => return Value::Error(e),
+            }
         } else {
             aggregate
         };
@@ -1403,73 +1407,7 @@ impl Parser<'_, '_> {
         {
             return Value::Error("#VALUE!");
         }
-        let mut sum = 0.0;
-        let mut count = 0usize;
-        let mut extremum: Option<f64> = None;
-        for row in 0..height {
-            for col in 0..width {
-                let mut matched = true;
-                for (range, criterion) in &criteria {
-                    self.eval.steps = self.eval.steps.saturating_add(1);
-                    if self.eval.steps > MAX_STEPS {
-                        return Value::Error("#LIMIT!");
-                    }
-                    let r = range.1 + row;
-                    let c = range.2 + col;
-                    let raw = self.eval.raw(range.0, r, c).unwrap_or("").to_owned();
-                    let value = self.eval.cell(range.0, r, c, self.depth + 1);
-                    if let Value::Text(spec) = criterion {
-                        if spec.contains(['*', '?', '~']) {
-                            self.eval.steps = self
-                                .eval
-                                .steps
-                                .saturating_add(spec.len().saturating_mul(raw.len()));
-                            if self.eval.steps > MAX_STEPS {
-                                return Value::Error("#LIMIT!");
-                            }
-                        }
-                    }
-                    if !criterion_matches(&value, &raw, criterion) {
-                        matched = false;
-                        break;
-                    }
-                }
-                if !matched {
-                    continue;
-                }
-                if let Some(target) = aggregate {
-                    match self.eval.range_cell(
-                        target.0,
-                        target.1 + row,
-                        target.2 + col,
-                        self.depth + 1,
-                    ) {
-                        Some(Value::Number(n)) => {
-                            sum += n;
-                            extremum = Some(extremum.map_or(n, |old| {
-                                if name == "MINIFS" {
-                                    old.min(n)
-                                } else {
-                                    old.max(n)
-                                }
-                            }));
-                            count += 1;
-                        }
-                        Some(Value::Error(e)) => return Value::Error(e),
-                        _ => {}
-                    }
-                } else {
-                    count += 1;
-                }
-            }
-        }
-        match name {
-            "COUNTIFS" => finite(count as f64),
-            "SUMIFS" => finite(sum),
-            "MAXIFS" | "MINIFS" => finite(extremum.unwrap_or(0.0)),
-            _ if count == 0 => Value::Error("#DIV/0!"),
-            _ => finite(sum / count as f64),
-        }
+        self.sparse_conditional(name, &criteria, aggregate)
     }
     fn range_function(&mut self, name: &str) -> Value {
         if name == "COUNTIF" || name == "SUMIF" {
@@ -1494,50 +1432,15 @@ impl Parser<'_, '_> {
             if !self.take(b')') {
                 return Value::Error("#ERROR!");
             }
-            let mut total = 0.0;
-            for r in range.1..=range.3 {
-                for c in range.2..=range.4 {
-                    self.eval.steps += 1;
-                    if self.eval.steps > MAX_STEPS {
-                        return Value::Error("#LIMIT!");
-                    }
-                    let raw = self.eval.raw(range.0, r, c).unwrap_or("").to_owned();
-                    let value = self.eval.cell(range.0, r, c, self.depth + 1);
-                    if let Value::Text(spec) = &criterion {
-                        if spec.contains(['*', '?', '~']) {
-                            let len = match &value {
-                                Value::Text(t) => t.len(),
-                                _ => raw.len(),
-                            };
-                            self.eval.steps = self
-                                .eval
-                                .steps
-                                .saturating_add(spec.len().saturating_mul(len));
-                            if self.eval.steps > MAX_STEPS {
-                                return Value::Error("#LIMIT!");
-                            }
-                        }
-                    }
-                    if criterion_matches(&value, &raw, &criterion) {
-                        if name == "COUNTIF" {
-                            total += 1.0
-                        } else {
-                            let target = sum_range.unwrap_or(range);
-                            let rr = target.1 + r - range.1;
-                            let cc = target.2 + c - range.2;
-                            if self.eval.raw(target.0, rr, cc).is_none() {
-                                return Value::Error("#REF!");
-                            }
-                            match self.eval.cell(target.0, rr, cc, self.depth + 1) {
-                                Value::Number(v) => total += v,
-                                Value::Error(e) => return Value::Error(e),
-                                _ => {}
-                            }
-                        }
-                    }
+            let target = if name == "SUMIF" {
+                match conditional_ranges::aligned_target(sum_range.unwrap_or(range), range) {
+                    Ok(target) => Some(target),
+                    Err(e) => return Value::Error(e),
                 }
-            }
-            return finite(total);
+            } else {
+                None
+            };
+            return self.sparse_conditional(name, &[(range, criterion)], target);
         }
         let needle = self.comparison();
         if let Value::Error(_) = needle {
@@ -2283,7 +2186,7 @@ fn format_formula_number(book: &Workbook, value: f64, format: &str) -> Option<St
     }
     crate::display::number_pattern(value, format.as_str())
 }
-fn criterion_matches(value: &Value, raw: &str, criterion: &Value) -> bool {
+fn criterion_matches(value: &Value, physically_blank: bool, criterion: &Value) -> bool {
     let Value::Text(spec) = criterion else {
         return lookup_equal(value, criterion);
     };
@@ -2303,11 +2206,8 @@ fn criterion_matches(value: &Value, raw: &str, criterion: &Value) -> bool {
         (5, spec.as_str())
     };
     if body.is_empty() && (op == 5 || op == 2) {
-        return if op == 5 {
-            raw.is_empty()
-        } else {
-            !raw.is_empty()
-        };
+        let blank = physically_blank || matches!(value, Value::Text(s) if s.is_empty());
+        return if op == 5 { blank } else { !blank };
     }
     let ordering = if let Ok(n) = body.parse::<f64>() {
         if let Value::Number(v) = value {

@@ -900,3 +900,12 @@ and selected-tab flags while retaining worksheet data, styles, secondary views a
 Missing view metadata is created; Undo restores the original package byte-for-byte. Native Windows tab
 commands and external saves await a compatible UI run. Complete locale/function semantics and automatic
 viewport growth remain open.
+
+COUNTIF/SUMIF, COUNTIFS/SUMIFS, AVERAGEIF/AVERAGEIFS and MINIFS/MAXIFS now evaluate large references
+without visiting every empty coordinate. Criteria and result ranges share relative offsets; implicit blank
+counts are computed algebraically, formula-empty strings count as empty, and spill values remain nonblank.
+SUMIF/AVERAGEIF align their optional target from its top-left corner; IFS ranges require equal shapes.
+Portable tests include full columns/full sheets, distant values, selected errors, wildcards, numeric-only
+averages and complete history/Office round trips. Independent XLSX/ODS packages without the native snapshot
+exercise these formulas too. The native far-cell scenario now checks their saved caches; Windows pending.
+Other function/localization semantics and materialization limits remain as described in PARITY.md.

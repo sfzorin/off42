@@ -749,3 +749,11 @@ after image selection; image unit regressions are now included in quick CI.
   the active sheet identity. Workspace 546/0/1 and GNU all targets pass. New normal Add/Switch Sheet UI
   scenario covers independent Office files, tab-only saves, complete Undo/Redo and reopen; native pending.
   Viewport growth, remaining large-reference functions and other parity entries remain open.
+
+- COUNTIF/SUMIF and the supported IFS/conditional average/extrema families now traverse occupied relative
+  offsets and compute implicit-blank counts without dense loops. Formula-empty strings and nonempty
+  spill cells are distinguished; selected errors, numeric-only averages and wildcard checks retain
+  bounded evaluation. SUMIF/AVERAGEIF optional targets use the criteria shape from their top-left corner;
+  IFS still validates equal shapes. Full-column/full-sheet and independent XLSX/ODS regressions pass.
+  Workspace 548/0/1, GNU all targets pass, fixed Swift oracle 492 pass/0 gaps/2 explicit skips. New native
+  saved-cache assertions await a compatible Windows build. Remaining function semantics stay open.

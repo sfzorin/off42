@@ -978,3 +978,11 @@ saves surgically update the first workbook view and its sheet selection flags; O
 by namespace URI and creates missing settings with a manifest entry. Other views, cell XML, styles and
 unknown ZIP members remain unchanged. Same-active-sheet reordering preserves existing grouping flags.
 Existing allocated-coordinate editing bounds and array budgets remain.
+
+Conditional reference aggregates collect the union of occupied relative offsets from all criteria and the
+optional target, including spill coordinates. Counting adds the area of omitted offsets only when all
+criteria accept a physical blank. Summing/averaging/extrema inspect typed occupied target values; numeric
+counts exclude blank/text/logical targets, while selected errors propagate. Criteria use computed emptiness,
+so formula-empty strings and nonempty spill cells are distinguished. Work for stored traversal, predicates
+and wildcard matching shares the existing evaluation budget. SUMIF/AVERAGEIF target anchoring follows the
+criteria dimensions with global bounds; IFS validates equal shapes before traversal.

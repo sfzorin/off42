@@ -1184,7 +1184,7 @@ def audit_sparse_capacity(process,main,binary,output,results):
     model=saved('seed');sheet=model['sheets'][0];sheet['rows']=1048576;sheet['cols']=16384
     sheet['cells'][0]['content']={'type':'Formula','value':{'raw':'=XFD1048576*3','crlf':False}}
     sheet['cells'].append({'row':1048575,'col':16383,'content':{'type':'Number','value':{'raw':'7','crlf':False}},'style':0})
-    for row,kind,raw,col in [(1,'Formula','=SUM(XFD:XFD)',0),(2,'Formula','=COUNTBLANK(XFD:XFD)',0),(3,'Error','#N/A',0),(1,'Text','#N/A',1)]:sheet['cells'].append({'row':row,'col':col,'content':{'type':kind,'value':{'raw':raw,'crlf':False}},'style':0})
+    for row,kind,raw,col in [(1,'Formula','=SUM(XFD:XFD)',0),(2,'Formula','=COUNTBLANK(XFD:XFD)',0),(3,'Error','#N/A',0),(1,'Text','#N/A',1),(4,'Formula','=SUMIF(XFD:XFD,">0")',0),(5,'Formula','=COUNTIF(XFD:XFD,">0")',0),(6,'Formula','=SUMIFS(XFD:XFD,XFD:XFD,">0")',0),(7,'Formula','=AVERAGEIF(XFD:XFD,">0")',0),(8,'Formula','=MINIFS(XFD:XFD,XFD:XFD,">0")',0),(9,'Formula','=COUNTIFS(XFD:XFD,"")',0)]:sheet['cells'].append({'row':row,'col':col,'content':{'type':kind,'value':{'raw':raw,'crlf':False}},'style':0})
     source=output/'sparse-full-size.xls42';source.write_text(json.dumps(model),encoding='utf-8');original=source.read_bytes();open_fixture(process,main,source)
     grid=u.GetDlgItem(main,102);assert classname(grid)=='Off42VariableGrid'
     fill_prompt(process,main,25,'Range (1-based)',['1048576','16384','1048576','16384'])
@@ -1213,6 +1213,7 @@ def audit_sparse_capacity(process,main,binary,output,results):
         with zipfile.ZipFile(path)as archive:root=ET.fromstring(archive.read('xl/worksheets/sheet1.xml'))
         values={cell.attrib['r']:cell.findtext('s:v',namespaces=ns)for cell in root.findall('.//s:c',ns)}
         assert values['XFD1048576']=='11'and values['A1']=='33'and values['A2']=='11'and values['A3']=='1048575',values
+        assert {key:values[key]for key in('A5','A6','A7','A8','A9','A10')}==dict(zip(('A5','A6','A7','A8','A9','A10'),('11','1','11','11','11','1048575'))),values
         cells={cell.attrib['r']:cell for cell in root.findall('.//s:c',ns)};assert cells['A4'].attrib.get('t')=='e'and values['A4']=='#N/A';assert cells['B2'].attrib.get('t')in('s','inlineStr'),'Error-looking text lost its distinct string type'
 
     verify_xlsx(path)
