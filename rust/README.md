@@ -537,7 +537,7 @@ Current portable verification: 457 tests pass, zero fail, one external OCR fixtu
 Windows all-targets compilation passes. Real engine pixels, packaged UI and static runtime checks are
 pending a new Windows run; this implementation is not yet the public preview.
 
-Independent OCR-layer interoperability: `pdf42-core` and `scn42-core` `ocr-fixtures` examples plus
+Independent OCR-layer interoperability: `pdf42-core` `pdf-ocr-fixtures` and `scn42-core` `scan-ocr-fixtures` examples plus
 `scripts/audit-ocr-pdf.py` verify extraction using Poppler 26.10.0. Latin, Russian, Chinese, Thai and emoji
 remain extractable; original/replaced/undone PDF layers retain identical rendered pixels for all four
 rotations with nonzero crop origins. Uncompressed and compressed scanned-PDF pixels also match exactly.
@@ -565,3 +565,25 @@ fixture ignored, all 30 existing native groups passed, and the seven-PE static r
 includes actual recognition of image pixels and verification of all twenty bundled models. New PDF/SCN/IMG
 OCR GUI workflows remain pending. Follow-up native canvas changes refresh Copy availability immediately
 after image selection; image unit regressions are now included in quick CI.
+
+### Verified OCR GUI and vector PDF label artwork
+
+Build cd1b742 / run 42430554087 passes 399 targeted MSVC tests (zero failures, one optional external OCR
+fixture ignored), all 30 existing native groups and the static runtime gate. The new PDF OCR UI scenario
+also passes. Follow-up runs 42431277055 and 42431605616 execute the formerly skipped IMG42/SCN42 branches
+on those exact binaries: real OCR, page scope, text/pixel output, history and reopen; image double-click,
+clipboard, Select All/Escape, drawing/Undo and navigation. The latter checks actual image/selection pixels;
+its inspected screenshot confirms visible highlighting. The first screenshot was captured before repaint.
+
+PDF42 now offers the current PDF page as reusable vector label artwork, with an optional PDF-coordinate
+region; selected text can supply a tightly bounded artwork region. A disposable PDFium copy flattens visible
+annotations. Label assembly keeps the source fonts/images/graphics and visible rotation/crop, fits the
+artwork proportionally into stock cells, and reuses one form for copies. Other source pages and unrelated
+metadata are not carried into the output. Limits: 64 MiB source/content, 100,000 source objects, 5,000 copies
+and 500 output pages. This source implementation and new GUI scenarios are awaiting a Windows run.
+
+Independent reference: `label42 --example artwork-fixtures`, native `scripts/label-artwork-reference.swift`
+and `scripts/audit-label-artwork.py`. All eight page/rotation comparisons match native CoreGraphics within
+one pixel for the colored artwork, with exact text/copy counts and nonzero crop origins. Evidence:
+`build/label-artwork-interop-v1/poppler-v1/results.json`. Portable workspace: 463 pass, zero fail, one optional
+external OCR fixture ignored. GNU all-targets compilation passes.

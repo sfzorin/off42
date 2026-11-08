@@ -1,3 +1,5 @@
+mod artwork;
+pub use artwork::sheet_pdf_artwork_stock;
 use std::{fmt::Write as _, sync::OnceLock};
 
 use serde::{Deserialize, Serialize};

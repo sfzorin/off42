@@ -784,3 +784,8 @@ Image analysis captures an immutable shared raster and checks its pixel identity
 recognized words. Viewing sessions reset on file/frame navigation; drawing changes invalidate the cache
 before another worker result can be accepted. Selection tint is a disposable display buffer. Applications
 may omit infrequent command specifications from the toolbar while retaining menu items and accelerators.
+
+PDF label artwork is an independent single-page snapshot. Native PDFium flattening runs under the shared
+PDFium lock; the portable label renderer clips and normalizes page geometry inside one reusable form and
+prunes unrelated source objects. Layout preferences retain stock/copies only. Source choices can carry
+individual capture failures, so unavailable artwork does not disable other label inputs.

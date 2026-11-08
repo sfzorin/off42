@@ -1,12 +1,20 @@
 use crate::{InputRequest, LabelSource};
 use label42::{Format, Label, Stock, MAX_LABELS};
 
-pub(crate) fn sheet_request(source: &LabelSource) -> InputRequest {
+pub(crate) fn sheet_request(source: &LabelSource) -> Result<InputRequest,String> {
+    if let LabelSource::Unavailable(error)=source {return Err(error.clone());}
+    if let LabelSource::PdfArtwork{region,..}=source {
+        return Ok(InputRequest{title:"Create Artwork Label Sheet",fields:vec![
+            ("Optional region: left, bottom, width, height (PDF points)",region.map(|r|format!("{}, {}, {}, {}",r[0],r[1],r[2]-r[0],r[3]-r[1])).unwrap_or_default()),
+            ("Stock name or width, height, gaps (mm)","70, 37, 0, 0".into()),
+            ("Copies, first slot (top left = 1)","1, 1".into())]});
+    }
     let mut fields = match source {
         LabelSource::Text(text) => vec![
             ("Label text", text.clone()),
             ("Barcode value (optional)", String::new()),
         ],
+        LabelSource::PdfArtwork{..}|LabelSource::Unavailable(_)=>unreachable!(),
         LabelSource::Rows(rows) => {
             let columns = rows.first().map_or(0, |(_, values)| values.len());
             let defaults = (1..=columns.min(3))
@@ -33,10 +41,10 @@ pub(crate) fn sheet_request(source: &LabelSource) -> InputRequest {
         ),
         ("Copies per label, first slot (top left = 1)", "1, 1".into()),
     ]);
-    InputRequest {
+    Ok(InputRequest {
         title: "Create Label Sheet",
         fields,
-    }
+    })
 }
 
 pub(crate) fn barcode_choices() -> Vec<(usize, Vec<String>)> {
@@ -104,10 +112,7 @@ fn numbers<T: std::str::FromStr, const N: usize>(
         .map_err(|_| format!("Enter {N} comma-separated values for {label}."))
 }
 
-pub(crate) fn sheet_output(source: &LabelSource, fields: &[String]) -> Result<Vec<u8>, String> {
-    let [first, second, format, size, print] = fields else {
-        return Err("Invalid label settings.".into());
-    };
+fn stock_from_text(size:&str)->Result<Stock,String> {
     let stock = if let Some(stock) = Stock::catalog()?.iter().find(|stock| {
         stock.id.eq_ignore_ascii_case(size.trim()) || stock.name.eq_ignore_ascii_case(size.trim())
     }) {
@@ -116,8 +121,28 @@ pub(crate) fn sheet_output(source: &LabelSource, fields: &[String]) -> Result<Ve
         let [width, height, horizontal_gap, vertical_gap] = numbers(size, "label size")?;
         Stock::custom(width, height, horizontal_gap, vertical_gap)?
     };
+    Ok(stock)
+}
+#[cfg(windows)]
+pub(crate) fn artwork_choices()->Result<Vec<(usize,Vec<String>)>,String>{
+    Ok(vec![(1,Stock::catalog()?.iter().map(|stock|stock.name.clone()).collect())])
+}
+
+pub(crate) fn sheet_output(source: &LabelSource, fields: &[String]) -> Result<Vec<u8>, String> {
+    if let LabelSource::Unavailable(error)=source {return Err(error.clone());}
+    if let LabelSource::PdfArtwork{bytes,region}=source {
+        let [area,size,print]=fields else{return Err("Invalid artwork label settings".into());};
+        let selected=if area.trim().is_empty(){*region}else{let [x,y,w,h]=numbers::<f64,4>(area,"PDF artwork region")?;if ![x,y,w,h].iter().all(|v|v.is_finite())||w<=0.||h<=0.{return Err("Choose a positive PDF artwork region".into());}Some([x,y,x+w,y+h])};
+        let stock=stock_from_text(size)?;let[copies,first_slot]=numbers(print,"copies and first slot")?;
+        return label42::sheet_pdf_artwork_stock(&stock,first_slot,copies,bytes,selected);
+    }
+    let [first, second, format, size, print] = fields else {
+        return Err("Invalid label settings.".into());
+    };
+    let stock=stock_from_text(size)?;
     let [copies, first_slot] = numbers(print, "copies and first slot")?;
     let labels = match source {
+        LabelSource::PdfArtwork{..}|LabelSource::Unavailable(_)=>unreachable!(),
         LabelSource::Text(_) => vec![Label {
             text: first.trim().into(),
             code: (!second.is_empty()).then(|| second.clone()),

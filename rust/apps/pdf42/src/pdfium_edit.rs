@@ -83,6 +83,7 @@ struct Api {
     destroy_obj: unsafe extern "system" fn(H),
     generate: unsafe extern "system" fn(H) -> i32,
     save: unsafe extern "system" fn(H, *mut FileWrite, u32) -> i32,
+    flatten: unsafe extern "system" fn(H, i32) -> i32,
 }
 impl Drop for Api {
     fn drop(&mut self) {
@@ -209,6 +210,7 @@ impl Api {
                 "FPDF_SaveAsCopy",
                 unsafe extern "system" fn(H, *mut FileWrite, u32) -> i32
             ),
+            flatten:sym!("FPDFPage_Flatten",unsafe extern "system" fn(H,i32)->i32),
         };
         init();
         Ok(api)
@@ -272,6 +274,21 @@ impl<'a> Session<'a> {
         String::from_utf16(&buf).map_err(|_| "Invalid text object Unicode".into())
     }
 }
+/// Flatten a disposable single-page snapshot, leaving the live document/history untouched.
+pub fn flatten_for_artwork(bytes:&[u8])->Result<Vec<u8>,String>{
+    if bytes.is_empty()||bytes.len()>64*1024*1024{return Err("Label source exceeds 64 MB".into());}
+    let _guard=crate::search::PDFIUM_LOCK.lock().map_err(|_|"PDFium lock failed")?;
+    unsafe {
+        let api=Api::open()?;let mut session=Session::open(&api,bytes,0)?;
+        (api.close_text)(session.text);session.text=std::ptr::null_mut();
+        // FLAT_NORMALDISPLAY; 1 = flattened, 2 = no visible appearances to flatten.
+        if !matches!((api.flatten)(session.page,0),1|2){return Err("PDFium could not flatten label annotations".into());}
+        let mut writer=FileWrite{version:1,write:write_block,data:Vec::new(),failed:false};
+        if (api.save)(session.doc,&mut writer,2)==0||writer.failed||writer.data.len()>64*1024*1024{return Err("Cannot create the independent PDF label source".into());}
+        Ok(writer.data)
+    }
+}
+
 #[derive(Debug)]
 struct ObjectEvidence {
     kind: i32,
@@ -702,5 +719,24 @@ mod tests {
         .unwrap()
         .unwrap();
         assert_eq!(inspect(&cyrillic, 0, [25., 45.]).unwrap().text, "Привет");
+    }
+}
+
+#[cfg(test)]
+mod label_artwork_tests {
+    use super::*;
+    #[test]
+    fn disposable_label_source_flattens_visible_annotations_and_retains_page_text(){
+        use lopdf::{dictionary,Document,Object,Stream};
+        let mut source=Document::with_version("1.7");let root=source.new_object_id();
+        let font=source.add_object(dictionary!{"Type"=>"Font","Subtype"=>"Type1","BaseFont"=>"Helvetica"});
+        let body=source.add_object(Stream::new(dictionary!{},b"BT /F1 14 Tf 20 120 Td (ARTWORK-TEXT) Tj ET".to_vec()));
+        let page=source.add_object(dictionary!{"Type"=>"Page","Parent"=>root,"MediaBox"=>vec![0.into(),0.into(),200.into(),200.into()],"Resources"=>dictionary!{"Font"=>dictionary!{"F1"=>font}},"Contents"=>body});
+        source.objects.insert(root,Object::Dictionary(dictionary!{"Type"=>"Pages","Kids"=>vec![Object::Reference(page)],"Count"=>1}));let catalog=source.add_object(dictionary!{"Type"=>"Catalog","Pages"=>root});source.trailer.set("Root",catalog);let mut bytes=Vec::new();source.save_to(&mut bytes).unwrap();
+        let mut core=pdf42_core::PdfDocument::from_edited_snapshot(&bytes,0).unwrap();core.add_annotation(0,pdf42_core::AnnotationKind::Rectangle,[20.,30.,80.,60.],"").unwrap();let original=core.save_snapshot().unwrap().0;
+        let flattened=flatten_for_artwork(&original).unwrap();let parsed=Document::load_mem(&flattened).unwrap();let page=parsed.get_pages()[&1];
+        if let Ok(annotations)=parsed.get_dictionary(page).unwrap().get(b"Annots") {assert!(parsed.dereference(annotations).unwrap().1.as_array().unwrap().is_empty());}
+        assert_eq!(crate::search::find(&flattened,"ARTWORK-TEXT",1).unwrap().len(),1);
+        assert_eq!(core.save_snapshot().unwrap().0,original);
     }
 }

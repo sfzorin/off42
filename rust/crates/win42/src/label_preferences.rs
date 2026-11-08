@@ -48,7 +48,7 @@ fn path(directory: &Path, app: &str, source: &LabelSource) -> Result<PathBuf, St
         "{app}-{}.json",
         if matches!(source, LabelSource::Rows(_)) {
             "rows"
-        } else {
+        } else if matches!(source,LabelSource::PdfArtwork{..}) {"artwork"} else {
             "text"
         }
     )))
@@ -86,6 +86,10 @@ pub(crate) fn restore(
         return Err("Label profile is too large".into());
     }
     let profile: Profile = serde_json::from_slice(&data).map_err(|error| error.to_string())?;
+    if matches!(source,LabelSource::PdfArtwork{..}) {
+        if !valid(&profile)||request.fields.len()!=3{return Err("Invalid artwork label preferences".into());}
+        request.fields[1].1=profile.stock;request.fields[2].1=profile.copies_and_start;return Ok(());
+    }
     if !valid(&profile) || request.fields.len() != 5 {
         return Err("Invalid label preferences".into());
     }
@@ -106,6 +110,11 @@ pub(crate) fn save(
     source: &LabelSource,
     fields: &[String],
 ) -> Result<(), String> {
+    let artwork;
+    let fields=if matches!(source,LabelSource::PdfArtwork{..}) {
+        let [_,stock,copies]=fields else{return Err("Invalid artwork label preferences".into());};
+        artwork=[String::new(),String::new(),"PDF artwork".into(),stock.clone(),copies.clone()];&artwork[..]
+    }else{fields};
     let [first, second, format, stock, copies] = fields else {
         return Err("Invalid label preferences".into());
     };
@@ -159,7 +168,7 @@ mod tests {
         save(dir.path(), "DOC42", &source, &fields).unwrap();
         let raw = std::fs::read_to_string(path(dir.path(), "DOC42", &source).unwrap()).unwrap();
         assert!(!raw.contains("private"));
-        let mut request = crate::production::sheet_request(&source);
+        let mut request = crate::production::sheet_request(&source).unwrap();
         restore(dir.path(), "DOC42", &source, &mut request).unwrap();
         assert_ne!(request.fields[0].1, "private name");
         assert_ne!(request.fields[1].1, "private code");
@@ -170,12 +179,12 @@ mod tests {
         ]);
         let fields = ["2", "1, 0, 1", "Aztec", "70, 37, 0, 0", "1, 4"].map(String::from);
         save(dir.path(), "XLS42", &rows, &fields).unwrap();
-        let mut request = crate::production::sheet_request(&rows);
+        let mut request = crate::production::sheet_request(&rows).unwrap();
         restore(dir.path(), "XLS42", &rows, &mut request).unwrap();
         assert_eq!(request.fields[0].1, "2");
         assert_eq!(request.fields[1].1, "1, 0, 1");
         let different = LabelSource::Rows(vec![(1, vec!["Code".into(), "Name".into()])]);
-        let mut request = crate::production::sheet_request(&different);
+        let mut request = crate::production::sheet_request(&different).unwrap();
         let first = request.fields[0].1.clone();
         let second = request.fields[1].1.clone();
         restore(dir.path(), "XLS42", &different, &mut request).unwrap();
@@ -187,5 +196,18 @@ mod tests {
         let raw = std::fs::read_to_string(path(dir.path(), "XLS42", &rows).unwrap()).unwrap();
         assert!(!raw.contains("private"));
         assert!(!raw.contains("Name"));
+    }
+}
+
+#[cfg(test)]
+mod artwork_tests {
+    use super::*;
+    #[test]
+    fn remembers_artwork_stock_without_pdf_bytes_or_private_region(){
+        let directory=tempfile::tempdir().unwrap();let source=LabelSource::PdfArtwork{bytes:b"PRIVATE PDF DATA".to_vec(),region:Some([10.,20.,30.,40.])};
+        let fields=["PRIVATE REGION","70, 37, 0, 0","3, 2"].map(str::to_string);
+        save(directory.path(),"PDF42",&source,&fields).unwrap();
+        let data=std::fs::read_to_string(path(directory.path(),"PDF42",&source).unwrap()).unwrap();assert!(!data.contains("PRIVATE"));assert!(!data.contains("10,20"));
+        let mut request=crate::production::sheet_request(&source).unwrap();let original=request.fields[0].1.clone();restore(directory.path(),"PDF42",&source,&mut request).unwrap();assert_eq!(request.fields[0].1,original);assert_eq!(request.fields[2].1,"3, 2");
     }
 }

@@ -1513,7 +1513,7 @@ unsafe fn production_command(hwnd: HWND, id: u16) -> Result<(), String> {
         LabelSource::Text(String::new())
     };
     let mut request = if is_sheet {
-        production::sheet_request(&source)
+        production::sheet_request(&source)?
     } else if id == EXPORT_TECHNICAL {
         production::technical_request()
     } else {
@@ -1527,7 +1527,9 @@ unsafe fn production_command(hwnd: HWND, id: u16) -> Result<(), String> {
         }
     }
     let multiline = is_sheet && matches!(&source, LabelSource::Text(_));
-    let choices = if is_sheet {
+    let choices = if matches!(&source,LabelSource::PdfArtwork{..}) {
+        production::artwork_choices()?
+    } else if is_sheet {
         production::sheet_choices()?
     } else if id == EXPORT_TECHNICAL {
         production::technical_choices()

@@ -13,11 +13,11 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Technical objects | Four barcode encoders, fourteen symbols, reusable PNG recipes, insertion/editing in PDF/DOC/XLS/PPT and document round trips | Full technical-object selection/placement controls and richer label artwork sources |
 | Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers | PDF artwork/region sources, preview and direct print |
 | Printing | Native dialogs, actual-size PDF scene path, optional per-printer calibration and measurement sheet | Native print-to-file output and physical driver checks |
-| PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction | Decoration font choices, richer forms, OCR, certificate signing and validation, remote signing and CryptoPro integration |
+| PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction and bounded offline OCR | Decoration font choices, richer forms, certificate signing and validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
 | XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout | Full formula semantics/syntax and locale formats, capacity/automatic expansion, legacy arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, goal seek/solver, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, show tools and export workflows |
-| IMG42 | Image decoding, transforms, adjustments, selections, text, metadata and batch output | Full markup selection/editing, smart lasso, live text, background removal, viewing panels and additional supported system codecs |
+| IMG42 | Image decoding, transforms, adjustments, selections, recognized text selection/copy, metadata and batch output | Full markup selection/editing, smart lasso, full Live Text interaction, background removal, viewing panels and additional supported system codecs |
 | SCN42 | WIA acquisition, image/PDF import, page processing, OCR and searchable output | Scan areas and rescan, device/preset controls, scan history, full export settings and physical-device checks |
 
 ## Recorded checks
@@ -453,3 +453,22 @@ fixture ignored, all 30 existing native groups passed, and the seven-PE static r
 includes actual recognition of image pixels and verification of all twenty bundled models. New PDF/SCN/IMG
 OCR GUI workflows remain pending. Follow-up native canvas changes refresh Copy availability immediately
 after image selection; image unit regressions are now included in quick CI.
+
+### OCR execution and visible painting evidence
+
+- cd1b742 build 42430554087 succeeds: 399 targeted MSVC/0 failures/1 optional external OCR ignored, all
+  30 groups and static runtime gate. PDF OCR UI executes and passes. IMG/SCN OCR branches were initially
+  skipped by an early test-script return; this was corrected, not counted as verification.
+- Focused runs 42431277055 and 42431605616 pass actual PDF/IMG/SCN OCR workflows on cd1b742. The latter
+  forces a normal repaint and asserts visible text/selection pixels; screenshot inspected. New native
+  drag-across-words coverage is added for the next build.
+
+### Vector PDF label artwork in progress
+
+- Current-page or selected-text-area PDF artwork, optional region, visible annotation flattening, shared
+  vector forms, rotation/crop, stock copies/first slot and separate layout-only preferences are implemented.
+  A failed artwork capture does not block the existing Custom Text source. Preview/direct print remain.
+- Independent native CoreGraphics/Poppler reference: eight page/rotation comparisons within one pixel, exact
+  copied text and no unrelated metadata; local evidence `build/label-artwork-interop-v1/poppler-v1/results.json`.
+- Portable workspace 463/0/1; GNU all targets compile. New native label text/pixels, annotation flattening,
+  current unsaved state and history/source checks await Windows CI. No new public release/site deployment.

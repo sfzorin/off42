@@ -80,6 +80,10 @@ pub struct FileAction {
 
 pub enum LabelSource {
     Text(String),
+    /// Keep other source choices usable if an individual artwork capture fails.
+    Unavailable(String),
+    /// Independent single-page PDF; optional region is in its unrotated PDF coordinates.
+    PdfArtwork { bytes:Vec<u8>, region:Option<[f64;4]> },
     /// Original one-based row number and rendered values from the selected columns.
     Rows(Vec<(usize, Vec<String>)>),
 }

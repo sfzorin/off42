@@ -465,6 +465,20 @@ impl win42::App for Pdf {
     fn supports_production(&self) -> bool {
         true
     }
+    fn label_sources(&self)->Result<Vec<(String,win42::LabelSource)>,String>{
+        let mut sources=vec![("Custom Text".into(),self.label_source()?)];
+        let doc=self.doc.as_ref().ok_or("Open a PDF first")?;
+        let captured=(||->Result<Vec<u8>,String>{
+            let bytes=doc.prepare_page_extraction()?.extract(&[doc.current()])?;
+            #[cfg(windows)] let bytes=pdfium_edit::flatten_for_artwork(&bytes)?;
+            Ok(bytes)
+        })();
+        #[cfg(windows)] if let Some(selection)=self.selected_text.as_ref().filter(|s|s.page==doc.current()&&!s.boxes.is_empty()) {
+            let area=selection.boxes.iter().fold([f64::INFINITY,f64::INFINITY,f64::NEG_INFINITY,f64::NEG_INFINITY],|mut area,b|{area[0]=area[0].min(b[0]);area[1]=area[1].min(b[1]);area[2]=area[2].max(b[2]);area[3]=area[3].max(b[3]);area});
+            sources.push(("Selected Text Area Artwork".into(),match &captured {Ok(bytes)=>win42::LabelSource::PdfArtwork{bytes:bytes.clone(),region:Some(area)},Err(error)=>win42::LabelSource::Unavailable(error.clone())}));
+        }
+        sources.push((format!("Page {} Artwork",doc.current()+1),match captured {Ok(bytes)=>win42::LabelSource::PdfArtwork{bytes,region:None},Err(error)=>win42::LabelSource::Unavailable(error)}));Ok(sources)
+    }
     fn label_source(&self) -> Result<win42::LabelSource, String> {
         #[cfg(windows)]
         let text = self

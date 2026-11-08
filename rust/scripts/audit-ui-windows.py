@@ -1641,6 +1641,8 @@ def audit_image_live_text(process,main,binary,output,results):
     u.SendMessageW(canvas,0x201,1,p);u.SendMessageW(canvas,0x203,1,p);u.SendMessageW(canvas,0x202,0,p)
     wait_for(lambda:not(u.GetMenuState(u.GetMenu(main),44,0)&3),'copy command enabled after text selection',process)
     command(main,44);wait_for(lambda:clipboard_text()=='offline','native double-click recognized word',process)
+    u.SendMessageW(canvas,0x201,1,point(330,110));u.SendMessageW(canvas,0x200,1,point(500,110));u.SendMessageW(canvas,0x202,0,point(500,110))
+    command(main,44);wait_for(lambda:clipboard_text()=='offline text','native drag across recognized words',process)
     command(main,46);command(main,44);wait_for(lambda:clipboard_text()==all_text,'native select all recognized text',process)
     u.SetForegroundWindow(main)
     u.RedrawWindow.argtypes=[w.HWND,c.c_void_p,w.HANDLE,w.UINT]
@@ -1670,7 +1672,42 @@ def audit_image_live_text(process,main,binary,output,results):
     results['checks'].append('offline image OCR, copy all, native double-click/select-all/Escape, exact saved image pixels, drawing over text with complete Undo, and Space navigation invalidate old recognized text')
 
 
-def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False, ocr=False, ocr_only=False):
+def audit_pdf_label_artwork(process,main,binary,output,results):
+    source=output/'label-artwork-source.pdf';minimal_pdf(source,['ARTWORK-TARGET','PRIVATE-OTHER']);original=source.read_bytes();dll=binary.parent/'pdfium.dll'
+    command(main,1);choose_file(process,source)
+    def opened():
+        if source.name in text(main)and' * - 'not in text(main)and u.IsWindowEnabled(main):return(True,None)
+        prompt=next((h for h in windows(process.pid)if classname(h)=='#32770'and u.IsWindowEnabled(h)and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
+        return(False,prompt)if prompt else None
+    ready,prompt=wait_for(opened,'artwork PDF source',process)
+    if not ready:click(prompt,7);wait_for(lambda:source.name in text(main)and' * - 'not in text(main)and u.IsWindowEnabled(main),'artwork source after discard',process)
+    command(main,10)
+    fill_prompt(process,main,21,'Crop page (PDF points)',['20','20','575','820'])
+    command(main,18);wait_for(lambda:any('Tool: Rectangle'in text(h)for h in windows(process.pid,main)),'artwork rectangle tool',process)
+    canvas=next(h for h in windows(process.pid,main)if classname(h)=='Suite42Canvas')
+    u.SendMessageW(canvas,0x201,1,(90<<16)|90);u.SendMessageW(canvas,0x200,1,(170<<16)|170);u.SendMessageW(canvas,0x202,0,(170<<16)|170)
+    fill_prompt(process,main,90,'Text Watermark',['UNSAVED-ART','60','100','0','#0000FF','1'])
+    caption=text(main);assert' * - 'in caption
+    def sheet(name,area='',copies='2, 24'):
+        command(main,65518);finish_prompt(process,'Label Source',['Page 1 Artwork']);finish_prompt(process,'Create Artwork Label Sheet',[area,'70, 37, 0, 0',copies])
+        path=output/f'artwork-labels-{name}.pdf';choose_file(process,path);output_ready(process,main,path,b'%PDF-');return path
+    def colors(path):
+        _,_,pixels=pdf_pixels(dll,path,1)
+        red=sum(pixels[i+2]>pixels[i]+40 and pixels[i+2]>pixels[i+1]+40 for i in range(0,len(pixels),4))
+        blue=sum(pixels[i]>pixels[i+2]+40 and pixels[i]>pixels[i+1]+40 for i in range(0,len(pixels),4))
+        return red,blue
+    full=sheet('full');pages=pdf_text(dll,full,by_page=True)
+    assert len(pages)==2 and all(page.count('ARTWORK-TARGET')==1 and'PRIVATE-OTHER'not in page for page in pages),pages
+    red,blue=colors(full);assert red>10 and blue>10,(red,blue)
+    assert text(main)==caption,'Label output changed the live PDF or its save state'
+    command(main,4);without=sheet('undo');red2,blue2=colors(without);assert red2>10 and blue2==0,(red2,blue2)
+    command(main,5);redone=sheet('redo');assert pdf_pixels(dll,redone,1)==pdf_pixels(dll,full,1)
+    region=sheet('region','30, 730, 450, 70','1, 1');assert 'ARTWORK-TARGET'in pdf_text(dll,region)and'PRIVATE-OTHER'not in pdf_text(dll,region)
+    assert source.read_bytes()==original
+    results['checks'].append('current unsaved PDF artwork and optional region retain vector text, rotation/crop, visible annotations, repeated copies/first slot and no other page payload; label export preserves source/history, Undo removes only the watermark and Redo restores exact PDFium pixels')
+
+
+def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False, ocr=False, ocr_only=False, label_artwork=False):
     startup = None
     if extended:
         if binary.stem.lower() == "pdf42":
@@ -1827,6 +1864,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_pdf_batch_headers(process,main,binary,output,results)
         if ocr and binary.stem.lower()=='pdf42':
             audit_bundled_ocr(process,main,binary,output,results)
+        if label_artwork and binary.stem.lower()=='pdf42':
+            audit_pdf_label_artwork(process,main,binary,output,results)
         return results
     finally:
         if process.poll() is None:
@@ -2259,6 +2298,7 @@ def main():
     parser.add_argument("--array-formulas", action="store_true")
     parser.add_argument("--ocr", action="store_true")
     parser.add_argument("--ocr-only", action="store_true")
+    parser.add_argument("--label-artwork", action="store_true")
     parser.add_argument("--page-exports", action="store_true")
     parser.add_argument("--host-commands", action="store_true")
     parser.add_argument("--engineering", action="store_true")
@@ -2272,7 +2312,7 @@ def main():
     try:
         for app in (["PDF42","IMG42","SCN42"] if args.ocr_only else ["DOC42", "XLS42", "PDF42", "IMG42", "PPT42", "SCN42"]):
             try:
-                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge, args.pdf_batch_headers, args.array_formulas, args.ocr, args.ocr_only))
+                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge, args.pdf_batch_headers, args.array_formulas, args.ocr, args.ocr_only, args.label_artwork))
             except Exception as error:
                 results.append({"app": app, "error": str(error), "traceback": traceback.format_exc()})
             print(json.dumps(results[-1]), flush=True)
