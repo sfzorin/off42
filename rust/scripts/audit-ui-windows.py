@@ -38,14 +38,35 @@ u.SetForegroundWindow.argtypes = [w.HWND]
 u.PostMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
 u.SendMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
 u.SendMessageW.restype = w.LPARAM
+u.SendMessageTimeoutW.argtypes=[w.HWND,w.UINT,w.WPARAM,w.LPARAM,w.UINT,w.UINT,c.POINTER(c.c_size_t)]
+u.SendMessageTimeoutW.restype=w.LPARAM
 WM_COMMAND, WM_SETTEXT, WM_CLOSE = 0x111, 0xC, 0x10
 
 
+def bounded_send(hwnd,message,first=0,second=0):
+    result=c.c_size_t()
+    if not u.SendMessageTimeoutW(hwnd,message,first,second,2,5000,c.byref(result)):
+        raise AssertionError(f'Native message {message:#x} timed out or failed; Windows code {c.get_last_error()}')
+    return result.value
+
+
 def text(hwnd):
-    length = u.SendMessageW(hwnd, 0xE, 0, 0)  # WM_GETTEXTLENGTH marshals cross-process controls.
+    length = bounded_send(hwnd, 0xE)  # WM_GETTEXTLENGTH marshals cross-process controls.
     value = c.create_unicode_buffer(length + 1)
-    u.SendMessageW(hwnd, 0xD, len(value), c.cast(value, c.c_void_p).value)
+    bounded_send(hwnd, 0xD, len(value), c.cast(value, c.c_void_p).value)
     return value.value
+
+
+def replace_selection(hwnd,value,undoable=1):
+    data=c.create_unicode_buffer(value)
+    try:bounded_send(hwnd,0xC2,undoable,c.cast(data,c.c_void_p).value)
+    except AssertionError as error:
+        pid=w.DWORD();u.GetWindowThreadProcessId(hwnd,c.byref(pid))
+        dialogs=[]
+        for h in windows(pid.value):
+            if classname(h)=='#32770':
+                dialogs.append((text(h),[(classname(child),text(child))for child in windows_for_dialog(h)]))
+        raise AssertionError(f'{error}; modal dialogs: {dialogs}')from error
 
 
 def classname(hwnd):
@@ -128,7 +149,7 @@ def replace_editor_text(hwnd, value):
     # Replace the selection through the same editing path as typed/pasted text.
     data = c.create_unicode_buffer(value)
     u.SendMessageW(hwnd, 0xB1, 0, -1)  # EM_SETSEL
-    u.SendMessageW(hwnd, 0xC2, 1, c.cast(data, c.c_void_p).value)  # EM_REPLACESEL
+    replace_selection(hwnd,value)
     assert text(hwnd) == value, (classname(hwnd), u.GetDlgCtrlID(hwnd), text(hwnd), value)
 
 
@@ -811,7 +832,7 @@ def audit_rich_format(process,main,binary,output,results):
     assert text(main)==caption,'Changing typing attributes dirtied existing content'
     command(main,303);font=modal(process,native_class='#32770');click(font,2)
     wait_for(lambda:u.IsWindowEnabled(main),'font Cancel',process);assert text(main)==caption
-    data=c.create_unicode_buffer(' typed');u.SendMessageW(edit,0xC2,0,c.cast(data,c.c_void_p).value)
+    replace_selection(edit,' typed',undoable=0)
     wait_for(lambda:' * - 'in text(main),'typed styled text committed',process)
     typed=saved('rich-format-typed.doc42')
     assert any('typed'in run['text']and run['style']['bold']for run in runs(typed)),runs(typed)
