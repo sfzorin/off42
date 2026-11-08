@@ -2775,7 +2775,8 @@ def audit_virtual_rescan(binary,output):
             temporary=release.with_suffix('.tmp');temporary.write_text(mode,encoding='ascii');os.replace(temporary,release)
         def saved(name):
             path=output/name;save_as(main);choose_file(process,path);output_ready(process,main,path,b'SCN42\0\x04\0');return path.read_bytes()
-        select(1);wait_for(lambda:'OLD'in text(u.GetDlgItem(main,101)),'rescan target with OCR selected',process)
+        assert saved('virtual-rescan-loaded.scn42')==original,'Opening the fixture lost its original OCR or page metadata'
+        select(1);wait_for(lambda:u.SendMessageW(u.GetDlgItem(main,100),0x188,0,0)==1,'rescan target selected',process)
         command(main,39);wait_for(lambda:u.GetMenuState(u.GetMenu(main),39,0)&3,'rescan disables duplicate acquisition',process)
         assert' * - 'not in text(main)and source.read_bytes()==original
         select(0);signal('acquire');wait_for(lambda:u.GetMenuState(u.GetMenu(main),39,0)&3==0 and' * - 'in text(main),'virtual WIC acquisition committed',process)

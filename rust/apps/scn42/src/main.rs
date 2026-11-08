@@ -756,7 +756,7 @@ impl win42::App for Scn {
         self.index
     }
     fn text(&self) -> String {
-        "Import PNG, JPEG or BMP images to add pages. Use From Scanner on Windows or import images. Text export uses an installed Tesseract executable.".into()
+        "Scan pages or import images. Recognize text to create searchable PDF documents.".into()
     }
     fn text_readonly(&self) -> bool {
         true
