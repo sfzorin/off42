@@ -196,6 +196,8 @@ pub trait App {
     /// Readonly backup encoding; never marks a user revision as saved.
     fn recovery_snapshot(&self)->Result<Option<recovery::Snapshot>,String>{Ok(None)}
     fn supports_recovery(&self)->bool{false}
+    /// Private journal encodings need not appear in normal Open/Save dialogs.
+    fn recovery_extensions(&self)->&'static[&'static str]{&[]}
     fn save_formats(&self) -> Vec<FileFormat> {
         vec![]
     }

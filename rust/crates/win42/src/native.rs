@@ -262,7 +262,7 @@ unsafe fn recover_document(hwnd: HWND) -> Result<(), String> {
     let allowed = STATE.with(|slot| {
         let slot = slot.borrow();
         let app = &slot.as_ref().unwrap().app;
-        app.open_formats()
+        app.recovery_extensions().iter().any(|extension|extension.eq_ignore_ascii_case(claim.extension()))||app.open_formats()
             .iter()
             .chain(app.save_formats().iter())
             .any(|format| {

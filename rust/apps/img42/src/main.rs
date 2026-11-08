@@ -242,6 +242,7 @@ impl win42::App for Img {
         !self.conversion_risk && !self.loses_precision()
     }
     fn supports_recovery(&self)->bool{true}
+    fn recovery_extensions(&self)->&'static[&'static str]{&["img42r"]}
     fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
         recovery::snapshot(self)
     }

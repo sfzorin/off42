@@ -876,6 +876,7 @@ fn decode_inner(bytes: &[u8], projection: bool) -> Result<State, Error> {
                     if !r.runs.is_empty() || r.image_pending {
                         return Err(Error::Unsupported("picture mixed with text".into()));
                     }
+                    if !r.in_table { r.flush_table()?; }
                     let start = i - 1;
                     let end = bytes[i..]
                         .iter()
@@ -1181,6 +1182,18 @@ mod tests {
         };
         assert_eq!((i.width_twips, i.height_twips), (1440, 720));
         assert_eq!(i.data, vec![137, 80, 78, 71, 13, 10, 26, 10, 0, 0]);
+    }
+    #[test]
+    fn a_picture_after_a_table_retains_body_order_and_guarded_text_edits(){
+        let bytes=br"{\rtf1\ansi Head\par \trowd\cellx2000\cellx4000\pard\intbl Cell\cell Other\cell\row \pard{\pict\pngblip\picwgoal240\pichgoal240 89504e470d0a1a0a0000}\par After\par}";
+        let mut document=RichDocument::decode(bytes,Format::Rtf).unwrap();
+        assert!(matches!(&document.state().blocks[..],[Block::Paragraph(_),Block::Table(_),Block::Image(_),Block::Paragraph(_)]));
+        let before=document.state().clone();
+        let view=String::from_utf8(document.rich_edit_projection().unwrap()).unwrap().replace("After","After \\b typed\\b0 ");
+        document.apply_rich_edit_projection(view.as_bytes(),(0,0)).unwrap();
+        assert!(matches!(&document.state().blocks[..],[Block::Paragraph(_),Block::Table(_),Block::Image(_),Block::Paragraph(_)]));
+        assert_eq!(document.state().blocks[1],before.blocks[1]);assert_eq!(document.state().blocks[2],before.blocks[2]);
+        document.undo();assert_eq!(document.state(),&before);
     }
     #[test]
     fn windows_rtf_header_colors_and_codepage() {

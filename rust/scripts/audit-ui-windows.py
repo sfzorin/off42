@@ -45,16 +45,21 @@ WM_COMMAND, WM_SETTEXT, WM_CLOSE = 0x111, 0xC, 0x10
 
 def bounded_send(hwnd,message,first=0,second=0):
     result=c.c_size_t()
+    c.set_last_error(0)
     if not u.SendMessageTimeoutW(hwnd,message,first,second,2,5000,c.byref(result)):
         raise AssertionError(f'Native message {message:#x} timed out or failed; Windows code {c.get_last_error()}')
     return result.value
 
 
 def text(hwnd):
-    length = bounded_send(hwnd, 0xE)  # WM_GETTEXTLENGTH marshals cross-process controls.
-    value = c.create_unicode_buffer(length + 1)
-    bounded_send(hwnd, 0xD, len(value), c.cast(value, c.c_void_p).value)
-    return value.value
+    try:
+        length = bounded_send(hwnd, 0xE)  # WM_GETTEXTLENGTH marshals cross-process controls.
+        value = c.create_unicode_buffer(length + 1)
+        bounded_send(hwnd, 0xD, len(value), c.cast(value, c.c_void_p).value)
+        return value.value
+    except AssertionError:
+        if c.get_last_error()==1400 or not u.IsWindow(hwnd):return '' # A dialog can close between enumeration and reading its title.
+        raise
 
 
 def replace_selection(hwnd,value,undoable=1):
@@ -2137,6 +2142,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             startup.write_bytes(br"{\rtf1\ansi Board 0007}")
     environment = os.environ.copy()
     environment["OFF42_UI_TRACE_FILE"] = str(output / (binary.stem + "-commands.log"))
+    environment["OFF42_AUDIT_OUTPUT"]=str(output)
     process = subprocess.Popen([str(binary)] + ([str(startup)] if startup else []), env=environment)
     results = {"app": binary.name, "sha256": hashlib.sha256(binary.read_bytes()).hexdigest(), "checks": []}
     try:

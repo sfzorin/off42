@@ -736,3 +736,8 @@ Portable regressions cover the Mac square-root/loan examples, cross-sheet refere
 bisection, cancellation, stale state, final validation, protection and complete Undo/Redo. Workspace:
 496 passed, zero failed, one optional test ignored; Windows GNU targets compile. Native confirmation,
 No/Yes, saved values, source preservation, protection, Undo/Redo and reopen checks await Windows CI.
+
+Focused Windows run 42445175112 catches a native DOC picture-projection refusal and the IMG recovery
+extension guard; those GUI scenarios are not yet verified. The private IMG extension now has an explicit
+recovery-only capability, and a reproduced RTF table/picture ordering defect is fixed with a portable
+regression. The new DOC diagnostic retains rejected fixture RTF only when OFF42_AUDIT_OUTPUT is set.

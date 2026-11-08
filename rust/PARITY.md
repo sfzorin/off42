@@ -561,3 +561,10 @@ after image selection; image unit regressions are now included in quick CI.
   stale-state refusal and one-step validated commit. Portable Mac loan/root and cross-sheet/bisection/
   validation/cancellation/history regressions pass; workspace 496/0/1, GNU targets compile. Native GUI
   scenarios are added and await Windows execution. Full multivariable Solver remains incomplete.
+- Focused run 42445175112 on bc35c6d completes 12 groups with explicit failures: native DOC typing
+  rejects an RTF picture destination; IMG restoration rejects its private extension; one PDF enumeration
+  races a closing dialog. Five other recovery adapters pass. The native character-format unit passes;
+  MSVC artifacts record 487 tests for d6264f0 and 491 for bc35c6d, zero failures and one optional skip.
+  Source fixes separate private recovery extensions from user-facing filters and tolerate only destroyed
+  dialog handles in the harness. A portable regression also reproduces/fixes RTF image/table order.
+  Rejected DOC projections are now captured only under the explicit audit-output environment.

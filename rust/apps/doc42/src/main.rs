@@ -854,9 +854,14 @@ impl App for Doc {
         self.doc.rich_edit_projection().ok()
     }
     fn edit_rich_text(&mut self, bytes: &[u8], selection: (usize, usize)) -> Result<(), String> {
-        self.doc
-            .apply_rich_edit_projection(bytes, selection)
-            .map_err(|e| e.to_string())?;
+        if let Err(error)=self.doc.apply_rich_edit_projection(bytes, selection){
+            if let Some(directory)=std::env::var_os("OFF42_AUDIT_OUTPUT"){
+                let directory=std::path::PathBuf::from(directory);
+                let _=std::fs::write(directory.join("DOC42-rejected-projection.rtf"),bytes);
+                if let Ok(source)=self.doc.encode(Format::Project){let _=std::fs::write(directory.join("DOC42-rejected-source.doc42"),source);}
+            }
+            return Err(error.to_string());
+        }
         self.selection = selection;
         Ok(())
     }
