@@ -878,9 +878,12 @@ field indices through `input_multiline_fields`; existing first-field multiline f
 Windows explicit proofing uses the installed `ISpellChecker` providers in the UI's existing COM apartment. It
 checks an immutable GT_RAWTEXT UTF-16 projection, masks structural delimiters without changing positions and
 validates returned ranges. Dialogs expose only installed languages and readonly source words. A correction
-revalidates the original projection, captures native RTF, suppresses generated control notifications, and commits
-through the app's guarded rich-text adapter; refusal restores the native projection and selection. No dictionary
-writes or automatic correction are performed; Skip All is limited to that checker session.
+maps the captured UTF-16 text to the authoritative paragraph/table runs and prepares a sealed model change;
+font substitutions from exported native RTF are not imported. The host loads and validates the new projection
+before committing the prepared change, suppressing generated control notifications. Refusal discards it and
+restores the prior native projection and selection. DOC retains source run styles/links; PPT retains its exact
+style precision and object geometry. No dictionary writes or automatic correction are performed; Skip All is
+limited to that checker session.
 
 Shared Windows panel visibility belongs to each native window, separately from document history. It combines
 application availability with user visibility, and the existing DPI layout reclaims sidebar/toolbar/status/ruler

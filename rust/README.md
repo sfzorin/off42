@@ -816,8 +816,9 @@ Its screenshot was inspected; the public preview download remains unchanged.
 
 DOC42/PPT42 expose **Edit → Check Spelling…** alongside continuous spell-check flags. The shared reviewer lists
 actually installed Windows dictionaries in the supported interface languages and offers dictionary suggestions,
-Replace, Skip, Skip All and Cancel. The original word is readonly. Each accepted correction uses the existing
-rich-text adapter and one undoable commit; a stale text projection or adapter refusal preserves the prior state.
+Replace, Skip, Skip All and Cancel. The original word is readonly. Each accepted correction prepares a precise change to the authoritative
+text runs and validates the new editor projection before one undoable commit. Native font substitutions are
+kept out of the stored model; a stale projection or adapter refusal preserves the prior state.
 Native UTF-16 positions include table delimiters, images and emoji, so visible-text offsets are never substituted.
 It checks a selected range or the current editor's text. Work is bounded to a million-character editor, 32,768-unit
 check chunks, eight million checked units and 1,000 review steps. Windows language-pack availability applies;
@@ -833,3 +834,10 @@ choices with its window placement without changing document contents or Undo his
 all panels enabled by default; unavailable panels are disabled in the menu. Fullscreen slide shows retain their
 existing presentation layout. Portable preference round trips/corruption checks pass; native six-app toggle,
 geometry, history and relaunch assertions are added and await a compatible Windows build.
+
+
+Run 42453756002 verifies the actual en-US dictionary and native table/image UTF-16 positions (523 passing
+MSVC tests), but catches unrelated font substitutions during whole-RTF spelling correction. Corrections now
+prepare exact source-run changes in DOC/PPT and commit only after native projection verification. Portable
+regressions cover exact styles/links/images/history, Cancel, stale state and PPT font precision; workspace
+524/0/1 and GNU targets compile. Native correction and the extended panel tests await a repeat on this fix.

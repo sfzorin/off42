@@ -11,6 +11,7 @@ use std::{
 use win42::{App, CommandSpec, CommandState, DialogRequest, DialogResult, FileFormat};
 struct Doc {
     doc: RichDocument,
+    pending_word:Option<doc42_core::rich::PreparedWordEdit>,
     selection: (usize, usize),
     requested_selection: Option<(usize, usize)>,
     external_url: Option<String>,
@@ -22,6 +23,7 @@ impl Doc {
     fn new() -> Self {
         Self {
             doc: RichDocument::new(),
+            pending_word:None,
             selection: (0, 0),
             requested_selection: None,
             external_url: None,
@@ -864,6 +866,16 @@ impl App for Doc {
         }
         self.selection = selection;
         Ok(())
+    }
+    fn prepare_rich_word(&mut self,native:&[u16],range:(usize,usize),replacement:&str)->Result<Vec<u8>,String>{
+        self.pending_word=None;
+        let word=native.get(range.0..range.1).and_then(|v|String::from_utf16(v).ok()).ok_or("Invalid word range")?;
+        let edit=self.doc.prepare_word_edit(native,range,&word,replacement).map_err(|e|e.to_string())?;
+        let projection=edit.projection().to_vec();self.pending_word=Some(edit);Ok(projection)
+    }
+    fn finish_rich_word(&mut self,commit:bool)->Result<(),String>{
+        let edit=self.pending_word.take().ok_or("Word correction unavailable")?;
+        if commit{self.doc.commit_word_edit(edit).map_err(|e|e.to_string())?;}Ok(())
     }
     fn take_requested_rich_selection(&mut self) -> Option<(usize, usize)> {
         self.requested_selection.take()
@@ -3784,5 +3796,17 @@ mod picture_label_source_tests {
         assert_eq!(snapshot.extension,"doc42");let restored=RichDocument::decode(&snapshot.bytes,Format::Project).unwrap();
         assert_eq!(restored.state(),&before);assert_eq!(app.doc.state(),&before);
         app.saved_snapshot(revision);assert!(app.dirty());app.doc.undo();assert!(!app.dirty());
+    }
+}
+
+#[cfg(test)]
+mod word_edit_regression {
+    use super::*;
+    #[test]
+    fn prepared_word_cancel_commit_and_stale_keep_the_authoritative_formatting(){
+        let mut app=Doc::new();app.edit("😀 speling world".into()).unwrap();let original=app.doc.state().clone();let native:Vec<_>="😀 speling world\r".encode_utf16().collect();
+        app.prepare_rich_word(&native,(3,10),"spelling").unwrap();assert_eq!(app.doc.state(),&original);app.finish_rich_word(false).unwrap();assert_eq!(app.doc.state(),&original);
+        app.prepare_rich_word(&native,(3,10),"spelling").unwrap();app.finish_rich_word(true).unwrap();let mut expected=original.clone();let Block::Paragraph(p)=&mut expected.blocks[0]else{panic!()};p.runs[0].text="😀 spelling world".into();assert_eq!(app.doc.state(),&expected);app.action(4).unwrap();assert_eq!(app.doc.state(),&original);app.action(5).unwrap();assert_eq!(app.doc.state(),&expected);
+        app.action(4).unwrap();app.prepare_rich_word(&native,(3,10),"spelling").unwrap();app.doc.transact(|s|{s.sections[0].page.margin_left+=1;Ok(())}).unwrap();let changed=app.doc.state().clone();assert!(app.finish_rich_word(true).is_err());assert_eq!(app.doc.state(),&changed);
     }
 }

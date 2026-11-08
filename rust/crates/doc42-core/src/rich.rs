@@ -13,6 +13,8 @@ mod rtf_picture;
 mod projection_pictures;
 mod rtf_read;
 mod search;
+mod word_edit;
+pub use word_edit::PreparedWordEdit;
 mod statistics;
 pub use statistics::TextStatistics;
 mod table_edit;

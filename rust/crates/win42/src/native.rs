@@ -2261,13 +2261,20 @@ unsafe fn native_rich_format(
 unsafe fn native_spelling_replace(edit:HWND,range:(usize,usize),value:&str,expected:&[u16])->Result<(),String>{
     if crate::proofing::raw_text(edit)?!=expected{return Err("The document changed; check spelling again".into())}
     let before=crate::rich_edit::extract(edit)?;let selection=crate::rich_edit::selection(edit);
-    let previous=REFRESHING.with(|flag|flag.replace(true));
+    let previous=REFRESHING.with(|flag|flag.replace(true));let mut prepared=false;
     let result=(||{
-        crate::rich_edit::set_selection(edit,range);SendMessageW(edit,EM_REPLACESEL,0,wide(value).as_ptr()as isize);
-        let bytes=crate::rich_edit::extract(edit)?;let after=crate::rich_edit::selection(edit);
-        STATE.with(|slot|slot.borrow_mut().as_mut().unwrap().app.edit_rich_text(&bytes,after))
+        let projection=STATE.with(|slot|slot.borrow_mut().as_mut().unwrap().app.prepare_rich_word(expected,range,value))?;prepared=true;
+        crate::rich_edit::load(edit,&projection)?;
+        let inserted:Vec<_>=value.encode_utf16().collect();let mut after=expected.to_vec();after.splice(range.0..range.1,inserted.iter().copied());
+        if crate::proofing::raw_text(edit)?!=after{return Err("The spelling replacement could not be preserved".into())}
+        let caret=range.0+inserted.len();crate::rich_edit::set_selection(edit,(caret,caret));
+        STATE.with(|slot|{let mut slot=slot.borrow_mut();let app=&mut slot.as_mut().unwrap().app;app.finish_rich_word(true)?;app.set_rich_selection((caret,caret));Ok::<(),String>(())})?;prepared=false;
+        Ok(())
     })();
-    if result.is_err(){let _=crate::rich_edit::load(edit,&before);crate::rich_edit::set_selection(edit,selection);}
+    if result.is_err(){
+        if prepared{let _=STATE.with(|slot|slot.borrow_mut().as_mut().unwrap().app.finish_rich_word(false));}
+        let _=crate::rich_edit::load(edit,&before);crate::rich_edit::set_selection(edit,selection);
+    }
     REFRESHING.with(|flag|flag.set(previous));flush_deferred_commands();update_caption();result
 }
 

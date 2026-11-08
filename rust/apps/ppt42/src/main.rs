@@ -72,6 +72,7 @@ struct Ppt {
     show: Option<Show>,
     rich_edit_object: Option<u64>,
     rich_draft: Option<ppt42_core::SlideObject>,
+    pending_word:Option<(ppt42_core::SlideObject,ppt42_core::SlideObject)>,
     rich_selection: (usize, usize),
 }
 struct Show {
@@ -211,6 +212,7 @@ impl Ppt {
             show: None,
             rich_edit_object: None,
             rich_draft: None,
+            pending_word:None,
             rich_selection: (0, 0),
         }
     }
@@ -899,6 +901,20 @@ impl win42::App for Ppt {
             .map_err(|e| e.to_string())?;
         self.rich_selection = selection;
         self.save_rich_document(&doc)
+    }
+    fn prepare_rich_word(&mut self,native:&[u16],range:(usize,usize),replacement:&str)->Result<Vec<u8>,String>{
+        self.pending_word=None;let original=self.rich_object()?;
+        let word=native.get(range.0..range.1).and_then(|v|String::from_utf16(v).ok()).ok_or("Invalid word range")?;
+        let doc=rich::document(&original)?;let edit=doc.prepare_word_edit(native,range,&word,replacement).map_err(|e|e.to_string())?;
+        let projection=edit.projection().to_vec();let mut paragraphs=if original.paragraphs.is_empty(){original.text.replace("\r\n","\n").split('\n').map(|text|ppt42_core::RichParagraph{runs:vec![ppt42_core::RichRun{text:text.into(),style:original.text_style.clone()}],align:original.text_style.align,bullet:false}).collect::<Vec<_>>()}else{original.paragraphs.clone()};
+        let paragraph=paragraphs.get_mut(edit.paragraph().checked_sub(1).ok_or("Invalid word paragraph")? as usize).ok_or("Invalid word paragraph")?;
+        paragraph.runs=edit.run_texts().iter().map(|(index,text)|{let mut run=paragraph.runs.get(*index).ok_or("Invalid word run")?.clone();run.text=text.clone();Ok(run)}).collect::<Result<Vec<_>,String>>()?;
+        let mut changed=original.clone();changed.text=paragraphs.iter().map(|p|p.runs.iter().map(|r|r.text.as_str()).collect::<String>()).collect::<Vec<_>>().join("\n");if !original.paragraphs.is_empty(){changed.paragraphs=paragraphs;}
+        self.pending_word=Some((original,changed));Ok(projection)
+    }
+    fn finish_rich_word(&mut self,commit:bool)->Result<(),String>{
+        let(original,changed)=self.pending_word.take().ok_or("Word correction unavailable")?;
+        if commit{if self.rich_object()?!=original{return Err("Text object changed before word correction".into())}self.rich_draft=Some(changed);}Ok(())
     }
     fn set_rich_selection(&mut self, selection: (usize, usize)) {
         self.rich_selection = selection;
@@ -3176,5 +3192,17 @@ mod recovery_tests {
         app.finish_inline_rich(false).unwrap();
         assert!(!app.dirty());
         assert_eq!(app.deck.save_snapshot().unwrap().0, original);
+    }
+}
+
+#[cfg(test)]
+mod word_edit_regression {
+    use super::*;
+    use win42::App;
+    #[test]
+    fn word_edit_retains_exact_slide_style_precision_geometry_cancel_and_history(){
+        let mut app=Ppt::new(Presentation::new());let id=app.deck.insert_object(ppt42_core::ObjectKind::Text,"😀 speling world".into()).unwrap();let mut object=app.deck.slides()[0].objects.iter().find(|o|o.id==id).unwrap().clone();object.text_style.points=16.3;object.text_style.family="Arial".into();object.text_style.bold=true;app.deck.update_object(object.clone()).unwrap();app.selected_object=Some(id);app.action(58).unwrap();let original=app.rich_object().unwrap();let native:Vec<_>="😀 speling world\r".encode_utf16().collect();
+        app.prepare_rich_word(&native,(3,10),"spelling").unwrap();assert_eq!(app.rich_object().unwrap(),original);app.finish_rich_word(false).unwrap();assert_eq!(app.rich_object().unwrap(),original);
+        app.prepare_rich_word(&native,(3,10),"spelling").unwrap();app.finish_rich_word(true).unwrap();let mut expected=original.clone();expected.text="😀 spelling world".into();assert_eq!(app.rich_object().unwrap(),expected);app.finish_inline_rich(true).unwrap();assert_eq!(app.deck.slides()[0].objects.iter().find(|o|o.id==id),Some(&expected));app.action(4).unwrap();assert_eq!(app.deck.slides()[0].objects.iter().find(|o|o.id==id),Some(&object));app.action(5).unwrap();assert_eq!(app.deck.slides()[0].objects.iter().find(|o|o.id==id),Some(&expected));
     }
 }

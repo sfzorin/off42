@@ -524,6 +524,12 @@ pub trait App {
     ) -> Result<(), String> {
         Err("Rich text editing unavailable".into())
     }
+    /// Prepare a word correction without importing native fallback fonts or changing live document history.
+    fn prepare_rich_word(&mut self,_native:&[u16],_range:(usize,usize),_replacement:&str)->Result<Vec<u8>,String>{
+        Err("Word correction unavailable".into())
+    }
+    /// Commit only after the host loads and validates the prepared projection; false discards it.
+    fn finish_rich_word(&mut self,_commit:bool)->Result<(),String>{Err("Word correction unavailable".into())}
     fn set_rich_selection(&mut self, _selection_utf16: (usize, usize)) {}
     /// Selection captured by the document history, restored after Undo or Redo.
     /// Select an app-requested rich-text range after a command refresh.

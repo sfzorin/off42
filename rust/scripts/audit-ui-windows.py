@@ -1034,6 +1034,7 @@ def audit_spelling(process,main,binary,output,results):
     def saved(name):
         path=output/name;save_as(main);choose_file(process,path,format_name='DOC42 project');output_ready(process,main,path,b'{');return json.loads(path.read_text(encoding='utf-8'))['state']
     def select_word():
+        bounded_send(edit,0xB1,0,0)
         fill_prompt(process,main,7,'Find next',['speling']);wait_for(lambda:copied_selection(edit)=='speling','misspelled word selected',process)
     def start():
         fill_prompt(process,main,65504,'Spelling',['en-US'])
@@ -2756,7 +2757,9 @@ def audit_window_layout(bin_dir,output):
                 return not any(u.IsWindowVisible(h)for h in children if classname(h).lower()in{'button','static'})
             caption=text(main);history=[u.GetMenuState(u.GetMenu(main),i,0)for i in(4,5)];before=body_rect()
             toggles=[i for i in(65503,65502,65501,65500)if u.GetMenuState(u.GetMenu(main),i,0)&3==0]
-            assert 65502 in toggles and 65501 in toggles
+            assert 65501 in toggles
+            if 65502 not in toggles:
+                assert not any(u.IsWindowVisible(h)for h in windows(process.pid,main)if classname(h).lower()=='button'),app+' disabled a populated toolbar'
             names={65503:'sidebar',65502:'toolbar',65501:'status',65500:'rulers'}
             for identifier in toggles:
                 assert u.GetMenuState(u.GetMenu(main),identifier,0)&8

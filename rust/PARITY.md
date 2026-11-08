@@ -617,3 +617,12 @@ after image selection; image unit regressions are now included in quick CI.
   Existing DPI layout reclaims the space, focus leaves hidden controls, and preferences persist with per-app
   placement while default panels retain old preference JSON. Portable preference checks and GNU compilation
   pass; native six-app toggle/geometry/unchanged-history/relaunch assertions await the next compatible build.
+
+- Runs 42453756002 and 42454331494 verify actual en-US dictionary suggestions and GT_RAWTEXT table/image
+  positions (523/0/1 MSVC). GUI correction catches unrelated native font substitutions; exact model assertions
+  remain intact. The fixture also now resets Find's selection to exercise the intended first body occurrence.
+  Prepared DOC/PPT word changes preserve source runs/styles/links/object geometry, validate the complete native
+  text mapping and new projection, then commit; refusal/stale state remains atomic. Portable workspace 524/0/1
+  and GNU targets compile. Native repeats remain pending. The panel audit passed DOC/XLS before reaching an
+  unavailable PDF toolbar; it now verifies disabled entries against absent controls rather than requiring a
+  toolbar in every application. Actual panel persistence/layout assertions are retained for available panels.
