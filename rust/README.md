@@ -764,3 +764,24 @@ now passes portable text/style/table/picture/Undo/Redo regressions. Paragraph al
 caret/range, including content changes with a collapsed caret; Font Cancel restores editor focus. New native
 formatting/focus/alignment checks await the next compatible Windows build. Portable workspace: 501/0/1;
 Windows GNU targets compile. This is development work, not a public release or complete parity.
+
+### Rescan the current page (native virtual-source audit pending)
+
+SCN42's **Edit → Rescan Page** captures the selected page identity and opens the normal WIA acquisition
+flow. The first returned image replaces that page; additional feeder images append, as on macOS. Other
+pages retain their identities, pixels, OCR and resolution. The replacement has a fresh identity and clears
+old OCR. The entire acquired batch validates before one history commit, with complete Undo/Redo and
+project persistence. A full document can reuse the replaced page's slot/memory. Cancel, errors and late
+results after a project change leave the document unchanged; a second acquisition cannot start in flight.
+
+Portable core/adapter regressions cover target selection changes, batch failure, cancellation, stale callbacks,
+full capacity, exact state and saved/reopened output. The workspace passes 506 tests (zero failures, one
+optional skip); Windows GNU targets compile. A native UI scenario uses an explicitly configured virtual
+source through the actual STA/WIC decoder and acquisition callback, checking exact samples/DPI, source
+preservation, old OCR removal, history, Cancel and a delayed result after reopening. Its Windows execution
+is pending. This fixture does not exercise a physical WIA device or its settings dialog.
+
+Run 42446821420 on 33e173d succeeds: 502 MSVC tests and all 36 native groups pass. DOC's real toolbar Font
+Cancel/focus, insertion/table/range styles, paragraph alignment, original picture bytes, complete Undo/Redo
+and persistence pass; the resulting document screenshot was inspected. This precedes the rescan addition.
+Native formatting toggle buttons now display their authoritative checked state in the compact toolbar.

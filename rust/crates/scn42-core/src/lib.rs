@@ -184,6 +184,54 @@ impl ScanDocument {
         );
         (bytes, MAX_PAGES.saturating_sub(self.pages().len()))
     }
+    /// A replacement can reuse the target page's current-document allocation and slot.
+    pub fn replacement_capacity(&self, target: u64) -> Result<(usize, usize), String> {
+        if !self.pages().iter().any(|page| page.id == target) {
+            return Err("The page to rescan is no longer in the project".into());
+        }
+        let candidate = Self {
+            history: PageHistory::new(
+                self.pages()
+                    .iter()
+                    .filter(|page| page.id != target)
+                    .cloned()
+                    .collect(),
+                0,
+            ),
+            next_id: self.next_id,
+        };
+        Ok(candidate.acquisition_capacity())
+    }
+    /// Replace the captured page identity with the first acquired image; append additional
+    /// feeder images, matching the macOS rescan workflow. Validate the whole batch first.
+    pub fn replace_acquired_page(
+        &mut self,
+        target: u64,
+        images: Vec<(u32, u32, Vec<u8>, u32, u32)>,
+    ) -> Result<usize, String> {
+        let index = self
+            .pages()
+            .iter()
+            .position(|page| page.id == target)
+            .ok_or("The page to rescan is no longer in the project")?;
+        if images.is_empty() {
+            return Ok(index);
+        }
+        let mut pages = self.pages().to_vec();
+        pages.remove(index);
+        let appended = pages.len();
+        let mut candidate = Self {
+            history: PageHistory::new(pages, 0),
+            next_id: self.next_id,
+        };
+        candidate.add_pages_with_dpi(images)?;
+        let mut pages = candidate.pages().to_vec();
+        let first = pages.remove(appended);
+        pages.insert(index, first);
+        self.next_id = candidate.next_id;
+        self.history.apply(pages);
+        Ok(index)
+    }
 
     pub fn add_rgba(&mut self, width: u32, height: u32, pixels: Vec<u8>) -> Result<(), String> {
         let len = (width as usize)
@@ -1601,5 +1649,123 @@ mod mark_tests {
         document.save_project(&path).unwrap();
         let reopened = ScanDocument::open_project(&path).unwrap();
         assert_eq!(reopened.pages(), document.pages());
+    }
+}
+
+#[cfg(test)]
+mod rescan_tests {
+    use super::*;
+    fn document() -> ScanDocument {
+        let mut doc = ScanDocument::new();
+        doc.add_pages_with_dpi(vec![
+            (1, 1, vec![1, 2, 3, 255], 150, 150),
+            (1, 1, vec![4, 5, 6, 255], 200, 300),
+            (1, 1, vec![7, 8, 9, 255], 600, 600),
+        ])
+        .unwrap();
+        let source = doc.pages()[1].clone();
+        doc.apply_ocr(
+            1,
+            &source,
+            vec![OcrWord {
+                text: "old OCR".into(),
+                x: 0,
+                y: 0,
+                width: 1,
+                height: 1,
+            }],
+        )
+        .unwrap();
+        let (_, state) = doc.save_snapshot();
+        doc.mark_saved_snapshot(state);
+        doc
+    }
+    #[test]
+    fn rescan_retains_other_pages_and_replaces_target_with_new_samples_and_identity_in_one_undo_step(
+    ) {
+        let mut doc = document();
+        let before = doc.pages().to_vec();
+        let index = doc
+            .replace_acquired_page(
+                before[1].id,
+                vec![
+                    (1, 2, vec![10, 20, 30, 255, 40, 50, 60, 255], 300, 600),
+                    (2, 1, vec![70, 80, 90, 255, 100, 110, 120, 255], 150, 150),
+                ],
+            )
+            .unwrap();
+        assert_eq!(index, 1);
+        assert_eq!(doc.pages().len(), 4);
+        assert_eq!(doc.pages()[0], before[0]);
+        assert_eq!(doc.pages()[2], before[2]);
+        let page = &doc.pages()[1];
+        assert_eq!(
+            (page.width, page.height, page.dpi_x, page.dpi_y),
+            (1, 2, 300, 600)
+        );
+        assert!(page.words.is_empty());
+        assert_ne!(page.id, before[1].id);
+        let after = doc.pages().to_vec();
+        assert!(doc.is_dirty());
+        doc.undo();
+        assert_eq!(doc.pages(), before);
+        assert!(!doc.is_dirty());
+        doc.redo();
+        assert_eq!(doc.pages(), after);
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("rescan.scn42");
+        doc.save_project(&path).unwrap();
+        assert_eq!(ScanDocument::open_project(&path).unwrap().pages(), after);
+    }
+    #[test]
+    fn missing_target_empty_or_invalid_batch_never_changes_the_document_or_identity_counter() {
+        let mut doc = document();
+        let before = doc.pages().to_vec();
+        let id = doc.next_id;
+        let target = before[1].id;
+        assert_eq!(doc.replace_acquired_page(target, vec![]).unwrap(), 1);
+        assert_eq!(doc.pages(), before);
+        assert!(doc
+            .replace_acquired_page(
+                target,
+                vec![(1, 1, vec![255; 4], 150, 150), (1, 1, vec![255; 4], 0, 150)]
+            )
+            .is_err());
+        assert_eq!(doc.pages(), before);
+        assert_eq!(doc.next_id, id);
+        assert!(!doc.is_dirty());
+        doc.delete(1).unwrap();
+        let deleted = doc.pages().to_vec();
+        assert!(doc
+            .replace_acquired_page(target, vec![(1, 1, vec![255; 4], 150, 150)])
+            .is_err());
+        assert_eq!(doc.pages(), deleted);
+        assert_eq!(doc.next_id, id);
+    }
+    #[test]
+    fn a_full_document_can_rescan_one_page_without_an_extra_slot() {
+        let mut doc = ScanDocument::new();
+        for _ in 0..MAX_PAGES {
+            doc.add_rgba(1, 1, vec![255; 4]).unwrap();
+        }
+        assert_eq!(doc.acquisition_capacity().1, 0);
+        let target = doc.pages()[10].id;
+        assert_eq!(doc.replacement_capacity(target).unwrap().1, 1);
+        let before = doc.pages().to_vec();
+        assert!(doc
+            .replace_acquired_page(
+                target,
+                vec![
+                    (1, 1, vec![1, 2, 3, 255], 150, 150),
+                    (1, 1, vec![4, 5, 6, 255], 150, 150)
+                ]
+            )
+            .is_err());
+        assert_eq!(doc.pages(), before);
+        doc.replace_acquired_page(target, vec![(1, 1, vec![1, 2, 3, 255], 150, 150)])
+            .unwrap();
+        assert_eq!(doc.pages().len(), MAX_PAGES);
+        doc.undo();
+        assert_eq!(doc.pages(), before);
     }
 }

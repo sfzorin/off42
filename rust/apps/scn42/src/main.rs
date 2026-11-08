@@ -14,6 +14,7 @@ struct Scn {
     window: usize,
     generation: u64,
     scan: Option<std::sync::mpsc::Receiver<wia::ResultMessage>>,
+    scan_target:Option<u64>,
     scan_status: String,
     pdf_import: Option<(
         pdf_import::Receiver,
@@ -165,6 +166,7 @@ impl win42::App for Scn {
             return false;
         };
         self.scan = None;
+        let target=self.scan_target.take();
         if generation != self.generation {
             self.scan_status = "Scan result discarded because the project changed".into();
             return true;
@@ -173,11 +175,11 @@ impl win42::App for Scn {
             Ok(pages) if pages.is_empty() => {
                 self.scan_status = "Scan cancelled or no pages acquired".into()
             }
-            Ok(pages) => match self.doc.add_pages_with_dpi(pages) {
-                Ok(()) => {
+            Ok(pages) => match if let Some(target)=target{self.doc.replace_acquired_page(target,pages)}else{self.doc.add_pages_with_dpi(pages).map(|()|self.doc.pages().len()-1)} {
+                Ok(index) => {
                     self.invalidate_ocr();
                     self.generation = self.generation.wrapping_add(1);
-                    self.index = self.doc.pages().len() - 1;
+                    self.index = index;
                     self.scan_status = "Pages acquired".into();
                 }
                 Err(e) => self.scan_status = e,
@@ -430,6 +432,7 @@ impl win42::App for Scn {
             (17, "Clean &Black and White"),
             (18, "&Crop Page..."),
             (19, "From &Scanner..."),
+            (39,"Rescan Page"),
             (23, "Recognize &Text..."),
             (24, "Cancel Recognition"),
             (37, "Recognize page range..."),
@@ -808,6 +811,7 @@ impl win42::App for Scn {
         match id {
             10 | 11 | 14 | 15 | 16 | 17 | 18 | 21 | 22 => n > 0,
             19 => self.scan.is_none(),
+            39=>n>0&&self.scan.is_none()&&self.ocr.is_none()&&self.pdf_import.is_none(),
             23 | 37 => n > 0 && self.ocr.is_none(),
             38 => cfg!(windows) && n > 0 && self.ocr.is_none(),
             24 => self.ocr.is_some(),
@@ -916,13 +920,15 @@ impl win42::App for Scn {
                 }
                 self.scan_status = "Cancelling recognition…".into();
             }
-            19 => {
-                self.invalidate_ocr();
-                self.generation = self.generation.wrapping_add(1);
-                let (byte_budget, page_budget) = self.doc.acquisition_capacity();
+            19|39 => {
+                let target=if id==39{Some(self.doc.pages().get(self.index).ok_or("Select a page to rescan")?.id)}else{None};
+                let (byte_budget, page_budget) = if let Some(target)=target{self.doc.replacement_capacity(target)?}else{self.doc.acquisition_capacity()};
                 if byte_budget == 0 || page_budget == 0 {
                     return Err("Document is at the acquisition limit".into());
                 }
+                self.invalidate_ocr();
+                self.generation = self.generation.wrapping_add(1);
+                self.scan_target=target;
                 self.scan = Some(wia::start(
                     self.generation,
                     self.window,
@@ -955,6 +961,7 @@ fn main() {
         window: 0,
         generation: 0,
         scan: None,
+        scan_target:None,
         scan_status: String::new(),
         pdf_import: None,
         pdf_first: 1,
@@ -985,6 +992,7 @@ mod tests {
                 window: 0,
                 generation: 1,
                 scan: None,
+                scan_target:None,
                 scan_status: String::new(),
                 pdf_import: None,
                 pdf_first: 1,
@@ -1041,6 +1049,7 @@ mod tests {
             window: 0,
             generation: 1,
             scan: None,
+            scan_target:None,
             scan_status: String::new(),
             pdf_import: None,
             pdf_first: 1,
@@ -1098,6 +1107,7 @@ mod tests {
             window: 0,
             generation: 0,
             scan: None,
+            scan_target:None,
             scan_status: String::new(),
             pdf_import: None,
             pdf_first: 1,
@@ -1142,6 +1152,7 @@ mod tests {
             window: 0,
             generation: 1,
             scan: None,
+            scan_target:None,
             scan_status: String::new(),
             pdf_import: None,
             pdf_first: 1,
@@ -1174,6 +1185,7 @@ mod tests {
             window: 0,
             generation: 1,
             scan: None,
+            scan_target:None,
             scan_status: String::new(),
             pdf_import: None,
             pdf_first: 1,
@@ -1208,6 +1220,7 @@ mod tests {
             window: 0,
             generation: 0,
             scan: None,
+            scan_target:None,
             scan_status: String::new(),
             pdf_import: None,
             pdf_first: 1,
@@ -1237,5 +1250,111 @@ mod tests {
         a.action(13).unwrap();
         assert!(a.enabled(12));
         assert!(!a.enabled(13));
+    }
+}
+
+#[cfg(test)]
+mod rescan_tests {
+    use super::*;
+    use win42::App;
+    fn app() -> Scn {
+        let mut app = Scn {
+            pending: None,
+            next_save: 0,
+            doc: ScanDocument::new(),
+            index: 1,
+            window: 0,
+            generation: 17,
+            scan: None,
+            scan_target: None,
+            scan_status: String::new(),
+            pdf_import: None,
+            pdf_first: 1,
+            pdf_last: 0,
+            pdf_dpi: 150,
+            jpeg_quality: 90,
+            compress_pdf: true,
+            tesseract_path: String::new(),
+            ocr_language: "eng".into(),
+            language_discovery: None,
+            print_pending: None,
+            ocr_displayed: 0,
+            ocr: None,
+        };
+        for value in [10, 20, 30] {
+            app.doc
+                .add_rgba(1, 1, vec![value, value, value, 255])
+                .unwrap();
+        }
+        let (_, state) = app.doc.save_snapshot();
+        app.doc.mark_saved_snapshot(state);
+        app
+    }
+    #[test]
+    fn acquired_result_targets_the_captured_page_and_cannot_start_a_second_rescan() {
+        let mut app = app();
+        let before = app.doc.pages().to_vec();
+        let (tx, rx) = std::sync::mpsc::channel();
+        app.scan = Some(rx);
+        app.scan_target = Some(before[1].id);
+        app.select(0);
+        assert!(!app.enabled(39));
+        assert!(app.action(39).is_err());
+        assert_eq!(app.generation, 17);
+        tx.send((
+            17,
+            Ok(vec![(
+                1,
+                2,
+                vec![80, 90, 100, 255, 110, 120, 130, 255],
+                300,
+                600,
+            )]),
+        ))
+        .unwrap();
+        assert!(app.poll_background());
+        assert_eq!(app.index, 1);
+        assert!(app.scan_target.is_none());
+        assert!(app.scan.is_none());
+        assert_eq!(app.doc.pages()[0], before[0]);
+        assert_eq!(app.doc.pages()[2], before[2]);
+        assert_eq!(app.doc.pages()[1].height, 2);
+        let after = app.doc.pages().to_vec();
+        app.action(4).unwrap();
+        assert_eq!(app.doc.pages(), before);
+        assert!(!app.doc.is_dirty());
+        app.action(5).unwrap();
+        assert_eq!(app.doc.pages(), after);
+    }
+    #[test]
+    fn cancel_driver_error_and_late_results_leave_the_model_intact() {
+        for outcome in [
+            Ok(vec![]),
+            Err("Scanner canceled".into()),
+            Ok(vec![(1, 1, vec![1, 2, 3, 255], 0, 150)]),
+        ] {
+            let mut app = app();
+            let before = app.doc.pages().to_vec();
+            let (tx, rx) = std::sync::mpsc::channel();
+            app.scan = Some(rx);
+            app.scan_target = Some(before[1].id);
+            tx.send((17, outcome)).unwrap();
+            assert!(app.poll_background());
+            assert_eq!(app.doc.pages(), before);
+            assert!(!app.doc.is_dirty());
+            assert!(app.scan_target.is_none());
+        }
+        let mut app = app();
+        let target = app.doc.pages()[1].id;
+        let (tx, rx) = std::sync::mpsc::channel();
+        app.scan = Some(rx);
+        app.scan_target = Some(target);
+        app.new_document().unwrap();
+        tx.send((17, Ok(vec![(1, 1, vec![1, 2, 3, 255], 150, 150)])))
+            .unwrap();
+        assert!(app.poll_background());
+        assert!(app.doc.pages().is_empty());
+        assert!(!app.doc.is_dirty());
+        assert!(app.scan_status.contains("discarded"));
     }
 }

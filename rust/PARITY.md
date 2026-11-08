@@ -583,3 +583,11 @@ after image selection; image unit regressions are now included in quick CI.
   changed samples/nondefault layout, and passes the exact native fixture with Undo/Redo. Paragraph alignment
   uses native caret/ranges; Font Cancel returns keyboard focus. Portable workspace 501/0/1; GNU compiles.
   The new real toolbar/focus/paragraph-history/persistence scenarios await Windows execution.
+- Run 42446821420 (33e173d) succeeds: 502/0/1 MSVC and all 36 native groups. Actual DOC toolbar Font
+  Cancel/editor focus, character/paragraph formatting, exact image retention, complete Undo/Redo and
+  persistence pass; the resulting screenshot was inspected. All six recovery adapters remain verified.
+- SCN rescan now captures a page identity, reuses replacement capacity and validates a whole acquired batch
+  before one commit; selection changes cannot redirect it, and stale/error/canceled results preserve state.
+  Core/adapter regressions pass including full capacity, OCR clearing, complete history and persistence.
+  Workspace 506/0/1; GNU targets compile. The new normal-UI virtual STA/WIC acquisition scenario is pending;
+  physical scanner controls/hardware and the other scanning gaps remain open.

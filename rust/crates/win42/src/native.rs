@@ -845,18 +845,7 @@ unsafe fn refresh() {
     SendMessageW(list, LB_SETCURSEL, selected, 0);
     for (id, state) in actions {
         let state=effective_command_state(id,state);
-        STATE.with(|s| {
-            if let Some((_, button)) = s
-                .borrow()
-                .as_ref()
-                .unwrap()
-                .toolbar
-                .iter()
-                .find(|(key, _)| *key == id)
-            {
-                EnableWindow(*button, state.enabled as i32);
-            }
-        });
+        update_toolbar_command(id,state);
         EnableMenuItem(
             menu,
             id as u32,
@@ -2185,6 +2174,17 @@ unsafe extern "system" fn plain_edit_proc(
     result
 }
 
+unsafe fn update_toolbar_command(id:u16,state:crate::CommandState){
+    let button=STATE.with(|slot|{
+        let slot=slot.borrow();let slot=slot.as_ref()?;
+        slot.toolbar.iter().find(|(key,_)|*key==id).map(|(_,button)|(*button,slot.app.toolbar_command_toggle(id)))
+    });
+    if let Some((button,toggle))=button{
+        EnableWindow(button,state.enabled as i32);
+        if toggle{SendMessageW(button,BM_SETCHECK,if state.checked{BST_CHECKED}else{BST_UNCHECKED}as usize,0);}
+    }
+}
+
 unsafe fn effective_command_state(id: u16, fallback: crate::CommandState) -> crate::CommandState {
     let native = STATE.with(|slot| {
         let state = slot.borrow();
@@ -3022,18 +3022,7 @@ unsafe fn update_caption() {
                     MF_UNCHECKED
                 },
         );
-        STATE.with(|s| {
-            if let Some((_, button)) = s
-                .borrow()
-                .as_ref()
-                .unwrap()
-                .toolbar
-                .iter()
-                .find(|(key, _)| *key == id)
-            {
-                EnableWindow(*button, state.enabled as i32);
-            }
-        });
+        update_toolbar_command(id,state);
     }
     SetWindowTextW(h, wide(&title).as_ptr());
     SetWindowTextW(status, wide(&info).as_ptr());
@@ -3793,12 +3782,12 @@ pub fn run(app: Box<dyn App>) {
         let mut toolbar = Vec::new();
         for spec in &specs {
             if !STATE.with(|s|s.borrow().as_ref().unwrap().app.toolbar_command_visible(spec.id)) {continue;}
-
+            let toggle=STATE.with(|s|s.borrow().as_ref().unwrap().app.toolbar_command_toggle(spec.id));
             let button = CreateWindowExW(
                 0,
                 wide("BUTTON").as_ptr(),
                 wide(&crate::localization::text(spec.title)).as_ptr(),
-                WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+                WS_CHILD | WS_VISIBLE | WS_TABSTOP | if toggle{(BS_CHECKBOX|BS_PUSHLIKE)as u32}else{0},
                 0,
                 0,
                 0,

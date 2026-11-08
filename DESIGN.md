@@ -857,3 +857,14 @@ The picture matcher tries exact resources first, then compares bounded decoded s
 restoring original compressed data/MIME/metadata on a match. It caches each source digest and bounds aggregate
 pixel work; any removed or visually changed source picture still rejects the transaction. Unknown placement
 properties are not silently discarded. Regression fixtures are the exact isolated native-audit source/RTF.
+
+SCN acquisition captures generation plus an optional rescan page identity. A replacement validates the entire
+batch against a private candidate that excludes the target's current slot/allocation, then replaces the target
+with a fresh page and appends further feeder images in one history commit. Neither selection changes nor
+index reuse redirect that callback; project generation or missing identity refuses it. Ordinary WIA acquisition
+uses the same STA/result channel. Only explicit audit environment variables enable a WIC image fixture with
+a bounded file barrier for deterministic cancellation/delayed callbacks; it never establishes hardware coverage.
+
+Toolbar commands may declare toggle semantics. Native pushlike check controls receive the same checked state
+as menus, while dialog/action buttons retain ordinary button semantics. Control updates occur outside model
+borrows to avoid synchronous native notification reentrancy.

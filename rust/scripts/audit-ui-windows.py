@@ -851,7 +851,7 @@ def audit_rich_format(process,main,binary,output,results):
     class GuiThreadInfo(c.Structure):
         _fields_=[('size',w.DWORD),('flags',w.DWORD)]+[(name,w.HWND)for name in['active','focus','capture','menu_owner','move_size','caret']]+[('caret_rect',w.RECT)]
     info=GuiThreadInfo();info.size=c.sizeof(info);u.GetGUIThreadInfo.argtypes=[w.DWORD,c.POINTER(GuiThreadInfo)]
-    assert u.GetGUIThreadInfo(u.GetWindowThreadProcessId(main,None),c.byref(info))and info.focus==edit,'Font Cancel did not return keyboard focus to the document'
+    wait_for(lambda:u.GetGUIThreadInfo(u.GetWindowThreadProcessId(main,None),c.byref(info))and info.focus==edit,'Font Cancel returns keyboard focus to the document',process)
     assert u.GetMenuState(u.GetMenu(main),300,0)&8,'Font Cancel changed insertion formatting'
     replace_selection(edit,' typed',undoable=0)
     wait_for(lambda:' * - 'in text(main),'typed styled text committed',process)
@@ -2735,6 +2735,70 @@ def audit_language_picker(bin_dir, output):
             child.close_handle()
 
 
+def audit_virtual_rescan(binary,output):
+    """Exercise STA/WIC acquisition and the real rescan UI with an explicit virtual source, not hardware."""
+    root=output/'virtual-rescan-settings';root.mkdir(exist_ok=True)
+    fixture=output/'virtual-rescan.png';width,height=40,20
+    pixels=b''.join(bytes([255,220,0,255]if x<20 else[140,20,220,255])for y in range(height)for x in range(width))
+    write_png(fixture,width,height,pixels)
+    density=struct.pack('>IIB',round(300/0.0254),round(600/0.0254),1)
+    chunk=struct.pack('>I',9)+b'pHYs'+density+struct.pack('>I',zlib.crc32(b'pHYs'+density)&0xffffffff)
+    data=fixture.read_bytes();fixture.write_bytes(data[:33]+chunk+data[33:])
+    source=output/'virtual-rescan-before.scn42';data=bytearray(b'SCN42\0\x04\0'+struct.pack('<I',3))
+    for index,color in enumerate([[255,0,0,255],[0,160,40,255],[0,0,255,255]]):
+        data.extend(struct.pack('<QIIII',index+1,32,24,150+index*50,200+index*50));data.extend(bytes(color)*(32*24))
+        language=b'eng'if index==1 else b'';data.extend(struct.pack('<I',len(language)));data.extend(language)
+        data.extend(struct.pack('<I',1 if index==1 else 0))
+        if index==1:data.extend(struct.pack('<IIIII',1,1,10,5,3)+b'OLD')
+    source.write_bytes(data);original=bytes(data)
+    def pages(data):
+        assert data[:8]==b'SCN42\0\x04\0';count=struct.unpack_from('<I',data,8)[0];position=12;result=[]
+        for _ in range(count):
+            identity,wid,hei,dx,dy=struct.unpack_from('<QIIII',data,position);position+=24
+            samples=data[position:position+wid*hei*4];assert len(samples)==wid*hei*4;position+=len(samples)
+            length=struct.unpack_from('<I',data,position)[0];position+=4;language=data[position:position+length];position+=length
+            words=[];word_count=struct.unpack_from('<I',data,position)[0];position+=4
+            for _ in range(word_count):
+                x,y,wid_word,hei_word,length=struct.unpack_from('<IIIII',data,position);position+=20
+                words.append((x,y,wid_word,hei_word,data[position:position+length]));position+=length
+            result.append({'id':identity,'size':(wid,hei),'dpi':(dx,dy),'pixels':samples,'language':language,'words':words})
+        assert position==len(data);return result
+    before=pages(original);release=output/'virtual-rescan-release';release.unlink(missing_ok=True)
+    environment=os.environ.copy();environment.update({'LOCALAPPDATA':str(root),'OFF42_AUDIT_OUTPUT':str(output),'OFF42_WIA_AUDIT_IMAGE':str(fixture),'OFF42_WIA_AUDIT_RELEASE':str(release)})
+    process=subprocess.Popen([str(binary),'--language','en','--',str(source)],env=environment)
+    try:
+        main=modal(process,native_class='Suite42Native');wait_for(lambda:source.name in text(main)and u.IsWindowEnabled(main),'virtual rescan source opened',process)
+        def select(index):
+            u.SendMessageW(u.GetDlgItem(main,100),0x186,index,0);command(main,100|(1<<16))
+        def status(part):return any(part in text(h)for h in windows(process.pid,main))
+        def signal(mode):
+            temporary=release.with_suffix('.tmp');temporary.write_text(mode,encoding='ascii');os.replace(temporary,release)
+        def saved(name):
+            path=output/name;save_as(main);choose_file(process,path);output_ready(process,main,path,b'SCN42\0\x04\0');return path.read_bytes()
+        select(1);wait_for(lambda:'OLD'in text(u.GetDlgItem(main,101)),'rescan target with OCR selected',process)
+        command(main,39);wait_for(lambda:u.GetMenuState(u.GetMenu(main),39,0)&3,'rescan disables duplicate acquisition',process)
+        assert' * - 'not in text(main)and source.read_bytes()==original
+        select(0);signal('acquire');wait_for(lambda:u.GetMenuState(u.GetMenu(main),39,0)&3==0 and' * - 'in text(main),'virtual WIC acquisition committed',process)
+        after_bytes=saved('virtual-rescan-after.scn42');after=pages(after_bytes)
+        assert len(after)==3 and after[0]==before[0]and after[2]==before[2]
+        assert after[1]['id']!=before[1]['id']and after[1]['size']==(width,height)and after[1]['pixels']==pixels and after[1]['dpi']==(300,600)
+        assert not after[1]['words']and not after[1]['language']
+        capture_window(main,output/'SCN42-virtual-rescan.bmp')
+        command(main,4);assert saved('virtual-rescan-undo.scn42')==original
+        command(main,5);assert saved('virtual-rescan-redo.scn42')==after_bytes
+        select(1);release.unlink();command(main,39);wait_for(lambda:u.GetMenuState(u.GetMenu(main),39,0)&3,'virtual canceled rescan pending',process)
+        signal('cancel');wait_for(lambda:status('Scan cancelled or no pages acquired')and u.GetMenuState(u.GetMenu(main),39,0)&3==0,'virtual cancellation processed',process)
+        assert' * - 'not in text(main)and saved('virtual-rescan-canceled.scn42')==after_bytes
+        release.unlink();command(main,39);wait_for(lambda:u.GetMenuState(u.GetMenu(main),39,0)&3,'late virtual scan pending',process)
+        open_fixture(process,main,output/'virtual-rescan-after.scn42');signal('acquire')
+        wait_for(lambda:status('Scan result discarded because the project changed'),'late virtual acquisition discarded after reopen',process)
+        assert' * - 'not in text(main)and saved('virtual-rescan-late.scn42')==after_bytes and source.read_bytes()==original
+        return{'app':'SCN42','scenario':'virtual WIA rescan','sha256':hashlib.sha256(binary.read_bytes()).hexdigest(),'checks':['explicit virtual source through Windows STA/WIC, physical scanner not exercised; captured target survives selection change; exact replacement pixels/DPI and new identity; other pages preserved; old OCR cleared; one-step Undo/Redo restores every original byte; virtual Cancel and late acquisition after reopening preserve model/source; saves and reopen use normal dialogs']}
+    finally:
+        if process.poll()is None:
+            process.terminate();process.wait(timeout=5)
+
+
 def audit_recovery(binary,output):
     """Kill only the isolated audit process and recover through the real file/menu UI."""
     app=binary.stem;root=output/('recovery-settings-'+app);root.mkdir(exist_ok=True)
@@ -2893,6 +2957,10 @@ def main():
             except Exception as error:results.append({'app':app,'scenario':'crash recovery','error':str(error),'traceback':traceback.format_exc()})
             print(json.dumps(results[-1]),flush=True)
             (args.output/'results.json').write_text(json.dumps(results,indent=2),encoding='utf-8')
+        try:results.append(audit_virtual_rescan(args.bin_dir/'SCN42.exe',args.output))
+        except Exception as error:results.append({'app':'SCN42','scenario':'virtual WIA rescan','error':str(error),'traceback':traceback.format_exc()})
+        print(json.dumps(results[-1]),flush=True)
+        (args.output/'results.json').write_text(json.dumps(results,indent=2),encoding='utf-8')
     if args.languages:
         languages = ["en", "zh-Hans", "zh-Hant", "es", "ar", "fr", "pt", "id", "ru", "de", "ja", "vi", "tr", "fil", "ko", "th", "it", "pl", "ms", "hu"]
         for index, code in enumerate(languages):

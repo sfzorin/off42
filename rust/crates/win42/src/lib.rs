@@ -206,6 +206,10 @@ pub trait App {
     }
     /// Keep less frequent menu commands out of the primary toolbar.
     fn toolbar_command_visible(&self, _id:u16)->bool {true}
+    fn toolbar_command_toggle(&self,id:u16)->bool{
+        use RichFormatCommand::*;
+        matches!(self.rich_format_command(id),Some(Bold|Italic|Underline|AlignLeft|AlignCenter|AlignRight|Justify))
+    }
 
     fn command_state(&self, id: u16) -> CommandState {
         CommandState {
