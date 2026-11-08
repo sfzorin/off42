@@ -21,7 +21,7 @@ impl PreparedWordEdit {
     }
 }
 fn structural(c: u16) -> bool {
-    matches!(c, 7 | 9 | 10 | 11 | 12 | 13 | 0xFFFC | 0xFDD0..=0xFDEF)
+    matches!(c, 7 | 9 | 10 | 11 | 12 | 13 | 0xFFF9..=0xFFFC | 0xFDD0..=0xFDEF)
 }
 enum Piece<'a> {
     Paragraph(&'a Paragraph),
@@ -63,15 +63,12 @@ fn locate(
     range: (usize, usize),
 ) -> Result<(u64, std::ops::Range<usize>), Error> {
     let invalid = || Error::Invalid("native word projection no longer matches the document".into());
-    // Rich Edit emits an object marker and may add one placeholder space to an image paragraph.
-    // Admit that space only in a gap containing the expected source image, never as arbitrary ignored text.
-    fn gap(c: u16, images: usize, seen: &mut usize, spaces: &mut usize) -> bool {
+    // GT_RAWTEXT preserves table start/end markers (FFF9/FFFB), cell delimiters and image markers.
+    // All image markers must match source images; ordinary spaces remain part of source paragraph text.
+    fn gap(c: u16, images: usize, seen: &mut usize) -> bool {
         if c == 0xFFFC {
             *seen += 1;
             *seen <= images
-        } else if c == 32 {
-            *spaces += 1;
-            *seen > 0 && *spaces <= images
         } else {
             structural(c)
         }
@@ -94,7 +91,7 @@ fn locate(
             .encode_utf16()
             .map(|c| if c == 10 { 11 } else { c })
             .collect();
-        let (mut seen, mut spaces) = (0, 0);
+        let mut seen = 0;
         loop {
             work = work
                 .checked_add(projected.len())
@@ -108,7 +105,7 @@ fn locate(
             if native
                 .get(cursor)
                 .copied()
-                .is_some_and(|c| gap(c, images, &mut seen, &mut spaces))
+                .is_some_and(|c| gap(c, images, &mut seen))
             {
                 cursor += 1
             } else {
@@ -130,12 +127,8 @@ fn locate(
         }
         cursor = end;
     }
-    let (mut seen, mut spaces) = (0, 0);
-    if native[cursor..]
-        .iter()
-        .any(|&c| !gap(c, images, &mut seen, &mut spaces))
-        || seen != images
-    {
+    let mut seen = 0;
+    if native[cursor..].iter().any(|&c| !gap(c, images, &mut seen)) || seen != images {
         return Err(invalid());
     }
     target.ok_or_else(invalid)
@@ -155,10 +148,9 @@ impl RichDocument {
         if range.0 >= range.1
             || range.1 > native.len()
             || word.is_empty()
-            || word
-                .chars()
-                .chain(replacement.chars())
-                .any(|c| c.is_control() || matches!(c, '\u{FFFC}' | '\u{FDD0}'..='\u{FDEF}'))
+            || word.chars().chain(replacement.chars()).any(|c| {
+                c.is_control() || matches!(c, '\u{FFF9}'..='\u{FFFC}' | '\u{FDD0}'..='\u{FDEF}')
+            })
         {
             return Err(Error::Invalid("invalid word correction".into()));
         }
@@ -303,7 +295,7 @@ mod tests {
             Ok(())
         })
         .unwrap();
-        let native = "😀 speling world\rhello speling\u{7}Other\u{7}\r\u{FFFC}\rAfter\rTail\r"
+        let native = "😀 speling world\r\u{FFF9}\rhello speling\r\u{7}Other\r\u{7}\u{FFFB}\r\u{FFFC}\rAfter\rTail"
             .encode_utf16()
             .collect();
         (doc, native)
@@ -351,7 +343,7 @@ mod tests {
         object_space.insert(at, 32);
         assert!(doc
             .prepare_word_edit(&object_space, (3, 10), "speling", "spelling")
-            .is_ok());
+            .is_err());
         object_space.insert(at, 32);
         assert!(doc
             .prepare_word_edit(&object_space, (3, 10), "speling", "spelling")

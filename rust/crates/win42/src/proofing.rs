@@ -21,7 +21,7 @@ fn checked_word(text: &[u16], start: usize, length: usize) -> Result<String, Str
     let word = String::from_utf16(&text[start..end]).map_err(|_| "Invalid spelling text")?;
     if word
         .chars()
-        .any(|c| c.is_control() || matches!(c, '\u{fffc}' | '\u{fdd0}'..='\u{fdef}'))
+        .any(|c| c.is_control() || matches!(c, '\u{fff9}'..='\u{fffc}' | '\u{fdd0}'..='\u{fdef}'))
     {
         return Err("Spelling range crosses a document structure".into());
     }
@@ -30,7 +30,9 @@ fn checked_word(text: &[u16], start: usize, length: usize) -> Result<String, Str
 fn check_text(text: &[u16]) -> Vec<u16> {
     text.iter()
         .map(|&c| {
-            if c < 32 && !matches!(c, 9 | 10 | 13) || c == 0xFFFC || (0xFDD0..=0xFDEF).contains(&c)
+            if c < 32 && !matches!(c, 9 | 10 | 13)
+                || (0xFFF9..=0xFFFC).contains(&c)
+                || (0xFDD0..=0xFDEF).contains(&c)
             {
                 32
             } else {

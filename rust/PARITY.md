@@ -640,3 +640,10 @@ after image selection; image unit regressions are now included in quick CI.
   Unicode/history/reopen regressions pass: workspace 526/0/1; GNU all targets compile. Native family/style,
   actual embedded-font, independently rendered glyphs, full history/reopen and virtual print checks are added,
   awaiting their first compatible Windows build. This does not add complex-script shaping coverage.
+
+- The actual hidden-Rich-Edit integration test in run 42513695947 captures FFF9/FFFB table delimiters in
+  GT_RAWTEXT. The previous image-space hypothesis is withdrawn: the visible space was the normal image
+  placeholder representation. Mapping/checker input now recognizes the real table markers; ordinary extra
+  spaces remain rejected and all image markers still require corresponding source images. The exact captured
+  UTF-16 sequence is retained as the portable regression. Workspace 526/0/1; GNU targets compile. Native
+  correction/format assertions are unchanged and await a repeat.
