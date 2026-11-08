@@ -463,6 +463,8 @@ pub trait App {
     }
     /// Request more blank viewport space near an edge; this must not mutate document data/history.
     fn extend_grid_view(&mut self, _visible_row: usize, _column: usize) -> bool { false }
+    /// Document and sheet identity, independent of focused cell coordinates and ordinary edits.
+    fn grid_view_identity(&self) -> (u64,u64) { (0,0) }
     fn grid_clipboard_commands(&self) -> Option<(u16, u16)> {
         None
     }

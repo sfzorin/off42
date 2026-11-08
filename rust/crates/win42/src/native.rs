@@ -5697,6 +5697,7 @@ pub(super) fn grid_snapshot() -> Option<crate::grid::Snapshot> {
             crate::GridAxis::new(rows.len(),0,(0..rows.len()).map(|r|(r,s.app.grid_row_height(r))).collect()).unwrap()
         ));
         Some(crate::grid::Snapshot {
+            identity: s.app.grid_view_identity(),
             rows,
             widths,
             heights,

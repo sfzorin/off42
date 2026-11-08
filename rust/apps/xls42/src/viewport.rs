@@ -1,7 +1,16 @@
 //! Per-document visible blank space; never part of workbook history or file contents.
 use super::*;
+pub(super) fn union(a: Range, b: Range) -> Range {
+    Range {
+        top: a.top.min(b.top),
+        left: a.left.min(b.left),
+        bottom: a.bottom.max(b.bottom),
+        right: a.right.max(b.right),
+    }
+}
 #[derive(Default)]
 pub(super) struct Viewport {
+    pub generation: u64,
     bounds: std::collections::BTreeMap<u64, (usize, usize)>,
     pub selection: Option<(u64, Range)>,
 }
@@ -10,6 +19,88 @@ pub(super) struct Viewport {
 mod tests {
     use super::*;
     use win42::App;
+    #[test]
+    fn ordinary_range_commands_edit_virtual_destinations_with_complete_history() {
+        for id in [26, 27, 75, 41, 44, 29, 58, 70, 71] {
+            let mut app = app();
+            app.book.set_cell(0, 0, "4".into()).unwrap();
+            let range = Range {
+                top: 100,
+                left: 20,
+                bottom: 102,
+                right: 20,
+            };
+            if !matches!(id, 26 | 27 | 70) {
+                app.choose_range(range, (100, 20)).unwrap();
+            }
+            let before = app.book.project_bytes().unwrap();
+            let values = |v: &[&str]| v.iter().map(|v| (*v).to_owned()).collect::<Vec<_>>();
+            match id {
+                26 => app.input_action(id, &values(&["101", "21"])).unwrap(),
+                27 => app
+                    .input_action(id, &values(&["101", "21", "103", "21"]))
+                    .unwrap(),
+                75 => app
+                    .input_action(id, &values(&["PCB-", "7", "2", "4"]))
+                    .unwrap(),
+                41 => app.input_action(id, &values(&["1", "10", "yes"])).unwrap(),
+                44 => app
+                    .input_action(id, &values(&["greater", "1", "FFFF00"]))
+                    .unwrap(),
+                70 => app.input_action(id, &values(&["100", "20"])).unwrap(),
+                _ => app.action(id).unwrap(),
+            }
+            match id {
+                26 => assert_eq!(app.book.cell(100, 20), Some("4")),
+                27 => {
+                    for row in 100..=102 {
+                        assert_eq!(app.book.cell(row, 20), Some("4"));
+                    }
+                }
+                75 => assert_eq!(
+                    [
+                        app.book.cell(100, 20),
+                        app.book.cell(101, 20),
+                        app.book.cell(102, 20)
+                    ],
+                    [Some("PCB-0007"), Some("PCB-0009"), Some("PCB-0011")]
+                ),
+                41 => assert_eq!(app.book.validations()[0].range, range),
+                44 => assert_eq!(app.book.conditional_formats()[0].range, range),
+                29 => assert_eq!(app.book.merges(), &[range]),
+                58 => assert_eq!(app.book.print_settings().area, Some(range)),
+                70 => {
+                    assert_eq!(
+                        (
+                            app.book.sheet_view().frozen_rows,
+                            app.book.sheet_view().frozen_columns
+                        ),
+                        (100, 20)
+                    );
+                    assert_eq!(app.book.selection().top, 0);
+                }
+                71 => assert_eq!(
+                    app.book
+                        .sheet_view()
+                        .hidden_rows
+                        .iter()
+                        .copied()
+                        .collect::<Vec<_>>(),
+                    vec![100, 101, 102]
+                ),
+                _ => unreachable!(),
+            }
+            assert_eq!(app.book.cell(0, 0), Some("4"));
+            let changed = app.book.project_bytes().unwrap();
+            assert_ne!(changed, before);
+            app.action(4).unwrap();
+            assert_eq!(app.book.project_bytes().unwrap(), before, "Undo {id}");
+            app.action(5).unwrap();
+            assert_eq!(app.book.project_bytes().unwrap(), changed, "Redo {id}");
+            let reopened = Workbook::from_project_bytes(&changed).unwrap();
+            assert_eq!(reopened.project_bytes().unwrap(), changed);
+        }
+    }
     fn app() -> Xls {
         Xls {
             goal_seek: Default::default(),
@@ -23,6 +114,37 @@ mod tests {
             viewport: Default::default(),
             selected_picture: None,
         }
+    }
+    #[test]
+    fn view_identity_changes_on_open_new_and_sheet_switch_but_not_edits_or_rejected_open() {
+        let mut app = app();
+        let first = app.grid_view_identity();
+        app.extend_grid_view(1, 1);
+        assert_eq!(app.grid_view_identity(), first);
+        app.edit("KEEP".into()).unwrap();
+        assert_eq!(app.grid_view_identity(), first);
+        app.book.add_sheet("Second").unwrap();
+        assert_ne!(app.grid_view_identity(), first);
+        app.book.undo();
+        assert_eq!(app.grid_view_identity(), first);
+        let path = std::env::temp_dir().join(format!("off42-grid-view-{}.csv", std::process::id()));
+        std::fs::write(&path, "new source\n").unwrap();
+        app.open(&path).unwrap();
+        let opened = app.grid_view_identity();
+        assert_ne!(opened, first);
+        assert_eq!(app.view_bounds(), (1, 1));
+        let original = app.book.project_bytes().unwrap();
+        app.extend_grid_view(0, 0);
+        let bounds = app.view_bounds();
+        std::fs::write(&path, "bad\0text\n").unwrap();
+        assert!(app.open(&path).is_err());
+        assert_eq!(app.grid_view_identity(), opened);
+        assert_eq!(app.view_bounds(), bounds);
+        assert_eq!(app.book.project_bytes().unwrap(), original);
+        app.new_document().unwrap();
+        assert_ne!(app.grid_view_identity(), opened);
+        assert_eq!(app.view_bounds(), (20, 8));
+        std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn technical_artwork_and_axis_geometry_can_extend_blank_space_without_extra_history_steps() {
@@ -220,6 +342,11 @@ mod tests {
     }
 }
 impl Viewport {
+    pub fn reset(&mut self) {
+        self.generation = self.generation.wrapping_add(1);
+        self.bounds.clear();
+        self.selection = None;
+    }
     pub fn bounds(&self, book: &Workbook) -> (usize, usize) {
         let (rows, cols) = self
             .bounds

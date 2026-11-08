@@ -924,3 +924,10 @@ Technical-object/picture insertion and movement, the picture geometry prompt and
 use the same atomic growth boundary for newly visible blank areas. Portable checks verify a distant QR
 recipe, exact image position/offsets/data, axis sizes, selection retention, complete Undo/Redo and Office
 round trips. The corresponding normal QR/geometry UI scenario awaits a compatible Windows build.
+
+Run 42526620649 stops at the existing XLS picture-pixel check before reaching the growth scenario. Grid
+refresh previously tracked only focus coordinates, allowing another document/sheet with the same focus to
+retain stale scroll offsets after blank viewport growth. It now tracks document/sheet identity and resets
+scroll/drag state at that boundary. Open/New/rejected-open identities have a portable regression; native
+repeat is pending and the pixel assertion is unchanged. Copy/fill, serials, range rules, merge, print-area,
+hiding and freezing also use bounded growth where needed; normal command/history/project checks pass.

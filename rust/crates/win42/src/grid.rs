@@ -21,6 +21,7 @@ use windows_sys::Win32::{
     },
 };
 pub(super) struct Snapshot {
+    pub identity: (u64,u64),
     pub rows: crate::SparseTable,
     pub widths: crate::GridAxis,
     pub heights: crate::GridAxis,
@@ -44,6 +45,7 @@ struct GridState {
     anchor: Option<(usize, usize)>,
     focus_pane: Option<(bool, bool)>,
     last_focus: Option<(usize,usize)>,
+    last_identity: Option<(u64,u64)>,
     editor: HWND,
     committing: bool,
     picture_drag: Option<PictureDrag>,
@@ -939,6 +941,7 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LR
                 anchor: None,
                 focus_pane: None,
                 last_focus:None,
+                last_identity:None,
                 editor: null_mut(),
                 committing: false,
                 picture_drag: None,
@@ -1430,6 +1433,12 @@ pub(super) unsafe fn create(parent: HWND, id: usize) -> HWND {
     )
 }
 pub(super) unsafe fn refresh(hwnd: HWND) {
+    let identity=super::native::grid_snapshot().map(|s|s.identity);
+    if let Some(st)=state(hwnd){if st.last_identity!=identity {
+        st.last_identity=identity;st.last_focus=None;st.x=0;st.y=0;st.anchor=None;st.focus_pane=None;
+        if st.selecting||st.drag.is_some()||st.picture_drag.is_some(){ReleaseCapture();}
+        st.selecting=false;st.drag=None;st.picture_drag=None;st.preview_selection=None;
+    }}
     extend_view(hwnd);
     let selected=super::native::grid_snapshot().and_then(|s|s.selected);
     let moved=state(hwnd).is_some_and(|st|{let changed=st.last_focus!=selected;st.last_focus=selected;changed});

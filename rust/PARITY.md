@@ -775,3 +775,11 @@ after image selection; image unit regressions are now included in quick CI.
   31/0, GNU all targets compile. Native QR insertion and geometry-move persistence/history assertions
   are added to the growth scenario; pending a compatible build. Remaining virtual-area range tools
   and broader floating-object/format parity remain open.
+
+- Run 42526620649 (03cf2b9) native artifacts report a failure at the existing XLS picture-pixel assertion,
+  before the growth scenario. Geometry was saved correctly; the assertion remains unchanged. Grid focus
+  alone did not identify a new document/sheet, so virtual growth could retain old scroll offsets. Snapshot
+  identity now resets scroll/drag state before growth and focus reveal. Open/New/rejected-open/sheet-identity
+  regression and all XLS app 33 tests pass; GNU all targets compile. Copy/fill/serial/rule/merge/print-area/
+  hiding/freezing commands now grow virtual destinations as appropriate with full history/project checks.
+  A serial-growth native scenario is added. Runtime confirmation of the reset and growth remains pending.

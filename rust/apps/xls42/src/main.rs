@@ -279,6 +279,7 @@ impl win42::App for Xls {
         self.goal_seek.cancel();
         self.solver.cancel();
         self.book = Workbook::new(20, 8).map_err(|e| e.to_string())?;
+        self.viewport.borrow_mut().reset();
         self.selected_picture = None;
         self.clear_visible_cache();
         self.row = 0;
@@ -769,9 +770,7 @@ impl win42::App for Xls {
                 let [prefix, start, step, digits] = v else {
                     return Err("Invalid serial settings.".into());
                 };
-                let rows = self
-                    .book
-                    .visible_rows()
+                let rows = self.visible_rows()
                     .iter().copied()
                     .filter(|row| *row >= range.top && *row <= range.bottom)
                     .collect::<Vec<_>>();
@@ -793,6 +792,7 @@ impl win42::App for Xls {
                             .map_err(|_| "Enter the minimum number of digits.")?,
                     )
                     .map_err(|e| e.to_string())?;
+                self.viewport.borrow_mut().selection=None;
                 self.clear_visible_cache();
             }
             20 => {
@@ -828,15 +828,15 @@ impl win42::App for Xls {
                 if id == 25 {
                     self.choose_range(range,(range.top,range.left))?;
                 } else {
-                    let source=self.active_range();self.edit_range(range,|book|book.fill_range(source,range))?;
+                    let source=self.active_range();let bounds=viewport::union(source,range);self.edit_range(bounds,|book|book.fill_range(source,range))?;
                 }
                 self.row = range.top;
                 self.col = range.left;
             }
             26 => {
-                self.book
-                    .copy_range(self.active_range(), n(0)?, n(1)?)
-                    .map_err(|e| e.to_string())?;
+                let source=self.active_range();let(top,left)=(n(0)?,n(1)?);
+                let destination=Range{top,left,bottom:top.checked_add(source.bottom-source.top).ok_or("Invalid destination")?,right:left.checked_add(source.right-source.left).ok_or("Invalid destination")?};
+                self.edit_range(viewport::union(source,destination),|book|book.copy_range(source,top,left))?;
             }
             28 => {
                 let mut range = self.active_range();
@@ -852,7 +852,8 @@ impl win42::App for Xls {
                 let mut view = self.book.sheet_view().clone();
                 view.frozen_rows = v[0].parse().map_err(|_| "Invalid frozen row count")?;
                 view.frozen_columns = v[1].parse().map_err(|_| "Invalid frozen column count")?;
-                self.book.set_sheet_view(view).map_err(|e| e.to_string())?;
+                let selection=self.book.selection();let bounds=Range{top:0,left:0,bottom:view.frozen_rows,right:view.frozen_columns};
+                self.edit_range(bounds,|book|{let changed=book.set_sheet_view(view)?;if book.selection()!=selection{book.set_selection(selection)?;}Ok(changed)})?;
             }
             68 => {
                 let range=self.active_range();self.edit_range(range,|book|book.add_table(&v[0],range,v[1].eq_ignore_ascii_case("yes")))?;
@@ -896,13 +897,7 @@ impl win42::App for Xls {
             }
             63 => {
                 let range = self.active_range();
-                self.book
-                    .set_filter(Some(SheetFilter {
-                        range,
-                        column: n(0)?,
-                        contains: v[1].clone(),
-                    }))
-                    .map_err(|e| e.to_string())?;
+                let filter=SheetFilter{range,column:n(0)?,contains:v[1].clone()};self.edit_range(range,|book|book.set_filter(Some(filter)))?;
                 self.clear_visible_cache();
             }
             50 => {
@@ -1047,15 +1042,8 @@ impl win42::App for Xls {
                     return Err("Enter six hexadecimal RGB digits".into());
                 }
                 let background = u32::from_str_radix(hex, 16).map_err(|_| "Invalid RGB color")?;
-                self.book
-                    .add_conditional_format(ConditionalFormat {
-                        range: self.active_range(),
-                        condition,
-                        background: Some(background),
-                        foreground: None,
-                        bold: false,
-                    })
-                    .map_err(|e| e.to_string())?;
+                let range=self.active_range();let rule=ConditionalFormat{range,condition,background:Some(background),foreground:None,bold:false};
+                self.edit_range(range,|book|book.add_conditional_format(rule))?;
             }
             37 | 38 => {
                 let mut style = self.book.style(self.row,self.col).cloned().unwrap_or_default();
@@ -1147,6 +1135,7 @@ impl win42::App for Xls {
         let changed=self.viewport.borrow_mut().extend(&self.book,physical,col);
         if changed{self.clear_visible_cache();}changed
     }
+    fn grid_view_identity(&self)->(u64,u64){(self.viewport.borrow().generation,self.book.active_sheet())}
     fn grid_clipboard_commands(&self) -> Option<(u16, u16)> {
         Some((39, 40))
     }
@@ -1461,7 +1450,7 @@ impl win42::App for Xls {
         .map_err(|e| e.to_string())?;
         for (_,_,_,text) in book.cell_inputs(){win42::validate_editable(text)?;}
         self.book = book;
-        self.viewport.replace(Default::default());
+        self.viewport.borrow_mut().reset();
         self.goal_seek.cancel();
         self.solver.cancel();
         self.selected_picture = None;
@@ -1562,7 +1551,7 @@ impl win42::App for Xls {
                     }
                     _ => unreachable!(),
                 }
-                self.book.set_sheet_view(view).map_err(|e| e.to_string())?;
+                self.edit_range(range,|book|book.set_sheet_view(view))?;
                 let selection = self.book.selection();
                 self.row = selection.top;
                 self.col = selection.left;
@@ -1591,9 +1580,7 @@ impl win42::App for Xls {
                 let range=self.active_range();self.edit_range(range,|book|book.merge(range))?;
             }
             30 => {
-                self.book
-                    .unmerge(self.active_range())
-                    .map_err(|e| e.to_string())?;
+                let range=self.active_range();self.edit_range(range,|book|book.unmerge(range))?;
             }
             31 => {
                 let mut style = self.book.style(self.row,self.col).cloned().unwrap_or_default();
@@ -1604,7 +1591,7 @@ impl win42::App for Xls {
             58 => {
                 let mut p = self.book.print_settings().clone();
                 p.area = Some(self.active_range());
-                self.book.set_print_settings(p).map_err(|e| e.to_string())?;
+                let range=self.active_range();self.edit_range(range,|book|book.set_print_settings(p))?;
             }
             61 => {
                 let mut p = self.book.print_settings().clone();
@@ -1619,14 +1606,10 @@ impl win42::App for Xls {
                 self.preview = None;
             }
             43 => {
-                self.book
-                    .remove_validation(self.active_range())
-                    .map_err(|e| e.to_string())?;
+                let range=self.active_range();self.edit_range(range,|book|book.remove_validation(range))?;
             }
             45 => {
-                self.book
-                    .remove_conditional_formats(self.active_range())
-                    .map_err(|e| e.to_string())?;
+                let range=self.active_range();self.edit_range(range,|book|book.remove_conditional_formats(range))?;
             }
             32 | 33 => {
                 if self.book.has_external_source() {

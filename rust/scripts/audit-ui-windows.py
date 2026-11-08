@@ -419,6 +419,8 @@ def audit_sheet_pictures(process, main, output, results):
             return gdi.GetPixel(dc, x, y) == 0x0000FF
         finally:
             u.ReleaseDC(grid, dc)
+    bounded_send(grid,0x000F)
+    capture_window(grid,output/'XLS42-picture-before-drag.bmp')
     wait_for(lambda: red(166, 63), "rendered picture pixels", process)
     def point(x, y):
         return (y << 16) | x
@@ -1209,6 +1211,11 @@ def audit_grid_expansion(process,main,binary,output,results):
     next_picture=moved['sheets'][0]['images'][0];assert (next_picture['row'],next_picture['column'],next_picture['offset_x'],next_picture['offset_y'],next_picture['width_points'],next_picture['height_points'])==(1399,100,5,7,60,60)
     assert {k:v for k,v in picture.items()if k not in('row','column','offset_x','offset_y','width_points','height_points')}=={k:v for k,v in next_picture.items()if k not in('row','column','offset_x','offset_y','width_points','height_points')}
     command(main,4);move_undo=saved('artwork-move-undo');assert move_undo['sheets']==artwork['sheets']and move_undo['selection']==artwork['selection'];command(main,5);move_redo=saved('artwork-move-redo');assert move_redo['sheets']==moved['sheets']and move_redo['selection']==moved['selection']
+    fill_prompt(process,main,25,'Range (1-based)',['1600','121','1602','121']);fill_prompt(process,main,75,'Fill Serial Numbers',['PCB-GROW-','7','2','4'])
+    serial=saved('serial');assert (serial['sheets'][0]['rows'],serial['sheets'][0]['cols'])==(1602,121)
+    assert [cells(serial)[(row,120)]['content']['value']['raw']for row in(1599,1600,1601)]==['PCB-GROW-0007','PCB-GROW-0009','PCB-GROW-0011']
+    assert all(cells(serial)[(row,120)]['content']['type']=='Text'for row in(1599,1600,1601))
+    command(main,4);serial_undo=saved('serial-undo');assert serial_undo['sheets']==moved['sheets']and serial_undo['selection']==moved['selection'];command(main,5);serial_redo=saved('serial-redo');assert serial_redo['sheets']==serial['sheets']and serial_redo['selection']==serial['selection']
     assert seed.read_bytes()==original
     results['checks'].append('native scroll extends blank grid without document mutation; normal far-range selection remains virtual; actual text edit, empty-cell Bold and clipboard Paste allocate only written bounds with complete one-step dimensions/data/style/selection Undo/Redo and saved reopen; technical QR insertion and geometry move extend allocation atomically with exact recipe/payload retention and complete history; source unchanged')
 

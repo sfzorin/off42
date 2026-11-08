@@ -995,3 +995,10 @@ as one history step. Errors and no-ops preserve the original state and redo bran
 validates global mapping axes, then grows to the actually used destinations in its existing atomic edit.
 External ODS positive blank allocation growth does not shift references; value-only saves normalize this
 allocation difference when choosing the surgical XML path. Shrinking/structural changes keep their guards.
+
+Native grid snapshots now carry a document/sheet identity independent of ordinary edits and focus
+coordinates. The grid resets scroll and transient drag state on identity changes before extending blank
+space or revealing the selected cell. Successful Open/New advance the document generation; rejected Open
+preserves it, and sheet identity distinguishes same-focus tab changes. A small sheet's scroll clamping is
+not relied on as a document-reset mechanism. Range commands use bounded growth transactions; mapped
+serial output grows only its actual destinations.
