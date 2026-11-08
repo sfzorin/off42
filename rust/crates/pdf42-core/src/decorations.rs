@@ -553,7 +553,7 @@ fn drawing(
     }
 }
 
-fn inherited_resources(doc: &Document, page: ObjectId) -> Result<Dictionary, String> {
+pub(super) fn inherited_resources(doc: &Document, page: ObjectId) -> Result<Dictionary, String> {
     let mut id = page;
     let mut seen = HashSet::new();
     for _ in 0..128 {

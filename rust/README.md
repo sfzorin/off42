@@ -7,10 +7,13 @@ and failures. Printing drivers and scanner hardware still need testing on a logg
 ## Build and run
 
 Install stable Rust with the `x86_64-pc-windows-msvc` toolchain, Visual Studio Build Tools with the Desktop C++
-workload and Windows SDK, and Python 3. In a Developer PowerShell from the repository root:
+workload and Windows SDK, CMake/Ninja, Git, and Python 3. In a Developer PowerShell from the repository root:
 
 ```powershell
 cd rust
+./scripts/build-ocr.ps1
+python scripts/fetch-ocr-models.py target/x86_64-pc-windows-msvc/release
+$env:OFF42_OCR_DATA = (Resolve-Path target/x86_64-pc-windows-msvc/release/ocr/tessdata).Path
 python scripts/fetch-pdfium.py target/x86_64-pc-windows-msvc/debug/deps
 cargo test --locked --workspace --target x86_64-pc-windows-msvc
 Push-Location scripts
@@ -25,12 +28,11 @@ python scripts/fetch-pdfium.py target/x86_64-pc-windows-msvc/release
 Run the other apps from `target/x86_64-pc-windows-msvc/release` similarly. The resource embeds common controls v6 and PerMonitorV2
 settings. PDF42 uses the adjacent `pdfium.dll` for text search and selection; the fetch script supplies a pinned
 runtime and licenses. `PDFIUM_ARCHIVE` can select a local pinned archive. A custom `PDFIUM_DLL` also requires
-`PDFIUM_DLL_SHA256` and `PDFIUM_LICENSE_DIR`. SCN42 OCR requires a separately installed Tesseract executable and
-language data; select its path and available languages in the app.
+`PDFIUM_DLL_SHA256` and `PDFIUM_LICENSE_DIR`. PDF42 and SCN42 use the statically linked OCR engine and twenty pinned offline models.
+Keep the complete `ocr` folder beside the executables. SCN42 also retains optional external Tesseract support.
 
-For a GNU cross-build on macOS or Linux, install the `x86_64-pc-windows-gnu` Rust target, MinGW-w64 tools and
-Python 3, then run `rust/scripts/package-windows.sh` from the repository root. It creates
-`build/rust-port-windows/off42-windows-x64.zip` with PDFium and licenses. `rust/scripts/package-source.sh` creates
+GNU all-targets `cargo check` remains supported. Native packaging currently uses MSVC; the legacy GNU
+packaging script requires a separately cross-built static OCR SDK and is not a verified release path. `rust/scripts/package-source.sh` creates
 the source archive and excludes build outputs and local `AGENTS.md` and `STATUS.md`. Cross-building does not verify
 Windows runtime behavior. The Windows CI workflow also builds with MSVC.
 
@@ -43,7 +45,7 @@ Windows runtime behavior. The Windows CI workflow also builds with MSVC.
 | PPT42 | Mixed-run in-place text editing, 187 preset shapes with adjustment handles, native objects, multi-selection, grouping and rotation, slides, timed cut/fade/push-left slideshow transitions and printing; PPTX/ODP adapters | Complex source text and existing source-group structural edits are guarded. Complex source transforms and rotated source groups may be preserved without rendering. ODP transition duration is limited to 250/500/1000 ms. Object animation, full master/theme semantics, charts and media playback are incomplete. |
 | PDF42 | WinRT rendering; PDFium search, selection and supported top-level text-object edits; annotations, forms, nested bookmarks, attachments, password-prompted PDF open and AES-128 copy, compression, printing, image export and raster redaction | Complex text, forms and navigation remain guarded. Protected files use conservative permissions; new AES-128 passwords require 1–32 printable ASCII characters, and original permissions and encryption are not preserved. Encrypted interoperability is unverified. Redaction removes metadata, attachments, forms and navigation. Trusted digital signatures and PDF/A conformance are not supported. |
 | IMG42 | Transforms, tone, text, masks and lasso; directory navigation, GIF/WebP frames, multipage TIFF, PDF and bounded SVG import; standard EXIF fields, DPI/ICC, folder batch export and printing | Proprietary MakerNote, TIFF EXIF subdirectories, palette/CMYK and floating-point TIFF remain limited. TIFF and PNG support 16-bit edits; other 16-bit sources may require conversion. Some PNG metadata requires a converted copy; profile conversion is not color-managed. Batch PNG/JPEG exports the first frame; TIFF exports all frames, with explicit 8-bit white flattening. |
-| SCN42 | Asynchronous WIA acquisition, PDF import and WIC processing; v4 projects with stable page IDs, DPI, OCR language and geometry; batch Tesseract or Windows OCR, Unicode searchable PDF, deskew, perspective correction, cleanup, compression, image/TIFF export and printing | Tesseract and its language data are external; Windows OCR requires installed languages. Windows OCR and physical devices have not been exercised. |
+| SCN42 | Asynchronous WIA acquisition, PDF import and WIC processing; v4 projects with stable page IDs, DPI, OCR language and geometry; batch built-in or external Tesseract OCR, Unicode searchable PDF, deskew, perspective correction, cleanup, compression, image/TIFF export and printing | The new bundled OCR backend awaits native verification; optional external Tesseract needs its own data. Physical devices have not been exercised. |
 
 Shared save snapshots detect changes to existing destinations and use atomic replacement. Multi-file saves stage
 sidecars before the main document with verified reuse and best-effort rollback; they are not OS-atomic. Async open
@@ -516,3 +518,21 @@ Filter matching, summaries, external hidden-row classification and saved XLSX ro
 The XLSX writer's separate automatic filter hiding is disabled in favor of calculated visibility. Portable checks
 verify display/clipboard values, full-precision XLSX/ODS numeric caches, formatted spill children, text typing,
 Undo/Redo and filter/manual-hidden-row round trips. Native formatted-copy checks await the next compatible build.
+
+### Built-in OCR implementation (native verification pending)
+
+PDF42 now captures selected pages without changing their rotation, crop or annotations and recognizes them
+on a cancellable worker. Results become one undoable invisible text layer; stale or failed jobs change no
+pages. Repeating recognition replaces only validated OFF42-owned layers. Existing visible content is retained.
+SCN42 shares the same offline recognizer and can export invisible Unicode text, including characters outside
+the bundled visible font. Visible text font validation remains strict.
+
+Windows builds provision pinned Tesseract/Leptonica through `native/ocr/vcpkg.json`, link native code and CRT
+statically, and bundle twenty SHA-256-verified `tessdata_fast` models plus dependency licenses. This does
+not use the desktop Windows.Media.Ocr API, which requires package identity. Default `auto` recognizes
+English, Russian and Turkish together; explicit language tags or up to three `+`-separated model codes are
+supported. Missing or altered bundled models produce an error. No runtime download occurs.
+
+Current portable verification: 457 tests pass, zero fail, one external OCR fixture remains ignored; GNU
+Windows all-targets compilation passes. Real engine pixels, packaged UI and static runtime checks are
+pending a new Windows run; this implementation is not yet the public preview.

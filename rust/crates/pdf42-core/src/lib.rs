@@ -1,5 +1,6 @@
 //! Structural PDF operations. No renderer or signature preservation.
 pub mod decorations;
+pub mod ocr;
 mod comparison_marks;
 pub mod merge;
 pub use comparison_marks::ComparisonMark;
@@ -38,6 +39,7 @@ struct State {
     compress_streams: bool,
     page_labels: Option<HashMap<ObjectId, lopdf::Dictionary>>,
     decorations: Vec<decorations::Decoration>,
+    ocr_layers:HashMap<ObjectId,ocr::Layer>,
 }
 impl PartialEq for State {
     fn eq(&self, other: &Self) -> bool {
@@ -59,6 +61,7 @@ impl PartialEq for State {
             && self.compress_streams == other.compress_streams
             && self.page_labels == other.page_labels
             && self.decorations == other.decorations
+            && self.ocr_layers == other.ocr_layers
     }
 }
 pub struct FlattenedPage {
@@ -1197,6 +1200,7 @@ impl PdfDocument {
                     compress_streams: false,
                     page_labels: None,
                     decorations: Vec::new(),
+                    ocr_layers:HashMap::new(),
                 },
                 20,
             ),
@@ -2852,6 +2856,7 @@ impl PdfDocument {
             },
         );
         state.decorations.retain(|d| d.page != page);
+        state.ocr_layers.remove(&page);
         state.crops.remove(&page);
         state.rotations.remove(&page);
         let candidate = Self {
@@ -4274,6 +4279,7 @@ impl PdfDocument {
                 .map_err(|e| e.to_string())?
                 .set("Names", names);
         }
+        self.bake_ocr(&mut doc,state)?;
         self.bake_decorations(&mut doc, state)?;
         if state.compress_streams {
             for object in doc.objects.values_mut() {

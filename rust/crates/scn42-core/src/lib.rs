@@ -10,14 +10,7 @@ const MAX_BYTES: usize = 224 * 1024 * 1024;
 const MAX_OCR_BYTES: usize = 64 * 1024 * 1024;
 const MAX_DOCUMENT_PAYLOAD: usize = 256 * 1024 * 1024 - 64 * 1024;
 const MAX_RETAINED_BYTES: usize = 512 * 1024 * 1024;
-#[derive(Clone, Debug, PartialEq)]
-pub struct OcrWord {
-    pub text: String,
-    pub x: u32,
-    pub y: u32,
-    pub width: u32,
-    pub height: u32,
-}
+pub use suite42_core::ocr::Word as OcrWord;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Page {
     pub id: u64,
@@ -1026,7 +1019,7 @@ impl ScanDocument {
         let embedded = if text.is_empty() {
             None
         } else {
-            Some(suite42_pdf_text::PdfFont::embed_subset(&mut doc, &text)?)
+            Some(suite42_pdf_text::PdfFont::embed_invisible_subset(&mut doc, &text)?)
         };
         let pages_id = doc.new_object_id();
         let mut kids = Vec::new();
@@ -1054,7 +1047,7 @@ impl ScanDocument {
                         .chars()
                         .map(|c| format!("{:04X}", chars[&c].0))
                         .collect();
-                    let advance: u32 = word.text.chars().map(|c| chars[&c].2).sum();
+                    let advance: u64 = word.text.chars().map(|c| u64::from(chars[&c].2)).sum();
                     let target = word.width as f32 * 72.0 / page.dpi_x as f32;
                     let scale = if advance == 0 {
                         100.0

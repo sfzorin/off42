@@ -772,3 +772,10 @@ rounded grid strings back into arithmetic or typed Office caches. `calculated_gr
 source formulas/types/styles. The common cell formatter accepts an explicit sheet identity so filter/summary
 references across sheets use the owning sheet's format. XLSX visibility uses the same calculation and disables the
 writer's independent filter pass, preventing it from hiding formula rows that passed the application filter.
+
+Windows PDF/scan recognition shares borrowed RGBA input and source-pixel word rectangles. The native OCR
+SDK is pinned separately from Cargo, statically linked with the CRT, and ships verified offline models and
+licenses. PDF workers retain only text between pages and commit against an exact source/history token;
+selected-page capture normalizes disposable render geometry while the saved page retains original boxes,
+rotation and annotations. Invisible font CIDs retain Unicode mappings even where a visible outline is absent.
+Native backend and GUI verification is pending; the package remains a development build.

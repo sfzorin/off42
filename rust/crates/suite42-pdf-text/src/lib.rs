@@ -19,14 +19,19 @@ impl PdfFont {
         Ok(())
     }
     pub fn embed(doc: &mut Document, text: &str) -> Result<Self, String> {
-        Self::embed_impl(doc, text, false)
+        Self::embed_impl(doc, text, false, false)
     }
     /// Embeds a font program reduced to the glyphs `text` needs. Glyph IDs are
     /// preserved, so the CIDToGIDMap matches the full font's.
     pub fn embed_subset(doc: &mut Document, text: &str) -> Result<Self, String> {
-        Self::embed_impl(doc, text, true)
+        Self::embed_impl(doc, text, true, false)
     }
-    fn embed_impl(doc: &mut Document, text: &str, subset: bool) -> Result<Self, String> {
+    /// Use exclusively with text rendering mode 3. Missing visible outlines map to the existing space glyph;
+    /// every character still has its own CID and Unicode mapping, with OCR geometry supplying selection bounds.
+    pub fn embed_invisible_subset(doc:&mut Document,text:&str)->Result<Self,String>{
+        Self::embed_impl(doc,text,true,true)
+    }
+    fn embed_impl(doc: &mut Document, text: &str, subset: bool, invisible:bool) -> Result<Self, String> {
         // Noto Sans is distributed under OFL 1.1 alongside the bundled font.
         let font_data = include_bytes!("../../doc42-layout-probe/fixtures/NotoSans.ttf");
         let face = ttf_parser::Face::parse(font_data, 0)
@@ -34,9 +39,7 @@ impl PdfFont {
         let mut chars = std::collections::BTreeMap::new();
         for ch in text.chars() {
             if !chars.contains_key(&ch) {
-                let glyph = face
-                    .glyph_index(ch)
-                    .ok_or_else(|| format!("Bundled font lacks character {ch:?}"))?;
+                let glyph = face.glyph_index(ch).or_else(||if invisible{face.glyph_index(' ')}else{None}).ok_or_else(|| format!("Bundled font lacks character {ch:?}"))?;
                 let cid =
                     u16::try_from(chars.len() + 1).map_err(|_| "Too many distinct characters")?;
                 let width = u32::from(face.glyph_hor_advance(glyph).unwrap_or(face.units_per_em()))

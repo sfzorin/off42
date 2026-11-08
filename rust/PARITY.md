@@ -423,3 +423,13 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 - The optimized b4e9675 development ZIP passes CRC and all seven PE identities match the runtime report
   (six apps plus PDFium.dll): 61,948,557 bytes, SHA-256
   `355e6655b311d609e894c99daadbaa453b9b54bcdbba8f420063065fbc7b2e5e`. It is not a public release.
+
+### Bundled PDF/scan OCR in progress
+
+- Previous native run 42427772518 on 5a120e4 succeeds: all 30 groups, including external dynamic XLSX/ODS
+  resizing, blocking, history and reopen. The harness now reads standard inline and ODS paragraph strings.
+- PDF OCR capture/geometry, transactional invisible layers, stale/error refusal, own-layer replacement and
+  Unicode font mapping are implemented. SCN shares the statically linked backend and bundled models.
+- 457 portable tests pass, zero fail, one external OCR fixture remains ignored; GNU all targets compile.
+  The pinned static backend build, real image recognition and packaged native OCR UI are not yet verified.
+  Public preview, main and website remain unchanged.

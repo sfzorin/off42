@@ -71,6 +71,31 @@ jobs:
             rust/target/x86_64-pc-windows-msvc/debug
           key: windows-native-static-debug-${{ hashFiles('rust/Cargo.lock') }}-${{ github.sha }}
           restore-keys: windows-native-static-debug-${{ hashFiles('rust/Cargo.lock') }}-
+      - uses: actions/cache@v4
+        id: ocr-cache
+        with:
+          path: |
+            rust/build/ocr-sdk/lib
+            rust/build/ocr-sdk/licenses
+          key: windows-static-ocr-${{ hashFiles('rust/native/ocr/vcpkg.json', 'rust/native/ocr/CMakeLists.txt', 'rust/native/ocr/init.cpp', 'rust/scripts/build-ocr.ps1') }}
+      - name: Build pinned static OCR engine
+        if: steps.ocr-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: ./scripts/build-ocr.ps1
+      - name: Locate static OCR SDK
+        shell: pwsh
+        run: |
+          "OFF42_OCR_SDK=$((Resolve-Path build/ocr-sdk).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - uses: actions/cache@v4
+        with:
+          path: rust/build/off42/ocr
+          key: windows-ocr-models-${{ hashFiles('rust/native/ocr/models.json') }}
+      - name: Stage verified offline OCR models
+        shell: pwsh
+        run: |
+          python scripts/fetch-ocr-models.py build/off42
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "OFF42_OCR_DATA=$((Resolve-Path build/off42/ocr/tessdata).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Provision pinned PDFium for file-engine tests
         if: inputs.quick_ui != true
         shell: pwsh
@@ -117,6 +142,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $rustLicenses = Join-Path (rustc --print sysroot) 'share/doc/rust/licenses'
           if (Test-Path $rustLicenses) { Copy-Item -Recurse $rustLicenses build/off42/licenses/rust-toolchain }
+          New-Item -ItemType Directory -Force build/off42/licenses/ocr/native | Out-Null
+          Copy-Item "$env:OFF42_OCR_SDK/licenses/*" build/off42/licenses/ocr/native/
           Copy-Item ../LICENSE build/off42/licenses/off42-LICENSE
           Copy-Item crates/doc42-layout-probe/fixtures/OFL.txt build/off42/licenses/NotoSans-OFL.txt
           "Commit: $env:GITHUB_SHA`nProfile: $profile`nWorkflow: $env:GITHUB_RUN_ID" | Out-File -Encoding utf8 build/off42/BUILD-IDENTITY.txt
@@ -129,7 +156,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force target/x86_64-pc-windows-msvc/debug/deps | Out-Null
           Copy-Item build/off42/pdfium.dll target/x86_64-pc-windows-msvc/debug/deps/pdfium.dll
-          cargo test --locked -p win42 -p pdf42-core -p pdf42 -p doc42-core -p xls42-core -p ppt42-core -p ppt42
+          cargo test --locked -p win42 -p pdf42-core -p pdf42 -p doc42-core -p xls42-core -p ppt42-core -p ppt42 -p scn42-core -p scn42
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Audit native commands in the packaged apps
         run: python scripts/audit-ui-windows.py --bin-dir build/off42 --output build/native-ui --extended --pictures --technical-objects --label-sources --languages --recents --page-exports --host-commands --engineering --text-exports --extended-formulas --multiwindow --window-layout --rich-search --preset-shapes --pdf-decorations --statistical-formulas --pdf-comparison --pdf-merge --pdf-batch-headers --array-formulas
@@ -186,7 +213,7 @@ jobs:
           PDF42, DOC42 and XLS42 can export A4 label sheets and PNG barcodes in four formats.
           XLS42 can fill serial numbers with leading zeroes. PDF42, DOC42 and PPT42 share a local signature and stamp library.
 
-          Extract the entire ZIP and run the app you want. Keep \`pdfium.dll\` alongside \`PDF42.exe\`.
+          Extract the entire ZIP, including the \`ocr\` folder, and run the app you want. Keep \`pdfium.dll\` alongside \`PDF42.exe\`.
           The executables are unsigned. The Visual C++ runtime is linked into the apps; a separate
           Visual C++ Redistributable installation is not required. Native import checks are part of the build.
 

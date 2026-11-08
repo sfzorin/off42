@@ -1,6 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 mod decorations;
 mod comparison;
+mod ocr;
 mod merge;
 mod batch_headers;
 mod page_export;
@@ -111,6 +112,13 @@ struct Pdf {
         std::sync::Arc<std::sync::atomic::AtomicBool>,
     )>,
     operation_error: Option<String>,
+    ocr_language:String,
+    ocr_dpi:u32,
+    ocr_report:Option<win42::ReportRequest>,
+    #[cfg(windows)]
+    ocr_worker:Option<ocr::Worker>,
+    #[cfg(windows)]
+    ocr_languages:Option<std::sync::mpsc::Receiver<Result<Vec<(String,String)>,String>>>,
     merge:Option<merge::Worker>,
     batch_headers: Option<batch_headers::Worker>,
     batch_report: Option<win42::ReportRequest>,
@@ -313,6 +321,9 @@ impl Pdf {
     fn request_render(&mut self) -> Result<(), String> {
         #[cfg(windows)]
         {
+            if self.ocr_worker.as_ref().is_some_and(|w|w.epoch!=self.current_epoch||!self.doc.as_ref().is_some_and(|d|d.matches_snapshot(&w.source))){
+                self.ocr_worker=None;self.operation_error=Some("Recognition cancelled because the PDF changed".into());
+            }
             if self.comparison_worker.as_ref().is_some_and(|w| {
                 !self
                     .doc
@@ -701,7 +712,7 @@ impl win42::App for Pdf {
         }
         #[cfg(windows)]
         {
-            let mut changed = page_changed;
+            let mut changed = page_changed|self.poll_ocr();
             if let Some(worker) = &mut self.comparison_worker {
                 let n = worker.progress.load(std::sync::atomic::Ordering::Relaxed);
                 if n != worker.shown {
@@ -977,6 +988,7 @@ impl win42::App for Pdf {
         Err("Unsupported PDF dialog".into())
     }
     fn take_pending_report(&mut self) -> Option<(u16, win42::ReportRequest)> {
+        if let Some(report)=self.ocr_report.take(){return Some((116,report));}
         if let Some(report) = self.batch_report.take() {
             return Some((112, report));
         }
@@ -988,7 +1000,7 @@ impl win42::App for Pdf {
         None
     }
     fn report_event(&mut self, id: u16, event: win42::ReportEvent) -> Result<(), String> {
-        if id == 112 {
+        if matches!(id,112|116) {
             return Ok(());
         }
         if id != 97 {
@@ -1481,6 +1493,7 @@ impl win42::App for Pdf {
         }
     }
     fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+        if id==114{return self.ocr_request();}
         if (90..=93).contains(&id) {
             return self.decoration_request(id);
         }
@@ -1713,6 +1726,7 @@ impl win42::App for Pdf {
         })
     }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
+        if id==114{return self.start_ocr(values);}
         if let Some(result) = self.decoration_action(id, values) {
             if result? {
                 self.branch();
@@ -2499,6 +2513,9 @@ impl win42::App for Pdf {
     }
     fn actions(&self) -> &'static [(u16, &'static str)] {
         &[
+            (114,"Recognize PDF Text…"),
+            (115,"Cancel Text Recognition"),
+            (116,"Built-in OCR Languages…"),
             (110, "Merge Files…"),
             (111, "Cancel PDF Merge"),
             (112, "Apply Headers to Other PDFs…"),
@@ -2607,6 +2624,7 @@ impl win42::App for Pdf {
         "Open a PDF document.".into()
     }
     fn status(&self) -> String {
+        #[cfg(windows)]if let Some(worker)=&self.ocr_worker{return format!("Recognizing PDF text: {} of {} pages",worker.progress.load(std::sync::atomic::Ordering::Relaxed),worker.total);}
         if let Some(worker) = &self.batch_headers {
             return format!(
                 "Writing PDF header copies: {} of {}",
@@ -2715,6 +2733,8 @@ impl win42::App for Pdf {
         self.doc.as_ref().map_or(0, |d| d.current())
     }
     fn enabled(&self, id: u16) -> bool {
+        if id==115{#[cfg(windows)]{return self.ocr_worker.is_some();}#[cfg(not(windows))]{return false;}}
+        if id==116{#[cfg(windows)]{return self.ocr_languages.is_none();}#[cfg(not(windows))]{return false;}}
         if id == 113 {
             return self.batch_headers.is_some();
         }
@@ -2741,6 +2761,7 @@ impl win42::App for Pdf {
         let n = d.page_count();
         let index = d.current();
         match id {
+            114=>{#[cfg(windows)]{self.ocr_worker.is_none()&&self.object_edit.is_none()&&self.flatten_pending.is_none()&&d.allows_changes()}#[cfg(not(windows))]{false}},
             97 => {
                 #[cfg(windows)]
                 {
@@ -2970,6 +2991,8 @@ impl win42::App for Pdf {
         if id >= 10 && !self.enabled(id) {
             return Err("Command unavailable".into());
         }
+        if id==115{#[cfg(windows)]{self.ocr_worker=None;self.operation_error=Some("Text recognition cancelled; no pages changed".into());return Ok(());}}
+        if id==116{#[cfg(windows)]{let(tx,rx)=std::sync::mpsc::channel();std::thread::spawn(move||{let _=tx.send(win42::ocr::installed_languages());});self.ocr_languages=Some(rx);self.operation_error=Some("Finding built-in OCR languages…".into());return Ok(());}}
         if id == 113 {
             if let Some(worker) = &self.batch_headers {
                 worker

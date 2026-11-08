@@ -1,6 +1,7 @@
 #!/bin/sh
 # Cross-build a portable Windows x64 archive. Requires Rust target, MinGW-w64 and Python 3.
 set -eu
+: "${OFF42_OCR_SDK:?GNU packaging needs a cross-built static OCR SDK; use MSVC scripts/build-ocr.ps1 for verified Windows builds}"
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 TARGET=x86_64-pc-windows-gnu
 OUT="$ROOT/build/rust-port-windows"
@@ -23,13 +24,15 @@ for app in img42 doc42 xls42 ppt42 pdf42 scn42; do
 done
 cp "$ROOT/LICENSE" "$STAGE/off42/licenses/off42-LICENSE"
 python3 scripts/fetch-pdfium.py "$STAGE/off42"
+python3 scripts/fetch-ocr-models.py "$STAGE/off42"
+cp -R "$OFF42_OCR_SDK/licenses" "$STAGE/off42/licenses/ocr/native"
 cp crates/doc42-layout-probe/fixtures/OFL.txt "$STAGE/off42/licenses/NotoSans-OFL.txt"
 python3 scripts/audit-windows-runtime.py --bin-dir "$STAGE/off42" --output "$OUT/runtime-dependencies.json"
 cat > "$STAGE/off42/README.txt" <<'TEXT'
 off42 for Windows x64 — preliminary build
 
-PDF42 uses the included PDFium runtime. SCN42 OCR requires a separately
-installed Tesseract executable and language data; these are not included.
+PDF42 uses the included PDFium runtime. PDF42 and SCN42 use the included
+offline OCR models; retain the complete ocr directory beside the apps.
 This cross-built package has not been validated on Windows.
 TEXT
 cargo metadata --locked --format-version 1 --filter-platform "$TARGET" > "$STAGE/metadata.json"

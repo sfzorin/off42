@@ -428,7 +428,7 @@ impl win42::App for Scn {
             (23, "Recognize &Text..."),
             (24, "Cancel Recognition"),
             (37, "Recognize page range..."),
-            (38, "Recognize using Windows OCR..."),
+            (38, "Recognize using Built-in OCR..."),
             (25, "Find Installed OCR Languages..."),
             (26, "Page Resolution..."),
             (27, "Print all pages..."),
@@ -470,9 +470,9 @@ impl win42::App for Scn {
         }
         if id == 38 {
             return Some(win42::InputRequest {
-                title: "Windows OCR (large pages are scaled; installed language required)",
+                title: "Built-in OCR (offline; up to 3 languages)",
                 fields: vec![
-                    ("Language tag (auto, en-US, ru-RU...)", "auto".into()),
+                    ("Language (auto, en-US, eng+rus...)", "auto".into()),
                     ("First page (1-based)", "1".into()),
                     ("Last page (0 = all)", "0".into()),
                 ],
