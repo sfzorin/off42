@@ -144,7 +144,8 @@ def fill_prompt(process, main, identifier, title, values):
     return dialog
 
 
-def choose_file(process, path, format_name=None):
+def choose_file(process, path, format_name=None, keep_preview=False):
+    preview=[None]
     def filename_control():
         for dialog in windows(process.pid):
             if classname(dialog) != "#32770" or not u.IsWindowEnabled(dialog):
@@ -153,6 +154,10 @@ def choose_file(process, path, format_name=None):
             control = next((h for h in edits if u.GetDlgCtrlID(h) in (1148, 1001)), edits[0] if len(edits) == 1 else None)
             if control:
                 return dialog, control
+        if preview[0]is None:
+            window=next((h for h in windows(process.pid)if classname(h)=="Off42PdfPreviewWindow"and u.IsWindowEnabled(h)),None)
+            if window:
+                preview[0]=window;click(window,1)
         return None
     dialog, control = wait_for(filename_control, "file dialog filename field", process)
     if format_name is not None:
@@ -183,6 +188,11 @@ def choose_file(process, path, format_name=None):
         dialog, control = wait_for(filename_control, "filename field after format selection", process)
     set_text(control, str(path))
     click(dialog, 1)
+    if preview[0]is not None and not keep_preview:
+        window=preview[0]
+        wait_for(lambda:not u.IsWindow(dialog)and u.IsWindowEnabled(window),"label preview after Save",process)
+        click(window,2)
+        wait_for(lambda:not u.IsWindow(window),"label preview closed",process)
 
 
 def output_ready(process, main, path, signature):
@@ -1730,7 +1740,43 @@ def audit_doc_picture_labels(process,main,binary,output,results):
     results['checks'].append('DOC picture artwork uses displayed aspect ratio and original pixels/alpha on paper, supports stock copies/first slot, omits surrounding document text and preserves source/save state')
 
 
-def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False, ocr=False, ocr_only=False, label_artwork=False):
+def audit_label_preview(process,main,binary,output,results):
+    caption=text(main)
+    command(main,65518);finish_prompt(process,'Label Source',['Custom Text']);finish_prompt(process,'Create Label Sheet',['PREVIEW-AUDIT','','QR','100, 140, 2, 2','2, 4'])
+    preview=modal(process,title='Label Sheet Preview',native_class='Off42PdfPreviewWindow')
+    def ready(page,pages):return lambda:f'Page {page} of {pages}'in text(u.GetDlgItem(preview,100))
+    wait_for(ready(1,2),'first label preview page',process)
+    assert not u.IsWindowEnabled(main)and u.IsWindowEnabled(u.GetDlgItem(preview,3))
+    u.RedrawWindow.argtypes=[w.HWND,c.c_void_p,w.HANDLE,w.UINT];assert u.RedrawWindow(preview,None,None,0x185)
+    capture_window(preview,output/'labels-preview-fit.bmp')
+    click(preview,6);wait_for(ready(2,2),'second preview page',process)
+    click(preview,8);wait_for(lambda:'150%'in text(u.GetDlgItem(preview,100)),'preview zoom',process)
+    u.RedrawWindow.argtypes=[w.HWND,c.c_void_p,w.HANDLE,w.UINT];assert u.RedrawWindow(preview,None,None,0x185)
+    u.SendMessageW(preview,0x201,1,(300<<16)|300);u.SendMessageW(preview,0x200,1,(440<<16)|400);u.SendMessageW(preview,0x202,0,(440<<16)|400)
+    assert u.RedrawWindow(preview,None,None,0x185)
+    capture_window(preview,output/'labels-preview-zoom.bmp')
+    rect=w.RECT();u.GetWindowRect(preview,c.byref(rect));assert u.MoveWindow(preview,rect.left,rect.top,540,540,True)
+    time.sleep(0.1);u.GetWindowRect(preview,c.byref(rect))
+    for identifier in range(1,10):
+        button=u.GetDlgItem(preview,identifier);assert button
+        bounds=w.RECT();u.GetWindowRect(button,c.byref(bounds));assert rect.left<=bounds.left<bounds.right<=rect.right and rect.top<=bounds.top<bounds.bottom<=rect.bottom,(identifier,tuple(getattr(bounds,k)for k in('left','top','right','bottom')))
+    capture_window(preview,output/'labels-preview-narrow.bmp')
+    saved=output/'labels-preview-first.pdf';choose_file(process,saved,keep_preview=True)
+    wait_for(lambda:saved.is_file()and u.IsWindowEnabled(preview),'preview explicit Save',process)
+    assert not u.IsWindowEnabled(main)and pdf_text(binary.parent/'pdfium.dll',saved).count('PREVIEW-AUDIT')==2
+    click(preview,4);settings=modal(process,title='Create Label Sheet',native_class='Suite42InputDialog');click(settings,2)
+    wait_for(lambda:u.IsWindowEnabled(preview),'preview settings Cancel',process)
+    click(preview,4);finish_prompt(process,'Create Label Sheet',['UPDATED-PREVIEW','','QR','70, 37, 0, 0','1, 1'])
+    wait_for(ready(1,1),'regenerated preview page',process)
+    updated=output/'labels-preview-updated.pdf';choose_file(process,updated,keep_preview=True)
+    wait_for(lambda:updated.is_file()and u.IsWindowEnabled(preview),'updated preview Save',process)
+    contents=pdf_text(binary.parent/'pdfium.dll',updated);assert contents.count('UPDATED-PREVIEW')==1 and'PREVIEW-AUDIT'not in contents
+    click(preview,2);wait_for(lambda:not u.IsWindow(preview)and u.IsWindowEnabled(main),'preview Close',process)
+    assert text(main)==caption
+    results['checks'].append('embedded label preview renders/navigates pages, zooms, keeps controls onscreen in a narrow window, saves without closing, cancels/reapplies settings and regenerates exact PDF text without changing the parent document')
+
+
+def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False, ocr=False, ocr_only=False, label_artwork=False, label_preview=False):
     startup = None
     if extended:
         if binary.stem.lower() == "pdf42":
@@ -1891,6 +1937,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_pdf_label_artwork(process,main,binary,output,results)
         if label_artwork and binary.stem.lower()=='doc42':
             audit_doc_picture_labels(process,main,binary,output,results)
+        if label_preview and binary.stem.lower()=='pdf42':
+            audit_label_preview(process,main,binary,output,results)
         return results
     finally:
         if process.poll() is None:
@@ -2324,6 +2372,7 @@ def main():
     parser.add_argument("--ocr", action="store_true")
     parser.add_argument("--ocr-only", action="store_true")
     parser.add_argument("--label-artwork", action="store_true")
+    parser.add_argument("--label-preview", action="store_true")
     parser.add_argument("--page-exports", action="store_true")
     parser.add_argument("--host-commands", action="store_true")
     parser.add_argument("--engineering", action="store_true")
@@ -2337,7 +2386,7 @@ def main():
     try:
         for app in (["PDF42","IMG42","SCN42"] if args.ocr_only else ["DOC42", "XLS42", "PDF42", "IMG42", "PPT42", "SCN42"]):
             try:
-                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge, args.pdf_batch_headers, args.array_formulas, args.ocr, args.ocr_only, args.label_artwork))
+                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge, args.pdf_batch_headers, args.array_formulas, args.ocr, args.ocr_only, args.label_artwork, args.label_preview))
             except Exception as error:
                 results.append({"app": app, "error": str(error), "traceback": traceback.format_exc()})
             print(json.dumps(results[-1]), flush=True)

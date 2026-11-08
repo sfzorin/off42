@@ -1,4 +1,8 @@
 pub mod ocr;
+#[cfg(windows)]
+pub mod pdfium;
+#[cfg(windows)]
+mod pdf_preview;
 pub mod localization;
 pub use label42::{Format as BarcodeFormat, TechnicalElement};
 use std::path::{Path, PathBuf};
@@ -1088,6 +1092,8 @@ pub struct RichPrint {
 }
 #[derive(Clone, Debug)]
 pub enum PrintJob {
+    /// Reuse immutable PDF bytes, rendering each page directly to the selected printer DC.
+    ActualSizePdf(std::sync::Arc<[u8]>),
     Scenes(Vec<PrintPage>),
     ActualSizeScenes(Vec<PrintPage>),
     RichText(RichPrint),

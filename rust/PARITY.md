@@ -11,7 +11,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Text proofing | System Rich Edit proofing integration in DOC42/PPT42; native flags verified | Actual suggestions and installed-language behavior; full grammar and other editors |
 | Signatures and stamps | Shared PNG/JPEG library in all six apps; optional white-paper removal; Undo/Redo for placement | Generators, sample learning and full geometry parity |
 | Technical objects | Four barcode encoders, fourteen symbols, reusable PNG recipes, insertion/editing in PDF/DOC/XLS/PPT and document round trips | Full technical-object selection/placement controls and richer label artwork sources |
-| Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers | PDF artwork/region sources, preview and direct print |
+| Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers, PDF page/region and DOC picture artwork | Mixed selected DOC content, precise picture/caret and mouse region selection; new preview/direct-print native verification |
 | Printing | Native dialogs, actual-size PDF scene path, optional per-printer calibration and measurement sheet | Native print-to-file output and physical driver checks |
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction and bounded offline OCR | Decoration font choices, richer forms, certificate signing and validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
@@ -484,3 +484,14 @@ after image selection; image unit regressions are now included in quick CI.
 - f47e26a run 42432232653 passes build/MSVC stages but its PDF artwork GUI scenario stops before assertions
   because the test does not wait for the new rotated/cropped canvas. Corrected the wait; no label GUI pass
   has been claimed. The new native flatten test also checks crop/rotation preservation.
+
+### Native artwork verification and shared label preview
+
+- 6f1854c run 42433032037 succeeds: 412 targeted MSVC/0 failures/1 optional external OCR fixture ignored,
+  all 30 groups and static runtime gate. Actual PDF artwork/region/annotation/unsaved-history and DOC
+  picture aspect/alpha/copies/source cases execute and pass; the earlier canvas timing issue is fixed.
+- Shared preview with navigation, zoom/pan, resizing, translated controls, Save/Settings/Cancel/regeneration
+  is implemented. Rendering holds one page bitmap. Its new native screenshot and interaction checks await CI.
+- Actual-size PDF printing streams pages to the printer DC, keeps embedded resources until EndDoc and uses
+  paper/range/copies/calibration controls. EMF vector output and virtual/physical driver behavior remain
+  unverified; the workflow records the print environment. Portable 466/0/1; GNU all targets compile.

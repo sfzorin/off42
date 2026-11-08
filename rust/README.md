@@ -26,7 +26,8 @@ python scripts/fetch-pdfium.py target/x86_64-pc-windows-msvc/release
 ```
 
 Run the other apps from `target/x86_64-pc-windows-msvc/release` similarly. The resource embeds common controls v6 and PerMonitorV2
-settings. PDF42 uses the adjacent `pdfium.dll` for text search and selection; the fetch script supplies a pinned
+settings. PDF42 uses the adjacent `pdfium.dll` for text search and selection; DOC42/XLS42 also use it for
+label preview and PDF printing. The fetch script supplies a pinned
 runtime and licenses. `PDFIUM_ARCHIVE` can select a local pinned archive. A custom `PDFIUM_DLL` also requires
 `PDFIUM_DLL_SHA256` and `PDFIUM_LICENSE_DIR`. PDF42 and SCN42 use the statically linked OCR engine and twenty pinned offline models.
 Keep the complete `ocr` folder beside the executables. SCN42 also retains optional external Tesseract support.
@@ -598,3 +599,22 @@ Native DOC picture color/alpha/copies/source-state checks have been added and aw
 Run 42432232653 builds successfully and passes its MSVC tests, including PDFium annotation flattening.
 Its GUI audit stops at a test race: it looks up the PDF canvas before the rotated/cropped render appears.
 The audit now waits for that canvas; label-specific GUI assertions have not yet been counted as passing.
+
+### Label preview and direct PDF printing (Windows verification pending)
+
+Label generation now opens an embedded preview in PDF42, DOC42 and XLS42. It supports page navigation,
+zoom/panning, Home/End, save without closing, settings Cancel and regeneration. The window stays inside
+the monitor work area and wraps measured translated controls. New preview strings cover all twenty
+interface languages. Preview rendering retains one bounded page bitmap and the immutable output PDF; it
+does not preload a raster for every sheet. Save/Print/Settings use the currently generated snapshot.
+
+The shared host adds an actual-size PDF print job using PDFium directly on the printer DC, retaining PDF
+resources through EndDoc. It exposes page ranges, uses printer-managed copies/collation, honors printer
+calibration and hard margins, and defaults A4 label jobs to A4 without changing system preferences. It also
+passes the standard Print to File destination to StartDoc. Actual printer/driver output is not yet verified.
+The new native gate inspects an opaque PDF path printed into an EMF for vector records instead of bitmaps;
+preview pixel, navigation, resize, save/settings tests and available-printer inventory await Windows CI.
+
+The preceding 6f1854c run 42433032037 succeeds: 412 targeted MSVC tests, zero failures, one optional external
+OCR fixture ignored; all 30 native groups and static runtime gate. Its PDF page/region label and DOC picture
+label scenarios actually execute and pass. Portable workspace remains 466/0/1; GNU all-targets checks pass.

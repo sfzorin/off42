@@ -13,6 +13,7 @@ use windows_sys::Win32::{
     System::{
         Com::{CoInitializeEx, CoTaskMemFree, CoUninitialize, COINIT_APARTMENTTHREADED},
         LibraryLoader::{GetModuleHandleW, LoadLibraryW},
+        Memory::{GlobalLock,GlobalUnlock,GlobalSize},
     },
     UI::{
         Controls::{Dialogs::*, *},
@@ -1577,40 +1578,38 @@ unsafe fn production_command(hwnd: HWND, id: u16) -> Result<(), String> {
         }
         return Ok(());
     }
-    let (output, ext, name, pattern) = if is_sheet {
-        (
-            production::sheet_output(&source, &fields)?,
-            "pdf",
-            "PDF label sheet",
-            "*.pdf",
-        )
-    } else {
-        (
-            production::barcode_output(&fields)?,
-            "png",
-            "PNG barcode",
-            "*.png",
-        )
-    };
-    if let Some(path) = dialog(hwnd, true, ext, name, pattern) {
-        if !path
-            .extension()
-            .is_some_and(|value| value.eq_ignore_ascii_case(ext))
-        {
-            return Err(format!("Choose a file name ending in .{ext}."));
-        }
-        suite42_core::write_new(&path, &output).map_err(|error| {
-            if error.kind() == std::io::ErrorKind::AlreadyExists {
-                "This file already exists. Choose a new name.".into()
-            } else {
-                format!("Could not save the file: {error}")
+    if is_sheet {
+        use crate::pdf_preview::{Action,Update};
+        let mut fields=fields;
+        let mut output:std::sync::Arc<[u8]>=production::sheet_output(&source,&fields)?.into();
+        crate::pdf_preview::show(hwnd,output.clone(),|action,owner|{
+            match action {
+                Action::Save=>{
+                    if let Some(path)=dialog(owner,true,"pdf","PDF label sheet","*.pdf") {
+                        if !path.extension().is_some_and(|extension|extension.eq_ignore_ascii_case("pdf")){return Err("Choose a file name ending in .pdf".into());}
+                        suite42_core::write_new(&path,&output).map_err(|e|e.to_string())?;
+                        if let Some(directory)=&preferences{let _=crate::label_preferences::save(directory,app_name,&source,&fields);}
+                        return Ok(Update::Message(crate::localization::text("Saved %@").replacen("%@",&path.file_name().unwrap_or_default().to_string_lossy(),1)));
+                    }
+                },
+                Action::Print=>print_job(owner,&crate::PrintJob::ActualSizePdf(output.clone()))?,
+                Action::Settings=>{
+                    let mut request=production::sheet_request(&source)?;
+                    for ((_,value),current)in request.fields.iter_mut().zip(&fields){*value=current.clone();}
+                    if let Some(values)=crate::prompt::show_choices(owner,&request,multiline,false,&choices){
+                        let replacement:std::sync::Arc<[u8]>=production::sheet_output(&source,&values)?.into();
+                        fields=values;output=replacement.clone();return Ok(Update::Replace(replacement));
+                    }
+                }
             }
+            Ok(Update::Keep)
         })?;
-        if is_sheet {
-            if let Some(directory) = &preferences {
-                let _ = crate::label_preferences::save(directory, app_name, &source, &fields);
-            }
-        }
+        return Ok(());
+    }
+    let output=production::barcode_output(&fields)?;
+    if let Some(path)=dialog(hwnd,true,"png","PNG barcode","*.png") {
+        if !path.extension().is_some_and(|extension|extension.eq_ignore_ascii_case("png")){return Err("Choose a file name ending in .png".into());}
+        suite42_core::write_new(&path,&output).map_err(|e|format!("Could not save the production file: {e}"))?;
     }
     Ok(())
 }
@@ -4918,11 +4917,15 @@ unsafe fn apply_rich_print_correction(
 }
 
 /// Print explicit page coordinates against the selected printer's physical geometry.
-unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
+pub(super) unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
     use windows_sys::Win32::Storage::Xps::{
         AbortDoc, EndDoc, EndPage, StartDocW, StartPage, DOCINFOW,
     };
     let geometries: Vec<crate::PrintGeometry> = match job {
+        crate::PrintJob::ActualSizePdf(bytes)=>{
+            let source=crate::pdfium::Document::open(bytes.clone(),&std::sync::atomic::AtomicBool::new(false))?;
+            (0..source.page_count()).map(|index|source.dimensions(index).map(|(w,h)|crate::PrintGeometry{width_twips:(w*20.).round()as i32,height_twips:(h*20.).round()as i32,margin_left_twips:0,margin_right_twips:0,margin_top_twips:0,margin_bottom_twips:0})).collect::<Result<Vec<_>,_>>()?
+        }
         crate::PrintJob::Scenes(pages) | crate::PrintJob::ActualSizeScenes(pages) => {
             pages.iter().map(|p| p.geometry).collect()
         }
@@ -4934,7 +4937,26 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
     let mut dialog: PRINTDLGW = zeroed();
     dialog.lStructSize = size_of::<PRINTDLGW>() as u32;
     dialog.hwndOwner = hwnd;
-    dialog.Flags = PD_RETURNDC | PD_NOSELECTION | PD_NOPAGENUMS;
+    let pdf_job=matches!(job,crate::PrintJob::ActualSizePdf(_));
+    if pdf_job {
+        dialog.Flags=PD_RETURNDEFAULT;
+        let _=PrintDlgW(&mut dialog);
+        // Label PDFs are A4. Change this job's default paper without changing system printer preferences.
+        if geometries.iter().all(|g|(g.width_twips-11906).abs()<=4&&(g.height_twips-16838).abs()<=4)
+            &&!dialog.hDevMode.is_null()&&GlobalSize(dialog.hDevMode)>=size_of::<DEVMODEW>() {
+            let mode=GlobalLock(dialog.hDevMode).cast::<DEVMODEW>();
+            if !mode.is_null() {
+                if (*mode).dmSize as usize>=size_of::<DEVMODEW>() {
+                    (*mode).dmFields=((*mode).dmFields&!(DM_PAPERLENGTH|DM_PAPERWIDTH))|DM_PAPERSIZE|DM_ORIENTATION;
+                    (*mode).Anonymous1.Anonymous1.dmPaperSize=DMPAPER_A4 as i16;
+                    (*mode).Anonymous1.Anonymous1.dmOrientation=DMORIENT_PORTRAIT as i16;
+                }
+                GlobalUnlock(dialog.hDevMode);
+            }
+        }
+        dialog.nMinPage=1;dialog.nMaxPage=geometries.len()as u16;dialog.nFromPage=1;dialog.nToPage=dialog.nMaxPage;
+    }
+    dialog.Flags = PD_RETURNDC | PD_NOSELECTION | PD_USEDEVMODECOPIESANDCOLLATE | if pdf_job{0}else{PD_NOPAGENUMS};
     dialog.nCopies = 1;
     let accepted = PrintDlgW(&mut dialog) != 0;
     let printer_name = selected_printer_name(dialog.hDevNames);
@@ -4945,6 +4967,8 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
         GlobalFree(dialog.hDevNames);
     }
     if !accepted {
+        let error=CommDlgExtendedError();
+        if error!=0{return Err(format!("Print dialog failed (Windows code {error})"));}
         return Ok(());
     }
     let dc = dialog.hDC;
@@ -5010,10 +5034,18 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
         }
         _ => job,
     };
+    // Keep embedded fonts and PDF resources alive until EndDoc has finished spooling.
+    let pdf_document=if let crate::PrintJob::ActualSizePdf(bytes)=job {
+        match crate::pdfium::Document::open(bytes.clone(),&std::sync::atomic::AtomicBool::new(false)){
+            Ok(document)=>Some(document),Err(error)=>{DeleteDC(dc);return Err(error);}
+        }
+    }else{None};
     let title = wide("off42 document");
+    let file_output=wide("FILE:");
     let info = DOCINFOW {
         cbSize: size_of::<DOCINFOW>() as i32,
         lpszDocName: title.as_ptr(),
+        lpszOutput:if dialog.Flags&PD_PRINTTOFILE!=0{file_output.as_ptr()}else{null()},
         ..zeroed()
     };
     if StartDocW(dc, &info) <= 0 {
@@ -5021,6 +5053,23 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
         return Err("Could not start print job".into());
     }
     let result: Result<(), String> = (|| match job {
+        crate::PrintJob::ActualSizePdf(_)=>{
+            let source=pdf_document.as_ref().ok_or("PDF print document is unavailable")?;
+            let (first,last)=if dialog.Flags&PD_PAGENUMS!=0{(dialog.nFromPage as usize,dialog.nToPage as usize)}else{(1,source.page_count())};
+            if first==0||last<first||last>source.page_count(){return Err("Invalid PDF print page range".into());}
+            for index in first-1..last {
+                let (w,h)=source.dimensions(index)?;
+                let destination=correction.device_origin((-offset_x,-offset_y),(offset_x,offset_y),(dpi_x,dpi_y));
+                let w=(w*f64::from(dpi_x)*correction.scale_x/72.).round();let h=(h*f64::from(dpi_y)*correction.scale_y/72.).round();
+                if w<1.||h<1.||w>i32::MAX as f64||h>i32::MAX as f64{return Err("PDF print dimensions exceed the printer limit".into());}
+                if StartPage(dc)<=0{return Err("Could not start PDF print page".into());}
+                let saved=SaveDC(dc);if saved==0{return Err("Could not save PDF print device state".into());}
+                let painted=source.print_page(index,dc,[destination.0,destination.1,w as i32,h as i32]);
+                RestoreDC(dc,saved);painted?;
+                if EndPage(dc)<=0{return Err("Could not finish PDF print page".into());}
+            }
+            Ok(())
+        }
         crate::PrintJob::Scenes(pages) | crate::PrintJob::ActualSizeScenes(pages) => {
             for page in pages {
                 if StartPage(dc) <= 0 {

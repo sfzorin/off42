@@ -793,3 +793,8 @@ individual capture failures, so unavailable artwork does not disable other label
 Document picture label sources carry encoded images and displayed dimensions; decoding is deferred until
 the user chooses that source. The bounded bitmap wrapper preserves aspect ratio and composites alpha on
 white paper, then reuses the PDF artwork assembly path. Other document content never enters that snapshot.
+
+A shared PDFium mutex now covers search/edit/preview/printing initialization and teardown. Disposable
+preview documents live on workers; only one BGRA page buffer enters the modal preview. UI callbacks run
+outside window-state borrows, allowing standard save/print/settings dialogs without retaining engine locks.
+Actual-size PDF print jobs retain immutable bytes and native document/font resources until spooling ends.

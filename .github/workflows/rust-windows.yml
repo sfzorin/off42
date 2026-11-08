@@ -96,6 +96,8 @@ jobs:
           python scripts/fetch-ocr-models.py build/off42
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "OFF42_OCR_DATA=$((Resolve-Path build/off42/ocr/tessdata).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force build/native-ui | Out-Null
+          "OFF42_AUDIT_OUTPUT=$((Resolve-Path build/native-ui).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Provision pinned PDFium for file-engine tests
         if: inputs.quick_ui != true
         shell: pwsh
@@ -158,8 +160,16 @@ jobs:
           Copy-Item build/off42/pdfium.dll target/x86_64-pc-windows-msvc/debug/deps/pdfium.dll
           cargo test --locked -p win42 -p pdf42-core -p pdf42 -p doc42-core -p xls42-core -p ppt42-core -p ppt42 -p scn42-core -p scn42 -p img42-core -p img42 -p label42
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Record available Windows print devices
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build/native-ui | Out-Null
+          $record = @{}
+          try { $record.printers = @(Get-Printer -ErrorAction Stop | Select-Object Name,DriverName,PortName) } catch { $record.printer_error = $_.Exception.Message }
+          try { $record.drivers = @(Get-PrinterDriver -ErrorAction Stop | Select-Object Name,MajorVersion) } catch { $record.driver_error = $_.Exception.Message }
+          $record | ConvertTo-Json -Depth 5 | Out-File -Encoding utf8 build/native-ui/printing-environment.json
       - name: Audit native commands in the packaged apps
-        run: python scripts/audit-ui-windows.py --bin-dir build/off42 --output build/native-ui --extended --pictures --technical-objects --label-sources --languages --recents --page-exports --host-commands --engineering --text-exports --extended-formulas --multiwindow --window-layout --rich-search --preset-shapes --pdf-decorations --statistical-formulas --pdf-comparison --pdf-merge --pdf-batch-headers --array-formulas --ocr --label-artwork
+        run: python scripts/audit-ui-windows.py --bin-dir build/off42 --output build/native-ui --extended --pictures --technical-objects --label-sources --languages --recents --page-exports --host-commands --engineering --text-exports --extended-formulas --multiwindow --window-layout --rich-search --preset-shapes --pdf-decorations --statistical-formulas --pdf-comparison --pdf-merge --pdf-batch-headers --array-formulas --ocr --label-artwork --label-preview
       - uses: actions/upload-artifact@v4
         if: always()
         with:

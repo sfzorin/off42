@@ -10,7 +10,11 @@
     "Create Symbol or Code…": "Создать знак или код…",
     "No Recent Documents": "Нет недавних документов",
     "Check Spelling as You Type": "Проверять орфографию при вводе",
-    "New Window": "Новое окно"
+    "New Window": "Новое окно",
+    "Label Sheet Preview": "Предпросмотр этикеток",
+    "Preparing preview…": "Подготовка предпросмотра…",
+    "Print at actual size": "Печать в натуральную величину",
+    "Fit Page": "Вписать страницу"
   },
   "zh-Hans": {
     "Symbol or Code": "符号或条码",
@@ -23,7 +27,11 @@
     "Create Symbol or Code…": "创建符号或条码…",
     "No Recent Documents": "没有最近使用的文档",
     "Check Spelling as You Type": "键入时检查拼写",
-    "New Window": "新窗口"
+    "New Window": "新窗口",
+    "Label Sheet Preview": "标签纸预览",
+    "Preparing preview…": "正在准备预览…",
+    "Print at actual size": "按实际大小打印",
+    "Fit Page": "适合页面"
   },
   "zh-Hant": {
     "Symbol or Code": "符號或條碼",
@@ -36,7 +44,11 @@
     "Create Symbol or Code…": "建立符號或條碼…",
     "No Recent Documents": "沒有最近使用的文件",
     "Check Spelling as You Type": "輸入時檢查拼字",
-    "New Window": "新視窗"
+    "New Window": "新視窗",
+    "Label Sheet Preview": "標籤紙預覽",
+    "Preparing preview…": "正在準備預覽…",
+    "Print at actual size": "以實際大小列印",
+    "Fit Page": "符合頁面"
   },
   "es": {
     "Symbol or Code": "Símbolo o código",
@@ -49,7 +61,11 @@
     "Create Symbol or Code…": "Crear símbolo o código…",
     "No Recent Documents": "No hay documentos recientes",
     "Check Spelling as You Type": "Revisar ortografía al escribir",
-    "New Window": "Nueva ventana"
+    "New Window": "Nueva ventana",
+    "Label Sheet Preview": "Vista previa de etiquetas",
+    "Preparing preview…": "Preparando la vista previa…",
+    "Print at actual size": "Imprimir a tamaño real",
+    "Fit Page": "Ajustar página"
   },
   "ar": {
     "Symbol or Code": "رمز أو باركود",
@@ -62,7 +78,11 @@
     "Create Symbol or Code…": "إنشاء رمز أو باركود…",
     "No Recent Documents": "لا توجد مستندات حديثة",
     "Check Spelling as You Type": "التدقيق الإملائي أثناء الكتابة",
-    "New Window": "نافذة جديدة"
+    "New Window": "نافذة جديدة",
+    "Label Sheet Preview": "معاينة ورقة الملصقات",
+    "Preparing preview…": "جارٍ إعداد المعاينة…",
+    "Print at actual size": "الطباعة بالحجم الفعلي",
+    "Fit Page": "ملاءمة الصفحة"
   },
   "fr": {
     "Symbol or Code": "Symbole ou code",
@@ -75,7 +95,11 @@
     "Create Symbol or Code…": "Créer un symbole ou un code…",
     "No Recent Documents": "Aucun document récent",
     "Check Spelling as You Type": "Vérifier l’orthographe pendant la saisie",
-    "New Window": "Nouvelle fenêtre"
+    "New Window": "Nouvelle fenêtre",
+    "Label Sheet Preview": "Aperçu de la feuille d’étiquettes",
+    "Preparing preview…": "Préparation de l’aperçu…",
+    "Print at actual size": "Imprimer à taille réelle",
+    "Fit Page": "Ajuster à la page"
   },
   "pt": {
     "Symbol or Code": "Símbolo ou código",
@@ -88,7 +112,11 @@
     "Create Symbol or Code…": "Criar símbolo ou código…",
     "No Recent Documents": "Nenhum documento recente",
     "Check Spelling as You Type": "Verificar ortografia ao digitar",
-    "New Window": "Nova janela"
+    "New Window": "Nova janela",
+    "Label Sheet Preview": "Pré-visualização da folha de etiquetas",
+    "Preparing preview…": "Preparando a pré-visualização…",
+    "Print at actual size": "Imprimir em tamanho real",
+    "Fit Page": "Ajustar à página"
   },
   "id": {
     "Symbol or Code": "Simbol atau kode",
@@ -101,7 +129,11 @@
     "Create Symbol or Code…": "Buat simbol atau kode…",
     "No Recent Documents": "Tidak ada dokumen terbaru",
     "Check Spelling as You Type": "Periksa ejaan saat mengetik",
-    "New Window": "Jendela baru"
+    "New Window": "Jendela baru",
+    "Label Sheet Preview": "Pratinjau lembar label",
+    "Preparing preview…": "Menyiapkan pratinjau…",
+    "Print at actual size": "Cetak ukuran sebenarnya",
+    "Fit Page": "Sesuaikan halaman"
   },
   "de": {
     "Symbol or Code": "Symbol oder Code",
@@ -114,7 +146,11 @@
     "Create Symbol or Code…": "Symbol oder Code erstellen…",
     "No Recent Documents": "Keine zuletzt verwendeten Dokumente",
     "Check Spelling as You Type": "Rechtschreibung während der Eingabe prüfen",
-    "New Window": "Neues Fenster"
+    "New Window": "Neues Fenster",
+    "Label Sheet Preview": "Etikettenbogen-Vorschau",
+    "Preparing preview…": "Vorschau wird vorbereitet…",
+    "Print at actual size": "In Originalgröße drucken",
+    "Fit Page": "Seite einpassen"
   },
   "ja": {
     "Symbol or Code": "記号またはコード",
@@ -127,7 +163,11 @@
     "Create Symbol or Code…": "記号またはコードを作成…",
     "No Recent Documents": "最近使った書類はありません",
     "Check Spelling as You Type": "入力中にスペルチェック",
-    "New Window": "新しいウィンドウ"
+    "New Window": "新しいウィンドウ",
+    "Label Sheet Preview": "ラベルシートのプレビュー",
+    "Preparing preview…": "プレビューを準備中…",
+    "Print at actual size": "実際のサイズで印刷",
+    "Fit Page": "ページ全体"
   },
   "vi": {
     "Symbol or Code": "Ký hiệu hoặc mã",
@@ -140,7 +180,11 @@
     "Create Symbol or Code…": "Tạo ký hiệu hoặc mã…",
     "No Recent Documents": "Không có tài liệu gần đây",
     "Check Spelling as You Type": "Kiểm tra chính tả khi nhập",
-    "New Window": "Cửa sổ mới"
+    "New Window": "Cửa sổ mới",
+    "Label Sheet Preview": "Xem trước trang nhãn",
+    "Preparing preview…": "Đang chuẩn bị bản xem trước…",
+    "Print at actual size": "In theo kích thước thực",
+    "Fit Page": "Vừa trang"
   },
   "tr": {
     "Symbol or Code": "Sembol veya kod",
@@ -153,7 +197,11 @@
     "Create Symbol or Code…": "Sembol veya kod oluştur…",
     "No Recent Documents": "Son kullanılan belge yok",
     "Check Spelling as You Type": "Yazarken yazım denetimi yap",
-    "New Window": "Yeni pencere"
+    "New Window": "Yeni pencere",
+    "Label Sheet Preview": "Etiket sayfası önizlemesi",
+    "Preparing preview…": "Önizleme hazırlanıyor…",
+    "Print at actual size": "Gerçek boyutta yazdır",
+    "Fit Page": "Sayfaya sığdır"
   },
   "fil": {
     "Symbol or Code": "Simbolo o code",
@@ -166,7 +214,11 @@
     "Create Symbol or Code…": "Gumawa ng simbolo o code…",
     "No Recent Documents": "Walang kamakailang dokumento",
     "Check Spelling as You Type": "Suriin ang pagbabaybay habang nagta-type",
-    "New Window": "Bagong window"
+    "New Window": "Bagong window",
+    "Label Sheet Preview": "Preview ng pahina ng mga label",
+    "Preparing preview…": "Inihahanda ang preview…",
+    "Print at actual size": "I-print sa aktuwal na laki",
+    "Fit Page": "Iakma sa pahina"
   },
   "ko": {
     "Symbol or Code": "기호 또는 코드",
@@ -179,7 +231,11 @@
     "Create Symbol or Code…": "기호 또는 코드 만들기…",
     "No Recent Documents": "최근 문서 없음",
     "Check Spelling as You Type": "입력할 때 맞춤법 검사",
-    "New Window": "새 창"
+    "New Window": "새 창",
+    "Label Sheet Preview": "라벨 시트 미리보기",
+    "Preparing preview…": "미리보기를 준비하는 중…",
+    "Print at actual size": "실제 크기로 인쇄",
+    "Fit Page": "페이지에 맞춤"
   },
   "th": {
     "Symbol or Code": "สัญลักษณ์หรือรหัส",
@@ -192,7 +248,11 @@
     "Create Symbol or Code…": "สร้างสัญลักษณ์หรือรหัส…",
     "No Recent Documents": "ไม่มีเอกสารล่าสุด",
     "Check Spelling as You Type": "ตรวจการสะกดขณะพิมพ์",
-    "New Window": "หน้าต่างใหม่"
+    "New Window": "หน้าต่างใหม่",
+    "Label Sheet Preview": "แสดงตัวอย่างแผ่นป้าย",
+    "Preparing preview…": "กำลังเตรียมตัวอย่าง…",
+    "Print at actual size": "พิมพ์ตามขนาดจริง",
+    "Fit Page": "พอดีกับหน้า"
   },
   "it": {
     "Symbol or Code": "Simbolo o codice",
@@ -205,7 +265,11 @@
     "Create Symbol or Code…": "Crea simbolo o codice…",
     "No Recent Documents": "Nessun documento recente",
     "Check Spelling as You Type": "Controlla l’ortografia durante la digitazione",
-    "New Window": "Nuova finestra"
+    "New Window": "Nuova finestra",
+    "Label Sheet Preview": "Anteprima del foglio di etichette",
+    "Preparing preview…": "Preparazione dell’anteprima…",
+    "Print at actual size": "Stampa in dimensioni reali",
+    "Fit Page": "Adatta alla pagina"
   },
   "pl": {
     "Symbol or Code": "Symbol lub kod",
@@ -218,7 +282,11 @@
     "Create Symbol or Code…": "Utwórz symbol lub kod…",
     "No Recent Documents": "Brak ostatnich dokumentów",
     "Check Spelling as You Type": "Sprawdzaj pisownię podczas pisania",
-    "New Window": "Nowe okno"
+    "New Window": "Nowe okno",
+    "Label Sheet Preview": "Podgląd arkusza etykiet",
+    "Preparing preview…": "Przygotowywanie podglądu…",
+    "Print at actual size": "Drukuj w rzeczywistym rozmiarze",
+    "Fit Page": "Dopasuj stronę"
   },
   "ms": {
     "Symbol or Code": "Simbol atau kod",
@@ -231,7 +299,11 @@
     "Create Symbol or Code…": "Cipta simbol atau kod…",
     "No Recent Documents": "Tiada dokumen terkini",
     "Check Spelling as You Type": "Semak ejaan semasa menaip",
-    "New Window": "Tetingkap baharu"
+    "New Window": "Tetingkap baharu",
+    "Label Sheet Preview": "Pratonton helaian label",
+    "Preparing preview…": "Menyediakan pratonton…",
+    "Print at actual size": "Cetak pada saiz sebenar",
+    "Fit Page": "Muatkan halaman"
   },
   "hu": {
     "Symbol or Code": "Szimbólum vagy kód",
@@ -244,6 +316,10 @@
     "Create Symbol or Code…": "Szimbólum vagy kód létrehozása…",
     "No Recent Documents": "Nincsenek legutóbbi dokumentumok",
     "Check Spelling as You Type": "Helyesírás ellenőrzése gépelés közben",
-    "New Window": "Új ablak"
+    "New Window": "Új ablak",
+    "Label Sheet Preview": "Címkeív előnézete",
+    "Preparing preview…": "Előnézet előkészítése…",
+    "Print at actual size": "Nyomtatás tényleges méretben",
+    "Fit Page": "Oldalhoz igazítás"
   }
 }
