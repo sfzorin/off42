@@ -32,7 +32,12 @@
     "Cancel Goal Seek": "Отменить подбор параметра",
     "Cancel Solver": "Отменить поиск решения",
     "Approximate solution": "Приближённое решение",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Ограничения (по одному на строку: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Ограничения (по одному на строку: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "Орфография",
+    "Check Spelling…": "Проверить орфографию…",
+    "Skip All": "Пропустить все",
+    "Spelling check complete.": "Проверка орфографии завершена.",
+    "No supported spelling languages are installed in Windows": "В Windows не установлены поддерживаемые словари проверки орфографии"
   },
   "zh-Hans": {
     "Symbol or Code": "符号或条码",
@@ -67,7 +72,12 @@
     "Cancel Goal Seek": "取消单变量求解",
     "Cancel Solver": "取消规划求解",
     "Approximate solution": "近似解",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "约束（每行一项：A1 <= 10; B1 integer; C1 binary）："
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "约束（每行一项：A1 <= 10; B1 integer; C1 binary）：",
+    "Spelling": "拼写",
+    "Check Spelling…": "检查拼写…",
+    "Skip All": "全部忽略",
+    "Spelling check complete.": "拼写检查已完成。",
+    "No supported spelling languages are installed in Windows": "Windows 未安装支持的拼写检查语言"
   },
   "zh-Hant": {
     "Symbol or Code": "符號或條碼",
@@ -102,7 +112,12 @@
     "Cancel Goal Seek": "取消目標搜尋",
     "Cancel Solver": "取消規劃求解",
     "Approximate solution": "近似解",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "約束（每行一項：A1 <= 10; B1 integer; C1 binary）："
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "約束（每行一項：A1 <= 10; B1 integer; C1 binary）：",
+    "Spelling": "拼字",
+    "Check Spelling…": "檢查拼字…",
+    "Skip All": "全部略過",
+    "Spelling check complete.": "拼字檢查已完成。",
+    "No supported spelling languages are installed in Windows": "Windows 未安裝支援的拼字檢查語言"
   },
   "es": {
     "Symbol or Code": "Símbolo o código",
@@ -137,7 +152,12 @@
     "Cancel Goal Seek": "Cancelar búsqueda de objetivo",
     "Cancel Solver": "Cancelar Solver",
     "Approximate solution": "Solución aproximada",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Restricciones (una por línea: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Restricciones (una por línea: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "Ortografía",
+    "Check Spelling…": "Revisar ortografía…",
+    "Skip All": "Omitir todas",
+    "Spelling check complete.": "La revisión ortográfica ha terminado.",
+    "No supported spelling languages are installed in Windows": "Windows no tiene instalados idiomas de revisión ortográfica compatibles"
   },
   "ar": {
     "Symbol or Code": "رمز أو باركود",
@@ -172,7 +192,12 @@
     "Cancel Goal Seek": "إلغاء البحث عن الهدف",
     "Cancel Solver": "إلغاء الحلّال",
     "Approximate solution": "حل تقريبي",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "القيود (واحد في كل سطر: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "القيود (واحد في كل سطر: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "التدقيق الإملائي",
+    "Check Spelling…": "تدقيق إملائي…",
+    "Skip All": "تجاهل الكل",
+    "Spelling check complete.": "اكتمل التدقيق الإملائي.",
+    "No supported spelling languages are installed in Windows": "لا توجد لغات تدقيق إملائي مدعومة مثبتة في Windows"
   },
   "fr": {
     "Symbol or Code": "Symbole ou code",
@@ -207,7 +232,12 @@
     "Cancel Goal Seek": "Annuler la recherche de valeur cible",
     "Cancel Solver": "Annuler le solveur",
     "Approximate solution": "Solution approchée",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Contraintes (une par ligne : A1 <= 10; B1 integer; C1 binary) :"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Contraintes (une par ligne : A1 <= 10; B1 integer; C1 binary) :",
+    "Spelling": "Orthographe",
+    "Check Spelling…": "Vérifier l’orthographe…",
+    "Skip All": "Tout ignorer",
+    "Spelling check complete.": "La vérification orthographique est terminée.",
+    "No supported spelling languages are installed in Windows": "Aucune langue de vérification orthographique prise en charge n’est installée dans Windows"
   },
   "pt": {
     "Symbol or Code": "Símbolo ou código",
@@ -242,7 +272,12 @@
     "Cancel Goal Seek": "Cancelar atingir meta",
     "Cancel Solver": "Cancelar Solver",
     "Approximate solution": "Solução aproximada",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Restrições (uma por linha: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Restrições (uma por linha: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "Ortografia",
+    "Check Spelling…": "Verificar ortografia…",
+    "Skip All": "Ignorar todas",
+    "Spelling check complete.": "A verificação ortográfica foi concluída.",
+    "No supported spelling languages are installed in Windows": "O Windows não tem idiomas de verificação ortográfica compatíveis instalados"
   },
   "id": {
     "Symbol or Code": "Simbol atau kode",
@@ -277,7 +312,12 @@
     "Cancel Goal Seek": "Batalkan pencarian sasaran",
     "Cancel Solver": "Batalkan Solver",
     "Approximate solution": "Solusi perkiraan",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Batasan (satu per baris: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Batasan (satu per baris: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "Ejaan",
+    "Check Spelling…": "Periksa ejaan…",
+    "Skip All": "Lewati semua",
+    "Spelling check complete.": "Pemeriksaan ejaan selesai.",
+    "No supported spelling languages are installed in Windows": "Tidak ada bahasa pemeriksaan ejaan yang didukung terpasang di Windows"
   },
   "de": {
     "Symbol or Code": "Symbol oder Code",
@@ -312,7 +352,12 @@
     "Cancel Goal Seek": "Zielwertsuche abbrechen",
     "Cancel Solver": "Solver abbrechen",
     "Approximate solution": "Näherungslösung",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Bedingungen (eine pro Zeile: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Bedingungen (eine pro Zeile: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "Rechtschreibung",
+    "Check Spelling…": "Rechtschreibung prüfen…",
+    "Skip All": "Alle überspringen",
+    "Spelling check complete.": "Die Rechtschreibprüfung ist abgeschlossen.",
+    "No supported spelling languages are installed in Windows": "In Windows sind keine unterstützten Sprachen für die Rechtschreibprüfung installiert"
   },
   "ja": {
     "Symbol or Code": "記号またはコード",
@@ -347,7 +392,12 @@
     "Cancel Goal Seek": "ゴールシークをキャンセル",
     "Cancel Solver": "ソルバーをキャンセル",
     "Approximate solution": "近似解",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "制約（1行に1件: A1 <= 10; B1 integer; C1 binary）:"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "制約（1行に1件: A1 <= 10; B1 integer; C1 binary）:",
+    "Spelling": "スペルチェック",
+    "Check Spelling…": "スペルをチェック…",
+    "Skip All": "すべて無視",
+    "Spelling check complete.": "スペルチェックが完了しました。",
+    "No supported spelling languages are installed in Windows": "対応するスペルチェック言語が Windows にインストールされていません"
   },
   "vi": {
     "Symbol or Code": "Ký hiệu hoặc mã",
@@ -382,7 +432,12 @@
     "Cancel Goal Seek": "Hủy tìm giá trị đích",
     "Cancel Solver": "Hủy Solver",
     "Approximate solution": "Nghiệm gần đúng",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Ràng buộc (mỗi dòng một mục: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Ràng buộc (mỗi dòng một mục: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "Chính tả",
+    "Check Spelling…": "Kiểm tra chính tả…",
+    "Skip All": "Bỏ qua tất cả",
+    "Spelling check complete.": "Đã hoàn tất kiểm tra chính tả.",
+    "No supported spelling languages are installed in Windows": "Windows chưa cài đặt ngôn ngữ kiểm tra chính tả được hỗ trợ"
   },
   "tr": {
     "Symbol or Code": "Sembol veya kod",
@@ -417,7 +472,12 @@
     "Cancel Goal Seek": "Hedef aramayı iptal et",
     "Cancel Solver": "Çözücüyü iptal et",
     "Approximate solution": "Yaklaşık çözüm",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Kısıtlar (her satıra bir tane: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Kısıtlar (her satıra bir tane: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "Yazım denetimi",
+    "Check Spelling…": "Yazımı denetle…",
+    "Skip All": "Tümünü atla",
+    "Spelling check complete.": "Yazım denetimi tamamlandı.",
+    "No supported spelling languages are installed in Windows": "Windows’ta desteklenen yazım denetimi dilleri yüklü değil"
   },
   "fil": {
     "Symbol or Code": "Simbolo o code",
@@ -452,7 +512,12 @@
     "Cancel Goal Seek": "Kanselahin ang paghahanap ng target",
     "Cancel Solver": "Kanselahin ang Solver",
     "Approximate solution": "Tinatayang solusyon",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Mga kondisyon (isa bawat linya: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Mga kondisyon (isa bawat linya: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "Pagbaybay",
+    "Check Spelling…": "Suriin ang pagbaybay…",
+    "Skip All": "Laktawan lahat",
+    "Spelling check complete.": "Tapos na ang pagsusuri ng pagbaybay.",
+    "No supported spelling languages are installed in Windows": "Walang naka-install na suportadong wika sa pagsusuri ng pagbaybay sa Windows"
   },
   "ko": {
     "Symbol or Code": "기호 또는 코드",
@@ -487,7 +552,12 @@
     "Cancel Goal Seek": "목표값 찾기 취소",
     "Cancel Solver": "해 찾기 취소",
     "Approximate solution": "근사 해",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "제약 조건 (한 줄에 하나: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "제약 조건 (한 줄에 하나: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "맞춤법",
+    "Check Spelling…": "맞춤법 검사…",
+    "Skip All": "모두 건너뛰기",
+    "Spelling check complete.": "맞춤법 검사가 완료되었습니다.",
+    "No supported spelling languages are installed in Windows": "Windows에 지원되는 맞춤법 검사 언어가 설치되어 있지 않습니다"
   },
   "th": {
     "Symbol or Code": "สัญลักษณ์หรือรหัส",
@@ -522,7 +592,12 @@
     "Cancel Goal Seek": "ยกเลิกการค้นหาค่าเป้าหมาย",
     "Cancel Solver": "ยกเลิกตัวแก้ปัญหา",
     "Approximate solution": "คำตอบโดยประมาณ",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "เงื่อนไข (หนึ่งรายการต่อบรรทัด: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "เงื่อนไข (หนึ่งรายการต่อบรรทัด: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "การสะกดคำ",
+    "Check Spelling…": "ตรวจการสะกดคำ…",
+    "Skip All": "ข้ามทั้งหมด",
+    "Spelling check complete.": "ตรวจการสะกดคำเสร็จแล้ว",
+    "No supported spelling languages are installed in Windows": "ไม่ได้ติดตั้งภาษาที่รองรับการตรวจการสะกดคำใน Windows"
   },
   "it": {
     "Symbol or Code": "Simbolo o codice",
@@ -557,7 +632,12 @@
     "Cancel Goal Seek": "Annulla ricerca obiettivo",
     "Cancel Solver": "Annulla risolutore",
     "Approximate solution": "Soluzione approssimata",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Vincoli (uno per riga: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Vincoli (uno per riga: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "Ortografia",
+    "Check Spelling…": "Controlla ortografia…",
+    "Skip All": "Ignora tutto",
+    "Spelling check complete.": "Il controllo ortografico è completato.",
+    "No supported spelling languages are installed in Windows": "In Windows non sono installate lingue supportate per il controllo ortografico"
   },
   "pl": {
     "Symbol or Code": "Symbol lub kod",
@@ -592,7 +672,12 @@
     "Cancel Goal Seek": "Anuluj szukanie wyniku",
     "Cancel Solver": "Anuluj Solver",
     "Approximate solution": "Rozwiązanie przybliżone",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Ograniczenia (jedno w wierszu: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Ograniczenia (jedno w wierszu: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "Pisownia",
+    "Check Spelling…": "Sprawdź pisownię…",
+    "Skip All": "Pomiń wszystkie",
+    "Spelling check complete.": "Sprawdzanie pisowni zakończone.",
+    "No supported spelling languages are installed in Windows": "W systemie Windows nie zainstalowano obsługiwanych języków sprawdzania pisowni"
   },
   "ms": {
     "Symbol or Code": "Simbol atau kod",
@@ -627,7 +712,12 @@
     "Cancel Goal Seek": "Batalkan pencarian sasaran",
     "Cancel Solver": "Batalkan Solver",
     "Approximate solution": "Penyelesaian anggaran",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Kekangan (satu setiap baris: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Kekangan (satu setiap baris: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "Ejaan",
+    "Check Spelling…": "Semak ejaan…",
+    "Skip All": "Langkau semua",
+    "Spelling check complete.": "Semakan ejaan selesai.",
+    "No supported spelling languages are installed in Windows": "Tiada bahasa semakan ejaan yang disokong dipasang dalam Windows"
   },
   "hu": {
     "Symbol or Code": "Szimbólum vagy kód",
@@ -662,6 +752,11 @@
     "Cancel Goal Seek": "Célértékkeresés megszakítása",
     "Cancel Solver": "Solver megszakítása",
     "Approximate solution": "Közelítő megoldás",
-    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Feltételek (soronként egy: A1 <= 10; B1 integer; C1 binary):"
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Feltételek (soronként egy: A1 <= 10; B1 integer; C1 binary):",
+    "Spelling": "Helyesírás",
+    "Check Spelling…": "Helyesírás ellenőrzése…",
+    "Skip All": "Összes kihagyása",
+    "Spelling check complete.": "A helyesírás-ellenőrzés befejeződött.",
+    "No supported spelling languages are installed in Windows": "Nincs telepítve támogatott helyesírás-ellenőrzési nyelv a Windowsban"
   }
 }

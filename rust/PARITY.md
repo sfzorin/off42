@@ -15,7 +15,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Printing | Verified File/Ctrl+P dialogs in all six apps; actual-size label and centered/shrink-only PDF paths, per-printer calibration and measurement sheet | Printer copies/calibration scenarios and physical driver checks |
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction and bounded offline OCR | Decoration font choices, richer forms, certificate signing and validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
-| XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek; constrained Solver awaits native audit | Full formula semantics/syntax and locale formats, capacity/automatic expansion, legacy arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, full Solver verification, split panes, per-cell/password protection and fuller format fidelity |
+| XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, capacity/automatic expansion, legacy arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, show tools and export workflows |
 | IMG42 | Image decoding, transforms, adjustments, selections, recognized text selection/copy, metadata and batch output | Full markup selection/editing, smart lasso, full Live Text interaction, background removal, viewing panels and additional supported system codecs |
 | SCN42 | WIA acquisition and verified virtual rescan, image/PDF import, page processing, OCR and searchable output | Scan areas, device/preset controls, scan history, full export settings and physical-device checks |
@@ -601,3 +601,14 @@ after image selection; image unit regressions are now included in quick CI.
   unrelated names and cached formulas are preserved on model-only edits. Portable tests cover LP/MIP/NLP,
   numeric/reference constraints, binary/free variables, target mode, failure/cancel/stale state, validation,
   full Undo/Redo and model reference shifts. Workspace 519/0/1, including the foreign-name/cache regression; GNU all-targets compile. Native assertions are added, awaiting their first compatible build.
+
+- Run 42453016096 (558ea36) records 520/0/1 MSVC tests and all 37 native groups without errors.
+  Solver's actual LP No/Yes, two-cell optimum, complete Undo/Redo, integer/nonlinear results, protected-sheet
+  disablement and independent XLSX/ODS models/prefill pass. The compact seven-field dialog screenshot was
+  inspected. Virtual WIA rescan also passes in this full build. No main/release/site publication is implied.
+- Explicit spelling review is added to the existing DOC/PPT Rich Edit host: installed Windows language picker,
+  real dictionary suggestions, readonly original word, Replace/Skip/Skip All/Cancel and guarded rich-text commits.
+  UTF-16 table/object offsets and surrogate boundaries are preserved. It uses the Windows Spell Checking API;
+  installed dictionaries determine language availability, and this adds no full-grammar claim. New UI strings
+  cover the twenty interface languages. Portable workspace 520/0/1 and GNU all-targets compile; native dictionary,
+  raw Rich Edit table/image offsets and complete DOC correction/history/reopen checks await Windows execution.

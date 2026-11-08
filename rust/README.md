@@ -805,3 +805,21 @@ model references; deleting its objective clears the model. Portable tests cover 
 variables, numeric/reference RHS, nonlinear/target cases, infeasible versus unbounded integer relaxations,
 readonly trials, cancel, stale state, final validation, history and independent Office imports. Native UI
 assertions are added; actual Windows dispatch and rendered dialog coverage await the next compatible build.
+
+
+Windows run 42453016096 (558ea36) passes all 37 native groups with 520 passing MSVC tests, no failures and one
+optional OCR test ignored. The constrained Solver dialog, LP No/Yes, one-step Undo/Redo, numeric optimum,
+integer/nonlinear solutions, protection and standard XLSX/ODS model persistence/independent import are verified.
+Its screenshot was inspected; the public preview download remains unchanged.
+
+### Explicit spelling review (native verification pending)
+
+DOC42/PPT42 expose **Edit → Check Spelling…** alongside continuous spell-check flags. The shared reviewer lists
+actually installed Windows dictionaries in the supported interface languages and offers dictionary suggestions,
+Replace, Skip, Skip All and Cancel. The original word is readonly. Each accepted correction uses the existing
+rich-text adapter and one undoable commit; a stale text projection or adapter refusal preserves the prior state.
+Native UTF-16 positions include table delimiters, images and emoji, so visible-text offsets are never substituted.
+It checks a selected range or the current editor's text. Work is bounded to a million-character editor, 32,768-unit
+check chunks, eight million checked units and 1,000 review steps. Windows language-pack availability applies;
+interface translation does not install a spelling dictionary, and this feature does not promise full grammar review.
+Native engine/range and actual DOC correction/format/table/image/history/reopen assertions are added but pending.

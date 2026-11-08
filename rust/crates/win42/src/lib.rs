@@ -1,6 +1,8 @@
 pub mod ocr;
 pub mod recovery;
 #[cfg(any(windows,test))]
+mod proofing;
+#[cfg(any(windows,test))]
 mod pdf_print_layout;
 #[cfg(windows)]
 pub mod pdfium;

@@ -104,6 +104,12 @@ pub unsafe fn show_choices(
 pub unsafe fn show_choices_for_fields(
     owner:HWND, req:&InputRequest, multiline:&[usize], password:bool, choices:&[(usize,Vec<String>)]
 ) -> Option<Vec<String>> {
+    show_fields(owner,req,multiline,password,choices,&[])
+}
+pub unsafe fn show_readonly_choices(owner:HWND,req:&InputRequest,choices:&[(usize,Vec<String>)],readonly:&[usize])->Option<Vec<String>>{
+    show_fields(owner,req,&[],false,choices,readonly)
+}
+unsafe fn show_fields(owner:HWND,req:&InputRequest,multiline:&[usize],password:bool,choices:&[(usize,Vec<String>)],readonly:&[usize])->Option<Vec<String>>{
     if PROMPT.with(|p| p.borrow().is_some()) {
         return None;
     }
@@ -298,6 +304,7 @@ pub unsafe fn show_choices_for_fields(
             if multiline.contains(&i) { 65536 } else { 4096 },
             0,
         );
+        if readonly.contains(&i)&&!combo{SendMessageW(e,EM_SETREADONLY,1,0);}
         fields.push(e);
     }
     let y = button_y;

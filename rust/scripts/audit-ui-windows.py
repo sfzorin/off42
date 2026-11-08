@@ -1022,6 +1022,48 @@ def audit_goal_seek(process,main,binary,output,results):
     results['checks'].append('background Goal Seek trials and No preserve the clean source, accepted square-root value changes one numeric cell, complete one-step Undo/Redo and reopen retain formulas and other cells, unsolvable trials are readonly, and protected sheets disable the command')
 
 
+def audit_spelling(process,main,binary,output,results):
+    import copy
+    fixture=Path(__file__).resolve().parents[1]/'crates/doc42-core/fixtures/native-rich-edit-picture.doc42'
+    project=json.loads(fixture.read_text(encoding='utf-8'));blocks=project['state']['blocks']
+    blocks[0]['Paragraph']['runs'][0]['text']='😀 speling world'
+    blocks[0]['Paragraph']['runs'][0]['style']['bold']=True
+    table=next(b['Table']for b in blocks if 'Table'in b);table['rows'][0][0]['paragraphs'][0]['runs'][0]['text']='hello speling'
+    source=output/'spelling-source.doc42';source.write_text(json.dumps(project,ensure_ascii=False),encoding='utf-8');original=source.read_bytes();open_fixture(process,main,source)
+    edit=u.GetDlgItem(main,101)
+    def saved(name):
+        path=output/name;save_as(main);choose_file(process,path,format_name='DOC42 project');output_ready(process,main,path,b'{');return json.loads(path.read_text(encoding='utf-8'))['state']
+    def select_word():
+        fill_prompt(process,main,7,'Find next',['speling']);wait_for(lambda:copied_selection(edit)=='speling','misspelled word selected',process)
+    def start():
+        fill_prompt(process,main,65504,'Spelling',['en-US'])
+        dialog=modal(process,title='Spelling',native_class='Suite42InputDialog')
+        assert text(u.GetDlgItem(dialog,100))=='speling'
+        assert u.GetWindowLongW(u.GetDlgItem(dialog,100),-16)&0x800,'Original word must be readonly'
+        combo=u.GetDlgItem(dialog,101);count=bounded_send(combo,0x146)
+        choices=[]
+        for index in range(count):
+            buf=c.create_unicode_buffer(2048);bounded_send(combo,0x148,index,c.cast(buf,c.c_void_p).value);choices.append(buf.value)
+        assert 'spelling'in choices,choices
+        return dialog
+    def complete():
+        dialog=modal(process,title='Spelling',native_class='#32770');assert 'Spelling check complete.'in' '.join(text(h)for h in windows_for_dialog(dialog));click(dialog,1);wait_for(lambda:u.IsWindowEnabled(main),'spelling completion closed',process)
+    baseline=saved('spelling-before.doc42');select_word();caption=text(main)
+    dialog=start();capture_window(dialog,output/'DOC42-spelling-dialog.bmp');click(dialog,2);wait_for(lambda:u.IsWindowEnabled(main),'spelling Cancel closed',process)
+    assert text(main)==caption and saved('spelling-cancel.doc42')==baseline
+    select_word();dialog=start();set_text(u.GetDlgItem(dialog,101),'spelling');set_text(u.GetDlgItem(dialog,102),'Replace');click(dialog,1);complete()
+    first=saved('spelling-body.doc42');expected=copy.deepcopy(baseline);expected['blocks'][0]['Paragraph']['runs'][0]['text']='😀 spelling world';assert first==expected,'Body correction changed formatting, tables or picture bytes'
+    command(main,4);assert saved('spelling-body-undo.doc42')==baseline
+    command(main,5);assert saved('spelling-body-redo.doc42')==first
+    select_word();dialog=start();set_text(u.GetDlgItem(dialog,102),'Skip');click(dialog,1);complete();assert saved('spelling-skip.doc42')==first
+    select_word();dialog=start();set_text(u.GetDlgItem(dialog,101),'spelling');click(dialog,1);complete()
+    second=saved('spelling-table.doc42');expected=copy.deepcopy(first);table=next(b['Table']for b in expected['blocks']if 'Table'in b);table['rows'][0][0]['paragraphs'][0]['runs'][0]['text']='hello spelling';assert second==expected,'Table correction lost native/object offsets or formatting'
+    command(main,4);assert saved('spelling-table-undo.doc42')==first
+    command(main,5);assert saved('spelling-table-redo.doc42')==second
+    open_fixture(process,main,output/'spelling-table.doc42');assert saved('spelling-reopened.doc42')==second and source.read_bytes()==original
+    results['checks'].append('real Windows en-US dictionary detects selected misspelling and suggests spelling; original word readonly; Cancel/Skip preserve complete model; corrections after emoji and inside table preserve all formatting/picture bytes, full Undo/Redo/save/reopen/source; no grammar or unavailable-language coverage claimed')
+
+
 def audit_solver(process,main,binary,output,results):
     source=output/'solver-source.csv'
     with source.open('w',encoding='utf-8',newline='')as stream:
@@ -2368,6 +2410,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
         if rich_search and binary.stem.lower() == "doc42":
             audit_rich_search(process, main, binary, output, results)
             audit_rich_format(process, main, binary, output, results)
+            audit_spelling(process,main,binary,output,results)
         if engineering and binary.stem.lower() == "xls42":
             audit_engineering_formulas(process, main, binary, output, results, include_extended=extended_formulas)
             audit_goal_seek(process,main,binary,output,results)

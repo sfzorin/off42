@@ -874,3 +874,10 @@ workbook, share one evaluator per trial point and carry the source history ident
 history. Accepted values are first validated in a private candidate workbook, then the sheet model and all
 values enter live history together. Discard keeps only the model. The native form declares its multiline
 field indices through `input_multiline_fields`; existing first-field multiline forms retain their behavior.
+
+Windows explicit proofing uses the installed `ISpellChecker` providers in the UI's existing COM apartment. It
+checks an immutable GT_RAWTEXT UTF-16 projection, masks structural delimiters without changing positions and
+validates returned ranges. Dialogs expose only installed languages and readonly source words. A correction
+revalidates the original projection, captures native RTF, suppresses generated control notifications, and commits
+through the app's guarded rich-text adapter; refusal restores the native projection and selection. No dictionary
+writes or automatic correction are performed; Skip All is limited to that checker session.

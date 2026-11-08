@@ -55,6 +55,7 @@ const INSERT_TECHNICAL: u16 = 65509;
 const EDIT_TECHNICAL: u16 = 65508;
 const NEW_WINDOW: u16 = 65506;
 const RECOVER_DOCUMENT:u16=65505;
+const CHECK_SPELLING:u16=65504;
 const LANGUAGE_FIRST: u16 = 64000;
 const RECENT_FIRST: u16 = 62000;
 const CLEAR_RECENTS: u16 = RECENT_FIRST + crate::recents::LIMIT as u16;
@@ -831,6 +832,10 @@ unsafe fn refresh() {
         TOGGLE_PROOFING as u32,
         MF_BYCOMMAND | if proofing { MF_CHECKED } else { MF_UNCHECKED },
     );
+    let spelling_available=STATE.with(|slot|{
+        let slot=slot.borrow();let state=slot.as_ref().unwrap();state.app.uses_rich_edit()&&!state.app.text_readonly()&&IsWindowVisible(state.edit)!=0&&state.async_open.is_none()
+    });
+    EnableMenuItem(menu,CHECK_SPELLING as u32,MF_BYCOMMAND|if spelling_available{MF_ENABLED}else{MF_GRAYED});
     let opening = STATE.with(|s| s.borrow().as_ref().is_some_and(|s| s.async_open.is_some()));
     EnableMenuItem(
         menu,
@@ -2241,6 +2246,19 @@ unsafe fn native_rich_format(
     result
 }
 
+unsafe fn native_spelling_replace(edit:HWND,range:(usize,usize),value:&str,expected:&[u16])->Result<(),String>{
+    if crate::proofing::raw_text(edit)?!=expected{return Err("The document changed; check spelling again".into())}
+    let before=crate::rich_edit::extract(edit)?;let selection=crate::rich_edit::selection(edit);
+    let previous=REFRESHING.with(|flag|flag.replace(true));
+    let result=(||{
+        crate::rich_edit::set_selection(edit,range);SendMessageW(edit,EM_REPLACESEL,0,wide(value).as_ptr()as isize);
+        let bytes=crate::rich_edit::extract(edit)?;let after=crate::rich_edit::selection(edit);
+        STATE.with(|slot|slot.borrow_mut().as_mut().unwrap().app.edit_rich_text(&bytes,after))
+    })();
+    if result.is_err(){let _=crate::rich_edit::load(edit,&before);crate::rich_edit::set_selection(edit,selection);}
+    REFRESHING.with(|flag|flag.set(previous));flush_deferred_commands();update_caption();result
+}
+
 unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
     trace_command("received", id, notify);
     if REFRESHING.with(|refreshing| refreshing.get()) {
@@ -2352,6 +2370,11 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
             }
         }
         return;
+    }
+    if id==CHECK_SPELLING{
+        let edit=STATE.with(|slot|{let slot=slot.borrow();let state=slot.as_ref().unwrap();(state.app.uses_rich_edit()&&!state.app.text_readonly()&&IsWindowVisible(state.edit)!=0&&state.async_open.is_none()).then_some(state.edit)});
+        if let Some(edit)=edit{if let Err(error)=crate::proofing::show(hwnd,edit,|range,value,expected|native_spelling_replace(edit,range,value,expected)){msg(hwnd,&crate::localization::text(&error),MB_OK|MB_ICONERROR);}}
+        update_caption();return;
     }
     if id == TOGGLE_PROOFING {
         STATE.with(|state| {
@@ -3624,6 +3647,7 @@ pub fn run(app: Box<dyn App>) {
         }
         if app.uses_rich_edit() {
             item(editmenu, TOGGLE_PROOFING, "Check Spelling as You Type");
+            item(editmenu,CHECK_SPELLING,"Check Spelling…");
         }
         for &(id, t) in app.actions() {
             if Some(id)!=print_command{item(editmenu, id, t)}
