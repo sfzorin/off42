@@ -2,7 +2,7 @@
 
 This separate Rust workspace implements six native Windows apps; the macOS Swift apps remain separate. The current
 implementation is a work in progress, not a feature-parity or Windows release claim. Native interaction and saved output are checked on Windows CI; see [the parity tracker](PARITY.md) for evidence
-and failures. Printing drivers and scanner hardware still need testing on a logged-in Windows desktop.
+and failures. The Microsoft virtual PDF driver has been exercised; physical printing and scanner hardware still need testing.
 
 ## Build and run
 
@@ -46,7 +46,7 @@ Windows runtime behavior. The Windows CI workflow also builds with MSVC.
 | PPT42 | Mixed-run in-place text editing, 187 preset shapes with adjustment handles, native objects, multi-selection, grouping and rotation, slides, timed cut/fade/push-left slideshow transitions and printing; PPTX/ODP adapters | Complex source text and existing source-group structural edits are guarded. Complex source transforms and rotated source groups may be preserved without rendering. ODP transition duration is limited to 250/500/1000 ms. Object animation, full master/theme semantics, charts and media playback are incomplete. |
 | PDF42 | WinRT rendering; PDFium search, selection and supported top-level text-object edits; annotations, forms, nested bookmarks, attachments, password-prompted PDF open and AES-128 copy, compression, printing, image export and raster redaction | Complex text, forms and navigation remain guarded. Protected files use conservative permissions; new AES-128 passwords require 1–32 printable ASCII characters, and original permissions and encryption are not preserved. Encrypted interoperability is unverified. Redaction removes metadata, attachments, forms and navigation. Trusted digital signatures and PDF/A conformance are not supported. |
 | IMG42 | Transforms, tone, text, masks and lasso; directory navigation, GIF/WebP frames, multipage TIFF, PDF and bounded SVG import; standard EXIF fields, DPI/ICC, folder batch export and printing | Proprietary MakerNote, TIFF EXIF subdirectories, palette/CMYK and floating-point TIFF remain limited. TIFF and PNG support 16-bit edits; other 16-bit sources may require conversion. Some PNG metadata requires a converted copy; profile conversion is not color-managed. Batch PNG/JPEG exports the first frame; TIFF exports all frames, with explicit 8-bit white flattening. |
-| SCN42 | Asynchronous WIA acquisition, PDF import and WIC processing; v4 projects with stable page IDs, DPI, OCR language and geometry; batch built-in or external Tesseract OCR, Unicode searchable PDF, deskew, perspective correction, cleanup, compression, image/TIFF export and printing | The new bundled OCR backend awaits native verification; optional external Tesseract needs its own data. Physical devices have not been exercised. |
+| SCN42 | Asynchronous WIA acquisition, PDF import and WIC processing; v4 projects with stable page IDs, DPI, OCR language and geometry; batch built-in or external Tesseract OCR, Unicode searchable PDF, deskew, perspective correction, cleanup, compression, image/TIFF export and printing | The bundled OCR backend is verified on Windows; optional external Tesseract needs its own data. Physical devices have not been exercised. |
 
 Shared save snapshots detect changes to existing destinations and use atomic replacement. Multi-file saves stage
 sidecars before the main document with verified reuse and best-effort rollback; they are not OS-atomic. Async open
@@ -600,7 +600,7 @@ Run 42432232653 builds successfully and passes its MSVC tests, including PDFium 
 Its GUI audit stops at a test race: it looks up the PDF canvas before the rotated/cropped render appears.
 The audit now waits for that canvas; label-specific GUI assertions have not yet been counted as passing.
 
-### Label preview and direct PDF printing (Windows verification pending)
+### Label preview and direct PDF printing
 
 Label generation now opens an embedded preview in PDF42, DOC42 and XLS42. It supports page navigation,
 zoom/panning, Home/End, save without closing, settings Cancel and regeneration. The window stays inside
@@ -662,3 +662,27 @@ source now handles Escape and releases mouse capture, with the same native regre
 Focused run 42439054997 succeeds on those 48db96f binaries: all six audit groups pass, including the real
 Microsoft Print to PDF queue, page-two range, A4 and actual-size ink bounds. Earlier Poppler inspection
 independently confirms a nonblank one-page printer PDF with placement within about one point.
+
+### Shared document printing and PDF fit (next Windows run pending)
+
+All six apps now expose ordinary printing under **File → Print** with **Ctrl+P**. The original app print
+commands still drive the same operation. DOC42 shows a compact primary toolbar; secondary formatting,
+page, table and image commands remain in their menus. PPT printing reads the current inline text draft
+without committing it, so Print Cancel does not consume the user's editing/Undo state.
+
+PDF42's ordinary **Print Pages…** now uses the current immutable PDF directly. Each page is rendered
+onto the native printer DC, centered on the physical sheet and only shrunk when oversized, matching the
+macOS PDF print path. Crop/rotation and print flags stay with the snapshot. Page ranges live in the
+standard system dialog. **Print PDF as Image…** retains the explicit DPI/range raster fallback; it stays
+out of the primary toolbar. Calibration applies to physical positions and both axes after fitting.
+
+Portable placement and draft-state tests pass; GNU targets compile. A new Windows audit checks actual
+Ctrl+P in all six apps, File-menu routing, compact DOC layout, and PDF range/fit/rotation/crop/annotations
+through Microsoft Print to PDF, including source/history and Undo/Redo. Its first compatible run is pending.
+The clipboard adapter now retries a short competing lease; a deterministic native contention case is added.
+
+Focused run 42440754175 actually passes all five crash-recovery scenarios on 02ad18e binaries (11 groups
+including ordinary app audits). DOC/SCN recovery screenshots were inspected. The printed QR from run
+42439920521 independently decodes as PCB-PRINT-42 using ZXing-C++ 2.3.0 after Poppler rendering at 300 DPI.
+A later cleanup fix permits deletion of a damaged recovery payload without loading it; its core test passes
+and a native damaged-copy/source-safety check is added for the next build. No public release has changed.

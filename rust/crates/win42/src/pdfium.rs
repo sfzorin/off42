@@ -280,6 +280,10 @@ impl Document {
         if !matches!(unsafe { (self.api.flatten)(page.handle, 1) }, 1 | 2) {
             return Err("Cannot flatten the printable PDF appearances".into());
         }
+        // Flatten rewrites Contents/Resources and removes Annots without rebuilding
+        // this handle's parsed page objects. Reload before rendering the new stream.
+        drop(page);
+        let page = self.page(index)?;
         let success = unsafe {
             (self.api.print)(
                 dc,

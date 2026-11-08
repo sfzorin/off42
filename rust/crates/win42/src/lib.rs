@@ -1,5 +1,7 @@
 pub mod ocr;
 pub mod recovery;
+#[cfg(any(windows,test))]
+mod pdf_print_layout;
 #[cfg(windows)]
 pub mod pdfium;
 #[cfg(windows)]
@@ -339,6 +341,8 @@ pub trait App {
     fn rich_preview(&self, _id: u16) -> Option<RichPrint> {
         None
     }
+    /// Ordinary document printing, shared by File > Print and Ctrl+P.
+    fn default_print_command(&self)->Option<u16>{None}
     fn print_job(&self, _id: u16) -> Option<PrintJob> {
         None
     }
@@ -1109,6 +1113,8 @@ pub struct RichPrint {
 pub enum PrintJob {
     /// Reuse immutable PDF bytes, rendering each page directly to the selected printer DC.
     ActualSizePdf(std::sync::Arc<[u8]>),
+    /// Center on the physical sheet and shrink oversized pages, retaining native PDF paths.
+    FitPdf(std::sync::Arc<[u8]>),
     Scenes(Vec<PrintPage>),
     ActualSizeScenes(Vec<PrintPage>),
     RichText(RichPrint),

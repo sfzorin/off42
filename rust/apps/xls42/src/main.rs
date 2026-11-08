@@ -1087,6 +1087,7 @@ impl win42::App for Xls {
         self.clear_visible_cache();
         Ok(())
     }
+    fn default_print_command(&self)->Option<u16>{Some(62)}
     fn name(&self) -> &'static str {
         "XLS42"
     }

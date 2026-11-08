@@ -6,7 +6,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 
 | Area | Current Windows coverage | Remaining work |
 | --- | --- | --- |
-| Files and document lifecycle | Open/save snapshots, conflict detection, Undo/Redo, successful-file recents with clear menu; verified independent New/New Window sessions in all six apps | Native crash-recovery verification, encrypted-PDF/image recovery, drag/drop and associations |
+| Files and document lifecycle | Open/save snapshots, conflict detection, Undo/Redo, successful-file recents with clear menu; verified independent New/New Window sessions in all six apps | Encrypted-PDF/image recovery, drag/drop and associations; later damaged-copy cleanup verification |
 | Localization and appearance | Twenty bundled catalogs, verified shared picker/restart and process language override; prompt label measurement and verified outer window placement | Complete Windows-specific translations, dark mode, panel visibility/splits and multi-display DPI |
 | Text proofing | System Rich Edit proofing integration in DOC42/PPT42; native flags verified | Actual suggestions and installed-language behavior; full grammar and other editors |
 | Signatures and stamps | Shared PNG/JPEG library in all six apps; optional white-paper removal; Undo/Redo for placement | Generators, sample learning and full geometry parity |
@@ -531,3 +531,15 @@ after image selection; image unit regressions are now included in quick CI.
   Focused run 42439054997 succeeds on the same binaries: six actual app groups, Print Cancel, explicit
   Microsoft Print to PDF, page 2 only, A4 and actual-size ink bounds. Poppler separately confirms the
   driver-created nonblank single-page A4 output. Main, release assets and the site remain unchanged.
+
+- Focused run 42440754175 passes all five actual crash/restart/recover/save/reopen workflows on 02ad18e,
+  including active-session exclusion, independent dirty copies, Cancel and unchanged originals. Eleven
+  groups pass; DOC/SCN screenshots were inspected. Run 42439920521 passes 430 targeted MSVC tests; its
+  remaining GUI failures were a transient clipboard lease plus harness assumptions about a disabled
+  startup owner and the binary SCN42 header. The source retry/harness fixes are recorded separately.
+- The QR in the actual Microsoft-driver output from 42439920521 independently decodes to PCB-PRINT-42
+  with ZXing-C++ 2.3.0 after Poppler rendering at 300 DPI. This is virtual-driver evidence, not a physical scan.
+- Ordinary File/Ctrl+P printing is added to all six hosts. PDF normal printing uses a readonly vector job
+  with Mac-style centered/no-upscale fit and native ranges; explicit image/DPI fallback remains. PPT scenes
+  include an inline draft without committing it. DOC's primary toolbar is compact. Placement/draft tests pass;
+  real keyboard, new PDF print-flag/geometry/history and damaged-backup deletion checks await Windows CI.

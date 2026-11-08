@@ -1808,40 +1808,16 @@ def audit_doc_picture_labels(process,main,binary,output,results):
 
 
 
-def audit_label_preview(process,main,binary,output,results):
-    caption=text(main)
-    command(main,65518);finish_prompt(process,'Label Source',['Custom Text']);finish_prompt(process,'Create Label Sheet',['PREVIEW-AUDIT','PCB-PRINT-42','QR','100, 140, 2, 2','2, 4'])
-    preview=modal(process,title='Label Sheet Preview',native_class='Off42PdfPreviewWindow')
-    def ready(page,pages):return lambda:f'Page {page} of {pages}'in text(u.GetDlgItem(preview,100))
-    wait_for(ready(1,2),'first label preview page',process)
-    assert not u.IsWindowEnabled(main)and u.IsWindowEnabled(u.GetDlgItem(preview,3))
-    u.RedrawWindow.argtypes=[w.HWND,c.c_void_p,w.HANDLE,w.UINT];assert u.RedrawWindow(preview,None,None,0x185)
-    capture_window(preview,output/'labels-preview-fit.bmp')
-    click(preview,6);wait_for(ready(2,2),'second preview page',process)
-    click(preview,8);wait_for(lambda:'150%'in text(u.GetDlgItem(preview,100)),'preview zoom',process)
-    u.RedrawWindow.argtypes=[w.HWND,c.c_void_p,w.HANDLE,w.UINT];assert u.RedrawWindow(preview,None,None,0x185)
-    u.SendMessageW(preview,0x201,1,(300<<16)|300);u.SendMessageW(preview,0x200,1,(440<<16)|400);u.SendMessageW(preview,0x202,0,(440<<16)|400)
-    assert u.RedrawWindow(preview,None,None,0x185)
-    capture_window(preview,output/'labels-preview-zoom.bmp')
-    rect=w.RECT();u.GetWindowRect(preview,c.byref(rect));assert u.MoveWindow(preview,rect.left,rect.top,540,540,True)
-    time.sleep(0.1);u.GetWindowRect(preview,c.byref(rect))
-    for identifier in range(1,10):
-        button=u.GetDlgItem(preview,identifier);assert button
-        bounds=w.RECT();u.GetWindowRect(button,c.byref(bounds));assert rect.left<=bounds.left<bounds.right<=rect.right and rect.top<=bounds.top<bounds.bottom<=rect.bottom,(identifier,tuple(getattr(bounds,k)for k in('left','top','right','bottom')))
-    capture_window(preview,output/'labels-preview-narrow.bmp')
-    saved=output/'labels-preview-first.pdf';choose_file(process,saved,keep_preview=True)
-    wait_for(lambda:saved.is_file()and u.IsWindowEnabled(preview),'preview explicit Save',process)
-    assert not u.IsWindowEnabled(main)and pdf_text(binary.parent/'pdfium.dll',saved).count('PREVIEW-AUDIT')==2
+def print_to_virtual_pdf(process,owner,request,printed,output):
     # Only an explicitly identified virtual queue may receive unattended jobs.
     # Both calls use the product's real Print button and standard PRINTDLG.
-    click(preview,3)
+    request()
     printer=modal(process,title='Print',native_class='#32770')
-    capture_window(printer,output/'labels-preview-print-dialog.bmp')
+    capture_window(printer,output/(printed.stem+'-dialog.bmp'))
     controls=[(u.GetDlgCtrlID(h),classname(h),text(h))for h in windows_for_dialog(printer)]
-    (output/'labels-print-controls.json').write_text(json.dumps(controls,ensure_ascii=False,indent=2),encoding='utf-8')
-    click(printer,2);wait_for(lambda:u.IsWindowEnabled(preview),'Print Cancel returns to preview',process)
-    assert not u.IsWindowEnabled(main)
-    click(preview,3);printer=modal(process,title='Print',native_class='#32770')
+    (output/(printed.stem+'-controls.json')).write_text(json.dumps(controls,ensure_ascii=False,indent=2),encoding='utf-8')
+    click(printer,2);wait_for(lambda:u.IsWindowEnabled(owner),'Print Cancel returns to preview',process)
+    request();printer=modal(process,title='Print',native_class='#32770')
     combo=u.GetDlgItem(printer,1139)
     if combo:
         selected=u.SendMessageW(combo,0x147,0,0);assert selected>=0
@@ -1871,8 +1847,36 @@ def audit_label_preview(process,main,binary,output,results):
         entry=next(h for h in windows_for_dialog(printer)if u.GetDlgCtrlID(h)==1152)
         set_text(entry,'2')
     click(printer,1)
-    printed=output/'labels-native-printed-page-2.pdf';choose_file(process,printed,keep_preview=True,open_preview=False)
-    wait_for(lambda:printed.is_file()and printed.stat().st_size>100 and u.IsWindowEnabled(preview),'native PDF printer completes',process,timeout=60)
+    choose_file(process,printed,keep_preview=True,open_preview=False)
+    wait_for(lambda:printed.is_file()and printed.stat().st_size>100 and u.IsWindowEnabled(owner),'native PDF printer completes',process,timeout=60)
+    return printed
+
+
+def audit_label_preview(process,main,binary,output,results):
+    caption=text(main)
+    command(main,65518);finish_prompt(process,'Label Source',['Custom Text']);finish_prompt(process,'Create Label Sheet',['PREVIEW-AUDIT','PCB-PRINT-42','QR','100, 140, 2, 2','2, 4'])
+    preview=modal(process,title='Label Sheet Preview',native_class='Off42PdfPreviewWindow')
+    def ready(page,pages):return lambda:f'Page {page} of {pages}'in text(u.GetDlgItem(preview,100))
+    wait_for(ready(1,2),'first label preview page',process)
+    assert not u.IsWindowEnabled(main)and u.IsWindowEnabled(u.GetDlgItem(preview,3))
+    u.RedrawWindow.argtypes=[w.HWND,c.c_void_p,w.HANDLE,w.UINT];assert u.RedrawWindow(preview,None,None,0x185)
+    capture_window(preview,output/'labels-preview-fit.bmp')
+    click(preview,6);wait_for(ready(2,2),'second preview page',process)
+    click(preview,8);wait_for(lambda:'150%'in text(u.GetDlgItem(preview,100)),'preview zoom',process)
+    u.RedrawWindow.argtypes=[w.HWND,c.c_void_p,w.HANDLE,w.UINT];assert u.RedrawWindow(preview,None,None,0x185)
+    u.SendMessageW(preview,0x201,1,(300<<16)|300);u.SendMessageW(preview,0x200,1,(440<<16)|400);u.SendMessageW(preview,0x202,0,(440<<16)|400)
+    assert u.RedrawWindow(preview,None,None,0x185)
+    capture_window(preview,output/'labels-preview-zoom.bmp')
+    rect=w.RECT();u.GetWindowRect(preview,c.byref(rect));assert u.MoveWindow(preview,rect.left,rect.top,540,540,True)
+    time.sleep(0.1);u.GetWindowRect(preview,c.byref(rect))
+    for identifier in range(1,10):
+        button=u.GetDlgItem(preview,identifier);assert button
+        bounds=w.RECT();u.GetWindowRect(button,c.byref(bounds));assert rect.left<=bounds.left<bounds.right<=rect.right and rect.top<=bounds.top<bounds.bottom<=rect.bottom,(identifier,tuple(getattr(bounds,k)for k in('left','top','right','bottom')))
+    capture_window(preview,output/'labels-preview-narrow.bmp')
+    saved=output/'labels-preview-first.pdf';choose_file(process,saved,keep_preview=True)
+    wait_for(lambda:saved.is_file()and u.IsWindowEnabled(preview),'preview explicit Save',process)
+    assert not u.IsWindowEnabled(main)and pdf_text(binary.parent/'pdfium.dll',saved).count('PREVIEW-AUDIT')==2
+    printed=print_to_virtual_pdf(process,preview,lambda:click(preview,3),output/'labels-native-printed-page-2.pdf',output)
     assert printed.read_bytes().startswith(b'%PDF-')
     assert len(pdf_text(binary.parent/'pdfium.dll',printed,by_page=True))==1,'Page range was not honored'
     ow,oh,op=pdf_pixels(binary.parent/'pdfium.dll',printed,0);rw,rh,rp=pdf_pixels(binary.parent/'pdfium.dll',saved,1)
@@ -1897,7 +1901,96 @@ def audit_label_preview(process,main,binary,output,results):
     results['checks'].append('embedded label preview renders/navigates pages, zooms, keeps controls onscreen in a narrow window, saves without closing, cancels/reapplies settings and regenerates exact PDF text without changing the parent document')
 
 
-def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False, ocr=False, ocr_only=False, label_artwork=False, label_preview=False):
+def audit_pdf_vector_print(process,main,binary,output,results):
+    source=output/'native-vector-print-source.pdf'
+    def stream(content,extra=''):
+        return f'<< /Length {len(content)} {extra} >>\nstream\n'.encode()+content+b'\nendstream'
+    objects=[b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>',
+        b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 7 0 R >> >> /Contents 4 0 R >>',
+        stream(b'BT /F1 20 Tf 40 780 Td (PRIVATE-PAGE-ONE) Tj ET'),
+        b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 7 0 R >> >> /Contents 6 0 R /Annots [8 0 R 10 0 R] >>',
+        stream(b'BT /F1 20 Tf 40 780 Td (PRINT-PAGE-TWO) Tj ET'),b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        b'<< /Type /Annot /Subtype /Square /Rect [40 700 80 740] /F 0 /AP << /N 9 0 R >> >>',
+        stream(b'0 1 0 rg 0 0 40 40 re f','/Type /XObject /Subtype /Form /BBox [0 0 40 40]'),
+        b'<< /Type /Annot /Subtype /Square /Rect [100 700 140 740] /F 36 /AP << /N 11 0 R >> >>',
+        stream(b'0 1 1 rg 0 0 40 40 re f','/Type /XObject /Subtype /Form /BBox [0 0 40 40]')]
+    data=bytearray(b'%PDF-1.4\n');offsets=[0]
+    for index,body in enumerate(objects,1):offsets.append(len(data));data.extend(f'{index} 0 obj\n'.encode()+body+b'\nendobj\n')
+    crossref=len(data);data.extend(f'xref\n0 {len(offsets)}\n0000000000 65535 f \n'.encode())
+    for offset in offsets[1:]:data.extend(f'{offset:010} 00000 n \n'.encode())
+    data.extend(f'trailer\n<< /Root 1 0 R /Size {len(offsets)} >>\nstartxref\n{crossref}\n%%EOF\n'.encode());source.write_bytes(data);original=source.read_bytes()
+    command(main,1);choose_file(process,source)
+    def opened():
+        if source.name in text(main)and' * - 'not in text(main)and u.IsWindowEnabled(main):return(True,None)
+        prompt=next((h for h in windows(process.pid)if classname(h)=='#32770'and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
+        return(False,prompt)if prompt else None
+    ready,prompt=wait_for(opened,'normal PDF print source',process)
+    if not ready:click(prompt,7);wait_for(lambda:source.name in text(main)and' * - 'not in text(main)and u.IsWindowEnabled(main),'normal print source after discard',process)
+    fill_prompt(process,main,84,'Go to Page',['2']);u.SendMessageW(main,WM_COMMAND,10,0)
+    fill_prompt(process,main,21,'Crop page (PDF points)',['20','20','575','820'])
+    wait_for(lambda:not(u.GetMenuState(u.GetMenu(main),117,0)&3),'rotated/cropped print page rendered',process)
+    command(main,18);wait_for(lambda:any('Tool: Rectangle'in text(h)for h in windows(process.pid,main)),'print annotation tool',process)
+    canvas=next(h for h in windows(process.pid,main)if classname(h)=='Suite42Canvas')
+    u.SendMessageW(canvas,0x201,1,(180<<16)|90);u.SendMessageW(canvas,0x200,1,(260<<16)|190);u.SendMessageW(canvas,0x202,0,(260<<16)|190)
+    fill_prompt(process,main,90,'Text Watermark',['UNSAVED-PRINT','30','100','0','#0000FF','2'])
+    caption=text(main);assert' * - 'in caption
+    def reference(name):
+        path=output/('native-print-reference-'+name+'.pdf')
+        command(main,80);finish_prompt(process,'Extract PDF Pages',['2']);choose_file(process,path);output_ready(process,main,path,b'%PDF-');return path
+    before=reference('before');assert text(main)==caption
+    def color_points(width,pixels,color):
+        matches=[]
+        for i in range(0,len(pixels),4):
+            blue,green,red=pixels[i:i+3]
+            match={'red':red>green+50 and red>blue+50,'blue':blue>red+50 and blue>green+50,'green':green>red+50 and green>blue+50,'cyan':green>red+50 and blue>red+50}[color]
+            if match:matches.append((i//4%width,i//4//width))
+        return matches
+    def bounds(points):
+        assert len(points)>30,'Expected visible printed artwork'
+        return(min(x for x,y in points),min(y for x,y in points),max(x for x,y in points),max(y for x,y in points))
+    rw,rh,rp=pdf_pixels(binary.parent/'pdfium.dll',before,0,True)
+    assert(rw,rh)==(800,555)and len(color_points(rw,rp,'green'))>500 and not color_points(rw,rp,'cyan')
+    printed=print_to_virtual_pdf(process,main,lambda:command(main,52),output/'normal-pdf-printed-page-2.pdf',output)
+    assert text(main)==caption and source.read_bytes()==original
+    assert len(pdf_text(binary.parent/'pdfium.dll',printed,by_page=True))==1
+    ow,oh,op=pdf_pixels(binary.parent/'pdfium.dll',printed,0)
+    factor=min(1,ow/rw,oh/rh);offset=((ow-rw*factor)/2,(oh-rh*factor)/2)
+    for color in['red','blue']:
+        expected=bounds(color_points(rw,rp,color));actual=bounds(color_points(ow,op,color))
+        mapped=[expected[0]*factor+offset[0],expected[1]*factor+offset[1],expected[2]*factor+offset[0],expected[3]*factor+offset[1]]
+        assert all(abs(a-b)<=3 for a,b in zip(actual,mapped)),('Wrong rotated/cropped PDF print fit',color,actual,mapped)
+    assert not color_points(ow,op,'green'),'A nonprinting annotation reached the printer'
+    assert len(color_points(ow,op,'cyan'))>100,'A print-only annotation was lost'
+    command(main,4);undo=reference('undo');_,_,pixels=pdf_pixels(binary.parent/'pdfium.dll',undo,0,True);assert not color_points(rw,pixels,'blue')and color_points(rw,pixels,'red')
+    command(main,5);redo=reference('redo');assert pdf_pixels(binary.parent/'pdfium.dll',redo,0,True)==(rw,rh,rp)
+    assert text(main)==caption and source.read_bytes()==original
+    results['checks'].append('ordinary PDF printing uses a vector snapshot, native page range and Mac-style no-upscale centered fit, preserves crop/rotation and unsaved edits, honors print-only/nonprinting annotations, and leaves source/history/Undo/Redo intact')
+
+
+def audit_common_print_command(process,main,app,results):
+    identifier={'DOC42':315,'XLS42':62,'PDF42':52,'IMG42':36,'PPT42':40,'SCN42':27}[app]
+    u.GetSubMenu.argtypes,u.GetSubMenu.restype=[w.HMENU,c.c_int],w.HMENU
+    file_menu=u.GetSubMenu(u.GetMenu(main),0)
+    assert u.GetMenuState(file_menu,identifier,0)!=0xffffffff,'Print is absent from File menu'
+    if app=='DOC42':
+        client=w.RECT();u.GetClientRect(main,c.byref(client))
+        buttons=[h for h in windows_for_dialog(main)if classname(h)=='Button'and u.GetDlgCtrlID(h)!=65520]
+        if client.right>=900:
+            tops=[]
+            for button in buttons:
+                rect=w.RECT();u.GetWindowRect(button,c.byref(rect));tops.append(rect.top)
+            assert len(set(tops))<=1,'DOC primary toolbar still consumes multiple rows'
+        assert u.GetMenuState(u.GetMenu(main),323,0)!=0xffffffff,'A secondary command disappeared with toolbar compaction'
+    caption=text(main);u.SetForegroundWindow(main)
+    u.keybd_event.argtypes=[c.c_ubyte,c.c_ubyte,w.DWORD,c.c_size_t]
+    u.keybd_event(0x11,0,0,0);u.keybd_event(0x50,0,0,0);u.keybd_event(0x50,0,2,0);u.keybd_event(0x11,0,2,0)
+    printer=modal(process,title='Print',native_class='#32770');click(printer,2)
+    wait_for(lambda:u.IsWindowEnabled(main),'Ctrl+P Cancel returns to '+app,process)
+    assert text(main)==caption
+    results['checks'].append('File Print and actual Ctrl+P reach the native printer dialog; Cancel preserves the document')
+
+
+def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False, ocr=False, ocr_only=False, label_artwork=False, label_preview=False, native_print=False):
     startup = None
     if extended:
         if binary.stem.lower() == "pdf42":
@@ -1939,6 +2032,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
         click(about, 1)
         wait_for(lambda: u.IsWindowEnabled(main), "About closed", process)
         results["checks"].append("About command identifies app and closes")
+        if native_print:audit_common_print_command(process,main,binary.stem.upper(),results)
         if ocr_only:
             if binary.stem.lower()=="img42":audit_image_live_text(process,main,binary,output,results)
             else:audit_bundled_ocr(process,main,binary,output,results)
@@ -2060,6 +2154,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_doc_picture_labels(process,main,binary,output,results)
         if label_preview and binary.stem.lower()=='pdf42':
             audit_label_preview(process,main,binary,output,results)
+        if native_print and binary.stem.lower()=='pdf42':audit_pdf_vector_print(process,main,binary,output,results)
         return results
     finally:
         if process.poll() is None:
@@ -2555,7 +2650,20 @@ def audit_recovery(binary,output):
         process,main=launch(saved);assert' * - 'not in text(main)and not records()
         check_latest(process,main)
         u.PostMessageW(main,WM_CLOSE,0,0);process.wait(timeout=10)
-        return{'app':app,'scenario':'crash recovery','checks':['normal backup path with a one-second audit interval, active-window exclusion, forced process loss, startup/menu recovery, Cancel, independent dirty copy, close/Save Cancel, latest persisted data, selected destination, cleanup and reopen preserve the original']}
+        if app=='DOC42':
+            saved_bytes=saved.read_bytes();process,main=launch(saved)
+            replace_editor_text(u.GetDlgItem(main,101),marker+' SECOND')
+            damaged=wait_for(complete_record,'second recovery copy',process,timeout=15)
+            process.terminate();process.wait(timeout=5)
+            payload=bytearray(damaged.read_bytes());payload[-1]^=1;damaged.write_bytes(payload)
+            process,main=launch();picker=modal(process,title='Recover Unsaved Document',native_class='Suite42InputDialog')
+            selected=text(u.GetDlgItem(picker,100));finish_prompt(process,'Recover Unsaved Document',[selected,'Delete Recovery Copy'])
+            wait_for(lambda:not records()and u.IsWindowEnabled(main),'damaged recovery copy deleted',process)
+            assert saved.read_bytes()==saved_bytes and source.read_bytes()==original
+            u.PostMessageW(main,WM_CLOSE,0,0);process.wait(timeout=10)
+        checks=['normal backup path with a one-second audit interval, active-window exclusion, forced process loss, startup/menu recovery, Cancel, independent dirty copy, close/Save Cancel, latest persisted data, selected destination, cleanup and reopen preserve the original']
+        if app=='DOC42':checks.append('damaged recovery copy can be deleted without loading it or modifying the saved document/source')
+        return{'app':app,'scenario':'crash recovery','checks':checks}
     finally:
         for target in(process,child):
             if target and target.poll()is None:target.terminate();target.wait(timeout=5)
@@ -2586,6 +2694,7 @@ def main():
     parser.add_argument("--label-artwork", action="store_true")
     parser.add_argument("--label-preview", action="store_true")
     parser.add_argument("--recovery",action="store_true")
+    parser.add_argument("--native-print",action="store_true")
     parser.add_argument("--page-exports", action="store_true")
     parser.add_argument("--host-commands", action="store_true")
     parser.add_argument("--engineering", action="store_true")
@@ -2599,7 +2708,7 @@ def main():
     try:
         for app in (["PDF42","IMG42","SCN42"] if args.ocr_only else ["DOC42", "XLS42", "PDF42", "IMG42", "PPT42", "SCN42"]):
             try:
-                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge, args.pdf_batch_headers, args.array_formulas, args.ocr, args.ocr_only, args.label_artwork, args.label_preview))
+                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge, args.pdf_batch_headers, args.array_formulas, args.ocr, args.ocr_only, args.label_artwork, args.label_preview,args.native_print))
             except Exception as error:
                 results.append({"app": app, "error": str(error), "traceback": traceback.format_exc()})
             print(json.dumps(results[-1]), flush=True)

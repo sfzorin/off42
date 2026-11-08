@@ -483,6 +483,7 @@ impl Ppt {
             .map(|o| (false, o))
             .chain(slide.objects.iter().map(|o| (true, o)))
         {
+            let original=if editable&&index==self.deck.current(){self.rich_draft.as_ref().filter(|draft|draft.id==original.id).unwrap_or(original)}else{original};
             let o = self
                 .drag
                 .as_ref()
@@ -1845,6 +1846,7 @@ impl win42::App for Ppt {
         }
     }
 
+    fn default_print_command(&self)->Option<u16>{Some(40)}
     fn name(&self) -> &'static str {
         "PPT42"
     }
@@ -1863,7 +1865,7 @@ impl win42::App for Ppt {
         } else if self.pptx_source.is_some() {
             "PowerPoint presentation"
         } else {
-            "Suite42 slides JSON"
+            "OFF42 slides JSON"
         }
     }
     fn actions(&self) -> &'static [(u16, &'static str)] {
@@ -1956,7 +1958,7 @@ impl win42::App for Ppt {
             return format!("Slide {} of {} | PPTX: supported shapes editable; other content preserved but may not be displayed", self.deck.current()+1,self.deck.slides().len());
         }
         format!(
-            "Slide {} of {} | first line is title; remaining text is body | Suite42 JSON",
+            "Slide {} of {} | first line is title; remaining text is body | OFF42 JSON",
             self.deck.current() + 1,
             self.deck.slides().len()
         )
@@ -2063,7 +2065,7 @@ impl win42::App for Ppt {
         self.rubber_band = None;
     }
     fn enabled(&self, id: u16) -> bool {
-        if self.rich_edit_object.is_some() && id >= 10 && !matches!(id,42..=45|58..=62) {
+        if self.rich_edit_object.is_some() && id >= 10 && !matches!(id,40|42..=45|58..=62) {
             return false;
         }
         if self.pptx_source.is_some() && matches!(id, 24 | 28 | 29) {
@@ -3119,17 +3121,60 @@ mod preset_ui_tests {
     }
 }
 
-#[cfg(test)]mod recovery_tests{
-    use super::*;use win42::App;
-    #[test]fn recovery_includes_inline_draft_without_committing_or_losing_cancel(){
-        let mut app=Ppt::new(Presentation::new());let id=app.deck.insert_object(ppt42_core::ObjectKind::Text,"hello".into()).unwrap();
-        let(_,saved)=app.deck.save_snapshot().unwrap();app.deck.mark_saved_snapshot(saved);
-        app.selected_object=Some(id);app.action(58).unwrap();app.set_rich_selection((0,5));app.action(59).unwrap();
-        let original=app.deck.save_snapshot().unwrap().0;let draft=app.rich_draft.clone();
-        let snapshot=app.recovery_snapshot().unwrap().unwrap();assert_eq!(snapshot.extension,"json");assert_ne!(snapshot.bytes,original);
-        let path=std::env::temp_dir().join(format!("ppt42-recovery-draft-{}.json",std::process::id()));std::fs::write(&path,&snapshot.bytes).unwrap();
-        let restored=Presentation::open(&path).unwrap();std::fs::remove_file(path).unwrap();assert!(restored.slides()[0].objects[0].paragraphs[0].runs[0].style.bold);
-        assert_eq!(app.deck.save_snapshot().unwrap().0,original);assert_eq!(app.rich_draft,draft);assert!(app.dirty());
-        app.finish_inline_rich(false).unwrap();assert!(!app.dirty());assert_eq!(app.deck.save_snapshot().unwrap().0,original);
+#[cfg(test)]
+mod recovery_tests {
+    use super::*;
+    use win42::App;
+    #[test]
+    fn recovery_includes_inline_draft_without_committing_or_losing_cancel() {
+        let mut app = Ppt::new(Presentation::new());
+        let id = app
+            .deck
+            .insert_object(ppt42_core::ObjectKind::Text, "hello".into())
+            .unwrap();
+        let (_, saved) = app.deck.save_snapshot().unwrap();
+        app.deck.mark_saved_snapshot(saved);
+        app.selected_object = Some(id);
+        app.action(58).unwrap();
+        app.set_rich_selection((0, 5));
+        app.action(59).unwrap();
+        let original = app.deck.save_snapshot().unwrap().0;
+        let draft = app.rich_draft.clone();
+        assert!(app.enabled(40));
+        fn has_bold(items: &[win42::SceneItem]) -> bool {
+            items.iter().any(|item| match item {
+                win42::SceneItem::RichText { paragraphs, .. } => paragraphs
+                    .iter()
+                    .any(|p| p.runs.iter().any(|r| r.text == "hello" && r.font.bold)),
+                win42::SceneItem::Transform { items, .. }
+                | win42::SceneItem::OpacityLayer { items, .. }
+                | win42::SceneItem::ClippedOffset { items, .. } => has_bold(items),
+                _ => false,
+            })
+        }
+        let win42::PrintJob::Scenes(pages) = app.print_job(40).unwrap() else {
+            panic!("Expected presentation scenes")
+        };
+        assert!(pages.iter().any(|page| has_bold(&page.scene.items)));
+
+        let snapshot = app.recovery_snapshot().unwrap().unwrap();
+        assert_eq!(snapshot.extension, "json");
+        assert_ne!(snapshot.bytes, original);
+        let path =
+            std::env::temp_dir().join(format!("ppt42-recovery-draft-{}.json", std::process::id()));
+        std::fs::write(&path, &snapshot.bytes).unwrap();
+        let restored = Presentation::open(&path).unwrap();
+        std::fs::remove_file(path).unwrap();
+        assert!(
+            restored.slides()[0].objects[0].paragraphs[0].runs[0]
+                .style
+                .bold
+        );
+        assert_eq!(app.deck.save_snapshot().unwrap().0, original);
+        assert_eq!(app.rich_draft, draft);
+        assert!(app.dirty());
+        app.finish_inline_rich(false).unwrap();
+        assert!(!app.dirty());
+        assert_eq!(app.deck.save_snapshot().unwrap().0, original);
     }
 }

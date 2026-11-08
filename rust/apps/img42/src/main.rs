@@ -324,6 +324,7 @@ impl win42::App for Img {
         }
     }
 
+    fn default_print_command(&self)->Option<u16>{Some(36)}
     fn name(&self) -> &'static str {
         "IMG42"
     }

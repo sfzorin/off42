@@ -217,6 +217,7 @@ impl win42::App for Scn {
         }
     }
 
+    fn default_print_command(&self)->Option<u16>{Some(27)}
     fn name(&self) -> &'static str {
         "SCN42"
     }

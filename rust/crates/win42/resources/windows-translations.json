@@ -26,7 +26,9 @@
     "Recovered copy; save to keep your changes": "Документ восстановлен; сохраните изменения",
     "Choose a save destination outside the automatic recovery folder.": "Выберите место сохранения вне папки автоматического восстановления.",
     "Recovery": "Восстановление",
-    "Recover Unsaved Document": "Восстановить несохранённый документ"
+    "Recover Unsaved Document": "Восстановить несохранённый документ",
+    "Print PDF as Image…": "Печатать PDF как изображение…",
+    "Print PDF as Image": "Печатать PDF как изображение"
   },
   "zh-Hans": {
     "Symbol or Code": "符号或条码",
@@ -55,7 +57,9 @@
     "Recovered copy; save to keep your changes": "已恢复副本；请保存更改",
     "Choose a save destination outside the automatic recovery folder.": "请选择自动恢复文件夹以外的保存位置。",
     "Recovery": "恢复",
-    "Recover Unsaved Document": "恢复未保存的文档"
+    "Recover Unsaved Document": "恢复未保存的文档",
+    "Print PDF as Image…": "将 PDF 作为图像打印…",
+    "Print PDF as Image": "将 PDF 作为图像打印"
   },
   "zh-Hant": {
     "Symbol or Code": "符號或條碼",
@@ -84,7 +88,9 @@
     "Recovered copy; save to keep your changes": "已復原副本；請儲存變更",
     "Choose a save destination outside the automatic recovery folder.": "請選擇自動復原資料夾以外的儲存位置。",
     "Recovery": "復原",
-    "Recover Unsaved Document": "復原未儲存的文件"
+    "Recover Unsaved Document": "復原未儲存的文件",
+    "Print PDF as Image…": "將 PDF 作為影像列印…",
+    "Print PDF as Image": "將 PDF 作為影像列印"
   },
   "es": {
     "Symbol or Code": "Símbolo o código",
@@ -113,7 +119,9 @@
     "Recovered copy; save to keep your changes": "Copia recuperada; guarda los cambios",
     "Choose a save destination outside the automatic recovery folder.": "Elige un destino fuera de la carpeta de recuperación automática.",
     "Recovery": "Recuperación",
-    "Recover Unsaved Document": "Recuperar documento sin guardar"
+    "Recover Unsaved Document": "Recuperar documento sin guardar",
+    "Print PDF as Image…": "Imprimir PDF como imagen…",
+    "Print PDF as Image": "Imprimir PDF como imagen"
   },
   "ar": {
     "Symbol or Code": "رمز أو باركود",
@@ -142,7 +150,9 @@
     "Recovered copy; save to keep your changes": "تم استرداد النسخة؛ احفظ التغييرات",
     "Choose a save destination outside the automatic recovery folder.": "اختر مكان حفظ خارج مجلد الاسترداد التلقائي.",
     "Recovery": "الاسترداد",
-    "Recover Unsaved Document": "استرداد مستند غير محفوظ"
+    "Recover Unsaved Document": "استرداد مستند غير محفوظ",
+    "Print PDF as Image…": "طباعة PDF كصورة…",
+    "Print PDF as Image": "طباعة PDF كصورة"
   },
   "fr": {
     "Symbol or Code": "Symbole ou code",
@@ -171,7 +181,9 @@
     "Recovered copy; save to keep your changes": "Copie récupérée ; enregistrez les modifications",
     "Choose a save destination outside the automatic recovery folder.": "Choisissez une destination hors du dossier de récupération automatique.",
     "Recovery": "Récupération",
-    "Recover Unsaved Document": "Récupérer un document non enregistré"
+    "Recover Unsaved Document": "Récupérer un document non enregistré",
+    "Print PDF as Image…": "Imprimer le PDF comme une image…",
+    "Print PDF as Image": "Imprimer le PDF comme une image"
   },
   "pt": {
     "Symbol or Code": "Símbolo ou código",
@@ -200,7 +212,9 @@
     "Recovered copy; save to keep your changes": "Cópia recuperada; salve as alterações",
     "Choose a save destination outside the automatic recovery folder.": "Escolha um destino fora da pasta de recuperação automática.",
     "Recovery": "Recuperação",
-    "Recover Unsaved Document": "Recuperar documento não salvo"
+    "Recover Unsaved Document": "Recuperar documento não salvo",
+    "Print PDF as Image…": "Imprimir PDF como imagem…",
+    "Print PDF as Image": "Imprimir PDF como imagem"
   },
   "id": {
     "Symbol or Code": "Simbol atau kode",
@@ -229,7 +243,9 @@
     "Recovered copy; save to keep your changes": "Salinan dipulihkan; simpan perubahan Anda",
     "Choose a save destination outside the automatic recovery folder.": "Pilih tujuan penyimpanan di luar folder pemulihan otomatis.",
     "Recovery": "Pemulihan",
-    "Recover Unsaved Document": "Pulihkan Dokumen yang Belum Disimpan"
+    "Recover Unsaved Document": "Pulihkan Dokumen yang Belum Disimpan",
+    "Print PDF as Image…": "Cetak PDF sebagai Gambar…",
+    "Print PDF as Image": "Cetak PDF sebagai Gambar"
   },
   "de": {
     "Symbol or Code": "Symbol oder Code",
@@ -258,7 +274,9 @@
     "Recovered copy; save to keep your changes": "Kopie wiederhergestellt; Änderungen speichern",
     "Choose a save destination outside the automatic recovery folder.": "Wählen Sie einen Speicherort außerhalb des automatischen Wiederherstellungsordners.",
     "Recovery": "Wiederherstellung",
-    "Recover Unsaved Document": "Ungespeichertes Dokument wiederherstellen"
+    "Recover Unsaved Document": "Ungespeichertes Dokument wiederherstellen",
+    "Print PDF as Image…": "PDF als Bild drucken…",
+    "Print PDF as Image": "PDF als Bild drucken"
   },
   "ja": {
     "Symbol or Code": "記号またはコード",
@@ -287,7 +305,9 @@
     "Recovered copy; save to keep your changes": "コピーを復元しました。変更を保存してください",
     "Choose a save destination outside the automatic recovery folder.": "自動復元フォルダー以外の保存先を選択してください。",
     "Recovery": "復元",
-    "Recover Unsaved Document": "未保存の書類を復元"
+    "Recover Unsaved Document": "未保存の書類を復元",
+    "Print PDF as Image…": "PDFを画像として印刷…",
+    "Print PDF as Image": "PDFを画像として印刷"
   },
   "vi": {
     "Symbol or Code": "Ký hiệu hoặc mã",
@@ -316,7 +336,9 @@
     "Recovered copy; save to keep your changes": "Đã khôi phục bản sao; hãy lưu thay đổi",
     "Choose a save destination outside the automatic recovery folder.": "Chọn nơi lưu ngoài thư mục khôi phục tự động.",
     "Recovery": "Khôi phục",
-    "Recover Unsaved Document": "Khôi phục tài liệu chưa lưu"
+    "Recover Unsaved Document": "Khôi phục tài liệu chưa lưu",
+    "Print PDF as Image…": "In PDF dưới dạng ảnh…",
+    "Print PDF as Image": "In PDF dưới dạng ảnh"
   },
   "tr": {
     "Symbol or Code": "Sembol veya kod",
@@ -345,7 +367,9 @@
     "Recovered copy; save to keep your changes": "Kopya kurtarıldı; değişikliklerinizi kaydedin",
     "Choose a save destination outside the automatic recovery folder.": "Otomatik kurtarma klasörü dışında bir kayıt konumu seçin.",
     "Recovery": "Kurtarma",
-    "Recover Unsaved Document": "Kaydedilmemiş Belgeyi Kurtar"
+    "Recover Unsaved Document": "Kaydedilmemiş Belgeyi Kurtar",
+    "Print PDF as Image…": "PDF’yi Görüntü Olarak Yazdır…",
+    "Print PDF as Image": "PDF’yi Görüntü Olarak Yazdır"
   },
   "fil": {
     "Symbol or Code": "Simbolo o code",
@@ -374,7 +398,9 @@
     "Recovered copy; save to keep your changes": "Naibalik ang kopya; i-save ang mga pagbabago",
     "Choose a save destination outside the automatic recovery folder.": "Pumili ng lokasyon sa labas ng folder ng awtomatikong pagbawi.",
     "Recovery": "Pagbawi",
-    "Recover Unsaved Document": "Ibalik ang Hindi Na-save na Dokumento"
+    "Recover Unsaved Document": "Ibalik ang Hindi Na-save na Dokumento",
+    "Print PDF as Image…": "I-print ang PDF bilang Larawan…",
+    "Print PDF as Image": "I-print ang PDF bilang Larawan"
   },
   "ko": {
     "Symbol or Code": "기호 또는 코드",
@@ -403,7 +429,9 @@
     "Recovered copy; save to keep your changes": "사본을 복구했습니다. 변경 사항을 저장하세요",
     "Choose a save destination outside the automatic recovery folder.": "자동 복구 폴더 밖의 저장 위치를 선택하세요.",
     "Recovery": "복구",
-    "Recover Unsaved Document": "저장하지 않은 문서 복구"
+    "Recover Unsaved Document": "저장하지 않은 문서 복구",
+    "Print PDF as Image…": "PDF를 이미지로 인쇄…",
+    "Print PDF as Image": "PDF를 이미지로 인쇄"
   },
   "th": {
     "Symbol or Code": "สัญลักษณ์หรือรหัส",
@@ -432,7 +460,9 @@
     "Recovered copy; save to keep your changes": "กู้คืนสำเนาแล้ว โปรดบันทึกการเปลี่ยนแปลง",
     "Choose a save destination outside the automatic recovery folder.": "เลือกตำแหน่งบันทึกนอกโฟลเดอร์กู้คืนอัตโนมัติ",
     "Recovery": "การกู้คืน",
-    "Recover Unsaved Document": "กู้คืนเอกสารที่ยังไม่ได้บันทึก"
+    "Recover Unsaved Document": "กู้คืนเอกสารที่ยังไม่ได้บันทึก",
+    "Print PDF as Image…": "พิมพ์ PDF เป็นรูปภาพ…",
+    "Print PDF as Image": "พิมพ์ PDF เป็นรูปภาพ"
   },
   "it": {
     "Symbol or Code": "Simbolo o codice",
@@ -461,7 +491,9 @@
     "Recovered copy; save to keep your changes": "Copia recuperata; salva le modifiche",
     "Choose a save destination outside the automatic recovery folder.": "Scegli una destinazione fuori dalla cartella di recupero automatico.",
     "Recovery": "Recupero",
-    "Recover Unsaved Document": "Recupera documento non salvato"
+    "Recover Unsaved Document": "Recupera documento non salvato",
+    "Print PDF as Image…": "Stampa PDF come immagine…",
+    "Print PDF as Image": "Stampa PDF come immagine"
   },
   "pl": {
     "Symbol or Code": "Symbol lub kod",
@@ -490,7 +522,9 @@
     "Recovered copy; save to keep your changes": "Odzyskano kopię; zapisz zmiany",
     "Choose a save destination outside the automatic recovery folder.": "Wybierz miejsce zapisu poza folderem automatycznego odzyskiwania.",
     "Recovery": "Odzyskiwanie",
-    "Recover Unsaved Document": "Odzyskaj niezapisany dokument"
+    "Recover Unsaved Document": "Odzyskaj niezapisany dokument",
+    "Print PDF as Image…": "Drukuj PDF jako obraz…",
+    "Print PDF as Image": "Drukuj PDF jako obraz"
   },
   "ms": {
     "Symbol or Code": "Simbol atau kod",
@@ -519,7 +553,9 @@
     "Recovered copy; save to keep your changes": "Salinan dipulihkan; simpan perubahan anda",
     "Choose a save destination outside the automatic recovery folder.": "Pilih lokasi simpanan di luar folder pemulihan automatik.",
     "Recovery": "Pemulihan",
-    "Recover Unsaved Document": "Pulihkan Dokumen Belum Disimpan"
+    "Recover Unsaved Document": "Pulihkan Dokumen Belum Disimpan",
+    "Print PDF as Image…": "Cetak PDF sebagai Imej…",
+    "Print PDF as Image": "Cetak PDF sebagai Imej"
   },
   "hu": {
     "Symbol or Code": "Szimbólum vagy kód",
@@ -548,6 +584,8 @@
     "Recovered copy; save to keep your changes": "Másolat helyreállítva; mentse a módosításokat",
     "Choose a save destination outside the automatic recovery folder.": "Válasszon az automatikus helyreállítás mappáján kívüli mentési helyet.",
     "Recovery": "Helyreállítás",
-    "Recover Unsaved Document": "Nem mentett dokumentum helyreállítása"
+    "Recover Unsaved Document": "Nem mentett dokumentum helyreállítása",
+    "Print PDF as Image…": "PDF nyomtatása képként…",
+    "Print PDF as Image": "PDF nyomtatása képként"
   }
 }

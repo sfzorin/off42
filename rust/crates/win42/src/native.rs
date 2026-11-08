@@ -248,14 +248,14 @@ unsafe fn recover_document(hwnd: HWND) -> Result<(), String> {
         .iter()
         .position(|v| v == &values[0])
         .ok_or("Choose a recovery copy")?;
-    let claim = copies[index].acquire()?;
     if values[1] == "Delete Recovery Copy" {
-        claim.discard()?;
+        copies[index].discard()?;
         return Ok(());
     }
     if values[1] != "Recover" {
         return Err("Choose a recovery action".into());
     }
+    let claim=copies[index].acquire()?;
     if !confirm(hwnd) {
         return Ok(());
     }
@@ -3054,7 +3054,7 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
             let pending = STATE.with(|s| {
                 s.borrow_mut()
                     .as_mut()
-                    .and_then(|s| (!crate::report::is_open()).then(||s.app.take_pending_print_job()).flatten())
+                    .and_then(|s| (!crate::report::is_open()&&IsWindowEnabled(h)!=0).then(||s.app.take_pending_print_job()).flatten())
             });
             if let Some(result) = pending {
                 match result {
@@ -3067,6 +3067,7 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
                         msg(h, &e, MB_OK | MB_ICONERROR);
                     }
                 }
+                update_caption();
             }
             0
         }
@@ -3502,6 +3503,7 @@ pub fn run(app: Box<dyn App>) {
         RegisterClassW(&cc);
         let bar = CreateMenu();
         let file = CreatePopupMenu();
+        let print_command=app.default_print_command();
         if app.supports_new() {
             item(file, NEW, "&New\tCtrl+N");
         }
@@ -3518,6 +3520,7 @@ pub fn run(app: Box<dyn App>) {
         item(file, SAVE, "&Save\tCtrl+S");
         item(file, SAVE_AS, "Save &As...\tCtrl+Shift+S");
         if app.supports_recovery(){item(file,RECOVER_DOCUMENT,"Recover Unsaved Document…");}
+        if let Some(id)=print_command{item(file,id,"&Print…\tCtrl+P");}
         for a in app.file_actions() {
             item(file, a.id, a.title);
         }
@@ -3561,7 +3564,7 @@ pub fn run(app: Box<dyn App>) {
             item(editmenu, TOGGLE_PROOFING, "Check Spelling as You Type");
         }
         for &(id, t) in app.actions() {
-            item(editmenu, id, t)
+            if Some(id)!=print_command{item(editmenu, id, t)}
         }
         AppendMenuW(
             bar,
@@ -3602,6 +3605,7 @@ pub fn run(app: Box<dyn App>) {
         let specs = app.command_specs();
         let mut groups: Vec<(&str, HMENU)> = Vec::new();
         for spec in &specs {
+            if Some(spec.id)==print_command{continue;}
             let menu = if let Some((_, menu)) = groups.iter().find(|(name, _)| *name == spec.group)
             {
                 *menu
@@ -3926,7 +3930,9 @@ pub fn run(app: Box<dyn App>) {
                 cmd: REDO,
             },
         ];
+        if let Some(cmd)=print_command{acc.push(ACCEL{fVirt:FVIRTKEY|FCONTROL,key:b'P' as u16,cmd});}
         for spec in &specs {
+            if Some(spec.id)==print_command{continue;}
             if let Some(key) = spec.accelerator {
                 let parts: Vec<_> = key.split('+').collect();
                 if let Some(last) = parts.last() {
@@ -5169,9 +5175,23 @@ pub(super) unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), 
         AbortDoc, EndDoc, EndPage, StartDocW, StartPage, DOCINFOW,
     };
     let geometries: Vec<crate::PrintGeometry> = match job {
-        crate::PrintJob::ActualSizePdf(bytes)=>{
-            let source=crate::pdfium::Document::open(bytes.clone(),&std::sync::atomic::AtomicBool::new(false))?;
-            (0..source.page_count()).map(|index|source.dimensions(index).map(|(w,h)|crate::PrintGeometry{width_twips:(w*20.).round()as i32,height_twips:(h*20.).round()as i32,margin_left_twips:0,margin_right_twips:0,margin_top_twips:0,margin_bottom_twips:0})).collect::<Result<Vec<_>,_>>()?
+        crate::PrintJob::ActualSizePdf(bytes) | crate::PrintJob::FitPdf(bytes) => {
+            let source = crate::pdfium::Document::open(
+                bytes.clone(),
+                &std::sync::atomic::AtomicBool::new(false),
+            )?;
+            (0..source.page_count())
+                .map(|index| {
+                    source.dimensions(index).map(|(w, h)| crate::PrintGeometry {
+                        width_twips: (w * 20.).round() as i32,
+                        height_twips: (h * 20.).round() as i32,
+                        margin_left_twips: 0,
+                        margin_right_twips: 0,
+                        margin_top_twips: 0,
+                        margin_bottom_twips: 0,
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?
         }
         crate::PrintJob::Scenes(pages) | crate::PrintJob::ActualSizeScenes(pages) => {
             pages.iter().map(|p| p.geometry).collect()
@@ -5184,26 +5204,42 @@ pub(super) unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), 
     let mut dialog: PRINTDLGW = zeroed();
     dialog.lStructSize = size_of::<PRINTDLGW>() as u32;
     dialog.hwndOwner = hwnd;
-    let pdf_job=matches!(job,crate::PrintJob::ActualSizePdf(_));
+    let pdf_job = matches!(
+        job,
+        crate::PrintJob::ActualSizePdf(_) | crate::PrintJob::FitPdf(_)
+    );
     if pdf_job {
-        dialog.Flags=PD_RETURNDEFAULT;
-        let _=PrintDlgW(&mut dialog);
+        dialog.Flags = PD_RETURNDEFAULT;
+        let _ = PrintDlgW(&mut dialog);
         // Label PDFs are A4. Change this job's default paper without changing system printer preferences.
-        if geometries.iter().all(|g|(g.width_twips-11906).abs()<=4&&(g.height_twips-16838).abs()<=4)
-            &&!dialog.hDevMode.is_null()&&GlobalSize(dialog.hDevMode)>=size_of::<DEVMODEW>() {
-            let mode=GlobalLock(dialog.hDevMode).cast::<DEVMODEW>();
+        if matches!(job, crate::PrintJob::ActualSizePdf(_))
+            && geometries.iter().all(|g| {
+                (g.width_twips - 11906).abs() <= 20 && (g.height_twips - 16838).abs() <= 20
+            })
+            && !dialog.hDevMode.is_null()
+            && GlobalSize(dialog.hDevMode) >= size_of::<DEVMODEW>()
+        {
+            let mode = GlobalLock(dialog.hDevMode).cast::<DEVMODEW>();
             if !mode.is_null() {
-                if (*mode).dmSize as usize>=size_of::<DEVMODEW>() {
-                    (*mode).dmFields=((*mode).dmFields&!(DM_PAPERLENGTH|DM_PAPERWIDTH))|DM_PAPERSIZE|DM_ORIENTATION;
-                    (*mode).Anonymous1.Anonymous1.dmPaperSize=DMPAPER_A4 as i16;
-                    (*mode).Anonymous1.Anonymous1.dmOrientation=DMORIENT_PORTRAIT as i16;
+                if (*mode).dmSize as usize >= size_of::<DEVMODEW>() {
+                    (*mode).dmFields = ((*mode).dmFields & !(DM_PAPERLENGTH | DM_PAPERWIDTH))
+                        | DM_PAPERSIZE
+                        | DM_ORIENTATION;
+                    (*mode).Anonymous1.Anonymous1.dmPaperSize = DMPAPER_A4 as i16;
+                    (*mode).Anonymous1.Anonymous1.dmOrientation = DMORIENT_PORTRAIT as i16;
                 }
                 GlobalUnlock(dialog.hDevMode);
             }
         }
-        dialog.nMinPage=1;dialog.nMaxPage=geometries.len()as u16;dialog.nFromPage=1;dialog.nToPage=dialog.nMaxPage;
+        dialog.nMinPage = 1;
+        dialog.nMaxPage = geometries.len() as u16;
+        dialog.nFromPage = 1;
+        dialog.nToPage = dialog.nMaxPage;
     }
-    dialog.Flags = PD_RETURNDC | PD_NOSELECTION | PD_USEDEVMODECOPIESANDCOLLATE | if pdf_job{0}else{PD_NOPAGENUMS};
+    dialog.Flags = PD_RETURNDC
+        | PD_NOSELECTION
+        | PD_USEDEVMODECOPIESANDCOLLATE
+        | if pdf_job { 0 } else { PD_NOPAGENUMS };
     dialog.nCopies = 1;
     let accepted = PrintDlgW(&mut dialog) != 0;
     let printer_name = selected_printer_name(dialog.hDevNames);
@@ -5214,8 +5250,10 @@ pub(super) unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), 
         GlobalFree(dialog.hDevNames);
     }
     if !accepted {
-        let error=CommDlgExtendedError();
-        if error!=0{return Err(format!("Print dialog failed (Windows code {error})"));}
+        let error = CommDlgExtendedError();
+        if error != 0 {
+            return Err(format!("Print dialog failed (Windows code {error})"));
+        }
         return Ok(());
     }
     let dc = dialog.hDC;
@@ -5282,17 +5320,31 @@ pub(super) unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), 
         _ => job,
     };
     // Keep embedded fonts and PDF resources alive until EndDoc has finished spooling.
-    let pdf_document=if let crate::PrintJob::ActualSizePdf(bytes)=job {
-        match crate::pdfium::Document::open(bytes.clone(),&std::sync::atomic::AtomicBool::new(false)){
-            Ok(document)=>Some(document),Err(error)=>{DeleteDC(dc);return Err(error);}
-        }
-    }else{None};
+    let pdf_document =
+        if let crate::PrintJob::ActualSizePdf(bytes) | crate::PrintJob::FitPdf(bytes) = job {
+            match crate::pdfium::Document::open(
+                bytes.clone(),
+                &std::sync::atomic::AtomicBool::new(false),
+            ) {
+                Ok(document) => Some(document),
+                Err(error) => {
+                    DeleteDC(dc);
+                    return Err(error);
+                }
+            }
+        } else {
+            None
+        };
     let title = wide("off42 document");
-    let file_output=wide("FILE:");
+    let file_output = wide("FILE:");
     let info = DOCINFOW {
         cbSize: size_of::<DOCINFOW>() as i32,
         lpszDocName: title.as_ptr(),
-        lpszOutput:if dialog.Flags&PD_PRINTTOFILE!=0{file_output.as_ptr()}else{null()},
+        lpszOutput: if dialog.Flags & PD_PRINTTOFILE != 0 {
+            file_output.as_ptr()
+        } else {
+            null()
+        },
         ..zeroed()
     };
     if StartDocW(dc, &info) <= 0 {
@@ -5300,20 +5352,41 @@ pub(super) unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), 
         return Err("Could not start print job".into());
     }
     let result: Result<(), String> = (|| match job {
-        crate::PrintJob::ActualSizePdf(_)=>{
-            let source=pdf_document.as_ref().ok_or("PDF print document is unavailable")?;
-            let (first,last)=if dialog.Flags&PD_PAGENUMS!=0{(dialog.nFromPage as usize,dialog.nToPage as usize)}else{(1,source.page_count())};
-            if first==0||last<first||last>source.page_count(){return Err("Invalid PDF print page range".into());}
-            for index in first-1..last {
-                let (w,h)=source.dimensions(index)?;
-                let destination=correction.device_origin((-offset_x,-offset_y),(offset_x,offset_y),(dpi_x,dpi_y));
-                let w=(w*f64::from(dpi_x)*correction.scale_x/72.).round();let h=(h*f64::from(dpi_y)*correction.scale_y/72.).round();
-                if w<1.||h<1.||w>i32::MAX as f64||h>i32::MAX as f64{return Err("PDF print dimensions exceed the printer limit".into());}
-                if StartPage(dc)<=0{return Err("Could not start PDF print page".into());}
-                let saved=SaveDC(dc);if saved==0{return Err("Could not save PDF print device state".into());}
-                let painted=source.print_page(index,dc,[destination.0,destination.1,w as i32,h as i32]);
-                RestoreDC(dc,saved);painted?;
-                if EndPage(dc)<=0{return Err("Could not finish PDF print page".into());}
+        crate::PrintJob::ActualSizePdf(_) | crate::PrintJob::FitPdf(_) => {
+            let source = pdf_document
+                .as_ref()
+                .ok_or("PDF print document is unavailable")?;
+            let (first, last) = if dialog.Flags & PD_PAGENUMS != 0 {
+                (dialog.nFromPage as usize, dialog.nToPage as usize)
+            } else {
+                (1, source.page_count())
+            };
+            if first == 0 || last < first || last > source.page_count() {
+                return Err("Invalid PDF print page range".into());
+            }
+            for index in first - 1..last {
+                let (w, h) = source.dimensions(index)?;
+                let destination = crate::pdf_print_layout::destination(
+                    (w, h),
+                    (width, height),
+                    (dpi_x, dpi_y),
+                    (offset_x, offset_y),
+                    matches!(job, crate::PrintJob::FitPdf(_)),
+                    correction,
+                )?;
+                if StartPage(dc) <= 0 {
+                    return Err("Could not start PDF print page".into());
+                }
+                let saved = SaveDC(dc);
+                if saved == 0 {
+                    return Err("Could not save PDF print device state".into());
+                }
+                let painted = source.print_page(index, dc, destination);
+                RestoreDC(dc, saved);
+                painted?;
+                if EndPage(dc) <= 0 {
+                    return Err("Could not finish PDF print page".into());
+                }
             }
             Ok(())
         }
@@ -5604,7 +5677,21 @@ pub(super) unsafe fn grid_commit(value: String) -> bool {
     }
 }
 
-pub(super) unsafe fn report_event(owner:HWND,id:u16,event:crate::ReportEvent)->bool{
-    let result=STATE.with(|s|s.borrow_mut().as_mut().ok_or_else(||"Document is unavailable".to_string()).and_then(|s|s.app.report_event(id,event)));
-    match result{Ok(())=>{refresh();true},Err(error)=>{msg(owner,&error,MB_OK|MB_ICONERROR);false}}
+pub(super) unsafe fn report_event(owner: HWND, id: u16, event: crate::ReportEvent) -> bool {
+    let result = STATE.with(|s| {
+        s.borrow_mut()
+            .as_mut()
+            .ok_or_else(|| "Document is unavailable".to_string())
+            .and_then(|s| s.app.report_event(id, event))
+    });
+    match result {
+        Ok(()) => {
+            refresh();
+            true
+        }
+        Err(error) => {
+            msg(owner, &error, MB_OK | MB_ICONERROR);
+            false
+        }
+    }
 }

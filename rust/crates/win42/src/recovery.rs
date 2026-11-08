@@ -156,6 +156,18 @@ impl Copy {
             timestamp(self.header.saved_at)
         )
     }
+    /// Deleting a damaged payload must not require restoring or trusting its contents.
+    pub fn discard(&self) -> Result<(), String> {
+        let lock = lock(&self.directory.join("session.lock"), false)?;
+        let (_, header) = header(&self.directory.join("document.off42r"), &self.app)?;
+        Claim {
+            directory: self.directory.clone(),
+            _lock: Some(lock),
+            header,
+            bytes: Vec::new(),
+        }
+        .discard()
+    }
     pub fn acquire(&self) -> Result<Claim, String> {
         let lock = lock(&self.directory.join("session.lock"), false)?;
         let (mut file, header) = header(&self.directory.join("document.off42r"), &self.app)?;
@@ -584,6 +596,26 @@ mod tests {
         assert!(copies(root.path(), "DOC42").is_empty());
         std::fs::write(&path, b"OFF42RC1\x10").unwrap();
         assert!(copies(root.path(), "DOC42").is_empty());
+    }
+    #[test]
+    fn damaged_payload_can_be_deleted_without_loading_it_or_touching_the_source() {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("original.docx");
+        std::fs::write(&source, b"ORIGINAL").unwrap();
+        let store = Store::create(root.path(), "DOC42").unwrap();
+        store
+            .write(snapshot("CORRUPT-ME"), Some(source.clone()))
+            .unwrap();
+        let path = store.directory.join("document.off42r");
+        drop(store);
+        let mut bytes = std::fs::read(&path).unwrap();
+        *bytes.last_mut().unwrap() ^= 1;
+        std::fs::write(&path, &bytes).unwrap();
+        let copy = copies(root.path(), "DOC42").remove(0);
+        assert!(copy.acquire().is_err());
+        copy.discard().unwrap();
+        assert!(!path.exists());
+        assert_eq!(std::fs::read(source).unwrap(), b"ORIGINAL");
     }
     #[test]
     fn invalid_identifiers_and_other_apps_are_excluded() {

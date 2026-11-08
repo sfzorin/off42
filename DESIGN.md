@@ -820,3 +820,13 @@ Each journal writes one bounded, length/hash-checked atomic record on a serial w
 the previous record intact; a later Save/Discard still queues its cleanup. Claimed copies stay locked until
 saved/discarded. Recovery storage is an owned cache, never an allowed document-save destination; cleanup
 removes only known journal/materialization files and preserves unrelated files. Errors appear in status.
+
+Each app exposes one ordinary print command to the shared host. The host places it in File, registers
+Ctrl+P once, and retains normal command-state checks. PDF jobs distinguish actual-size label sheets from
+centered/shrink-only document pages. Pure placement math uses physical sheet dimensions, separate axis
+DPI and hard-margin offsets, then applies printer calibration. PDF/font resources survive through EndDoc;
+queued background print jobs wait until the owner is enabled. Raster printing remains an explicit fallback.
+
+Presentation scenes read an active inline text draft for both display and print while keeping the model's
+history unchanged. Recovery deletion takes an exclusive claim and validates the record envelope but does
+not require decoding/checksumming a damaged payload; recovery itself still verifies the full payload hash.

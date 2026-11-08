@@ -1659,9 +1659,9 @@ impl win42::App for Pdf {
                 fields,
             });
         }
-        if id == 52 {
+        if id == 118 {
             return Some(win42::InputRequest {
-                title: "Print PDF pages",
+                title: "Print PDF as Image",
                 fields: vec![
                     ("First page", "1".into()),
                     ("Last page", doc.page_count().to_string()),
@@ -1934,7 +1934,7 @@ impl win42::App for Pdf {
             }
             return self.request_render();
         }
-        if id == 52 && values.len() == 3 {
+        if id == 118 && values.len() == 3 {
             let first: usize = values[0]
                 .trim()
                 .parse()
@@ -2559,6 +2559,7 @@ impl win42::App for Pdf {
         }
     }
 
+    fn default_print_command(&self)->Option<u16>{Some(52)}
     fn name(&self) -> &'static str {
         "PDF42"
     }
@@ -2611,6 +2612,7 @@ impl win42::App for Pdf {
             (49, "Export Attachment…"),
             (50, "Delete Attachment…"),
             (52, "Print Pages…"),
+            (118,"Print PDF as Image…"),
             (53, "Cancel Print Preparation"),
             (54, "Add Bookmark…"),
             (55, "Go to Bookmark…"),
@@ -2931,10 +2933,10 @@ impl win42::App for Pdf {
                     false
                 }
             }
-            52 => {
+            52|118 => {
                 #[cfg(windows)]
                 {
-                    self.print_pending.is_none()
+                    self.print_pending.is_none()&&self.print_ready.is_none()
                 }
                 #[cfg(not(windows))]
                 {
@@ -3049,13 +3051,20 @@ impl win42::App for Pdf {
     fn text_readonly(&self) -> bool {
         true
     }
-    fn toolbar_command_visible(&self,id:u16)->bool{id!=117}
+    fn toolbar_command_visible(&self,id:u16)->bool{!matches!(id,117|118)}
     fn action(&mut self, id: u16) -> Result<(), String> {
         if id >= 10 && !self.enabled(id) {
             return Err("Command unavailable".into());
         }
         self.label_region_tool=false;
         self.label_region_drag=None;
+        if id==52{
+            #[cfg(windows)]{
+                let(bytes,_)=self.doc.as_ref().ok_or("Open a PDF first")?.save_snapshot()?;
+                self.print_ready=Some(Ok(win42::PrintJob::FitPdf(bytes.into())));return Ok(());
+            }
+            #[cfg(not(windows))]return Err("PDF printing requires Windows".into());
+        }
         if id==117{
             self.tool=None;self.select_text=false;self.object_tool=false;self.select_annotations=false;self.redact_tool=false;self.capture_signature=false;self.place_signature=false;
             self.annotation_drag=None;self.pan_drag=None;self.ink_points.clear();self.pending_label_region=None;
@@ -3794,5 +3803,39 @@ mod technical_regression {
         assert_eq!(restored.rotation(0).unwrap(),90);assert!(app.doc.as_ref().unwrap().matches_snapshot(&before));assert!(app.dirty());
         app.encrypted_session=true;assert!(app.recovery_snapshot().unwrap().is_none());app.encrypted_session=false;app.protected_session=true;assert!(app.recovery_snapshot().unwrap().is_none());
         assert_eq!(std::fs::read(&path).unwrap(),original);std::fs::remove_file(path).unwrap();
+    }
+}
+
+#[cfg(all(test, windows))]
+mod vector_print_tests {
+    use super::*;
+    use win42::App;
+    #[test]
+    fn default_print_queues_the_current_vector_snapshot_without_a_history_step() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("input.pdf");
+        std::fs::write(&path, include_bytes!("../fixtures/page-export.pdf")).unwrap();
+        let source = std::fs::read(&path).unwrap();
+        let mut app = Pdf::default();
+        app.open(&path).unwrap();
+        app.action(10).unwrap();
+        let snapshot = app.doc.as_ref().unwrap().save_snapshot().unwrap();
+        let epoch = app.current_epoch;
+        assert_eq!(app.default_print_command(), Some(52));
+        assert!(app.input_request(52).is_none());
+        assert!(app.input_request(118).is_some());
+        app.action(52).unwrap();
+        assert!(!app.enabled(52));
+        let win42::PrintJob::FitPdf(bytes) = app.take_pending_print_job().unwrap().unwrap() else {
+            panic!("Expected vector PDF print job")
+        };
+        assert_eq!(bytes.as_ref(), snapshot.0);
+        assert!(app.doc.as_ref().unwrap().matches_snapshot(&snapshot.1));
+        assert_eq!(app.current_epoch, epoch);
+        assert!(app.enabled(52));
+        assert!(app.dirty());
+        assert_eq!(std::fs::read(&path).unwrap(), source);
+        app.action(4).unwrap();
+        assert!(!app.dirty());
     }
 }

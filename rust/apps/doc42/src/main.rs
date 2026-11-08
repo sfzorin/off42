@@ -619,6 +619,8 @@ impl App for Doc {
         };
         Ok(win42::LabelSource::Text(text))
     }
+    fn default_print_command(&self)->Option<u16>{Some(315)}
+    fn toolbar_command_visible(&self,id:u16)->bool{matches!(id,300..=303|305|306|312)}
     fn name(&self) -> &'static str {
         "DOC42"
     }
