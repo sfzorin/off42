@@ -161,6 +161,7 @@ jobs:
           cargo test --locked -p win42 -p pdf42-core -p pdf42 -p doc42-core -p xls42-core -p ppt42-core -p ppt42 -p scn42-core -p scn42 -p img42-core -p img42 -p label42
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Record available Windows print devices
+        if: always()
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force build/native-ui | Out-Null

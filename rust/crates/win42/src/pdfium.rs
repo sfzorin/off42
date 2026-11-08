@@ -41,7 +41,7 @@ struct Api {
     render: unsafe extern "system" fn(H, H, i32, i32, i32, i32, i32, i32),
     buffer: unsafe extern "system" fn(H) -> *mut c_void,
     stride: unsafe extern "system" fn(H) -> i32,
-    print: unsafe extern "system" fn(HDC, H, i32, i32, i32, i32, i32, i32),
+    print: unsafe extern "system" fn(HDC, H, i32, i32, i32, i32, i32, i32) -> i32,
     flatten: unsafe extern "system" fn(H, i32) -> i32,
 }
 impl Drop for Api {
@@ -105,7 +105,7 @@ impl Api {
             stride: sym!("FPDFBitmap_GetStride", unsafe extern "system" fn(H) -> i32),
             print: sym!(
                 "FPDF_RenderPage",
-                unsafe extern "system" fn(HDC, H, i32, i32, i32, i32, i32, i32)
+                unsafe extern "system" fn(HDC, H, i32, i32, i32, i32, i32, i32) -> i32
             ),
             flatten: sym!("FPDFPage_Flatten", unsafe extern "system" fn(H, i32) -> i32),
             _library: library,
@@ -280,7 +280,7 @@ impl Document {
         if !matches!(unsafe { (self.api.flatten)(page.handle, 1) }, 1 | 2) {
             return Err("Cannot flatten the printable PDF appearances".into());
         }
-        unsafe {
+        let success = unsafe {
             (self.api.print)(
                 dc,
                 page.handle,
@@ -290,7 +290,10 @@ impl Document {
                 rect[3],
                 0,
                 0x801,
-            );
+            )
+        };
+        if success == 0 {
+            return Err("PDF engine could not render the printable page".into());
         }
         Ok(())
     }
@@ -300,7 +303,8 @@ impl Document {
 mod tests {
     use super::*;
     pub(super) fn fixture() -> Arc<[u8]> {
-        let body = b"q 1 0 0 rg 20 30 40 40 re f Q\n";
+        let body =
+            b"q 1 0 0 rg 20 30 40 40 re f Q\nq 0 0 1 rg 110 110 m 175 125 l 135 180 l h f Q\n";
         let objects = vec![
             b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
             b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_vec(),
@@ -364,10 +368,11 @@ mod tests {
 mod print_tests {
     use super::*;
     use windows_sys::Win32::{Foundation::*, Graphics::Gdi::*};
-    #[derive(Default)]
+    #[derive(Default, Debug)]
     struct Records {
         paths: usize,
         bitmaps: usize,
+        types: std::collections::BTreeMap<u32, usize>,
     }
     unsafe extern "system" fn inspect(
         _: HDC,
@@ -377,6 +382,7 @@ mod print_tests {
         data: LPARAM,
     ) -> i32 {
         let counts = &mut *(data as *mut Records);
+        *counts.types.entry((*record).iType).or_default() += 1;
         match (*record).iType {
             EMR_FILLPATH | EMR_STROKEANDFILLPATH | EMR_RECTANGLE | EMR_POLYGON | EMR_POLYGON16 => {
                 counts.paths += 1
@@ -469,14 +475,6 @@ mod print_tests {
                 ),
                 0
             );
-            assert!(
-                records.paths > 0,
-                "No native vector paths in PDF print output"
-            );
-            assert_eq!(
-                records.bitmaps, 0,
-                "Opaque PDF paths were rasterized before reaching the print device"
-            );
             if let Some(output) = std::env::var_os("OFF42_AUDIT_OUTPUT") {
                 let output = std::path::PathBuf::from(output);
                 std::fs::create_dir_all(&output).unwrap();
@@ -485,7 +483,22 @@ mod print_tests {
                 let mut data = vec![0u8; size as usize];
                 assert_eq!(GetEnhMetaFileBits(file.0, size, data.as_mut_ptr()), size);
                 std::fs::write(output.join("pdf-vector-print.emf"), data).unwrap();
+                std::fs::write(
+                    output.join("pdf-vector-print-records.txt"),
+                    format!("{records:?}\n"),
+                )
+                .unwrap();
             }
+            drop(doc);
+            println!("{records:?}");
+            assert!(
+                records.paths > 0,
+                "No native vector paths in PDF print output"
+            );
+            assert_eq!(
+                records.bitmaps, 0,
+                "Opaque PDF paths were rasterized before reaching the print device"
+            );
         }
     }
 }
