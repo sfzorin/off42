@@ -419,16 +419,16 @@ def audit_sheet_pictures(process, main, output, results):
             return gdi.GetPixel(dc, x, y) == 0x0000FF
         finally:
             u.ReleaseDC(grid, dc)
-    wait_for(lambda: red(150, 63), "rendered picture pixels", process)
+    wait_for(lambda: red(166, 63), "rendered picture pixels", process)
     def point(x, y):
         return (y << 16) | x
-    u.SendMessageW(grid, 0x201, 1, point(150, 63))
-    u.SendMessageW(grid, 0x200, 1, point(230, 83))
-    u.SendMessageW(grid, 0x202, 0, point(230, 83))
+    u.SendMessageW(grid, 0x201, 1, point(166, 63))
+    u.SendMessageW(grid, 0x200, 1, point(246, 83))
+    u.SendMessageW(grid, 0x202, 0, point(246, 83))
     command(main, 2)
     wait_for(lambda: picture()["column"] == 2 and picture()["row"] == 2, "drag saved at the new anchor", process)
     moved = picture()
-    wait_for(lambda: red(230, 83), "picture renders after dragging", process)
+    wait_for(lambda: red(246, 83), "picture renders after dragging", process)
     command(main, 4)
     command(main, 2)
     wait_for(lambda: picture() == original, "Undo restores complete picture geometry", process)
@@ -444,7 +444,7 @@ def audit_sheet_pictures(process, main, output, results):
     command(main, 1)
     choose_file(process, project)
     wait_for(lambda: project.name in text(main) and u.IsWindowEnabled(main), "picture project reopened", process)
-    wait_for(lambda: red(230, 83), "saved picture renders after reopening", process)
+    wait_for(lambda: red(246, 83), "saved picture renders after reopening", process)
     results["checks"].append("spreadsheet picture insertion, exact geometry, native pixels, mouse drag, Undo/Redo, deletion and reopen")
 
 

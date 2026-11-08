@@ -698,3 +698,9 @@ after image selection; image unit regressions are now included in quick CI.
   validation and printing only a far selected area. Actual native full-size edit/scroll/cache/history/reopen
   audit is added, pending the first compatible build. Automatic viewport expansion and full-sheet formula
   semantics remain open; this does not establish complete XLS42 parity.
+
+- Run 42519317175 (bf46c4c) passes MSVC units but the XLS picture scenario stops before the new
+  full-size scenario: its fixed pixel/drag positions still assumed the old 48-pixel row header. The row
+  header deliberately grew to 64 pixels to fit seven-digit row labels. Picture sample/drag coordinates
+  move by the exact 16 pixels; geometry/history/reopen assertions remain unchanged. Full-size UI
+  verification remains pending a repeat.
