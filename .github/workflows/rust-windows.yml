@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       quick_ui:
-        description: Build debug apps for fast native UI feedback; never publishes a release
+        description: Build debug apps; with audit_only run focused OCR audits; never publishes a release
         type: boolean
         default: false
       audit_languages:
@@ -256,10 +256,12 @@ jobs:
           AUDIT_PAGES: ${{ inputs.audit_pages }}
           AUDIT_HOST_COMMANDS: ${{ inputs.audit_host_commands }}
           AUDIT_ENGINEERING: ${{ inputs.audit_engineering }}
+          QUICK_UI: ${{ inputs.quick_ui }}
         shell: pwsh
         run: |
           $extra = @()
           if ($env:AUDIT_RUN_ID) { $extra += '--extended' }
+          if ($env:QUICK_UI -eq 'true') { $extra += '--ocr-only' }
           if ($env:AUDIT_PICTURES -eq 'true') { $extra += '--pictures' }
           if ($env:AUDIT_TECHNICAL -eq 'true') { $extra += '--technical-objects' }
           if ($env:AUDIT_LABELS -eq 'true') { $extra += '--label-sources' }

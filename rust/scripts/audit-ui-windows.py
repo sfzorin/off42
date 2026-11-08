@@ -1642,6 +1642,7 @@ def audit_image_live_text(process,main,binary,output,results):
     wait_for(lambda:not(u.GetMenuState(u.GetMenu(main),44,0)&3),'copy command enabled after text selection',process)
     command(main,44);wait_for(lambda:clipboard_text()=='offline','native double-click recognized word',process)
     command(main,46);command(main,44);wait_for(lambda:clipboard_text()==all_text,'native select all recognized text',process)
+    capture_window(main,output/'IMG42-live-text-selection.bmp')
     u.SendMessageW(canvas,0x100,27,0)
     wait_for(lambda:bool(u.GetMenuState(u.GetMenu(main),44,0)&3),'Escape clears recognized selection',process)
     def save(name):
@@ -1662,7 +1663,7 @@ def audit_image_live_text(process,main,binary,output,results):
     results['checks'].append('offline image OCR, copy all, native double-click/select-all/Escape, exact saved image pixels, drawing over text with complete Undo, and Space navigation invalidate old recognized text')
 
 
-def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False, ocr=False):
+def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False, ocr=False, ocr_only=False):
     startup = None
     if extended:
         if binary.stem.lower() == "pdf42":
@@ -1704,6 +1705,10 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
         click(about, 1)
         wait_for(lambda: u.IsWindowEnabled(main), "About closed", process)
         results["checks"].append("About command identifies app and closes")
+        if ocr_only:
+            if binary.stem.lower()=="img42":audit_image_live_text(process,main,binary,output,results)
+            else:audit_bundled_ocr(process,main,binary,output,results)
+            return results
         if extended and binary.stem.lower() in {"doc42", "ppt42"}:
             edit = u.GetDlgItem(main, 101)
             assert u.SendMessageW(edit, 1024 + 121, 0, 0) & 0x0800
@@ -1717,6 +1722,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             if host_commands:
                 audit_crop_command(process, main, binary, output, results)
         if binary.stem.lower() not in {"doc42", "pdf42", "xls42"}:
+            if ocr and binary.stem.lower()=="scn42":audit_bundled_ocr(process,main,binary,output,results)
+            if ocr and binary.stem.lower()=="img42":audit_image_live_text(process,main,binary,output,results)
             if technical and binary.stem.lower() == "ppt42":
                 audit_technical_objects(process, main, binary, output, results)
             if preset_shapes and binary.stem.lower() == "ppt42":
@@ -1748,7 +1755,10 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
         fields = (["1", "2, 0, 1", "Code 128", "100, 140, 2, 2", "1, 4"]
             if binary.stem.lower() == "xls42" else
             ["Board 0007", "PCB-0007", "Code 128", "100, 140, 2, 2", "2, 4"])
-        fill_prompt(process, main, 65518, "Create Label Sheet", fields)
+        if binary.stem.lower()=="pdf42":
+            command(main,65518);finish_prompt(process,"Label Source",["Custom Text"]);finish_prompt(process,"Create Label Sheet",fields)
+        else:
+            fill_prompt(process, main, 65518, "Create Label Sheet", fields)
         choose_file(process, pdf)
         output_ready(process, main, pdf, b"%PDF-")
         results["checks"].append("label sheet created through native dialog and saved as PDF")
@@ -1761,7 +1771,10 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
                 fields[0], fields[1] = "1", "0, 0, 1"
             else:
                 fields[0], fields[1] = "Board", ""
-            fill_prompt(process, main, 65518, "Create Label Sheet", fields)
+            if binary.stem.lower()=="pdf42":
+                command(main,65518);finish_prompt(process,"Label Source",["Custom Text"]);finish_prompt(process,"Create Label Sheet",fields)
+            else:
+                fill_prompt(process, main, 65518, "Create Label Sheet", fields)
             choose_file(process, preset)
             output_ready(process, main, preset, b"%PDF-")
             results["checks"].append("named stock selected through the native combo box")
@@ -1805,10 +1818,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_pdf_merge(process,main,binary,output,results)
         if pdf_batch_headers and binary.stem.lower()=="pdf42":
             audit_pdf_batch_headers(process,main,binary,output,results)
-        if ocr and binary.stem.lower()in{'pdf42','scn42'}:
+        if ocr and binary.stem.lower()=='pdf42':
             audit_bundled_ocr(process,main,binary,output,results)
-        if ocr and binary.stem.lower()=='img42':
-            audit_image_live_text(process,main,binary,output,results)
         return results
     finally:
         if process.poll() is None:
@@ -2240,6 +2251,7 @@ def main():
     parser.add_argument("--statistical-formulas", action="store_true")
     parser.add_argument("--array-formulas", action="store_true")
     parser.add_argument("--ocr", action="store_true")
+    parser.add_argument("--ocr-only", action="store_true")
     parser.add_argument("--page-exports", action="store_true")
     parser.add_argument("--host-commands", action="store_true")
     parser.add_argument("--engineering", action="store_true")
@@ -2251,9 +2263,9 @@ def main():
     args.output.mkdir(parents=True, exist_ok=True)
     results = []
     try:
-        for app in ["DOC42", "XLS42", "PDF42", "IMG42", "PPT42", "SCN42"]:
+        for app in (["PDF42","IMG42","SCN42"] if args.ocr_only else ["DOC42", "XLS42", "PDF42", "IMG42", "PPT42", "SCN42"]):
             try:
-                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge, args.pdf_batch_headers, args.array_formulas, args.ocr))
+                results.append(audit(args.bin_dir / (app + ".exe"), args.output, args.extended, args.pictures, args.technical_objects, args.label_sources, args.page_exports, args.host_commands, args.engineering, args.text_exports, args.extended_formulas, args.rich_search, args.preset_shapes, args.pdf_decorations, args.statistical_formulas, args.pdf_comparison, args.pdf_merge, args.pdf_batch_headers, args.array_formulas, args.ocr, args.ocr_only))
             except Exception as error:
                 results.append({"app": app, "error": str(error), "traceback": traceback.format_exc()})
             print(json.dumps(results[-1]), flush=True)
