@@ -779,3 +779,8 @@ licenses. PDF workers retain only text between pages and commit against an exact
 selected-page capture normalizes disposable render geometry while the saved page retains original boxes,
 rotation and annotations. Invisible font CIDs retain Unicode mappings even where a visible outline is absent.
 Native backend and GUI verification is pending; the package remains a development build.
+
+Image analysis captures an immutable shared raster and checks its pixel identity before displaying/copying
+recognized words. Viewing sessions reset on file/frame navigation; drawing changes invalidate the cache
+before another worker result can be accepted. Selection tint is a disposable display buffer. Applications
+may omit infrequent command specifications from the toolbar while retaining menu items and accelerators.

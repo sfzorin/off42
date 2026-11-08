@@ -183,6 +183,9 @@ pub trait App {
     fn command_specs(&self) -> Vec<CommandSpec> {
         vec![]
     }
+    /// Keep less frequent menu commands out of the primary toolbar.
+    fn toolbar_command_visible(&self, _id:u16)->bool {true}
+
     fn command_state(&self, id: u16) -> CommandState {
         CommandState {
             enabled: self.enabled(id),

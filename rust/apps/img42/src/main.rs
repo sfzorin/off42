@@ -1,10 +1,12 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 mod batch;
 mod pdf_view;
+mod live_text;
 use img42_core::ImageDocument;
 use std::path::Path;
 #[derive(Default)]
 struct Img {
+    live_text:live_text::LiveText,
     batch: Option<batch::Worker>,
     batch_outcomes: Vec<String>,
     batch_done: Option<bool>,
@@ -74,7 +76,7 @@ impl win42::App for Img {
         Ok(())
     }
     fn poll_background(&mut self) -> bool {
-        let mut changed = false;
+        let mut changed = self.live_text.poll(self.doc.as_ref());
         let mut done = None;
         if let Some(worker) = &self.batch {
             loop {
@@ -154,6 +156,7 @@ impl win42::App for Img {
         self.frames = prepared.docs.into_iter().map(Some).collect();
         self.frame_index = 0;
         self.doc = self.frames[0].take();
+        self.live_text.reset();
         self.delays = vec![image::Delay::from_numer_denom_ms(0, 1); count];
         self.animation_loop = img42_core::AnimationLoop::Once;
         self.conversion_risk = true;
@@ -393,6 +396,16 @@ impl win42::App for Img {
             (42, "Batch outcomes..."),
         ]
     }
+    fn command_specs(&self)->Vec<win42::CommandSpec> {
+        [(43,"Recognize Image Text…",None),(44,"Copy Selected Text",Some("Ctrl+C")),(45,"Copy All Recognized Text",None),(46,"Select All Recognized Text",Some("Ctrl+A")),(47,"Clear Text Selection",None),(48,"Cancel Text Recognition",None),(49,"View and Select Text",None)]
+            .into_iter().map(|(id,title,accelerator)|win42::CommandSpec{id,title,accelerator,group:"Live Text"}).collect()
+    }
+    fn toolbar_command_visible(&self,id:u16)->bool {matches!(id,44|49)}
+    fn command_state(&self,id:u16)->win42::CommandState {win42::CommandState{enabled:self.enabled(id),checked:id==49&&self.tool==0}}
+    fn clipboard_request(&self,id:u16)->Option<win42::ClipboardRequest> {
+        if !matches!(id,44|45)||(id==44&&self.tool!=0){return None;}
+        self.live_text.text(self.doc.as_ref()?,id==45).map(win42::ClipboardRequest::WriteText)
+    }
     fn input_folder_fields(&self, id: u16) -> Vec<(usize, &'static str)> {
         if id == 40 {
             vec![
@@ -404,6 +417,8 @@ impl win42::App for Img {
         }
     }
     fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+        if id==43 {return Some(win42::InputRequest{title:"Recognize Image Text",fields:vec![("Language (auto, en-US, eng+rus; up to 3)",if self.live_text.language.is_empty(){"auto".into()}else{self.live_text.language.clone()})]});}
+
         if id == 40 {
             return Some(win42::InputRequest {
                 title: "Batch conversion: JPEG is 8-bit on white",
@@ -503,6 +518,13 @@ impl win42::App for Img {
         Some(win42::InputRequest { title, fields })
     }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
+        if id==43 {
+            let language=values.first().ok_or("Missing OCR language")?.trim();
+            if language.is_empty()||language.len()>128||!language.chars().all(|c|c.is_ascii_alphanumeric()||matches!(c,'-'|'_'|'+')) {return Err("Choose auto or up to three built-in OCR languages".into());}
+            self.live_text.start(self.doc.as_ref().ok_or("Open an image first")?,language);
+            self.tool=0;self.selection=None;self.mask=None;self.gesture.clear();return Ok(());
+        }
+
         if id == 40 {
             if self.batch.is_some() {
                 return Err("A batch is already running".into());
@@ -664,6 +686,7 @@ impl win42::App for Img {
     fn image(&self) -> Option<(u32, u32, Vec<u8>)> {
         let d = self.doc.as_ref()?;
         let mut pixels = d.pixels().to_vec();
+        if self.tool==0 {self.live_text.paint_selection(d,&mut pixels);}
         if let Some(mask) = &self.mask {
             for (p, selected) in pixels.chunks_exact_mut(4).zip(mask) {
                 if *selected {
@@ -695,6 +718,14 @@ impl win42::App for Img {
     }
     fn canvas_event(&mut self, event: win42::CanvasEvent) -> Result<(), String> {
         use win42::CanvasEvent::*;
+        if self.tool==0 {
+            if let Key{code:32|33|34,..}=event {
+                self.live_text.clear();
+                let result=self.action(if matches!(event,Key{code:33,..}){37}else{38});
+                return match result {Err(e)if e=="No more images in this direction"=>Ok(()),result=>result};
+            }
+            if let Some(doc)=self.doc.as_ref(){if self.live_text.event(doc,event){return Ok(());}}
+        }
         let d = match self.doc.as_ref() {
             Some(d) => d,
             None => return Ok(()),
@@ -786,6 +817,8 @@ impl win42::App for Img {
                     self.zoom
                         .map(|z| format!("{:.0}%", 100.0 * z))
                         .unwrap_or_else(|| "Fit".into())
+                        + if self.live_text.status(d).is_empty() {""} else {" | "}
+                        + self.live_text.status(d)
                 )
             })
             .unwrap_or_else(|| "Open a PNG or JPEG image".into())
@@ -805,6 +838,10 @@ impl win42::App for Img {
     }
     fn enabled(&self, id: u16) -> bool {
         match id {
+            43|49=>self.doc.is_some(),
+            44|47=>self.tool==0&&self.doc.as_ref().is_some_and(|d|self.live_text.selected(d)),
+            45|46=>self.doc.as_ref().is_some_and(|d|self.live_text.ready(d)),
+            48=>self.live_text.busy(),
             40 => self.batch.is_none(),
             41 => self.batch.is_some(),
             42 => !self.batch_outcomes.is_empty(),
@@ -827,6 +864,7 @@ impl win42::App for Img {
         self.frames = docs.into_iter().map(Some).collect();
         self.frame_index = 0;
         self.doc = self.frames[0].take();
+        self.live_text.reset();
         self.delays = delays;
         self.animation_loop = animation_loop;
         self.conversion_risk = conversion_risk;
@@ -860,6 +898,7 @@ impl win42::App for Img {
             self.frames[self.frame_index] = self.doc.take();
             self.doc = self.frames[i].take();
             self.frame_index = i;
+            self.live_text.reset();
             self.selection = None;
             self.mask = None;
             self.gesture.clear();
@@ -869,6 +908,19 @@ impl win42::App for Img {
         self.frame_index
     }
     fn action(&mut self, id: u16) -> Result<(), String> {
+        if matches!(id,44..=49) {
+            match id {
+                44|45=>return Ok(()),
+                46=>if let Some(doc)=self.doc.as_ref(){self.live_text.select_all(doc);},
+                47=>self.live_text.clear(),
+                48=>self.live_text.cancel(),
+                49=>{self.tool=0;self.selection=None;self.mask=None;self.gesture.clear();},
+                _=>{}
+            }
+            return Ok(());
+        }
+        if matches!(id,23|24|26..=28|39){self.live_text.clear();}
+
         if id == 41 {
             if let Some(worker) = &self.batch {
                 worker

@@ -234,6 +234,15 @@ pub enum AnimationLoop {
     Infinite,
 }
 pub struct SaveState(Raster);
+/// Immutable rendered pixels for background analysis; no encoding or document edit is involved.
+#[derive(Clone)]
+pub struct ImageSnapshot(Raster);
+impl ImageSnapshot {
+    pub fn width(&self) -> u32 { self.0.width }
+    pub fn height(&self) -> u32 { self.0.height }
+    pub fn pixels(&self) -> &[u8] { &self.0.pixels }
+}
+
 
 pub struct ImageDocument {
     exif: Option<exif_metadata::Metadata>,
@@ -1149,6 +1158,12 @@ impl ImageDocument {
     pub fn pixels(&self) -> &[u8] {
         &self.current.pixels
     }
+    pub fn capture_image(&self) -> ImageSnapshot { ImageSnapshot(self.current.clone()) }
+    pub fn matches_image(&self, source: &ImageSnapshot) -> bool {
+        self.current.width == source.0.width && self.current.height == source.0.height
+            && std::sync::Arc::ptr_eq(&self.current.pixels, &source.0.pixels)
+    }
+
     pub fn can_undo(&self) -> bool {
         !self.undo.is_empty()
     }

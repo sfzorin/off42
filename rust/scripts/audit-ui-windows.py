@@ -1617,6 +1617,50 @@ def audit_bundled_ocr(process,main,binary,output,results):
     results['checks'].append('bundled static OCR recognizes real image pixels offline through native settings; selected page only, independent PDFium text/exact pixels, one-step Undo/Redo and saved reopen'+('; PDF crop/rotation retained, own layer replaced without duplicate text, settings and worker Cancel leave no OCR'if is_pdf else '; project retains recognized text'))
 
 
+def audit_image_live_text(process,main,binary,output,results):
+    folder=output/'live-text-images';folder.mkdir()
+    first=folder/'a-text.png';first.write_bytes((Path(__file__).resolve().parent.parent/'crates/win42/fixtures/ocr-english.png').read_bytes())
+    second=folder/'b-green.png';write_png(second,320,240,bytes([0,200,0,255])*(320*240))
+    original=first.read_bytes()
+    command(main,1);choose_file(process,first)
+    def opened():
+        if first.name in text(main)and' * - 'not in text(main)and u.IsWindowEnabled(main):return(True,None)
+        prompt=next((h for h in windows(process.pid)if classname(h)=='#32770'and u.IsWindowEnabled(h)and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
+        return(False,prompt)if prompt else None
+    ready,prompt=wait_for(opened,'Live Text source open',process)
+    if not ready:click(prompt,7);wait_for(lambda:first.name in text(main)and u.IsWindowEnabled(main),'Live Text source after discard',process)
+    def status():return ' '.join(text(h)for h in windows(process.pid,main))
+    fill_prompt(process,main,43,'Recognize Image Text',['eng'])
+    wait_for(lambda:'recognized words'in status(),'image words recognized',process,timeout=90)
+    assert' * - 'not in text(main)
+    command(main,45);all_text=wait_for(lambda:(v if(v:=clipboard_text())and'offline text recognition'in v and'1234567890'in v else None),'copy all image text',process)
+    canvas=wait_for(lambda:next((h for h in windows(process.pid,main)if classname(h)=='Suite42Canvas'),None),'Live Text image canvas',process)
+    rect=w.RECT();assert u.GetClientRect(canvas,c.byref(rect));scale=min(rect.right/1200,rect.bottom/320)
+    def point(x,y):return(round((rect.bottom-320*scale)/2+y*scale)<<16)|round((rect.right-1200*scale)/2+x*scale)
+    p=point(330,110)
+    u.SendMessageW(canvas,0x201,1,p);u.SendMessageW(canvas,0x203,1,p);u.SendMessageW(canvas,0x202,0,p)
+    command(main,44);wait_for(lambda:clipboard_text()=='offline','native double-click recognized word',process)
+    command(main,46);command(main,44);wait_for(lambda:clipboard_text()==all_text,'native select all recognized text',process)
+    u.SendMessageW(canvas,0x100,27,0)
+    wait_for(lambda:bool(u.GetMenuState(u.GetMenu(main),44,0)&3),'Escape clears recognized selection',process)
+    def save(name):
+        path=output/f'IMG42-live-text-{name}.png';save_as(main);choose_file(process,path);output_ready(process,main,path,b'\x89PNG\r\n\x1a\n');return png_pixels(path)
+    assert save('reading')==png_pixels(first)
+    command(main,24);u.SendMessageW(canvas,0x201,1,point(280,100));u.SendMessageW(canvas,0x200,1,point(410,100));u.SendMessageW(canvas,0x202,0,point(410,100))
+    assert save('ink')!=png_pixels(first)
+    command(main,4);assert save('undo')==png_pixels(first)
+    command(main,1);choose_file(process,first)
+    wait_for(lambda:first.name in text(main)and' * - 'not in text(main)and u.IsWindowEnabled(main),'original image reopened for navigation',process)
+    wait_for(lambda:'recognized words'in status(),'reopened image recognized',process,timeout=90)
+    command(main,49);command(main,46)
+    # Space must leave a text selection and advance the actual displayed file.
+    u.SendMessageW(canvas,0x100,32,0)
+    wait_for(lambda:second.name in text(main)and'320 × 240 pixels'in status(),'Space navigates after Live Text',process)
+    assert u.GetMenuState(u.GetMenu(main),44,0)&3
+    assert first.read_bytes()==original
+    results['checks'].append('offline image OCR, copy all, native double-click/select-all/Escape, exact saved image pixels, drawing over text with complete Undo, and Space navigation invalidate old recognized text')
+
+
 def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False, ocr=False):
     startup = None
     if extended:
@@ -1762,6 +1806,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_pdf_batch_headers(process,main,binary,output,results)
         if ocr and binary.stem.lower()in{'pdf42','scn42'}:
             audit_bundled_ocr(process,main,binary,output,results)
+        if ocr and binary.stem.lower()=='img42':
+            audit_image_live_text(process,main,binary,output,results)
         return results
     finally:
         if process.poll() is None:

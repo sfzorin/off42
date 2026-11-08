@@ -438,3 +438,12 @@ actual checks. A source build alone does not establish Windows runtime behavior.
   four rotations/crop origins, exact original pixels, own-layer replacement, complete Undo and scan output
   with/without compression. Local evidence: `build/ocr-interop-v1/poppler-v1/results.json`. New native menu
   scenarios cover real OCR pixels, selected-page scope, PDFium text/pixels, history and reopen; still pending.
+
+### Image Live Text in progress
+
+- IMG42 adds background analysis tied to immutable current pixels, word/range selection and clipboard,
+  reading-only overlays, explicit drawing/viewing modes and Space/Page Down/Page Up navigation. Native
+  image canvases now dispatch double-clicks and honor pending file navigation from keyboard events.
+- Pixel, history and frame invalidation/selection regressions pass. Portable workspace: 460/0/1; GNU all
+  targets compile. Native menu/pointer/clipboard/drawing/reopen checks are added but pending Windows CI.
+- Recognition settings stay in a separate menu; the primary toolbar shows only viewing and text Copy.

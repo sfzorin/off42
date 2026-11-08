@@ -3476,6 +3476,8 @@ pub fn run(app: Box<dyn App>) {
         }
         let mut toolbar = Vec::new();
         for spec in &specs {
+            if !STATE.with(|s|s.borrow().as_ref().unwrap().app.toolbar_command_visible(spec.id)) {continue;}
+
             let button = CreateWindowExW(
                 0,
                 wide("BUTTON").as_ptr(),
@@ -3824,6 +3826,12 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
         if let Err(e) = result {
             msg(h, &e, MB_OK | MB_ICONERROR);
         }
+        let pending=STATE.with(|s|s.borrow_mut().as_mut().unwrap().app.take_pending_open());
+        if let Some(path)=pending {
+            let owner=GetAncestor(h,GA_ROOT);
+            if confirm(owner) {if let Err(e)=open_document_path(path){msg(owner,&e,MB_OK|MB_ICONERROR);}}
+            refresh();return 0;
+        }
         if was_presenting {
             refresh();
         } else {
@@ -3943,6 +3951,7 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                             / scale,
                     };
                     let event = match m {
+                        WM_LBUTTONDBLCLK => crate::CanvasEvent::DoubleClick(point),
                         WM_LBUTTONDOWN => crate::CanvasEvent::PointerDown(point),
                         WM_LBUTTONUP => crate::CanvasEvent::PointerUp(point),
                         _ => crate::CanvasEvent::PointerMove(point),

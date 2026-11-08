@@ -6,6 +6,29 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 type Handle = *mut c_void;
+// An app may invalidate analysis rapidly while drawing. Serialize engines so cancelled
+// workers cannot initialize simultaneous model sets or race Tesseract's shared caches.
+static ENGINE_GATE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+fn engine_lease(cancel: &AtomicBool) -> Result<std::sync::MutexGuard<'static, ()>, String> {
+    let start = std::time::Instant::now();
+    loop {
+        if cancel.load(Ordering::Relaxed) {
+            return Err("Recognition cancelled".into());
+        }
+        match ENGINE_GATE.try_lock() {
+            Ok(lease) => return Ok(lease),
+            Err(std::sync::TryLockError::Poisoned(_)) => {
+                return Err("OCR worker state is unavailable".into())
+            }
+            Err(std::sync::TryLockError::WouldBlock) => {}
+        }
+        if start.elapsed() > std::time::Duration::from_secs(60) {
+            return Err("OCR worker is busy; retry recognition".into());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+}
+
 extern "C" {
     fn TessBaseAPICreate() -> Handle;
     fn TessBaseAPIDelete(api: Handle);
@@ -176,6 +199,7 @@ pub fn recognize(
         }
     };
     check()?;
+    let _lease = engine_lease(cancel)?;
     let expected = u64::from(page.width) * u64::from(page.height) * 4;
     if page.width == 0
         || page.height == 0

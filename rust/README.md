@@ -544,3 +544,18 @@ rotations with nonzero crop origins. Uncompressed and compressed scanned-PDF pix
 Evidence: `build/ocr-interop-v1/poppler-v1/results.json` (local, not a shipped artifact). The native audit now
 includes real image OCR through PDF/scan menus, selected-page scope, PDFium text/pixels, history and reopen;
 those new GUI checks are pending Windows CI.
+
+### Image Live Text implementation (native verification pending)
+
+IMG42 analyzes the current image on a cancellable worker using the shared bundled OCR backend. In viewing
+mode, recognized words can be selected by double-click or drag, copied, selected together, or cleared with
+Escape. Drawing tools keep their pointer gestures; text overlays change no pixels or save history. Switching
+files/frames or modifying pixels invalidates old results. Space/Page Down/Page Up navigate images after text
+selection. Extra recognition settings stay in the Live Text menu; only viewing and Copy appear in the toolbar.
+Immutable analysis snapshots share pixels without encoding a temporary file. Recognition still has bounded
+page/word limits and only English/Russian/Turkish in `auto`; explicit supported languages use bundled models.
+
+Portable workspace: 460 tests pass, zero fail, one external OCR fixture ignored; GNU Windows all targets
+compile. New actual IMG pointer/clipboard/drawing/navigation assertions are pending Windows CI. The earlier
+static OCR build has passed its runtime dependency gate and targeted Windows tests; complete run evidence
+will be recorded after the workflow finishes.
