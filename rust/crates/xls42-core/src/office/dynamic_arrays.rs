@@ -4,7 +4,7 @@ mod metadata;
 mod reader;
 mod xlsx;
 mod ods;
-mod xml_nodes;
+pub(super) mod xml_nodes;
 pub(super) use reader::working_copy;
 const S: &str = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const T: &str = "urn:oasis:names:tc:opendocument:xmlns:table:1.0";
@@ -28,7 +28,7 @@ pub(super) fn range(reference: &str) -> Option<Range> {
     })
     .filter(|r| r.top <= r.bottom && r.left <= r.right && r.bottom < MAX_ROWS && r.right < MAX_COLS)
 }
-fn targets(
+pub(super) fn targets(
     archive: &mut zip::ZipArchive<Cursor<&[u8]>>,
 ) -> Result<BTreeMap<String, String>, Error> {
     let book = zip_text(archive, "xl/workbook.xml")?.ok_or(Error::Invalid("Missing workbook"))?;
@@ -186,7 +186,7 @@ pub(super) fn import(bytes: &[u8], kind: &str, state: &mut State) -> Result<(), 
     }
     Ok(())
 }
-fn rewrite_zip(bytes: &[u8], mut entries: BTreeMap<String, Vec<u8>>) -> Result<Vec<u8>, Error> {
+pub(super) fn rewrite_zip(bytes: &[u8], mut entries: BTreeMap<String, Vec<u8>>) -> Result<Vec<u8>, Error> {
     if entries.is_empty() {
         return Ok(bytes.to_vec());
     }

@@ -874,8 +874,8 @@ projections are test helpers; data-processing clients use `display_cells` or `ca
 
 Portable tests cover far references, independent XLSX/ODS edge imports, all native formats, validation,
 atomic operation refusals and selected-area printing. The full-size native UI scenario passes in run 42521108743: far selection/scroll, edit, scalar summary
-caches, distinct error/text types and complete history/reopen. A flushed-paint pixel check is added for
-the next build. Automatic grid expansion and remaining full-sheet formula semantics remain in `PARITY.md`.
+caches, distinct error/text types and complete history/reopen. Run 42523096085 also passes the
+flushed-paint selected-cell pixel assertion; its capture shows XFD1048576 with the expected value. Automatic grid expansion and remaining full-sheet formula semantics remain in `PARITY.md`.
 
 Explicit reference aggregates (SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, PRODUCT and aggregate math) traverse
 stored values and spill results; COUNTBLANK computes implicit blanks without expanding the reference area.
@@ -895,5 +895,8 @@ aggregates and reference metadata functions. Qualified quoted sheet names, INDIR
 form of INDEX are supported. Formula references use the global Excel address space, including implicit
 blank cells beyond a small sheet's displayed extent; references past XFD1048576 remain errors. Array and
 other materialized functions retain their existing budgets. XLSX/ODS formula and active-sheet metadata
-are checked after removing the optional native snapshot. External active-tab changes still need a separate
-persistence path; complete locale/function semantics and automatic viewport growth remain open.
+are checked after removing the optional native snapshot. External tab-only saves update the primary view
+and selected-tab flags while retaining worksheet data, styles, secondary views and unknown package parts.
+Missing view metadata is created; Undo restores the original package byte-for-byte. Native Windows tab
+commands and external saves await a compatible UI run. Complete locale/function semantics and automatic
+viewport growth remain open.

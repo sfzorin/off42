@@ -974,4 +974,7 @@ rectangle before materializing only the chosen result; array-valued first argume
 INDIRECT accepts whole-axis address text while still refusing arbitrary expressions. ODF conversion retains
 whole-axis operands in bracket notation, including row-only endpoints. Native Office writers and importers
 use the standard activeTab/ActiveTable metadata, independently of the private snapshot. External tab-state
-rewriting remains a separate change. Existing allocated-coordinate editing bounds and array budgets remain.
+saves surgically update the first workbook view and its sheet selection flags; ODS reads/writes ActiveTable
+by namespace URI and creates missing settings with a manifest entry. Other views, cell XML, styles and
+unknown ZIP members remain unchanged. Same-active-sheet reordering preserves existing grouping flags.
+Existing allocated-coordinate editing bounds and array budgets remain.

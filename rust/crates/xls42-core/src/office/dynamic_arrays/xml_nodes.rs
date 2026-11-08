@@ -1,6 +1,6 @@
 //! Surgical element updates keep unknown attributes and child objects byte-for-byte.
 use super::*;
-pub(super) fn opening(raw: &str) -> Result<usize, Error> {
+pub(in crate::office) fn opening(raw: &str) -> Result<usize, Error> {
     let mut quote = None;
     for (i, c) in raw.char_indices() {
         if let Some(q) = quote {
@@ -15,7 +15,7 @@ pub(super) fn opening(raw: &str) -> Result<usize, Error> {
     }
     Err(Error::Invalid("Unterminated Office element"))
 }
-pub(super) fn edit(
+pub(in crate::office) fn edit(
     source: &str,
     node: roxmltree::Node<'_, '_>,
     attrs: &[(&str, &str, Option<String>)],

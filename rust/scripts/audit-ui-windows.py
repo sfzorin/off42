@@ -1132,6 +1132,49 @@ def audit_solver(process,main,binary,output,results):
     results['checks'].append('native Solver menu/form and multiline constraints; readonly LP trials; No retains model only; Yes writes exact two-cell optimum; full one-step Undo/Redo; real XLSX/ODS hidden names and independent imports prefill model; integer optimum and nonlinear minimum; protected-sheet disablement; source preserved')
 
 
+def audit_sheet_tabs(process,main,binary,output,results):
+    import xml.etree.ElementTree as ET
+    seed=output/'tabs-seed.csv';seed.write_text('FIRST\n',encoding='utf-8');seed_bytes=seed.read_bytes();open_fixture(process,main,seed)
+    fill_prompt(process,main,20,'Sheet name',['Second']);replace_editor_text(u.GetDlgItem(main,101),'SECOND')
+    def saved(name,kind,extension):
+        path=output/('tabs-'+name+'.'+extension);save_as(main);choose_file(process,path,format_name=kind);output_ready(process,main,path,b'{'if extension=='xls42'else b'PK');return path
+    native=saved('source','XLS42 workbook','xls42');native_bytes=native.read_bytes()
+    def parts(path):
+        with zipfile.ZipFile(path)as archive:return {name:archive.read(name)for name in archive.namelist()}
+    for extension,kind in [('xlsx','Excel workbook'),('ods','OpenDocument spreadsheet')]:
+        open_fixture(process,main,native);source=saved('native-'+extension,kind,extension);independent=output/('tabs-independent.'+extension)
+        with zipfile.ZipFile(source)as archive,zipfile.ZipFile(independent,'w')as out:
+            for entry in archive.infolist():
+                if entry.filename=='xls42/project.json':continue
+                data=archive.read(entry)
+                if entry.filename in('[Content_Types].xml','META-INF/manifest.xml'):
+                    ns='http://schemas.openxmlformats.org/package/2006/content-types'if extension=='xlsx'else'urn:oasis:names:tc:opendocument:xmlns:manifest:1.0';ET.register_namespace(''if extension=='xlsx'else'manifest',ns);root=ET.fromstring(data)
+                    for child in list(root):
+                        if any(value.lstrip('/')=='xls42/project.json'for value in child.attrib.values()):root.remove(child)
+                    data=ET.tostring(root,encoding='utf-8',xml_declaration=True)
+                out.writestr(entry,data)
+            out.writestr('custom/tab-opaque.bin',b'preserve tab source')
+        original=independent.read_bytes();before=parts(independent);open_fixture(process,main,independent)
+        wait_for(lambda:text(u.GetDlgItem(main,101))=='SECOND','standard active second sheet imported',process)
+        fill_prompt(process,main,24,'Switch sheet',['Sheet1']);wait_for(lambda:text(u.GetDlgItem(main,101))=='FIRST','first sheet selected',process)
+        changed=saved('selected-'+extension,kind,extension);after=parts(changed);assert set(after)==set(before)and'xls42/project.json'not in after
+        for name,data in before.items():
+            if name==('xl/workbook.xml'if extension=='xlsx'else'settings.xml'):continue
+            if extension=='xlsx'and name.startswith('xl/worksheets/')and name.endswith('.xml'):
+                strip=lambda value:re.sub(rb'<sheetViews\b[^>]*(?:/>|>.*?</sheetViews>)',b'',value,flags=re.S)
+                assert strip(data)==strip(after[name]),'Tab selection rewrote worksheet data'
+            else:assert data==after[name],(extension,name)
+        if extension=='xlsx':
+            ns={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main'};root=ET.fromstring(after['xl/workbook.xml']);assert root.find('s:bookViews/s:workbookView',ns).attrib['activeTab']=='0'
+            for i in(1,2):
+                view=ET.fromstring(after[f'xl/worksheets/sheet{i}.xml']).find('s:sheetViews/s:sheetView',ns);assert view is not None and view.attrib.get('tabSelected','0')==('1'if i==1 else'0')
+        command(main,4);wait_for(lambda:text(u.GetDlgItem(main,101))=='SECOND','tab Undo restores second sheet',process);undone=saved('undo-'+extension,kind,extension);assert undone.read_bytes()==original
+        command(main,5);wait_for(lambda:text(u.GetDlgItem(main,101))=='FIRST','tab Redo restores first sheet',process);assert parts(saved('redo-'+extension,kind,extension))==after
+        open_fixture(process,main,changed);wait_for(lambda:text(u.GetDlgItem(main,101))=='FIRST','saved standard active first sheet reopened',process);assert independent.read_bytes()==original
+    assert native.read_bytes()==native_bytes and seed.read_bytes()==seed_bytes
+    results['checks'].append('normal add/switch-sheet commands and actual editor text; native and independent XLSX/ODS active-sheet import, external tab-only saves and standard single-tab flags, unchanged worksheet data/styles/unknown parts, complete Undo/Redo with byte-exact original restoration and saved reopen')
+
+
 def audit_sparse_capacity(process,main,binary,output,results):
     import xml.etree.ElementTree as ET
     seed=output/'sparse-seed.csv';seed.write_text('2,KEEP\n',encoding='utf-8');open_fixture(process,main,seed)
@@ -2492,6 +2535,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_goal_seek(process,main,binary,output,results)
             audit_solver(process,main,binary,output,results)
             audit_sparse_capacity(process,main,binary,output,results)
+            audit_sheet_tabs(process,main,binary,output,results)
         if statistical_formulas and binary.stem.lower()=="xls42":
             audit_statistical_formulas(process,main,output,binary,results)
         if array_formulas and binary.stem.lower()=="xls42":

@@ -739,3 +739,13 @@ after image selection; image unit regressions are now included in quick CI.
   metadata reopen without the private snapshot. Workspace 543/0/1, GNU all targets compile, Swift oracle
   492 pass/0 gaps/2 explicit skips. New native whole-column/render checks await a compatible build.
   External active-tab persistence, viewport growth and remaining large-reference functions are still open.
+
+- Run 42523096085 (86e2fd3) succeeds: all 37 UI groups, MSVC 548/0/1. The stricter native
+  flushed-paint background assertion passes and the inspected capture shows XFD1048576 with value 7.
+  Actual whole-column SUM/COUNTBLANK, editing, saved caches and full history/reopen pass.
+- External XLSX/ODS tab-only saves now preserve the selected sheet in standard metadata, update primary
+  XLSX selection flags and create absent view/settings containers. Other views, worksheet data/styles and
+  unknown package parts are preserved; Undo emits the byte-exact original package. Reordering retains
+  the active sheet identity. Workspace 546/0/1 and GNU all targets pass. New normal Add/Switch Sheet UI
+  scenario covers independent Office files, tab-only saves, complete Undo/Redo and reopen; native pending.
+  Viewport growth, remaining large-reference functions and other parity entries remain open.

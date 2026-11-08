@@ -11,6 +11,7 @@ mod filters;
 mod dynamic_arrays;
 mod sparse_import;
 mod sparse_ods;
+mod views;
 #[cfg(test)]
 mod literal_errors;
 fn xlsx_error(value:&str)->Result<&'static str,Error>{
@@ -1758,7 +1759,7 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
     use spreadsheet_ods::Length;
     let book = spreadsheet_ods::read_ods_buf(bytes)
         .map_err(|_| Error::Invalid("cannot parse ODS layout"))?;
-    if let Some(sheet)=state.sheets.iter().find(|s|s.name==book.config().active_table){state.active=sheet.id;}
+    if let Some(name)=views::ods_active(bytes)?{if let Some(sheet)=state.sheets.iter().find(|s|s.name==name){state.active=sheet.id;}}
     let mut archive =
         zip::ZipArchive::new(Cursor::new(bytes)).map_err(|_| Error::Invalid("invalid ODS"))?;
     let xml_content =
@@ -2696,6 +2697,7 @@ impl Workbook {
         if let Some(old) = &self.external_baseline {
             output = pictures::patch(&output, kind, old, self.history.current())?;
             output = solver::files::patch(&output,kind,Some(old),self.history.current())?;
+            output = views::patch(&output,kind,old,self.history.current())?;
         }
         Ok(output)
     }
@@ -6526,8 +6528,12 @@ mod external_reorder_regression {
             .find(|n| n.has_tag_name("definedName") && n.attribute("name") == Some("LocalValue"))
             .unwrap();
         assert_eq!(local.attribute("localSheetId"), Some("0"));
-        let reopened = Workbook::from_office_bytes(&saved, "xlsx").unwrap();
+        let mut reopened = Workbook::from_office_bytes(&saved, "xlsx").unwrap();
         assert_eq!(reopened.sheets()[0].1, "Second");
+        // Reordering a different sheet keeps First active, including when the source omitted activeTab=0.
+        assert_eq!(reopened.sheets().iter().find(|s|s.0==reopened.active_sheet()).unwrap().1,"First");
+        assert_eq!(reopened.cell(0,0),Some("alpha"));
+        reopened.select_sheet(reopened.sheets()[0].0).unwrap();
         assert_eq!(reopened.cell(0, 0), Some("beta"));
         book.undo();
         assert_eq!(book.sheets()[0].1, "First");
