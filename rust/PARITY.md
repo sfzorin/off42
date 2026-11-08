@@ -653,3 +653,10 @@ after image selection; image unit regressions are now included in quick CI.
   retention, Cancel/Skip, full Undo/Redo and saved reopen. The five Windows font embedding tests
   pass; the header-font GUI scenario stops on a missing Python `re` import in the new audit.
   The import is corrected for a repeat; the complete font UI/print scenario remains unverified.
+
+- Sparse worksheet projection replaces the native dense text matrix and production filtering/clipboard/
+  label/chart/pivot/validation/print text consumers. Immutable shared grid text and physical-row maps avoid
+  empty-cell strings and repeated row-map copies. Existing hidden-row edit/clipboard regression now uses
+  the sparse host bridge; new format/spill/error/far-cell and full-size host-storage regressions pass.
+  Workspace 528/0/1 and GNU all targets compile. Native repeat is pending. Workbook limits remain unchanged;
+  virtual geometry and independent large-operation bounds are required before increasing capacity.

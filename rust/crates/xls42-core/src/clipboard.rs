@@ -34,8 +34,8 @@ impl Workbook {
             return Err(Error::Bounds);
         }
         let calculation = formula::calculation_at(self, chrono::Local::now().naive_local());
-        let grid = self.format_calculation(&calculation);
-        let text = self.tsv_from_grid(rows, columns, &grid)?;
+        let cells = self.display_cells_with(&calculation);
+        let text = self.tsv_from_cells(rows, columns, &cells)?;
         let state = self.history.current();
         let sheet = state.sheet();
         if sheet.merges.iter().any(|range| {

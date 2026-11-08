@@ -21,7 +21,7 @@ use windows_sys::Win32::{
     },
 };
 pub(super) struct Snapshot {
-    pub rows: Vec<Vec<String>>,
+    pub rows: crate::SparseTable,
     pub widths: Vec<i32>,
     pub heights: Vec<i32>,
     pub labels: Vec<String>,
@@ -289,11 +289,7 @@ unsafe fn paint(hwnd: HWND) {
             };
             fill(dc, &rect, bg);
             let fg = style.foreground.unwrap_or([0; 3]);
-            let value = snap
-                .rows
-                .get(ar)
-                .and_then(|row| row.get(ac))
-                .map_or("", String::as_str);
+            let value = snap.rows.cell(ar,ac);
             let inner = RECT {
                 left: rect.left + 4,
                 top: rect.top,

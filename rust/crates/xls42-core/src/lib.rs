@@ -10,6 +10,7 @@ pub use tables::SpreadsheetTable;
 mod layout;
 pub use layout::{PrintSettings, SheetFilter, SheetView};
 mod display;
+mod sparse_display;
 pub use analytics::{Chart, ChartData, ChartKind, ChartSeries, Pivot, PivotAggregate};
 mod formula;
 mod office;
@@ -31,6 +32,7 @@ use suite42_core::{write_new, SnapshotHistory, TextValue};
 const MAX_INPUT: usize = 4 * 1024 * 1024;
 const MAX_ROWS: usize = 1000;
 const MAX_COLS: usize = 100;
+const MAX_OPERATION_CELLS: usize = 100_000;
 const MAX_TEXT: usize = 4 * 1024 * 1024;
 const MAX_SHEETS: usize = 64;
 #[derive(Debug)]
@@ -352,29 +354,13 @@ impl Workbook {
         let calculation = formula::calculation_at(self, chrono::Local::now().naive_local());
         self.calculated_grid_with(&calculation)
     }
-    fn calculated_grid_with(&self, calculation: &formula::Calculation) -> Vec<Vec<String>> {
-        let mut grid = formula::display_grid_with_calculation(self, calculation);
-        if self
-            .external_baseline
-            .as_ref()
-            .is_some_and(|base| base.sheets.len()==self.history.current().sheets.len() && base.sheets.iter().zip(&self.history.current().sheets).all(|(a,b)| { if a==b{return true} let mut a=a.clone();a.solver=b.solver.clone();a==*b }))
-        {
-            for (&(sheet, row, col), value) in &self.external_cache {
-                if sheet == self.active_sheet()
-                    && row < grid.len()
-                    && col < grid[row].len()
-                    && grid[row][col] == "#ERROR!"
-                {
-                    grid[row][col] = value.clone();
-                }
-            }
-        }
-        grid
+    fn calculated_grid_with(&self,calculation:&formula::Calculation)->Vec<Vec<String>>{
+        let mut grid=vec![vec![String::new();self.cols()];self.rows()];
+        for ((row,col),value)in self.calculated_cells_with(calculation){grid[row][col]=value;}grid
     }
-    fn format_calculation(&self, calculation: &formula::Calculation) -> Vec<Vec<String>> {
-        let mut grid = self.calculated_grid_with(calculation);
-        display::apply(self, calculation, &mut grid);
-        grid
+    fn format_calculation(&self,calculation:&formula::Calculation)->Vec<Vec<String>>{
+        let mut grid=vec![vec![String::new();self.cols()];self.rows()];
+        for ((row,col),value)in self.display_cells_with(calculation){grid[row][col]=value;}grid
     }
     pub fn is_read_only(&self) -> bool {
         self.external_source.is_some() && self.external_format.as_deref() == Some("xls")
@@ -2396,20 +2382,23 @@ impl Workbook {
         {
             return Err(Error::Bounds);
         }
-        let grid = self.display_grid();
-        self.tsv_from_grid(rows, cols, &grid)
+        let cells = self.display_cells();
+        self.tsv_from_cells(rows, cols, &cells)
     }
-    fn tsv_from_grid(
+    fn tsv_from_cells(
         &self,
         rows: &[usize],
         cols: &[usize],
-        grid: &[Vec<String>],
+        cells: &BTreeMap<(usize, usize), String>,
     ) -> Result<String, Error> {
+        if rows.len().checked_mul(cols.len()).is_none_or(|n| n > MAX_OPERATION_CELLS) {
+            return Err(Error::Limit);
+        }
         let mut writer = csv::WriterBuilder::new()
             .delimiter(b'\t')
             .from_writer(Vec::new());
         for &row in rows {
-            writer.write_record(cols.iter().map(|&col| grid[row][col].as_str()))?;
+            writer.write_record(cols.iter().map(|&col| cells.get(&(row,col)).map_or("", String::as_str)))?;
         }
         let mut bytes = writer.into_inner().map_err(|e| Error::Io(e.into_error()))?;
         if bytes.len() > MAX_INPUT {

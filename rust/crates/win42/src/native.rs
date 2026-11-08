@@ -98,6 +98,7 @@ struct State {
     recent_menu: HMENU,
     recent_paths: Vec<PathBuf>,
     grid_cache: Option<Vec<Vec<String>>>,
+    sparse_grid:Option<crate::SparseTable>,
     toolbar: Vec<(u16, HWND)>,
     toolbar_more: HWND,
     ruler_horizontal: HWND,
@@ -684,6 +685,7 @@ unsafe fn refresh() {
         readonly,
         image,
         grid,
+        sparse,
     ) = STATE.with(|s| {
         let s = s.borrow();
         let s = s.as_ref().unwrap();
@@ -716,9 +718,12 @@ unsafe fn refresh() {
             s.app.list_visible(),
             s.app.text_readonly(),
             s.app.image().is_some() || s.app.canvas_scene().is_some(),
-            s.app.table(),
+            if s.app.uses_custom_grid(){None}else{s.app.table()},
+            if s.app.uses_custom_grid(){s.app.sparse_table().or_else(||s.app.table().and_then(crate::SparseTable::from_dense))}else{None},
         )
     });
+    let grid_visible=grid.is_some()||sparse.is_some();
+    STATE.with(|s|s.borrow_mut().as_mut().unwrap().sparse_grid=sparse);
     REFRESHING.with(|x| x.set(true));
     SetWindowTextW(hwnd, wide(&title).as_ptr());
     SetWindowTextW(status, wide(&info).as_ptr());
@@ -873,11 +878,11 @@ unsafe fn refresh() {
         );
     }
     update_table(table, grid.as_deref());
-    ShowWindow(table, if grid.is_some() { SW_SHOW } else { SW_HIDE });
+    ShowWindow(table, if grid_visible { SW_SHOW } else { SW_HIDE });
     ShowWindow(
         list,
         if visible
-            && (grid.is_none()
+            && (!grid_visible
                 || STATE.with(|s| s.borrow().as_ref().unwrap().app.grid_sheets().is_some()))
         {
             SW_SHOW
@@ -1016,7 +1021,7 @@ unsafe fn layout(hwnd: HWND) {
             s.canvas,
             s.status,
             s.app.list_visible()&&s.panels.sidebar,
-            s.grid_cache.is_some(),
+            s.grid_cache.is_some()||s.sparse_grid.is_some(),
             s.toolbar.clone(),
             s.toolbar_more,
             s.ruler_horizontal,
@@ -2490,12 +2495,13 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
             msg(hwnd, &e, MB_OK | MB_ICONERROR);
             refresh()
         } else {
-            let (table, grid, cell, list, items, selected) = STATE.with(|s| {
+            let (table, grid, sparse, cell, list, items, selected) = STATE.with(|s| {
                 let s = s.borrow();
                 let s = s.as_ref().unwrap();
                 (
                     s.table,
-                    s.app.table(),
+                    if s.app.uses_custom_grid(){None}else{s.app.table()},
+                    if s.app.uses_custom_grid(){s.app.sparse_table().or_else(||s.app.table().and_then(crate::SparseTable::from_dense))}else{None},
                     s.app.selected_cell(),
                     s.list,
                     s.app.items(),
@@ -2503,6 +2509,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 )
             });
             let _ = cell;
+            STATE.with(|s|s.borrow_mut().as_mut().unwrap().sparse_grid=sparse);
             update_table(table, grid.as_deref());
             if !items.is_empty() {
                 REFRESHING.with(|x| x.set(true));
@@ -3826,6 +3833,7 @@ pub fn run(app: Box<dyn App>) {
                 recent_menu,
                 recent_paths: Vec::new(),
                 grid_cache: None,
+                sparse_grid:None,
                 toolbar: Vec::new(),
                 toolbar_more: null_mut(),
                 ruler_horizontal: null_mut(),
@@ -4443,7 +4451,7 @@ unsafe fn update_table(table: HWND, rows: Option<&[Vec<String>]>) {
                 s.grid_cache = rows.map(|v| v.to_vec())
             }
         });
-        if rows.is_some() {
+        if rows.is_some()||STATE.with(|s|s.borrow().as_ref().unwrap().sparse_grid.is_some()) {
             crate::grid::refresh(table)
         }
         return;
@@ -5682,8 +5690,8 @@ pub(super) fn grid_snapshot() -> Option<crate::grid::Snapshot> {
     STATE.with(|s| {
         let s = s.borrow();
         let s = s.as_ref()?;
-        let rows = s.grid_cache.as_ref()?.clone();
-        let cols = rows.first().map_or(0, Vec::len);
+        let rows=s.sparse_grid.clone().or_else(||s.grid_cache.clone().and_then(crate::SparseTable::from_dense))?;
+        let cols=rows.columns();
         let widths = (0..cols)
             .map(|c| s.app.grid_column_width(c) as i32)
             .collect();

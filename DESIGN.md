@@ -899,3 +899,15 @@ process-local program identity separates glyph-subset caches; actual data equali
 The default Noto Sans path stays available without system-font access. This font-program boundary does not
 implement new shaping or font fallback behavior. Machine-readable embedding rules follow the
 [OpenType OS/2 specification](https://learn.microsoft.com/typography/opentype/spec/os2).
+
+### Windows sparse worksheet projection
+
+`Workbook::display_cells` and `calculated_cells` calculate once and return occupied/spilled coordinates;
+formatting, safe external caches and typed booleans keep the existing display semantics. Filtering, clipboard,
+labels, charts, pivots, validation and printing consume sparse maps. Clipboard rectangles retain an independent
+100,000-cell operation bound. Dense projections remain compatibility APIs, not the native grid data source.
+`App::sparse_table` supplies an immutable `SparseTable` with shared text storage and explicit dimensions;
+legacy `table` adapters remain available. The host caches the chosen source on refresh, shows/layouts the grid
+for either representation, and painting reads missing coordinates as empty text. The XLS physical row map is
+shared, sorted and binary searched; hidden/filtered rows keep their physical editing/clipboard coordinates.
+This removes empty-cell text allocation, but does not yet increase workbook limits or virtualize grid geometry.

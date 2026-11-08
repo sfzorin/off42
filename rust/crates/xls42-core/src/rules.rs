@@ -195,7 +195,7 @@ pub(super) fn validate_mapped(state: &State, rows: &[usize], cols: &[usize]) -> 
             external_format: None,
             external_cache: BTreeMap::new(),
         };
-        Some(formula::display_grid(&book))
+        Some(book.calculated_cells())
     } else {
         None
     };
@@ -213,7 +213,7 @@ pub(super) fn validate_mapped(state: &State, rows: &[usize], cols: &[usize]) -> 
                 }
                 let value = if matches!(cell.map(|cell| &cell.text), Some(CellContent::Formula(_)))
                 {
-                    grid.as_ref().unwrap()[row][col].as_str()
+                    grid.as_ref().unwrap().get(&(row,col)).map_or("", String::as_str)
                 } else {
                     raw
                 };
@@ -256,7 +256,7 @@ pub(super) fn validate_range(state: &State, range: Range) -> Result<(), Error> {
             external_format: None,
             external_cache: BTreeMap::new(),
         };
-        Some(formula::display_grid(&book))
+        Some(book.calculated_cells())
     } else {
         None
     };
@@ -273,7 +273,7 @@ pub(super) fn validate_range(state: &State, range: Range) -> Result<(), Error> {
                     continue;
                 }
                 let value = if matches!(cell.map(|c| &c.text), Some(CellContent::Formula(_))) {
-                    grid.as_ref().unwrap()[row][col].as_str()
+                    grid.as_ref().unwrap().get(&(row,col)).map_or("", String::as_str)
                 } else {
                     raw
                 };

@@ -170,7 +170,7 @@ pub fn pages(book: &Workbook, visible: &[usize]) -> Result<Vec<PrintPage>, Strin
     if row_pages.len().saturating_mul(col_pages.len()) > 4096 {
         return Err("Print job exceeds page limit".into());
     }
-    let grid = book.display_grid();
+    let cells = book.display_cells();
     let mut picture_bytes = 0usize;
     let decoded = book
         .images()
@@ -243,7 +243,7 @@ pub fn pages(book: &Workbook, visible: &[usize]) -> Result<Vec<PrintPage>, Strin
                         y: y + 1.0 * scale,
                         width: (w - 4.0 * scale).max(0.0),
                         height: (h - 2.0 * scale).max(0.0),
-                        text: grid[r][c].clone(),
+                        text: cells.get(&(r,c)).cloned().unwrap_or_default(),
                         color: style.foreground.map(rgb).unwrap_or([0; 3]),
                         font: SceneFont {
                             family: if style.font.is_empty() {
@@ -271,7 +271,7 @@ pub fn pages(book: &Workbook, visible: &[usize]) -> Result<Vec<PrintPage>, Strin
                         } else {
                             TextAlign::Left
                         },
-                        wrap: grid[r][c].contains('\n'),
+                        wrap: cells.get(&(r,c)).is_some_and(|v|v.contains('\n')),
                     });
                     x += cw(c) * scale;
                 }

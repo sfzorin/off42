@@ -498,10 +498,10 @@ impl Workbook {
                 ws.filter_automatic_off();
                 ws.filter_column(filter.column as u16, &condition)
                     .map_err(|_| Error::Invalid("cannot encode XLSX filter"))?;
-                let grid = eval.format_calculation(&calculation);
+                let cells = eval.display_cells_with(&calculation);
                 let needle = filter.contains.to_lowercase();
                 for row in r.top + 1..=r.bottom {
-                    if !grid[row][filter.column].to_lowercase().contains(&needle) {
+                    if !cells.get(&(row,filter.column)).map_or("",String::as_str).to_lowercase().contains(&needle) {
                         ws.set_row_hidden(row as u32)
                             .map_err(|_| Error::Invalid("cannot hide filtered row"))?;
                     }

@@ -1,5 +1,7 @@
 pub mod ocr;
 pub mod recovery;
+mod sparse_table;
+pub use sparse_table::SparseTable;
 mod system_font;
 pub use system_font::program as system_font_program;
 #[cfg(any(windows,test))]
@@ -487,6 +489,8 @@ pub trait App {
     fn grid_cell_style(&self, _row: usize, _column: usize) -> Option<GridCellStyle> {
         None
     }
+    /// Preferred immutable text projection for the custom grid; avoids allocating empty worksheet cells.
+    fn sparse_table(&self)->Option<SparseTable>{None}
     fn table(&self) -> Option<Vec<Vec<String>>> {
         None
     }

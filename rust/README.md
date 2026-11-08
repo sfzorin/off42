@@ -856,3 +856,8 @@ page-decoration programs to 32 MB; the UI caches only its fixed choices. Complex
 Portable tests cover permission flags, retained Unicode/metrics, selected pages, atomic refusal, complete
 Undo/Redo and reopen; workspace 526/0/1 and GNU all-targets compile. Real Windows font/style selection,
 independent pixels/text, native UI history/reopen and virtual-printer checks await the next compatible run.
+
+XLS42 now sends occupied cell and spill text to the native grid without allocating strings for the empty
+worksheet area. Filtering, clipboard, labels, chart/pivot calculations, validation and print text use the same
+sparse projections. Existing worksheet limits remain 1,000 rows by 100 columns while geometry and remaining
+large-operation paths are being migrated; this change alone does not establish large-workbook support.

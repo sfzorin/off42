@@ -163,8 +163,8 @@ impl Workbook {
         Ok(self.history.apply(st))
     }
     pub fn visible_rows(&self) -> Vec<usize> {
-        let grid = self.display_grid();
-        self.visible_rows_from_grid(&grid)
+        let cells = self.display_cells();
+        self.visible_rows_from_cells(&cells)
     }
     pub fn visible_rows_from_grid(&self, grid: &[Vec<String>]) -> Vec<usize> {
         let s = self.history.current().sheet();

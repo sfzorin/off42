@@ -1,23 +1,9 @@
 //! Conservative common-format projection; unsupported custom codes retain raw display.
 use crate::{
     CellContent, Workbook,
-    formula::{Calculation, Value},
+    formula::Value,
 };
 use chrono::{Datelike, NaiveDate, NaiveDateTime};
-pub(crate) fn apply(book: &Workbook, calculation: &Calculation, grid: &mut [Vec<String>]) {
-    for (r, row) in grid.iter_mut().enumerate() {
-        for (c, text) in row.iter_mut().enumerate() {
-            format_cell(
-                book,
-                book.active_sheet(),
-                r,
-                c,
-                calculation.values.get(&(r, c)),
-                text,
-            );
-        }
-    }
-}
 pub(super) fn format_cell(
     book: &Workbook,
     sheet: crate::SheetId,

@@ -2445,14 +2445,13 @@ pub(super) fn calculation_at(book: &Workbook, now: chrono::NaiveDateTime) -> Cal
     Calculation { values, spills }
 }
 
-pub(crate) fn display_grid(book: &Workbook) -> Vec<Vec<String>> {
-    display_grid_at(book, chrono::Local::now().naive_local())
-}
+#[cfg(test)]
 pub(crate) fn display_grid_at(book: &Workbook, now: chrono::NaiveDateTime) -> Vec<Vec<String>> {
     let calculation = calculation_at(book, now);
     display_grid_with_calculation(book, &calculation)
 }
-pub(super) fn display_grid_with_calculation(
+#[cfg(test)]
+fn display_grid_with_calculation(
     book: &Workbook,
     calculation: &Calculation,
 ) -> Vec<Vec<String>> {

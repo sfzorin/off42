@@ -16,7 +16,7 @@ struct Xls {
     row: usize,
     col: usize,
     preview: Option<u64>,
-    visible_cache: std::cell::RefCell<Vec<usize>>,
+    visible_cache: std::cell::RefCell<std::sync::Arc<[usize]>>,
     picture_cache: std::cell::RefCell<PictureCache>,
     selected_picture: Option<u64>,
 }
@@ -47,10 +47,13 @@ impl Xls {
         }
         rows
     }
-    fn visible_rows(&self) -> Vec<usize> {
+    fn compute_sparse_rows(&self,cells:&std::collections::BTreeMap<(usize,usize),String>)->Vec<usize>{
+        let mut rows=self.book.visible_rows_from_cells(cells);if !rows.contains(&self.row)&&self.row<self.book.rows()&&!self.book.sheet_view().hidden_rows.contains(&self.row){rows.push(self.row);rows.sort_unstable()}rows
+    }
+    fn visible_rows(&self) -> std::sync::Arc<[usize]> {
         if self.visible_cache.borrow().is_empty() {
-            let rows = self.compute_visible_rows(&self.book.display_grid());
-            self.visible_cache.replace(rows);
+            let rows = self.compute_sparse_rows(&self.book.display_cells());
+            self.visible_cache.replace(rows.into());
         }
         self.visible_cache.borrow().clone()
     }
@@ -58,10 +61,10 @@ impl Xls {
         self.visible_rows().get(index).copied()
     }
     fn visible_position(&self, row: usize) -> Option<usize> {
-        self.visible_rows().iter().position(|value| *value == row)
+        self.visible_rows().binary_search(&row).ok()
     }
     fn clear_visible_cache(&self) {
-        self.visible_cache.borrow_mut().clear();
+        self.visible_cache.replace(Default::default());
     }
     fn active_range(&self) -> Range {
         if self.book.sheet_filter().is_some() {
@@ -237,14 +240,14 @@ impl win42::App for Xls {
         if columns.is_empty() {
             return Err("Select visible cells to create labels.".into());
         }
-        let grid = self.book.display_grid();
+        let cells = self.book.display_cells();
         let rows = self
             .book
-            .visible_rows_from_grid(&grid)
+            .visible_rows_from_cells(&cells)
             .into_iter()
             .filter(|row| *row >= range.top && *row <= range.bottom)
             .map(|row| {
-                let values = columns.iter().map(|&col| grid[row][col].clone()).collect();
+                let values = columns.iter().map(|&col| cells.get(&(row,col)).cloned().unwrap_or_default()).collect();
                 (row + 1, values)
             })
             .collect::<Vec<_>>();
@@ -390,7 +393,7 @@ impl win42::App for Xls {
                 let range = self.selection_range();
                 let rows: Vec<_> = self
                     .visible_rows()
-                    .into_iter()
+                    .iter().copied()
                     .filter(|row| *row >= range.top && *row <= range.bottom)
                     .collect();
                 let cols: Vec<_> = (range.left..=range.right)
@@ -417,7 +420,7 @@ impl win42::App for Xls {
         }
         let rows: Vec<_> = self
             .visible_rows()
-            .into_iter()
+            .iter().copied()
             .filter(|row| *row >= self.row)
             .collect();
         let cols: Vec<_> = (self.col..self.book.cols())
@@ -435,7 +438,7 @@ impl win42::App for Xls {
         }
         let rows: Vec<_> = self
             .visible_rows()
-            .into_iter()
+            .iter().copied()
             .filter(|row| *row >= self.row)
             .collect();
         let cols: Vec<_> = (self.col..self.book.cols())
@@ -795,7 +798,7 @@ impl win42::App for Xls {
                 let rows = self
                     .book
                     .visible_rows()
-                    .into_iter()
+                    .iter().copied()
                     .filter(|row| *row >= range.top && *row <= range.bottom)
                     .collect::<Vec<_>>();
                 self.book
@@ -1139,7 +1142,7 @@ impl win42::App for Xls {
         let rows = self.book.sheet_view().frozen_rows;
         let visible = self
             .visible_rows()
-            .into_iter()
+            .iter().copied()
             .filter(|row| *row < rows)
             .count();
         (visible, self.book.sheet_view().frozen_columns)
@@ -1385,13 +1388,19 @@ impl win42::App for Xls {
             merged,
         })
     }
+    fn sparse_table(&self)->Option<win42::SparseTable>{
+        if self.preview.is_some(){return None}
+        let cells=self.book.display_cells();let rows=self.compute_sparse_rows(&cells);let count=rows.len();
+        let projected=cells.into_iter().filter_map(|((r,c),text)|rows.binary_search(&r).ok().map(|index|((index,c),text))).collect();self.visible_cache.replace(rows.into());
+        win42::SparseTable::new(count,self.book.cols(),projected).ok()
+    }
     fn table(&self) -> Option<Vec<Vec<String>>> {
         if self.preview.is_some() {
             None
         } else {
             let grid = self.book.display_grid();
             let rows = self.compute_visible_rows(&grid);
-            self.visible_cache.replace(rows.clone());
+            self.visible_cache.replace(rows.clone().into());
             Some(
                 rows.into_iter()
                     .filter_map(|r| grid.get(r).cloned())
@@ -1744,7 +1753,7 @@ fn main() {
         row: 0,
         col: 0,
         preview: None,
-        visible_cache: std::cell::RefCell::new(Vec::new()),
+        visible_cache: std::cell::RefCell::new(Default::default()),
         picture_cache: Default::default(),
         selected_picture: None,
     }))
@@ -1764,7 +1773,7 @@ mod tests {
             row: 0,
             col: 0,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };
@@ -1788,7 +1797,7 @@ mod regression {
             row: 0,
             col: 1,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };
@@ -1860,7 +1869,7 @@ mod regression {
             row: 1,
             col: 1,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };
@@ -1997,19 +2006,15 @@ mod regression {
             row: 1,
             col: 0,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };
-        let rendered = app.table().unwrap();
-        assert_eq!(
-            rendered
-                .iter()
-                .take(3)
-                .map(|row| row[0].as_str())
-                .collect::<Vec<_>>(),
-            ["row1", "row3", "row4"]
-        );
+        let rendered = app.sparse_table().unwrap();
+        assert_eq!(rendered.len(), 6);
+        assert_eq!(rendered.columns(), 5);
+        assert_eq!((rendered.cell(0,0),rendered.cell(1,0),rendered.cell(2,0)), ("row1","row3","row4"));
+        assert_eq!(rendered.cell(5,4), "");
         assert_eq!(app.grid_row_label(0), "2");
         assert_eq!(app.grid_row_label(1), "4");
         assert_eq!(app.grid_row_height(1), 44);
@@ -2083,7 +2088,7 @@ mod regression {
             row: 1,
             col: 1,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };
@@ -2129,7 +2134,7 @@ mod regression {
             row: 0,
             col: 0,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };
@@ -2182,7 +2187,7 @@ mod regression {
             row: 0,
             col: 0,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };
@@ -2221,7 +2226,7 @@ mod regression {
             row: 0,
             col: 0,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };
@@ -2262,7 +2267,7 @@ mod regression {
             row: 0,
             col: 0,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };
@@ -2305,7 +2310,7 @@ mod regression {
             row: 0,
             col: 0,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };
@@ -2332,7 +2337,7 @@ mod regression {
             row: 0,
             col: 0,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };
@@ -2358,7 +2363,7 @@ mod policy_regression {
             row: 0,
             col: 0,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };
@@ -2416,7 +2421,7 @@ mod filter_ui_regression {
             row: 0,
             col: 0,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };
@@ -2459,7 +2464,7 @@ mod custom_grid_regression {
             row: 0,
             col: 0,
             preview: None,
-            visible_cache: std::cell::RefCell::new(Vec::new()),
+            visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
             selected_picture: None,
         };

@@ -182,16 +182,16 @@ impl Workbook {
         let mut cache = BTreeMap::new();
         for s in &chart.series {
             if let std::collections::btree_map::Entry::Vacant(e) = cache.entry(s.sheet) {
-                e.insert(formula::display_grid(&evaluation_book(state, s.sheet)));
+                e.insert(evaluation_book(state, s.sheet).calculated_cells());
             }
             let grid = &cache[&s.sheet];
             let mut points = Vec::new();
             for (index, r) in (s.values.top..=s.values.bottom).enumerate() {
                 let label = s
                     .categories
-                    .map(|v| grid[v.top + index][v.left].clone())
+                    .map(|v| grid.get(&(v.top + index,v.left)).cloned().unwrap_or_default())
                     .unwrap_or_else(|| (index + 1).to_string());
-                let n = grid[r][s.values.left]
+                let n = grid.get(&(r,s.values.left)).map_or("", String::as_str)
                     .parse::<f64>()
                     .ok()
                     .filter(|v| v.is_finite());
@@ -284,14 +284,14 @@ fn refresh(state: &mut State, p: &mut Pivot) -> Result<(), Error> {
     if !valid_pivot(state, p) {
         return Err(Error::Invalid("invalid pivot"));
     }
-    let source_grid = formula::display_grid(&evaluation_book(state, p.source_sheet));
+    let source_grid = evaluation_book(state, p.source_sheet).calculated_cells();
     let mut groups: BTreeMap<String, (f64, usize, f64, f64)> = BTreeMap::new();
     for r in p.source.top + 1..=p.source.bottom {
-        let key = source_grid[r][p.group_column].clone();
+        let key = source_grid.get(&(r,p.group_column)).cloned().unwrap_or_default();
         if key.is_empty() {
             continue;
         }
-        let value = source_grid[r][p.value_column]
+        let value = source_grid.get(&(r,p.value_column)).map_or("", String::as_str)
             .parse::<f64>()
             .ok()
             .filter(|v| v.is_finite());
@@ -299,7 +299,7 @@ fn refresh(state: &mut State, p: &mut Pivot) -> Result<(), Error> {
             .entry(key)
             .or_insert((0.0, 0, f64::INFINITY, f64::NEG_INFINITY));
         if p.aggregate == PivotAggregate::Count {
-            if !source_grid[r][p.value_column].is_empty() {
+            if source_grid.get(&(r,p.value_column)).is_some_and(|s|!s.is_empty()) {
                 entry.1 += 1
             }
         } else if let Some(n) = value {
