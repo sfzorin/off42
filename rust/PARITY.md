@@ -783,3 +783,18 @@ after image selection; image unit regressions are now included in quick CI.
   regression and all XLS app 33 tests pass; GNU all targets compile. Copy/fill/serial/rule/merge/print-area/
   hiding/freezing commands now grow virtual destinations as appropriate with full history/project checks.
   A serial-growth native scenario is added. Runtime confirmation of the reset and growth remains pending.
+
+- Run 42527552826 (ff765fb) passes the existing picture pixels/movement/history after the grid identity
+  reset. Artifacts include successful pure-view scrolling/selection, text/Bold/Paste allocation with complete
+  Undo/Redo/reopen. It stops at the new QR description assertion: the descriptor is base64, not literal
+  text. Decoding that actual descriptor and embedded PNG verifies the exact intended recipe. The audit now
+  decodes and compares both; geometry/serial assertions beyond that point remain pending. PDF artwork also
+  stops querying a canvas immediately after rotation; the harness now waits for the actual visible canvas,
+  preserving all gesture/geometry/output checks. This is not a passing full native run.
+- Formula evaluation and Office output accept 310 macOS Russian function aliases, semicolon arguments and
+  seven localized constant errors while preserving authoritative editor input, inline-array rows, quoted
+  text/sheets and structured headers. Spill discovery uses the same normalized text. Unicode sheet prefixes
+  are quoted for standard output and matched without case. ODF export now recognizes constant-error tokens
+  before sheet punctuation. Independent/native Office and external-edit history regressions pass: workspace
+  561/0/1, GNU all targets pass, Swift oracle 492/0 gaps/2 skips. Actual native localized input/cache/history
+  assertions are added; pending a compatible build. Other locale syntax/format semantics remain open.

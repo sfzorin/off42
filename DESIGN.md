@@ -1002,3 +1002,10 @@ space or revealing the selected cell. Successful Open/New advance the document g
 preserves it, and sheet identity distinguishes same-focus tab changes. A small sheet's scroll clamping is
 not relied on as a document-reset mechanism. Range commands use bounded growth transactions; mapped
 serial output grows only its actual destinations.
+
+A lexical formula normalization layer shares the macOS Russian alias table. It supplies disposable
+canonical text to evaluation, spill discovery and standard Office writers without replacing authoritative
+editor input. Semicolons become argument separators only outside inline arrays; quoted strings/sheets and
+structured headers are copied intact. Unicode unquoted sheet prefixes are quoted for standard output.
+Error constants are normalized before ODF reference tokenization (OpenFormula 1.3 §5.12). Tests inspect
+independent packages and retain exact original-state Undo for external edits.

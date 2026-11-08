@@ -422,14 +422,14 @@ impl Workbook {
                                 c,
                                 range.bottom as u32,
                                 range.right as u16,
-                                Formula::new(t.raw()).set_result(value),
+                                Formula::new(formula::canonical_input(t.raw()).as_ref()).set_result(value),
                                 f,
                             )
                         } else {
                             ws.write_formula_with_format(
                                 r,
                                 c,
-                                Formula::new(t.raw()).set_result(value),
+                                Formula::new(formula::canonical_input(t.raw()).as_ref()).set_result(value),
                                 f,
                             )
                         }
@@ -1038,6 +1038,7 @@ fn ods_function_name(mut name: &str) -> String {
     }
 }
 fn ods_formula(input: &str) -> Result<String, Error> {
+    let normalized=formula::canonical_input(input);let input=normalized.as_ref();
     let b = input.as_bytes();
     let mut out = String::from("of:");
     let mut i = 0;
@@ -1056,6 +1057,8 @@ fn ods_formula(input: &str) -> Result<String, Error> {
             i += c.len_utf8();
             continue;
         }
+        // OpenFormula 1.3 section 5.12 constant errors must be consumed before sheet-reference tokens.
+        if b[i]==b'#'{if let Some(error)=formula::error_prefix(&input[i..]){out.push_str(error);i+=error.len();continue;}}
         if b[i] == b'{' {
             array_depth += 1;
             out.push('{');
@@ -3604,10 +3607,7 @@ fn cell_xml(
         CellContent::Date(_)=>out.push_str(&format!(" t=\"d\"><{prefix}v>{}</{prefix}v></{prefix}c>",date_time(raw)?.format("%Y-%m-%dT%H:%M:%S%.f"))),
         CellContent::Formula(_) => out.push_str(&format!(
             "><{prefix}f>{}</{prefix}f></{prefix}c>",
-            escape_xml(
-                raw.strip_prefix('=')
-                    .ok_or(Error::Invalid("invalid formula"))?
-            )
+            escape_xml(formula::canonical_input(raw.strip_prefix('=').ok_or(Error::Invalid("invalid formula"))?).as_ref())
         )),
         _ => {
             return Err(Error::Invalid(

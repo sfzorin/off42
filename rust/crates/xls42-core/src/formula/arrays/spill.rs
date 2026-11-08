@@ -133,6 +133,7 @@ impl Eval<'_> {
     }
 }
 pub(in crate::formula) fn dynamic_formula(raw: &str) -> bool {
+    let normalized=super::super::localized::canonical(raw);let raw=normalized.as_ref();
     let b = raw.as_bytes();
     let (mut i, mut quoted, mut sheet_quoted) = (0, false, false);
     while i < b.len() {

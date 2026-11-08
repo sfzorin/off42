@@ -931,3 +931,20 @@ retain stale scroll offsets after blank viewport growth. It now tracks document/
 scroll/drag state at that boundary. Open/New/rejected-open identities have a portable regression; native
 repeat is pending and the pixel assertion is unchanged. Copy/fill, serials, range rules, merge, print-area,
 hiding and freezing also use bounded growth where needed; normal command/history/project checks pass.
+
+Formula entry/evaluation now accepts the same 310 Russian function aliases as the macOS parser and
+semicolon argument separators. Inline-array row separators, strings, quoted sheet names and structured
+headers are preserved. Seven Russian constant-error spellings are recognized in formulas. Editor/native
+project input stays unchanged; standard XLSX/ODS output uses canonical English functions and separators,
+verified in independent packages without the private snapshot, including dynamic spills and external edits.
+Unquoted Unicode sheet names are quoted for standard output and matched without case. OpenFormula
+constant errors are consumed as tokens rather than mistaken for sheet-reference punctuation. Portable
+workspace 561/0/1, GNU all targets and fixed Swift oracle 492 pass/0 gaps/2 skips; native entry/cache/history
+assertions await a compatible build. This does not provide every locale's formula names or number formats.
+
+Run 42527552826 passes the prior picture-pixel check after the document identity reset, and saved artifacts
+verify blank scrolling/selection plus text, formatting and clipboard growth with complete Undo/Redo/reopen.
+Its new QR assertion incorrectly looked for plain text inside a base64 descriptor; decoding the saved
+descriptor and embedded PNG confirms the expected QR recipe. The audit now checks both decoded objects.
+A separate PDF artwork scenario queried a visible canvas immediately after asynchronous rotation; it now
+waits for that actual canvas before the unchanged gesture/geometry checks. A repeat is still required.

@@ -14,6 +14,10 @@ mod units;
 mod sparse_ranges;
 mod conditional_ranges;
 mod axis_references;
+mod localized;
+mod localized_aliases;
+pub(super) fn canonical_input(raw:&str)->std::borrow::Cow<'_,str>{localized::canonical(raw)}
+pub(super) fn error_prefix(input:&str)->Option<&'static str>{information::ERRORS.iter().copied().find(|error|input.starts_with(error))}
 use crate::{CellContent, SheetId, Workbook};
 use std::collections::{HashMap, HashSet};
 
@@ -169,7 +173,8 @@ impl<'a> Eval<'a> {
         self.visiting.insert(key);
         let raw = self.raw(sheet, row, col).unwrap().to_owned();
         let v = if matches!(self.content(sheet, row, col), Some(CellContent::Formula(_))) {
-            let expr = raw.strip_prefix('=').unwrap();
+            let normalized=localized::canonical(&raw);
+            let expr = normalized.strip_prefix('=').unwrap();
             if expr.len() > MAX_FORMULA {
                 Value::Error("#LIMIT!")
             } else {
@@ -1850,7 +1855,7 @@ impl Parser<'_, '_> {
             .current()
             .sheets
             .iter()
-            .find(|s| s.name.eq_ignore_ascii_case(&name))
+            .find(|s| s.name.eq_ignore_ascii_case(&name)||s.name.to_lowercase()==name.to_lowercase())
             .map(|s| s.id);
         let Some(id) = id else {
             self.pos = start;

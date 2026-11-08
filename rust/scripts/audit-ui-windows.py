@@ -1205,7 +1205,16 @@ def audit_grid_expansion(process,main,binary,output,results):
     open_fixture(process,main,output/'growth-paste-redo.xls42');wait_for(lambda:text(edit)=='10','expanded project reopens at saved selection',process)
     fill_prompt(process,main,25,'Range (1-based)',['1200','81','1200','81']);fill_prompt(process,main,65509,'Symbol or Code',['QR','PCB-GROW-42','20','no'])
     artwork=saved('artwork');assert (artwork['sheets'][0]['rows'],artwork['sheets'][0]['cols'])==(1200,81)
-    picture=artwork['sheets'][0]['images'][0];assert (picture['row'],picture['column'])==(1199,80)and picture['data']and'PCB-GROW-42'in picture['description'];assert artwork['sheets'][0]['cells']==pasted['sheets'][0]['cells']
+    import base64
+    picture=artwork['sheets'][0]['images'][0];assert (picture['row'],picture['column'])==(1199,80)and picture['data'];assert artwork['sheets'][0]['cells']==pasted['sheets'][0]['cells']
+    prefix,encoded=picture['description'].split(':',1);assert prefix=='Suite42.TechnicalElement.v1'
+    assert json.loads(base64.b64decode(encoded,validate=True))=={'codeType':'qr','value':'PCB-GROW-42','widthMM':20.0,'caption':False}
+    png=base64.b64decode(picture['data'],validate=True);assert png.startswith(b'\x89PNG\r\n\x1a\n');offset=8;descriptions=[]
+    while offset+12<=len(png):
+        size=int.from_bytes(png[offset:offset+4],'big');tag=png[offset+4:offset+8];chunk=png[offset+8:offset+8+size]
+        if tag==b'tEXt'and chunk.startswith(b'Description\0'):descriptions.append(chunk.split(b'\0',1)[1].decode('utf-8'))
+        offset+=size+12
+    assert descriptions==[picture['description']],'Saved picture recipe and PNG recipe differ'
     command(main,4);art_undo=saved('artwork-undo');assert art_undo['sheets']==pasted['sheets']and art_undo['selection']==pasted['selection'];command(main,5);art_redo=saved('artwork-redo');assert art_redo['sheets']==artwork['sheets']and art_redo['selection']==artwork['selection']
     fill_prompt(process,main,77,'Picture Position and Size',['1400','101','5','7','60','60']);moved=saved('artwork-moved');assert (moved['sheets'][0]['rows'],moved['sheets'][0]['cols'])==(1400,101)
     next_picture=moved['sheets'][0]['images'][0];assert (next_picture['row'],next_picture['column'],next_picture['offset_x'],next_picture['offset_y'],next_picture['width_points'],next_picture['height_points'])==(1399,100,5,7,60,60)
@@ -1297,6 +1306,13 @@ def audit_engineering_formulas(process, main, binary, output, results, include_e
             ["0", '=COT(A20)', "", "", "", "", "", ""],
             ["0", '=PERMUT(10,3)', "", "", "", "", "", ""],
         ])
+    localized_start=len(records)+1
+    records.extend([
+        ["",'=СУММ({1,2;3,4};5)',"","","","","",""],
+        ["",'=ЕСЛИОШИБКА(#ДЕЛ/0!;9)',"","","","","",""],
+        ["",'=СЧЁТЕСЛИ(A1:A5;">0")',"","","","","",""],
+        ["",'=СЦЕП("a;";"СУММ(1;2)")',"","","","","",""],
+    ])
     with source.open("w", encoding="utf-8", newline="") as file:
         csv.writer(file).writerows(records)
     original = source.read_bytes()
@@ -1322,6 +1338,9 @@ def audit_engineering_formulas(process, main, binary, output, results, include_e
     if include_extended:
         expected.update({"B6":"a--b", "B7":"1234.5", "B8":"42", "B9":"1055", "B10":"a--b1.234,5BOARD-42ПЛАТА", "B11":"|"})
         expected.update({"B12":"120", "B13":"-6", "B14":"10130.25", "B15":"2", "B16":"0", "B17":"105", "B18":"1260", "B19":"-1", "B20":"#DIV/0!", "B21":"720"})
+    expected.update({'B'+str(localized_start+i):value for i,value in enumerate(['15','9','3','a;СУММ(1;2)'])})
+    assert cells['B'+str(localized_start)][0]=='SUM({1,2;3,4},5)'
+    assert cells['B'+str(localized_start+1)][0]=='IFERROR(#DIV/0!,9)'
     for address, value in expected.items():
         assert cells[address][1] == value, (address, cells[address])
     assert cells["B1"][0] == "DEC2HEX($A$1,4)"
@@ -1347,6 +1366,11 @@ def audit_engineering_formulas(process, main, binary, output, results, include_e
     _, restored = save("engineering-reopened.xlsx")
     for address, value in expected.items():
         assert restored[address][1] == value
+    replace_editor_text(u.GetDlgItem(main,101),'=СУММ(1;2)');_,localized=save('engineering-localized-typed.xlsx')
+    assert localized['B1'][0]=='SUM(1,2)'and localized['B1'][1]=='3'
+    command(main,4);wait_for(lambda:text(u.GetDlgItem(main,101))=='=DEC2HEX($A$1,4)','Undo localized formula preserves raw input',process)
+    command(main,5);wait_for(lambda:text(u.GetDlgItem(main,101))=='=СУММ(1;2)','Redo localized formula preserves raw input',process)
+    results['checks'].append('actual Russian formula entry retains editor text through Undo/Redo; native XLSX uses canonical English functions, comma arguments, intact inline-array rows/quoted semicolons and localized constant-error results')
     assert source.read_bytes() == original
     results["checks"].append("engineering formula typed through native editor, independent XLSX cached results, Undo/Redo and discard/reopen preserve formulas and source")
 
@@ -2170,7 +2194,8 @@ def audit_pdf_label_artwork(process,main,binary,output,results):
     for _ in range(4):
         u.SendMessageW(main,WM_COMMAND,16,0)
         wait_for(lambda:not(u.GetMenuState(u.GetMenu(main),117,0)&3),'render before region gesture',process)
-    canvas=next(h for h in windows(process.pid,main)if classname(h)=='Suite42Canvas')
+    canvas=wait_for(lambda:next((h for h in windows(process.pid,main)if classname(h)=='Suite42Canvas'),None),'PDF artwork canvas visible after rotation render',process)
+    capture_window(main,output/'PDF42-label-area-ready.bmp')
     command(main,117)
     wait_for(lambda:any('Drag an area for labels'in text(h)for h in windows(process.pid,main)),'PDF area tool active',process)
     u.SendMessageW(canvas,0x201,1,(280<<16)|430);u.SendMessageW(canvas,0x200,1,(5<<16)|380)
