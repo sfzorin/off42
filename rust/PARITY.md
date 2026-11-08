@@ -647,3 +647,9 @@ after image selection; image unit regressions are now included in quick CI.
   spaces remain rejected and all image markers still require corresponding source images. The exact captured
   UTF-16 sequence is retained as the portable regression. Workspace 526/0/1; GNU targets compile. Native
   correction/format assertions are unchanged and await a repeat.
+
+- Run 42514675694 (8ced511): all 531 MSVC tests pass (one explicit hardware-dependent
+  test ignored). The actual word-correction UI now passes body/table/emoji, complete style/image
+  retention, Cancel/Skip, full Undo/Redo and saved reopen. The five Windows font embedding tests
+  pass; the header-font GUI scenario stops on a missing Python `re` import in the new audit.
+  The import is corrected for a repeat; the complete font UI/print scenario remains unverified.
