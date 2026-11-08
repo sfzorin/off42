@@ -472,3 +472,15 @@ after image selection; image unit regressions are now included in quick CI.
   copied text and no unrelated metadata; local evidence `build/label-artwork-interop-v1/poppler-v1/results.json`.
 - Portable workspace 463/0/1; GNU all targets compile. New native label text/pixels, annotation flattening,
   current unsaved state and history/source checks await Windows CI. No new public release/site deployment.
+
+### Document picture label artwork in progress
+
+- DOC42 enumerates picture artwork separately from tables/custom text; only the selected encoded picture
+  is decoded. Bitmap dimensions/alpha and displayed aspect are retained on white label paper. This does
+  not claim mixed selected-content or exact caret/picture mapping parity.
+- Portable regressions cover pixels/alpha, small source geometry, bounded decoding, unchanged document
+  state and preference privacy. Workspace 466/0/1; GNU all targets compile. Native DOC color/copies/source
+  checks await Windows CI.
+- f47e26a run 42432232653 passes build/MSVC stages but its PDF artwork GUI scenario stops before assertions
+  because the test does not wait for the new rotated/cropped canvas. Corrected the wait; no label GUI pass
+  has been claimed. The new native flatten test also checks crop/rotation preservation.

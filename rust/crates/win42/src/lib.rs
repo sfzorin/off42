@@ -84,6 +84,8 @@ pub enum LabelSource {
     Unavailable(String),
     /// Independent single-page PDF; optional region is in its unrotated PDF coordinates.
     PdfArtwork { bytes:Vec<u8>, region:Option<[f64;4]> },
+    /// Encoded PNG/JPEG; decode only the source actually selected for label generation.
+    PictureArtwork { bytes:Vec<u8>, width_points:f64, height_points:f64 },
     /// Original one-based row number and rendered values from the selected columns.
     Rows(Vec<(usize, Vec<String>)>),
 }

@@ -733,10 +733,11 @@ mod label_artwork_tests {
         let body=source.add_object(Stream::new(dictionary!{},b"BT /F1 14 Tf 20 120 Td (ARTWORK-TEXT) Tj ET".to_vec()));
         let page=source.add_object(dictionary!{"Type"=>"Page","Parent"=>root,"MediaBox"=>vec![0.into(),0.into(),200.into(),200.into()],"Resources"=>dictionary!{"Font"=>dictionary!{"F1"=>font}},"Contents"=>body});
         source.objects.insert(root,Object::Dictionary(dictionary!{"Type"=>"Pages","Kids"=>vec![Object::Reference(page)],"Count"=>1}));let catalog=source.add_object(dictionary!{"Type"=>"Catalog","Pages"=>root});source.trailer.set("Root",catalog);let mut bytes=Vec::new();source.save_to(&mut bytes).unwrap();
-        let mut core=pdf42_core::PdfDocument::from_edited_snapshot(&bytes,0).unwrap();core.add_annotation(0,pdf42_core::AnnotationKind::Rectangle,[20.,30.,80.,60.],"").unwrap();let original=core.save_snapshot().unwrap().0;
+        let mut core=pdf42_core::PdfDocument::from_edited_snapshot(&bytes,0).unwrap();core.rotate(0,90).unwrap();core.crop_page(0,[10.,20.,190.,180.]).unwrap();core.add_annotation(0,pdf42_core::AnnotationKind::Rectangle,[20.,30.,80.,60.],"").unwrap();let original=core.save_snapshot().unwrap().0;
         let flattened=flatten_for_artwork(&original).unwrap();let parsed=Document::load_mem(&flattened).unwrap();let page=parsed.get_pages()[&1];
         if let Ok(annotations)=parsed.get_dictionary(page).unwrap().get(b"Annots") {assert!(parsed.dereference(annotations).unwrap().1.as_array().unwrap().is_empty());}
         assert_eq!(crate::search::find(&flattened,"ARTWORK-TEXT",1).unwrap().len(),1);
+        let reopened=pdf42_core::PdfDocument::from_edited_snapshot(&flattened,0).unwrap();assert_eq!(reopened.rotation(0).unwrap(),90);assert_eq!(reopened.page_box(0).unwrap(),[10.,20.,190.,180.]);
         assert_eq!(core.save_snapshot().unwrap().0,original);
     }
 }

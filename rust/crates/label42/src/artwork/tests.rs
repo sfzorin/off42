@@ -111,3 +111,35 @@ fn invalid_regions_page_counts_and_unflattened_visible_annotations_are_refused()
     doc.save_to(&mut link).unwrap();
     assert!(sheet_pdf_artwork_stock(&stock, 1, 1, &link, None).is_ok());
 }
+
+#[test]
+fn bitmap_source_keeps_pixels_alpha_and_displayed_aspect_without_private_document_content() {
+    let rgba = [255, 0, 0, 255, 0, 0, 255, 128];
+    let bytes = bitmap_artwork_pdf(2, 1, &rgba, (120., 60.)).unwrap();
+    let doc = Document::load_mem(&bytes).unwrap();
+    let image = doc
+        .objects
+        .values()
+        .filter_map(|v| v.as_stream().ok())
+        .find(|v| v.dict.get(b"Subtype").ok().and_then(|v| v.as_name().ok()) == Some(b"Image"))
+        .unwrap();
+    assert_eq!(
+        image.decompressed_content().unwrap(),
+        [255, 0, 0, 127, 127, 255]
+    );
+    assert_eq!(
+        bounds(
+            &doc,
+            &inherited(&doc, doc.get_pages()[&1], b"MediaBox")
+                .unwrap()
+                .unwrap()
+        )
+        .unwrap(),
+        [0., 0., 120., 60.]
+    );
+    let stock = Stock::custom(70., 37., 0., 0.).unwrap();
+    assert!(sheet_pdf_artwork_stock(&stock, 1, 3, &bytes, None).is_ok());
+    assert!(bitmap_artwork_pdf(1, 1, &[0, 0, 0, 255], (0.05, 0.05)).is_ok());
+    assert!(bitmap_artwork_pdf(2, 1, &rgba[..7], (120., 60.)).is_err());
+    assert!(bitmap_artwork_pdf(u32::MAX, 2, &[], (120., 60.)).is_err());
+}

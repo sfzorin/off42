@@ -1527,7 +1527,7 @@ unsafe fn production_command(hwnd: HWND, id: u16) -> Result<(), String> {
         }
     }
     let multiline = is_sheet && matches!(&source, LabelSource::Text(_));
-    let choices = if matches!(&source,LabelSource::PdfArtwork{..}) {
+    let choices = if matches!(&source,LabelSource::PdfArtwork{..}|LabelSource::PictureArtwork{..}) {
         production::artwork_choices()?
     } else if is_sheet {
         production::sheet_choices()?

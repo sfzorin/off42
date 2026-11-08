@@ -3,6 +3,7 @@ use label42::{Format, Label, Stock, MAX_LABELS};
 
 pub(crate) fn sheet_request(source: &LabelSource) -> Result<InputRequest,String> {
     if let LabelSource::Unavailable(error)=source {return Err(error.clone());}
+    if let LabelSource::PictureArtwork{..}=source {return sheet_request(&LabelSource::PdfArtwork{bytes:Vec::new(),region:None});}
     if let LabelSource::PdfArtwork{region,..}=source {
         return Ok(InputRequest{title:"Create Artwork Label Sheet",fields:vec![
             ("Optional region: left, bottom, width, height (PDF points)",region.map(|r|format!("{}, {}, {}, {}",r[0],r[1],r[2]-r[0],r[3]-r[1])).unwrap_or_default()),
@@ -14,7 +15,7 @@ pub(crate) fn sheet_request(source: &LabelSource) -> Result<InputRequest,String>
             ("Label text", text.clone()),
             ("Barcode value (optional)", String::new()),
         ],
-        LabelSource::PdfArtwork{..}|LabelSource::Unavailable(_)=>unreachable!(),
+        LabelSource::PdfArtwork{..}|LabelSource::PictureArtwork{..}|LabelSource::Unavailable(_)=>unreachable!(),
         LabelSource::Rows(rows) => {
             let columns = rows.first().map_or(0, |(_, values)| values.len());
             let defaults = (1..=columns.min(3))
@@ -130,6 +131,19 @@ pub(crate) fn artwork_choices()->Result<Vec<(usize,Vec<String>)>,String>{
 
 pub(crate) fn sheet_output(source: &LabelSource, fields: &[String]) -> Result<Vec<u8>, String> {
     if let LabelSource::Unavailable(error)=source {return Err(error.clone());}
+    if let LabelSource::PictureArtwork{bytes,width_points,height_points}=source {
+        if bytes.len()>16*1024*1024{return Err("Picture artwork exceeds 16 MB".into());}
+        let reader=image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format().map_err(|e|e.to_string())?;
+        if !matches!(reader.format(),Some(image::ImageFormat::Png|image::ImageFormat::Jpeg)){return Err("Picture labels support PNG or JPEG".into());}
+        let (width,height)=reader.into_dimensions().map_err(|e|e.to_string())?;
+        if width==0||height==0||u64::from(width)*u64::from(height)>16_000_000{return Err("Picture artwork exceeds 16 million pixels".into());}
+        let mut reader=image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format().map_err(|e|e.to_string())?;
+        let mut limits=image::Limits::default();limits.max_alloc=Some(128*1024*1024);reader.limits(limits);
+        let pixels=reader.decode().map_err(|e|e.to_string())?.to_rgba8();
+        let pdf=label42::bitmap_artwork_pdf(width,height,pixels.as_raw(),(*width_points,*height_points))?;
+        return sheet_output(&LabelSource::PdfArtwork{bytes:pdf,region:None},fields);
+    }
+
     if let LabelSource::PdfArtwork{bytes,region}=source {
         let [area,size,print]=fields else{return Err("Invalid artwork label settings".into());};
         let selected=if area.trim().is_empty(){*region}else{let [x,y,w,h]=numbers::<f64,4>(area,"PDF artwork region")?;if ![x,y,w,h].iter().all(|v|v.is_finite())||w<=0.||h<=0.{return Err("Choose a positive PDF artwork region".into());}Some([x,y,x+w,y+h])};
@@ -142,7 +156,7 @@ pub(crate) fn sheet_output(source: &LabelSource, fields: &[String]) -> Result<Ve
     let stock=stock_from_text(size)?;
     let [copies, first_slot] = numbers(print, "copies and first slot")?;
     let labels = match source {
-        LabelSource::PdfArtwork{..}|LabelSource::Unavailable(_)=>unreachable!(),
+        LabelSource::PdfArtwork{..}|LabelSource::PictureArtwork{..}|LabelSource::Unavailable(_)=>unreachable!(),
         LabelSource::Text(_) => vec![Label {
             text: first.trim().into(),
             code: (!second.is_empty()).then(|| second.clone()),
@@ -280,4 +294,19 @@ pub(crate) fn technical_element(fields: &[String]) -> Result<label42::TechnicalE
     };
     element.validate()?;
     Ok(element)
+}
+
+#[cfg(test)]
+mod picture_artwork_tests {
+ use super::*;
+ #[test]
+ fn decodes_only_the_selected_picture_and_rejects_invalid_artwork_before_output(){
+  use image::ImageEncoder;
+  let mut png=Vec::new();image::codecs::png::PngEncoder::new(&mut png).write_image(&[255,0,0,255,0,0,255,128],2,1,image::ExtendedColorType::Rgba8).unwrap();
+  let source=LabelSource::PictureArtwork{bytes:png,width_points:120.,height_points:60.};
+  assert_eq!(sheet_request(&source).unwrap().fields.len(),3);
+  let fields=["","70, 37, 0, 0","2, 24"].map(str::to_string);let output=sheet_output(&source,&fields).unwrap();assert!(output.starts_with(b"%PDF-"));
+  let bad=LabelSource::PictureArtwork{bytes:b"not a picture".to_vec(),width_points:120.,height_points:60.};assert!(sheet_output(&bad,&fields).is_err());
+  let unavailable=LabelSource::Unavailable("Capture unavailable".into());assert!(sheet_request(&unavailable).is_err());
+ }
 }

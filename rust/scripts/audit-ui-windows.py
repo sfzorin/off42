@@ -1684,7 +1684,7 @@ def audit_pdf_label_artwork(process,main,binary,output,results):
     command(main,10)
     fill_prompt(process,main,21,'Crop page (PDF points)',['20','20','575','820'])
     command(main,18);wait_for(lambda:any('Tool: Rectangle'in text(h)for h in windows(process.pid,main)),'artwork rectangle tool',process)
-    canvas=next(h for h in windows(process.pid,main)if classname(h)=='Suite42Canvas')
+    canvas=wait_for(lambda:next((h for h in windows(process.pid,main)if classname(h)=='Suite42Canvas'),None),'cropped artwork canvas rendered',process)
     u.SendMessageW(canvas,0x201,1,(90<<16)|90);u.SendMessageW(canvas,0x200,1,(170<<16)|170);u.SendMessageW(canvas,0x202,0,(170<<16)|170)
     fill_prompt(process,main,90,'Text Watermark',['UNSAVED-ART','60','100','0','#0000FF','1'])
     caption=text(main);assert' * - 'in caption
@@ -1705,6 +1705,29 @@ def audit_pdf_label_artwork(process,main,binary,output,results):
     region=sheet('region','30, 730, 450, 70','1, 1');assert 'ARTWORK-TARGET'in pdf_text(dll,region)and'PRIVATE-OTHER'not in pdf_text(dll,region)
     assert source.read_bytes()==original
     results['checks'].append('current unsaved PDF artwork and optional region retain vector text, rotation/crop, visible annotations, repeated copies/first slot and no other page payload; label export preserves source/history, Undo removes only the watermark and Redo restores exact PDFium pixels')
+
+
+def audit_doc_picture_labels(process,main,binary,output,results):
+    picture=output/'doc-artwork-source.png';rgba=b''.join(bytes([255,0,0,255]if x<50 else[0,0,255,128])for y in range(50)for x in range(100));write_png(picture,100,50,rgba)
+    source=output/'doc-picture-artwork-source.rtf';source.write_bytes(br'{\rtf1\ansi PRIVATE-CAPTION\par{\pict\pngblip\picw100\pich50\picwgoal2400\pichgoal1200 '+picture.read_bytes().hex().encode()+br'}\par}');original=source.read_bytes()
+    command(main,1);choose_file(process,source)
+    def opened():
+        if source.name in text(main)and' * - 'not in text(main)and u.IsWindowEnabled(main):return(True,None)
+        prompt=next((h for h in windows(process.pid)if classname(h)=='#32770'and u.IsWindowEnabled(h)and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
+        return(False,prompt)if prompt else None
+    ready,prompt=wait_for(opened,'picture label source opened',process)
+    if not ready:click(prompt,7);wait_for(lambda:source.name in text(main)and' * - 'not in text(main)and u.IsWindowEnabled(main),'picture label source after discard',process)
+    caption=text(main)
+    command(main,65518);finish_prompt(process,'Label Source',['Picture 1 Artwork']);finish_prompt(process,'Create Artwork Label Sheet',['','70, 37, 0, 0','2, 24'])
+    path=output/'DOC42-picture-artwork-labels.pdf';choose_file(process,path);output_ready(process,main,path,b'%PDF-')
+    pages=pdf_text(binary.parent/'pdfium.dll',path,by_page=True);assert len(pages)==2 and all('PRIVATE-CAPTION'not in page for page in pages)
+    for index in range(2):
+        _,_,pixels=pdf_pixels(binary.parent/'pdfium.dll',path,index)
+        red=sum(pixels[i+2]>pixels[i]+40 and pixels[i+2]>pixels[i+1]+40 for i in range(0,len(pixels),4))
+        blue=sum(pixels[i]>pixels[i+2]+40 and pixels[i]>pixels[i+1]+40 for i in range(0,len(pixels),4))
+        assert red>8000 and blue>8000,(index,red,blue)
+    assert text(main)==caption and source.read_bytes()==original
+    results['checks'].append('DOC picture artwork uses displayed aspect ratio and original pixels/alpha on paper, supports stock copies/first slot, omits surrounding document text and preserves source/save state')
 
 
 def audit(binary, output, extended, pictures=False, technical=False, labels=False, pages=False, host_commands=False, engineering=False, text_exports=False, extended_formulas=False, rich_search=False, preset_shapes=False, pdf_decorations=False, statistical_formulas=False, pdf_comparison=False, pdf_merge=False, pdf_batch_headers=False, array_formulas=False, ocr=False, ocr_only=False, label_artwork=False):
@@ -1866,6 +1889,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_bundled_ocr(process,main,binary,output,results)
         if label_artwork and binary.stem.lower()=='pdf42':
             audit_pdf_label_artwork(process,main,binary,output,results)
+        if label_artwork and binary.stem.lower()=='doc42':
+            audit_doc_picture_labels(process,main,binary,output,results)
         return results
     finally:
         if process.poll() is None:

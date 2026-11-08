@@ -789,3 +789,7 @@ PDF label artwork is an independent single-page snapshot. Native PDFium flatteni
 PDFium lock; the portable label renderer clips and normalizes page geometry inside one reusable form and
 prunes unrelated source objects. Layout preferences retain stock/copies only. Source choices can carry
 individual capture failures, so unavailable artwork does not disable other label inputs.
+
+Document picture label sources carry encoded images and displayed dimensions; decoding is deferred until
+the user chooses that source. The bounded bitmap wrapper preserves aspect ratio and composites alpha on
+white paper, then reuses the PDF artwork assembly path. Other document content never enters that snapshot.

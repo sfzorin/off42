@@ -36,8 +36,8 @@ fn bounds(doc: &Document, value: &Object) -> Result<[f64; 4], String> {
         };
     }
     if out.iter().any(|n| !n.is_finite() || n.abs() > 10_000_000.)
-        || out[2] - out[0] <= 1.
-        || out[3] - out[1] <= 1.
+        || out[2] - out[0] < 0.001
+        || out[3] - out[1] < 0.001
     {
         return Err("Invalid PDF artwork bounds".into());
     }
@@ -170,7 +170,7 @@ pub fn sheet_pdf_artwork_stock(
     }
     let [left, bottom, right, top] = area;
     let (w, h) = (right - left, top - bottom);
-    if w <= 1. || h <= 1. {
+    if w < 0.001 || h < 0.001 {
         return Err("Choose a region inside the visible PDF page".into());
     }
     let rotation = inherited(&doc, page, b"Rotate")?
@@ -263,3 +263,51 @@ pub fn sheet_pdf_artwork_stock(
 
 #[cfg(test)]
 mod tests;
+
+/// Wrap an existing bitmap in a one-page PDF with the document's displayed dimensions.
+/// Pixel alpha is composited on white, matching the label sheet's paper background.
+pub fn bitmap_artwork_pdf(
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+    points: (f64, f64),
+) -> Result<Vec<u8>, String> {
+    let pixels = u64::from(width) * u64::from(height);
+    if width == 0
+        || height == 0
+        || pixels > 16_000_000
+        || rgba.len() as u64 != pixels * 4
+        || ![points.0, points.1]
+            .iter()
+            .all(|v| v.is_finite() && *v >= 0.001 && *v <= 14_400.)
+    {
+        return Err("Invalid or oversized picture artwork".into());
+    }
+    let mut rgb = Vec::with_capacity(pixels as usize * 3);
+    for p in rgba.chunks_exact(4) {
+        let alpha = u32::from(p[3]);
+        for &value in &p[..3] {
+            rgb.push(((u32::from(value) * alpha + 255 * (255 - alpha) + 127) / 255) as u8);
+        }
+    }
+    let mut doc = Document::with_version("1.7");
+    let root = doc.new_object_id();
+    let image=doc.add_object(Stream::new(dictionary!{"Type"=>"XObject","Subtype"=>"Image","Width"=>width as i64,"Height"=>height as i64,"ColorSpace"=>"DeviceRGB","BitsPerComponent"=>8,"Interpolate"=>false},rgb));
+    let content = doc.add_object(Stream::new(
+        dictionary! {},
+        format!("q {} 0 0 {} 0 0 cm /Picture Do Q\n", points.0, points.1).into_bytes(),
+    ));
+    let page=doc.add_object(dictionary!{"Type"=>"Page","Parent"=>root,"MediaBox"=>vec![pdf_num(0.),pdf_num(0.),pdf_num(points.0),pdf_num(points.1)],"Resources"=>dictionary!{"XObject"=>dictionary!{"Picture"=>image}},"Contents"=>content});
+    doc.objects.insert(
+        root,
+        Object::Dictionary(
+            dictionary! {"Type"=>"Pages","Kids"=>vec![Object::Reference(page)],"Count"=>1},
+        ),
+    );
+    let catalog = doc.add_object(dictionary! {"Type"=>"Catalog","Pages"=>root});
+    doc.trailer.set("Root", catalog);
+    doc.compress();
+    let mut out = Vec::new();
+    doc.save_to(&mut out).map_err(|e| e.to_string())?;
+    Ok(out)
+}

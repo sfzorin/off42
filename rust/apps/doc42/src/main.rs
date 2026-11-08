@@ -586,6 +586,9 @@ impl App for Doc {
                 win42::LabelSource::Rows(rows),
             ));
         }
+        for (index,image) in self.doc.state().blocks.iter().filter_map(|block|if let Block::Image(image)=block{Some(image)}else{None}).enumerate() {
+            sources.push((format!("Picture {} Artwork",index+1),win42::LabelSource::PictureArtwork{bytes:image.data.clone(),width_points:f64::from(image.width_twips)/20.,height_points:f64::from(image.height_twips)/20.}));
+        }
         sources.push((
             if self.selection.0 != self.selection.1 {
                 "Selected Text"
@@ -3736,5 +3739,19 @@ mod statistics_tests {
         assert!(app.status().starts_with("8 words"));
         assert_eq!(app.doc.encode(Format::Project).unwrap(), before);
         assert!(!app.doc.can_undo());
+    }
+}
+
+#[cfg(test)]
+mod picture_label_source_tests {
+    use super::*;
+    #[test]
+    fn picture_sources_retain_encoded_pixels_and_display_aspect_without_document_edits(){
+        use image::ImageEncoder;
+        let mut bytes=Vec::new();image::codecs::png::PngEncoder::new(&mut bytes).write_image(&[255,0,0,255,0,0,255,128],2,1,image::ExtendedColorType::Rgba8).unwrap();
+        let mut app=Doc::new();app.doc.transact(|state|{let id=state.next_id;state.next_id+=1;state.blocks.push(Block::Image(Image{id,mime:"image/png".into(),data:bytes.clone(),width_twips:30,height_twips:15,alt:"private alternate text".into()}));Ok(())}).unwrap();let before=app.doc.state().clone();let dirty=app.dirty();
+        let sources=app.label_sources().unwrap();let source=&sources.iter().find(|(name,_)|name=="Picture 1 Artwork").unwrap().1;
+        let win42::LabelSource::PictureArtwork{bytes:encoded,width_points,height_points}=source else{panic!("Missing picture artwork")};assert_eq!(encoded,&bytes);assert_eq!((*width_points,*height_points),(1.5,0.75));
+        assert_eq!(app.doc.state(),&before);assert_eq!(app.dirty(),dirty);
     }
 }

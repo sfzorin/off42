@@ -48,7 +48,7 @@ fn path(directory: &Path, app: &str, source: &LabelSource) -> Result<PathBuf, St
         "{app}-{}.json",
         if matches!(source, LabelSource::Rows(_)) {
             "rows"
-        } else if matches!(source,LabelSource::PdfArtwork{..}) {"artwork"} else {
+        } else if matches!(source,LabelSource::PdfArtwork{..}|LabelSource::PictureArtwork{..}) {"artwork"} else {
             "text"
         }
     )))
@@ -86,7 +86,7 @@ pub(crate) fn restore(
         return Err("Label profile is too large".into());
     }
     let profile: Profile = serde_json::from_slice(&data).map_err(|error| error.to_string())?;
-    if matches!(source,LabelSource::PdfArtwork{..}) {
+    if matches!(source,LabelSource::PdfArtwork{..}|LabelSource::PictureArtwork{..}) {
         if !valid(&profile)||request.fields.len()!=3{return Err("Invalid artwork label preferences".into());}
         request.fields[1].1=profile.stock;request.fields[2].1=profile.copies_and_start;return Ok(());
     }
@@ -111,7 +111,7 @@ pub(crate) fn save(
     fields: &[String],
 ) -> Result<(), String> {
     let artwork;
-    let fields=if matches!(source,LabelSource::PdfArtwork{..}) {
+    let fields=if matches!(source,LabelSource::PdfArtwork{..}|LabelSource::PictureArtwork{..}) {
         let [_,stock,copies]=fields else{return Err("Invalid artwork label preferences".into());};
         artwork=[String::new(),String::new(),"PDF artwork".into(),stock.clone(),copies.clone()];&artwork[..]
     }else{fields};

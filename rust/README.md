@@ -587,3 +587,14 @@ and `scripts/audit-label-artwork.py`. All eight page/rotation comparisons match 
 one pixel for the colored artwork, with exact text/copy counts and nonzero crop origins. Evidence:
 `build/label-artwork-interop-v1/poppler-v1/results.json`. Portable workspace: 463 pass, zero fail, one optional
 external OCR fixture ignored. GNU all-targets compilation passes.
+
+DOC42 also offers numbered picture sources for artwork labels. Only the chosen PNG/JPEG is decoded,
+with a 16 MiB encoded / 16 million pixel limit. Its displayed aspect ratio is retained; alpha is composited
+on the sheet's white paper. Surrounding document text, alternate text and input values are not stored in
+label preferences. Mixed selected DOC content and exact caret-to-picture mapping remain separate work.
+Portable workspace: 466 pass, zero fail, one optional external OCR fixture ignored; GNU all targets compile.
+Native DOC picture color/alpha/copies/source-state checks have been added and await Windows CI.
+
+Run 42432232653 builds successfully and passes its MSVC tests, including PDFium annotation flattening.
+Its GUI audit stops at a test race: it looks up the PDF canvas before the rotated/cropped render appears.
+The audit now waits for that canvas; label-specific GUI assertions have not yet been counted as passing.
