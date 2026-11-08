@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for case in &original {
             let (r, c) = address(case["cell"].as_str().unwrap());
             assert_eq!(
-                book.calculated_grid()[r][c],
+                book.calculated_cells().get(&(r,c)).map_or("",String::as_str),
                 case["expected"].as_str().unwrap(),
                 "{kind}: {}",
                 case["cell"]
@@ -74,15 +74,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         book.set_cell(0, 0, "4".into())?;
         book.set_cell(0, 3, "=SEQUENCE(3,2)".into())?;
-        let grid = book.calculated_grid();
+        let grid = book.calculated_cells();
         let mut cases = original.clone();
         for case in &mut cases {
             let (r, c) = address(case["cell"].as_str().unwrap());
-            case["expected"] = grid[r][c].clone().into();
+            case["expected"] = grid.get(&(r,c)).cloned().unwrap_or_default().into();
         }
         for (cell, r, c) in [("D3", 2, 3), ("E3", 2, 4), ("F1", 0, 5), ("F2", 1, 5)] {
             if !cases.iter().any(|v| v["cell"] == cell) {
-                cases.push(serde_json::json!({"cell":cell,"expected":grid[r][c]}));
+                cases.push(serde_json::json!({"cell":cell,"expected":grid.get(&(r,c)).map_or("",String::as_str)}));
             }
         }
         if let Some(expected) = &expected {
@@ -106,7 +106,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for case in expected.as_ref().unwrap() {
             let (r, c) = address(case["cell"].as_str().unwrap());
             assert_eq!(
-                reopened.calculated_grid()[r][c],
+                reopened.calculated_cells().get(&(r,c)).map_or("",String::as_str),
                 case["expected"].as_str().unwrap()
             );
         }

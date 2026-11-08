@@ -767,7 +767,7 @@ updates occur separately from the general opaque-content preservation pass.
 
 
 A spreadsheet calculation keeps full precision. Presentation formats only typed numeric results and never feeds
-rounded grid strings back into arithmetic or typed Office caches. `calculated_grid` supplies data-processing text;
+rounded grid strings back into arithmetic or typed Office caches. `calculated_cells` supplies sparse data-processing text;
 `display_grid` and plain clipboard text share the presentation projection, while private clipboard payloads retain
 source formulas/types/styles. The common cell formatter accepts an explicit sheet identity so filter/summary
 references across sheets use the owning sheet's format. XLSX visibility uses the same calculation and disables the
@@ -905,12 +905,12 @@ implement new shaping or font fallback behavior. Machine-readable embedding rule
 `Workbook::display_cells` and `calculated_cells` calculate once and return occupied/spilled coordinates;
 formatting, safe external caches and typed booleans keep the existing display semantics. Filtering, clipboard,
 labels, charts, pivots, validation and printing consume sparse maps. Clipboard rectangles retain an independent
-100,000-cell operation bound. Dense projections remain compatibility APIs, not the native grid data source.
+100,000-cell operation bound. Dense projections are test-only helpers; production consumers use sparse maps.
 `App::sparse_table` supplies an immutable `SparseTable` with shared text storage and explicit dimensions;
 legacy `table` adapters remain available. The host caches the chosen source on refresh, shows/layouts the grid
 for either representation, and painting reads missing coordinates as empty text. The XLS physical row map is
 shared, sorted and binary searched; hidden/filtered rows keep their physical editing/clipboard coordinates.
-This removes empty-cell text allocation, but does not yet increase workbook limits or virtualize grid geometry.
+This removes empty-cell text allocation; the shared sparse axes below handle native grid geometry.
 
 `App::grid_axes` optionally supplies sparse `GridAxis` geometry: default length plus overrides and cumulative
 64-bit deltas in shared immutable storage. Prefix/hit queries binary search; visible traversal skips zero-length
@@ -923,8 +923,7 @@ the bounded legacy length adapter. Geometry/hit/merge/resize/editor/picture path
 External XLSX values and shared-formula text are read through Calamine's pinned `worksheet_cells_reader`
 stream, one actual XML cell record at a time. No worksheet-range matrix is constructed. Types, dates,
 modern error substitutions, per-cell formula caches, layout imports and original-package preservation retain
-existing policy; record count and cumulative input text are checked before model insertion. ODS and XLS
-still use their existing readers pending separate migrations.
+existing policy; record count and cumulative input text are checked before model insertion. XLS retains its legacy reader; ODS uses the sparse record import described below.
 
 ODS import visits namespace-qualified XML cell records and expands only meaningful bounded repetitions
 (up to one million records, four MB cumulative text). Empty repeated rows/columns advance coordinates.
@@ -935,3 +934,13 @@ patcher extended with typed inputs. Unedited rich text, metadata and ZIP parts r
 and dynamic-array caches still refresh through the common pipeline. Layout/style/structural/filter edits retain
 the existing reconstruction and preservation guards. Missing XML attribute namespaces are introduced locally,
 and nonexistent attribute removals need no namespace declaration. Newly materialized gaps use ODF repetition.
+
+
+Worksheet capacity is now 1,048,576 by 16,384. It is independent of one-million stored-cell/four-MB text
+budgets and the 100,000-cell rectangle-operation budget. Copy/paste/style/fill/sort/CSV and native print
+check operation area before expansion; native merge encoders have the same bound. Full-range validation
+visits stored coordinates, checking implicit blanks algebraically. Chart series retain the old 1,000-point
+maximum independently of sheet dimensions. Dense text APIs compile only for core tests; examples and app
+consumers use sparse projections. Grid refresh brings a changed focus into view without snapping ordinary
+scrolling back to an unchanged focus; headers fit seven-digit row numbers. Automatic viewport expansion
+and full-column formula aggregation remain separate work.

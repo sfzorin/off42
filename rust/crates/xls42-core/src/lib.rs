@@ -11,6 +11,8 @@ mod layout;
 pub use layout::{PrintSettings, SheetFilter, SheetView};
 mod display;
 mod sparse_display;
+#[cfg(test)]
+mod capacity_tests;
 pub use analytics::{Chart, ChartData, ChartKind, ChartSeries, Pivot, PivotAggregate};
 mod formula;
 mod office;
@@ -30,8 +32,8 @@ use std::{
 };
 use suite42_core::{write_new, SnapshotHistory, TextValue};
 const MAX_INPUT: usize = 4 * 1024 * 1024;
-const MAX_ROWS: usize = 1000;
-const MAX_COLS: usize = 100;
+pub const MAX_ROWS: usize = 1_048_576;
+pub const MAX_COLS: usize = 16_384;
 const MAX_OPERATION_CELLS: usize = 100_000;
 const MAX_TEXT: usize = 4 * 1024 * 1024;
 const MAX_SHEETS: usize = 64;
@@ -93,6 +95,10 @@ impl Range {
             && self.left <= self.right
             && self.bottom < s.rows
             && self.right < s.cols
+    }
+    fn bounded_operation(self)->Result<(),Error>{
+        let cells=self.bottom.checked_sub(self.top).and_then(|n|n.checked_add(1)).and_then(|r|self.right.checked_sub(self.left).and_then(|c|c.checked_add(1)).and_then(|c|r.checked_mul(c)));
+        if cells.is_none_or(|n|n>MAX_OPERATION_CELLS){Err(Error::Limit)}else{Ok(())}
     }
     fn overlaps(self, b: Self) -> bool {
         self.top <= b.bottom && b.top <= self.bottom && self.left <= b.right && b.left <= self.right
@@ -252,6 +258,7 @@ impl State {
             .unwrap()
     }
     fn bytes(&self) -> usize {
+        if self.sheets.iter().map(|s|s.cells.len()).sum::<usize>()>1_000_000{return MAX_TEXT+1;}
         self.sheets
             .iter()
             .flat_map(|s| s.cells.values())
@@ -341,24 +348,31 @@ impl Workbook {
         b.history = SnapshotHistory::new(state, 8);
         Ok(b)
     }
+    #[cfg(test)]
     pub fn display_grid(&self) -> Vec<Vec<String>> {
         self.display_grid_at(chrono::Local::now().naive_local())
     }
+    #[cfg(test)]
     fn display_grid_at(&self, now: chrono::NaiveDateTime) -> Vec<Vec<String>> {
         let calculation = formula::calculation_at(self, now);
         self.format_calculation(&calculation)
     }
     /// Full-precision calculated text without number formatting, for data processing and numerical verification.
     /// Authoritative editor input is available through `cell`; formula/spill values share one calculation.
+    #[cfg(test)]
     pub fn calculated_grid(&self) -> Vec<Vec<String>> {
         let calculation = formula::calculation_at(self, chrono::Local::now().naive_local());
         self.calculated_grid_with(&calculation)
     }
+    #[cfg(test)]
     fn calculated_grid_with(&self,calculation:&formula::Calculation)->Vec<Vec<String>>{
+        assert!(self.rows().saturating_mul(self.cols())<=MAX_OPERATION_CELLS,"Dense test projection exceeds operation limit");
         let mut grid=vec![vec![String::new();self.cols()];self.rows()];
         for ((row,col),value)in self.calculated_cells_with(calculation){grid[row][col]=value;}grid
     }
+    #[cfg(test)]
     fn format_calculation(&self,calculation:&formula::Calculation)->Vec<Vec<String>>{
+        assert!(self.rows().saturating_mul(self.cols())<=MAX_OPERATION_CELLS,"Dense test projection exceeds operation limit");
         let mut grid=vec![vec![String::new();self.cols()];self.rows()];
         for ((row,col),value)in self.display_cells_with(calculation){grid[row][col]=value;}grid
     }
@@ -542,6 +556,7 @@ impl Workbook {
                 "CSV cannot preserve workbook sheets, formatting, geometry, merges or protection",
             ));
         }
+        if self.rows().checked_mul(self.cols()).is_none_or(|n|n>MAX_OPERATION_CELLS){return Err(Error::Limit)}
         let mut w = csv::WriterBuilder::new().from_writer(Vec::new());
         for r in 0..self.rows() {
             w.write_record((0..self.cols()).map(|c| self.cell(r, c).unwrap()))?;
@@ -866,6 +881,9 @@ impl Workbook {
     }
     pub fn set_style(&mut self, range: Range, style: CellStyle) -> Result<bool, Error> {
         self.require_editable()?;
+        if !range.valid(self.history.current().sheet()){return Err(Error::Bounds)}
+        range.bounded_operation()?;
+        if style.font.len()>4096||style.number_format.len()>4096{return Err(Error::Limit)}
         if style.borders & !15 != 0 {
             return Err(Error::Invalid("unsupported border style"));
         }
@@ -904,6 +922,7 @@ impl Workbook {
         let id = match st.styles.iter().position(|s| *s == style) {
             Some(i) => i,
             None => {
+                if st.styles.len()>=100_000{return Err(Error::Limit)}
                 st.styles.push(style);
                 st.styles.len() - 1
             }
@@ -921,6 +940,7 @@ impl Workbook {
                 }
             }
         }
+        if st.bytes()>MAX_TEXT{return Err(Error::Limit)}
         tables::reconcile_headers(self.history.current(), &mut st)?;
         self.validate_external_table_edit(&st)?;
         Ok(self.history.apply(st))
@@ -1214,6 +1234,7 @@ impl Workbook {
         if !source.valid(sheet) {
             return Err(Error::Bounds);
         }
+        source.bounded_operation()?;
         let height = source.bottom - source.top + 1;
         let width = source.right - source.left + 1;
         if top.checked_add(height).is_none_or(|v| v > sheet.rows)
@@ -1374,6 +1395,7 @@ impl Workbook {
         {
             return Err(Error::Invalid("fill involving merged cells is unsupported"));
         }
+        source.bounded_operation()?;destination.bounded_operation()?;
         let height = source.bottom - source.top + 1;
         let width = source.right - source.left + 1;
         let template: Vec<_> = (source.top..=source.bottom)
@@ -1428,11 +1450,12 @@ impl Workbook {
         if s.merges.iter().any(|m| m.overlaps(range)) {
             return Err(Error::Invalid("sort involving merged cells is unsupported"));
         }
-        let display = self.display_grid();
+        range.bounded_operation()?;
+        let display = self.display_cells();
         let mut rows: Vec<usize> = (range.top..=range.bottom).collect();
         rows.sort_by(|a, b| {
-            let a = &display[*a][key_column];
-            let b = &display[*b][key_column];
+            let a = display.get(&(*a,key_column)).map_or("",String::as_str);
+            let b = display.get(&(*b,key_column)).map_or("",String::as_str);
             let order = match (a.parse::<f64>(), b.parse::<f64>()) {
                 (Ok(a), Ok(b)) if a.is_finite() && b.is_finite() => a.total_cmp(&b),
                 _ => a.to_lowercase().cmp(&b.to_lowercase()),
@@ -1486,10 +1509,10 @@ impl Workbook {
         if !range.valid(s) || column < range.left || column > range.right {
             return Err(Error::Bounds);
         }
-        let grid = self.display_grid();
+        let cells = self.display_cells();
         let needle = needle.to_lowercase();
         Ok((range.top..=range.bottom)
-            .filter(|r| grid[*r][column].to_lowercase().contains(&needle))
+            .filter(|r| cells.get(&(*r,column)).map_or("",String::as_str).to_lowercase().contains(&needle))
             .collect())
     }
 }
@@ -2067,7 +2090,7 @@ mod tests {
     #[test]
     fn rectangular_limits_and_bounds() {
         assert!(Workbook::new(0, 1).is_err());
-        assert!(Workbook::new(1001, 1).is_err());
+        assert!(Workbook::new(MAX_ROWS+1, 1).is_err());
         let mut w = Workbook::new(2, 2).unwrap();
         assert!(matches!(w.set_cell(2, 0, "x".into()), Err(Error::Bounds)));
         assert!(!w.is_dirty());
@@ -2371,6 +2394,7 @@ impl Workbook {
         if !range.valid(self.history.current().sheet()) {
             return Err(Error::Bounds);
         }
+        range.bounded_operation()?;
         self.copy_tsv_mapped(
             &(range.top..=range.bottom).collect::<Vec<_>>(),
             &(range.left..=range.right).collect::<Vec<_>>(),
@@ -2388,6 +2412,7 @@ impl Workbook {
         {
             return Err(Error::Bounds);
         }
+        if rows.len().checked_mul(cols.len()).is_none_or(|n|n>MAX_OPERATION_CELLS){return Err(Error::Limit)}
         let cells = self.display_cells();
         self.tsv_from_cells(rows, cols, &cells)
     }
@@ -2523,6 +2548,7 @@ impl Workbook {
         if data.len() > rows.len() || width > cols.len() {
             return Err(Error::Bounds);
         }
+        if data.len().checked_mul(width).is_none_or(|n|n>MAX_OPERATION_CELLS){return Err(Error::Limit)}
         let selected_rows = &rows[..data.len()];
         let selected_cols = &cols[..width];
         let mut state = self.history.current().clone();

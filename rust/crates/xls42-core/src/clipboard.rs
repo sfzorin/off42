@@ -33,6 +33,7 @@ impl Workbook {
         if !valid_axis(rows, self.rows()) || !valid_axis(columns, self.cols()) {
             return Err(Error::Bounds);
         }
+        if rows.len().checked_mul(columns.len()).is_none_or(|n|n>MAX_OPERATION_CELLS){return Err(Error::Limit)}
         let calculation = formula::calculation_at(self, chrono::Local::now().naive_local());
         let cells = self.display_cells_with(&calculation);
         let text = self.tsv_from_cells(rows, columns, &cells)?;
@@ -130,6 +131,7 @@ impl Workbook {
         }
         let payload: Payload = serde_json::from_slice(bytes)
             .map_err(|_| Error::Invalid("Invalid spreadsheet clipboard data"))?;
+        if payload.cells.len()>MAX_OPERATION_CELLS{return Err(Error::Limit)}
         if payload.version != 1
             || !valid_axis(&payload.rows, MAX_ROWS)
             || !valid_axis(&payload.columns, MAX_COLS)

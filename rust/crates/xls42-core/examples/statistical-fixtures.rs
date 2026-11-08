@@ -144,8 +144,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for (i, formula) in formulas.iter().enumerate() {
         book.set_cell(i, 2, formula.to_string())?;
     }
-    let grid = book.calculated_grid();
-    let cases=formulas.iter().enumerate().map(|(i,formula)|serde_json::json!({"cell":format!("C{}",i+1),"formula":formula,"expected":grid[i][2]})).collect::<Vec<_>>();
+    let grid = book.calculated_cells();
+    let cases=formulas.iter().enumerate().map(|(i,formula)|serde_json::json!({"cell":format!("C{}",i+1),"formula":formula,"expected":grid.get(&(i,2)).map_or("",String::as_str)})).collect::<Vec<_>>();
     let json = serde_json::to_vec_pretty(&cases)?;
     for (name, data) in [
         ("statistics.xlsx", book.xlsx_bytes()?),

@@ -15,7 +15,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Printing | Verified File/Ctrl+P dialogs in all six apps; actual-size label and centered/shrink-only PDF paths, per-printer calibration and measurement sheet | Printer copies/calibration scenarios and physical driver checks |
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction and bounded offline OCR | Decoration font choices, richer forms, certificate signing and validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
-| XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, capacity/automatic expansion, legacy arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, split panes, per-cell/password protection and fuller format fidelity |
+| XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, full-size native verification/automatic expansion, legacy arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, show tools and export workflows |
 | IMG42 | Image decoding, transforms, adjustments, selections, recognized text selection/copy, metadata and batch output | Full markup selection/editing, smart lasso, full Live Text interaction, background removal, viewing panels and additional supported system codecs |
 | SCN42 | WIA acquisition and verified virtual rescan, image/PDF import, page processing, OCR and searchable output | Scan areas, device/preset controls, scan history, full export settings and physical-device checks |
@@ -684,3 +684,17 @@ after image selection; image unit regressions are now included in quick CI.
   text, separated gaps, exact unedited markup, complete history/reopen and invalid/oversized repeats.
   Workspace 534/0/1, GNU all targets compile; native repeat pending. Filter/layout/style/structural edits
   retain conservative reconstruction guards. Existing core dimensions remain unchanged for now.
+
+
+- Run 42518146989 (310ee06) artifacts show all 37 native UI groups passing and 539/0/1 MSVC tests,
+  including existing ODS edit/filter/array/cache/history/reopen scenarios on the new import/value patch path.
+- Core sheets now accept 1,048,576 by 16,384 dimensions. One-million stored cells/four-MB text and
+  independent 100,000-cell rectangle budgets keep large copy/paste/style/fill/sort/CSV/native merge export/
+  printing bounded. Validation checks implicit blank ranges without traversal; chart points keep the old
+  1,000 maximum independently of dimensions. Dense text projections are test-only, with example clients
+  migrated to sparse values. Distant selection scrolls into view; row headers fit seven digits.
+  Workspace 538/0/1, GNU all targets compile, Python audit compiles. Tests cover XFD1048576 references,
+  independent edge-coordinate XLSX/ODS, native-format round trips, atomic oversized refusals, full-sheet
+  validation and printing only a far selected area. Actual native full-size edit/scroll/cache/history/reopen
+  audit is added, pending the first compatible build. Automatic viewport expansion and full-sheet formula
+  semantics remain open; this does not establish complete XLS42 parity.

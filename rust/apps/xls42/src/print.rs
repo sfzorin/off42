@@ -46,6 +46,7 @@ fn groups(indices: &[usize], merges: &[Range], rows: bool) -> Result<Vec<Vec<usi
 pub fn pages(book: &Workbook, visible: &[usize]) -> Result<Vec<PrintPage>, String> {
     let cfg = book.print_settings();
     let area = book.print_area();
+    if (area.bottom-area.top+1).checked_mul(area.right-area.left+1).is_none_or(|n|n>100_000){return Err("Print area exceeds 100,000 cells; choose a smaller print area".into())}
     let geom = PrintGeometry {
         width_twips: cfg.paper_width_twips,
         height_twips: cfg.paper_height_twips,
@@ -88,7 +89,7 @@ pub fn pages(book: &Workbook, visible: &[usize]) -> Result<Vec<PrintPage>, Strin
     }
     let rows: Vec<_> = (area.top..=area.bottom)
         .filter(|r| {
-            !book.sheet_view().hidden_rows.contains(r) && (*r < header_end || visible.contains(r))
+            !book.sheet_view().hidden_rows.contains(r) && (*r < header_end || visible.binary_search(r).is_ok())
         })
         .collect();
     let cols: Vec<_> = (area.left..=area.right)
@@ -367,6 +368,16 @@ pub fn pages(book: &Workbook, visible: &[usize]) -> Result<Vec<PrintPage>, Strin
 mod tests {
     use super::*;
     use xls42_core::{CellStyle, SheetFilter};
+    #[test]
+    fn far_sparse_cell_prints_in_a_selected_area_while_oversized_area_is_refused(){
+        let mut b=Workbook::new(xls42_core::MAX_ROWS,xls42_core::MAX_COLS).unwrap();
+        let (r,c)=(xls42_core::MAX_ROWS-1,xls42_core::MAX_COLS-1);b.set_cell(r,c,"LAST-42".into()).unwrap();
+        let visible=b.visible_rows();assert!(pages(&b,&visible).is_err());
+        let mut settings=b.print_settings().clone();settings.area=Some(Range{top:r,bottom:r,left:c,right:c});b.set_print_settings(settings).unwrap();
+        let printed=pages(&b,&visible).unwrap();assert_eq!(printed.len(),1);
+        assert!(printed[0].scene.items.iter().any(|item|matches!(item,SceneItem::TextBox{text,..}if text=="LAST-42")));
+        b.undo();assert!(pages(&b,&visible).is_err());b.redo();assert_eq!(pages(&b,&visible).unwrap().len(),1);
+    }
     #[test]
     fn printed_pages_exclude_hidden_rows_and_columns() {
         let mut book = Workbook::new(4, 4).unwrap();

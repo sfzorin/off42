@@ -27,10 +27,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut book = Workbook::from_office_bytes(&raw, kind)?;
         book.set_cell(0, 0, "4".into())?;
         book.set_cell(3, 5, "keep".into())?;
-        let grid = book.calculated_grid();
+        let grid = book.calculated_cells();
         let mut updated = cases.clone();
         for (i, c) in updated.iter_mut().enumerate() {
-            c["expected"] = grid[i][2].clone().into();
+            c["expected"] = grid.get(&(i,2)).cloned().unwrap_or_default().into();
         }
         if let Some(prior) = &expected {
             assert_eq!(

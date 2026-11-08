@@ -70,6 +70,7 @@ pub(super) fn valid_chart(state: &State, owner: &Sheet, chart: &Chart) -> bool {
                 && (chart.kind != ChartKind::Scatter || series.categories.is_some())
                 && (chart.kind != ChartKind::Pie
                     || series.values.bottom.saturating_sub(series.values.top) < 128)
+                && series.values.bottom.saturating_sub(series.values.top)<1000
                 && series.values.valid(sheet)
                 && col_range(series.values)
                 && series.categories.is_none_or(|c| {
@@ -88,6 +89,7 @@ pub(super) fn valid_pivot(state: &State, p: &Pivot) -> bool {
     };
     p.id > 0
         && p.name.len() <= 1024
+        && p.source.bottom.saturating_sub(p.source.top)<MAX_OPERATION_CELLS
         && p.source.valid(source)
         && p.source.top < p.source.bottom
         && p.group_column >= p.source.left
@@ -96,7 +98,7 @@ pub(super) fn valid_pivot(state: &State, p: &Pivot) -> bool {
         && p.value_column <= p.source.right
         && p.top < dest.rows
         && p.left.checked_add(1).is_some_and(|c| c < dest.cols)
-        && p.output.len() <= MAX_ROWS * 2
+        && p.output.len() <= MAX_OPERATION_CELLS * 2
         && p.output
             .iter()
             .map(|(r, c, _)| (*r, *c))

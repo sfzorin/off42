@@ -1132,6 +1132,43 @@ def audit_solver(process,main,binary,output,results):
     results['checks'].append('native Solver menu/form and multiline constraints; readonly LP trials; No retains model only; Yes writes exact two-cell optimum; full one-step Undo/Redo; real XLSX/ODS hidden names and independent imports prefill model; integer optimum and nonlinear minimum; protected-sheet disablement; source preserved')
 
 
+def audit_sparse_capacity(process,main,binary,output,results):
+    import xml.etree.ElementTree as ET
+    seed=output/'sparse-seed.csv';seed.write_text('2,KEEP\n',encoding='utf-8');open_fixture(process,main,seed)
+    def saved(name,kind='XLS42 workbook'):
+        path=output/('sparse-'+name+('.xls42'if kind=='XLS42 workbook'else '.xlsx'));save_as(main);choose_file(process,path,format_name=kind);output_ready(process,main,path,b'{'if kind=='XLS42 workbook'else b'PK')
+        return json.loads(path.read_text(encoding='utf-8'))if kind=='XLS42 workbook'else path
+    model=saved('seed');sheet=model['sheets'][0];sheet['rows']=1048576;sheet['cols']=16384
+    sheet['cells'][0]['content']={'type':'Formula','value':{'raw':'=XFD1048576*3','crlf':False}}
+    sheet['cells'].append({'row':1048575,'col':16383,'content':{'type':'Number','value':{'raw':'7','crlf':False}},'style':0})
+    source=output/'sparse-full-size.xls42';source.write_text(json.dumps(model),encoding='utf-8');original=source.read_bytes();open_fixture(process,main,source)
+    grid=u.GetDlgItem(main,102);assert classname(grid)=='Off42VariableGrid'
+    fill_prompt(process,main,25,'Range (1-based)',['1048576','16384','1048576','16384'])
+    edit=u.GetDlgItem(main,101);wait_for(lambda:text(edit)=='7','last Excel cell selected',process)
+    class ScrollInfo(c.Structure):_fields_=[('cbSize',w.UINT),('fMask',w.UINT),('nMin',c.c_int),('nMax',c.c_int),('nPage',w.UINT),('nPos',c.c_int),('nTrackPos',c.c_int)]
+    u.GetScrollInfo.argtypes=[w.HWND,c.c_int,c.POINTER(ScrollInfo)];u.GetScrollInfo.restype=w.BOOL
+    def scroll_position(bar):
+        info=ScrollInfo();info.cbSize=c.sizeof(info);info.fMask=0x17;assert u.GetScrollInfo(grid,bar,c.byref(info));return info.nPos
+    wait_for(lambda:scroll_position(1)>20_000_000 and scroll_position(0)>1_300_000,'far range selection scrolls both native axes',process)
+    capture_window(grid,output/'XLS42-last-cell.bmp');before=saved('before')
+    replace_editor_text(edit,'11');changed=saved('after')
+    def cells(project):return {(v['row'],v['col']):v for v in project['sheets'][0]['cells']}
+    assert cells(changed)[(1048575,16383)]['content']['value']['raw']=='11'
+    assert {k:v for k,v in cells(before).items()if k!=(1048575,16383)}=={k:v for k,v in cells(changed).items()if k!=(1048575,16383)}
+    path=saved('after','Excel workbook')
+    def verify_xlsx(path):
+        ns={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+        with zipfile.ZipFile(path)as archive:root=ET.fromstring(archive.read('xl/worksheets/sheet1.xml'))
+        values={cell.attrib['r']:cell.findtext('s:v',namespaces=ns)for cell in root.findall('.//s:c',ns)}
+        assert values['XFD1048576']=='11'and values['A1']=='33',values
+    verify_xlsx(path)
+    command(main,4);undone=saved('undo');assert undone['sheets']==before['sheets']and undone['selection']==before['selection']
+    command(main,5);redone=saved('redo');assert redone['sheets']==changed['sheets']and redone['selection']==changed['selection']
+    open_fixture(process,main,output/'sparse-redo.xls42');verify_xlsx(saved('reopened','Excel workbook'))
+    assert source.read_bytes()==original
+    results['checks'].append('full 1048576 by 16384 sparse workbook opens through the normal dialog; selecting XFD1048576 scrolls both axes, native editing changes only that cell, saved XLSX has independently checked far value and dependent A1 cache, complete one-step Undo/Redo and reopen preserve every sheet cell and original source')
+
+
 def audit_engineering_formulas(process, main, binary, output, results, include_extended=False):
     source = output / "engineering-formulas.csv"
     records = [
@@ -2443,6 +2480,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_engineering_formulas(process, main, binary, output, results, include_extended=extended_formulas)
             audit_goal_seek(process,main,binary,output,results)
             audit_solver(process,main,binary,output,results)
+            audit_sparse_capacity(process,main,binary,output,results)
         if statistical_formulas and binary.stem.lower()=="xls42":
             audit_statistical_formulas(process,main,output,binary,results)
         if array_formulas and binary.stem.lower()=="xls42":

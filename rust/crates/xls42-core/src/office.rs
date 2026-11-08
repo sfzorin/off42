@@ -289,6 +289,7 @@ impl Workbook {
             return self.patch_external("xlsx");
         }
         let state = self.history.current();
+        for sheet in &state.sheets{for range in &sheet.merges{range.bounded_operation()?;}}
         if state
             .sheets
             .iter()
@@ -1209,6 +1210,7 @@ impl Workbook {
             CellStyle as OdsStyle, Length, Sheet, WorkBook,
         };
         let state = self.history.current();
+        for sheet in &state.sheets{for range in &sheet.merges{range.bounded_operation()?;}}
         let recalc_time = chrono::Local::now().naive_local();
         if state.date_1904 {
             return Err(Error::Invalid(
@@ -1225,7 +1227,7 @@ impl Workbook {
                     cells = cells.saturating_add(
                         (range.bottom - range.top + 1).saturating_mul(range.right - range.left + 1),
                     );
-                    if cells > MAX_ROWS * MAX_COLS {
+                    if cells > MAX_OPERATION_CELLS {
                         return Err(Error::Limit);
                     }
                     for row in range.top..=range.bottom {

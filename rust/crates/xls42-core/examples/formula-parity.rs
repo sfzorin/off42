@@ -71,12 +71,12 @@ fn main() {
     for (row, case) in fixture.cases.iter().enumerate() {
         book.set_cell(row, 0, case.formula.clone()).unwrap();
     }
-    let grid = book.calculated_grid();
+    let grid = book.calculated_cells();
     let mut passed = 0;
     let mut skipped = 0;
     let mut cases = vec![];
     for (row, case) in fixture.cases.into_iter().enumerate() {
-        let actual = &grid[row][0];
+        let actual = grid.get(&(row,0)).map_or("",String::as_str);
         let status = match &case.expected {
             None => {
                 skipped += 1;

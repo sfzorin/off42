@@ -508,7 +508,7 @@ and 14 fixed-pattern oracle cases in `macos-number-display-cases.json`; regenera
 `python3 rust/scripts/export-number-display-cases.py`. Decimal/group separators still follow the existing Windows
 convention; full locale and richer custom-format support remain open.
 
-`Workbook::calculated_grid()` supplies full-precision calculated text for data processing, retaining source
+`Workbook::calculated_cells()` supplies full-precision calculated text for data processing, retaining source
 representations for literal cells. Formula evaluation, chart/pivot calculation and typed Office caches keep their
 precision. Numerical reference tests use this data projection with their original expected values and tolerances.
 Number formats apply only to numeric results, including calculated children; text identifiers such as `0007` retain
@@ -836,14 +836,12 @@ existing presentation layout. Portable preference round trips/corruption checks 
 geometry, history and relaunch assertions pass in run 42512382933.
 
 
-Run 42453756002 verifies the actual en-US dictionary and native table/image UTF-16 positions (523 passing
-MSVC tests), but catches unrelated font substitutions during whole-RTF spelling correction. Corrections now
-prepare exact source-run changes in DOC/PPT and commit only after native projection verification. Portable
-regressions cover exact styles/links/images/history, Cancel, stale state and PPT font precision; workspace
-524/0/1 and GNU targets compile. Native correction and the extended panel tests await a repeat on this fix.
+The native en-US review verifies body/table/emoji positions, exact formatting and image retention,
+Cancel/Skip, full Undo/Redo and saved reopen in run 42515993014. Other installed dictionaries and grammar
+coverage remain separate verification work.
 
 
-### Header/footer fonts (Windows native audit pending)
+### Header/footer fonts
 
 PDF42's existing Header & Footer dialog adds a font choice and color. Choices are the bundled Noto Sans,
 Arial/Arial Bold, Times New Roman/Times New Roman Bold and Courier New. Selected system font programs are
@@ -853,26 +851,27 @@ choices also apply to batch headers. TrueType embedding flags are checked, forbi
 refused, and a font marked no-subsetting is embedded in full. Each program is limited to 16 MB and live
 page-decoration programs to 32 MB; the UI caches only its fixed choices. Complex-script shaping is unchanged.
 
-Portable tests cover permission flags, retained Unicode/metrics, selected pages, atomic refusal, complete
-Undo/Redo and reopen; workspace 526/0/1 and GNU all-targets compile. Real Windows font/style selection,
-independent pixels/text, native UI history/reopen and virtual-printer checks await the next compatible run.
+Portable permission/subset/Unicode/history tests and native font-family/embedding tests pass. Run
+42515993014 verifies all five Windows choices, distinct rendered glyphs, Cyrillic text, selected page, color,
+Undo/Redo/reopen and Microsoft Print to PDF.
 
-XLS42 now sends occupied cell and spill text to the native grid without allocating strings for the empty
-worksheet area. Filtering, clipboard, labels, chart/pivot calculations, validation and print text use the same
-sparse projections. Existing worksheet limits remain 1,000 rows by 100 columns while geometry and remaining
-large-operation paths are being migrated; this change alone does not establish large-workbook support.
+### Sparse worksheets
 
-The Windows grid also uses sparse row/column dimensions and paints visible cells and headers only.
-Hidden runs, frozen panes and merged cells share hit geometry. A 64-bit origin and a scaled native scrollbar
-avoid pixel overflow on long axes. Workbook dimension limits are still unchanged pending large-operation and
-file-adapter work; native verification of this geometry change is tracked separately in `PARITY.md`.
+XLS42 accepts sheets up to 1,048,576 rows by 16,384 columns, including XFD1048576. Grid text, formula
+spills, filters, clipboard, labels, charts, validation and print text use occupied-cell projections. Sparse
+row/column sizes and visible-cell painting retain frozen panes, hidden rows and merges; 64-bit coordinates
+and scaled Windows scrollbars avoid pixel overflow. Selecting a distant range brings it into view.
 
-XLSX import reads actual cell records without expanding the bounding rectangle between distant cells.
-Literal text, typed values, shared formulas, caches and untouched package parts retain their existing handling.
-ODS/XLS import and large-operation limits are being addressed separately.
+XLSX imports stream actual records. ODS imports skip empty repeated gaps and expand bounded meaningful
+records, preserving spaces, tabs, line breaks and paragraphs. Value-only ODS edits with unchanged layout/
+styles and no active filter preserve neighboring XML directly; other ODS edits retain preservation guards.
 
-ODS import now skips empty repeated gaps, reads actual value records and handles bounded repetitions of
-populated cells. Text spaces, tabs, line breaks and paragraphs retain their text semantics. Value-only edits
-with unchanged layout/styles and no active filter preserve untouched XML directly, including neighboring rich
-text; other ODS changes retain their existing preservation guards. The worksheet dimension limit is still
-unchanged while remaining dense operations are being bounded.
+Stored cells are limited to one million across the book, with four MB of text. Operations that materialize
+rectangles (copy/paste, style, fill, sort and CSV) retain a separate 100,000-cell bound; charts allow up to
+1,000 points per series. Printing supports up to 100,000 cells and 4,096 pages: select a smaller print area
+for distant sparse data. Oversized operations are refused before document mutation. Dense rectangular text
+projections are test helpers; data-processing clients use `display_cells` or `calculated_cells`.
+
+Portable tests cover far references, independent XLSX/ODS edge imports, all native formats, validation,
+atomic operation refusals and selected-area printing. The full-size native UI scenario is pending its first
+compatible build. Automatic grid expansion and full-sheet formula semantics remain tracked in `PARITY.md`.

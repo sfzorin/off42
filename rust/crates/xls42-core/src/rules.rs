@@ -261,33 +261,21 @@ pub(super) fn validate_range(state: &State, range: Range) -> Result<(), Error> {
         None
     };
     for rule in rules {
-        let top = range.top.max(rule.range.top);
-        let bottom = range.bottom.min(rule.range.bottom);
-        let left = range.left.max(rule.range.left);
-        let right = range.right.min(rule.range.right);
-        for row in top..=bottom {
-            for col in left..=right {
-                let cell = sheet.cells.get(&(row, col));
-                let raw = cell.map_or("", |c| c.text.raw());
-                if raw.is_empty() && rule.allow_blank {
-                    continue;
-                }
-                let value = if matches!(cell.map(|c| &c.text), Some(CellContent::Formula(_))) {
-                    grid.as_ref().unwrap().get(&(row,col)).map_or("", String::as_str)
-                } else {
-                    raw
-                };
-                let valid = match &rule.kind {
-                    ValidationKind::Number { minimum, maximum } => value
-                        .parse::<f64>()
-                        .is_ok_and(|v| v.is_finite() && v >= *minimum && v <= *maximum),
-                    ValidationKind::List { values } => values.iter().any(|s| s == value),
-                };
-                if !valid {
-                    return Err(Error::Invalid("Value does not satisfy cell validation"));
-                }
-            }
+        let top=range.top.max(rule.range.top);let bottom=range.bottom.min(rule.range.bottom);
+        let left=range.left.max(rule.range.left);let right=range.right.min(rule.range.right);
+        let accepted=|value:&str|match &rule.kind {
+            ValidationKind::Number{minimum,maximum}=>value.parse::<f64>().is_ok_and(|v|v.is_finite()&&v>=*minimum&&v<=*maximum),
+            ValidationKind::List{values}=>values.iter().any(|s|s==value),
+        };
+        let mut present=0usize;
+        for (&(row,col),cell)in sheet.cells.range((top,0)..=(bottom,usize::MAX)).filter(|((_,c),_)|*c>=left&&*c<=right){
+            present+=1;let raw=cell.text.raw();
+            if raw.is_empty()&&rule.allow_blank{continue}
+            let value=if matches!(cell.text,CellContent::Formula(_)){grid.as_ref().unwrap().get(&(row,col)).map_or("",String::as_str)}else{raw};
+            if !accepted(value){return Err(Error::Invalid("Value does not satisfy cell validation"))}
         }
+        let area=(bottom-top+1).checked_mul(right-left+1).ok_or(Error::Limit)?;
+        if !rule.allow_blank&&!accepted("")&&present<area{return Err(Error::Invalid("Value does not satisfy cell validation"))}
     }
     Ok(())
 }

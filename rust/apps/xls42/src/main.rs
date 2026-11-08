@@ -36,17 +36,6 @@ impl Xls {
                 .unwrap_or(self.col);
         }
     }
-    fn compute_visible_rows(&self, grid: &[Vec<String>]) -> Vec<usize> {
-        let mut rows = self.book.visible_rows_from_grid(grid);
-        if !rows.contains(&self.row)
-            && self.row < self.book.rows()
-            && !self.book.sheet_view().hidden_rows.contains(&self.row)
-        {
-            rows.push(self.row);
-            rows.sort_unstable()
-        }
-        rows
-    }
     fn compute_sparse_rows(&self,cells:&std::collections::BTreeMap<(usize,usize),String>)->Vec<usize>{
         let mut rows=self.book.visible_rows_from_cells(cells);if !rows.contains(&self.row)&&self.row<self.book.rows()&&!self.book.sheet_view().hidden_rows.contains(&self.row){rows.push(self.row);rows.sort_unstable()}rows
     }
@@ -1401,19 +1390,10 @@ impl win42::App for Xls {
         let projected=cells.into_iter().filter_map(|((r,c),text)|rows.binary_search(&r).ok().map(|index|((index,c),text))).collect();self.visible_cache.replace(rows.into());
         win42::SparseTable::new(count,self.book.cols(),projected).ok()
     }
-    fn table(&self) -> Option<Vec<Vec<String>>> {
-        if self.preview.is_some() {
-            None
-        } else {
-            let grid = self.book.display_grid();
-            let rows = self.compute_visible_rows(&grid);
-            self.visible_cache.replace(rows.clone().into());
-            Some(
-                rows.into_iter()
-                    .filter_map(|r| grid.get(r).cloned())
-                    .collect(),
-            )
-        }
+    #[cfg(test)]
+    fn table(&self)->Option<Vec<Vec<String>>>{
+        let data=self.sparse_table()?;assert!(data.len().saturating_mul(data.columns())<=100_000);
+        Some((0..data.len()).map(|r|(0..data.columns()).map(|c|data.cell(r,c).to_owned()).collect()).collect())
     }
     fn print_job(&self, id: u16) -> Option<win42::PrintJob> {
         if id != 62 {
@@ -2217,7 +2197,7 @@ mod regression {
             .unwrap();
         app.input_action(68, &["Sales".into(), "yes".into()])
             .unwrap();
-        assert_eq!(app.book.display_grid()[3][0], "30");
+        assert_eq!(app.book.display_cells()[&(3,0)], "30");
         assert!(app.grid_cell_style(0, 0).unwrap().bold);
         app.action(69).unwrap();
         assert!(app.book.tables().is_empty());
@@ -2346,7 +2326,7 @@ mod regression {
         let mut a = Xls {
             goal_seek:Default::default(),
             solver:Default::default(),
-            book: Workbook::new(1000, 100).unwrap(),
+            book: Workbook::new(xls42_core::MAX_ROWS, xls42_core::MAX_COLS).unwrap(),
             row: 0,
             col: 0,
             preview: None,
@@ -2358,7 +2338,7 @@ mod regression {
         assert!(!a.enabled(11));
         assert!(a.action(10).is_err());
         assert!(a.action(11).is_err());
-        assert_eq!((a.book.rows(), a.book.cols()), (1000, 100));
+        assert_eq!((a.book.rows(), a.book.cols()), (xls42_core::MAX_ROWS,xls42_core::MAX_COLS));
     }
 }
 #[cfg(test)]

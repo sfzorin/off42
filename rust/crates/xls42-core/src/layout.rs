@@ -166,6 +166,7 @@ impl Workbook {
         let cells = self.display_cells();
         self.visible_rows_from_cells(&cells)
     }
+    #[cfg(test)]
     pub fn visible_rows_from_grid(&self, grid: &[Vec<String>]) -> Vec<usize> {
         let s = self.history.current().sheet();
         let Some(f) = &s.filter else {

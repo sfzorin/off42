@@ -32,7 +32,7 @@ pub(super) struct Snapshot {
     pub pictures: Vec<crate::GridPicture>,
 }
 const HEADER: i32 = 25;
-const ROW_HEADER: i32 = 48;
+const ROW_HEADER: i32 = 64;
 const COMMIT: u32 = WM_APP + 0x481;
 const CANCEL: u32 = WM_APP + 0x482;
 struct GridState {
@@ -43,6 +43,7 @@ struct GridState {
     preview_selection: Option<(GridRange, (usize, usize))>,
     anchor: Option<(usize, usize)>,
     focus_pane: Option<(bool, bool)>,
+    last_focus: Option<(usize,usize)>,
     editor: HWND,
     committing: bool,
     picture_drag: Option<PictureDrag>,
@@ -926,6 +927,7 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LR
                 preview_selection: None,
                 anchor: None,
                 focus_pane: None,
+                last_focus:None,
                 editor: null_mut(),
                 committing: false,
                 picture_drag: None,
@@ -1417,7 +1419,10 @@ pub(super) unsafe fn create(parent: HWND, id: usize) -> HWND {
     )
 }
 pub(super) unsafe fn refresh(hwnd: HWND) {
+    let selected=super::native::grid_snapshot().and_then(|s|s.selected);
+    let moved=state(hwnd).is_some_and(|st|{let changed=st.last_focus!=selected;st.last_focus=selected;changed});
     update_scroll(hwnd);
+    if moved {if let Some((r,c))=selected{ensure_visible(hwnd,r,c);}}
     position_editor(hwnd);
     InvalidateRect(hwnd, null(), 0);
 }

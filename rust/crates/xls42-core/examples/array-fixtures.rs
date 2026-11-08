@@ -65,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ] {
         b.set_cell(r, c, f.into())?;
     }
-    let grid = b.calculated_grid();
+    let grid = b.calculated_cells();
     let mut cases = Vec::new();
     for (r, c) in [
         (0, 2),
@@ -115,7 +115,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             label.insert(0, (b'A' + (col % 26) as u8) as char);
             col /= 26;
         }
-        cases.push(serde_json::json!({"cell":format!("{label}{}",r+1),"expected":grid[r][c]}));
+        cases.push(serde_json::json!({"cell":format!("{label}{}",r+1),"expected":grid.get(&(r,c)).map_or("",String::as_str)}));
     }
     let mut csv = csv::Writer::from_writer(Vec::new());
     for r in 0..b.rows() {
