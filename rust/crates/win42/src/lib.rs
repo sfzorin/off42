@@ -461,6 +461,8 @@ pub trait App {
     fn grid_row_label(&self, row: usize) -> String {
         (row + 1).to_string()
     }
+    /// Request more blank viewport space near an edge; this must not mutate document data/history.
+    fn extend_grid_view(&mut self, _visible_row: usize, _column: usize) -> bool { false }
     fn grid_clipboard_commands(&self) -> Option<(u16, u16)> {
         None
     }

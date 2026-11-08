@@ -30,7 +30,7 @@ impl Workbook {
         rows: &[usize],
         columns: &[usize],
     ) -> Result<(String, Vec<u8>), Error> {
-        if !valid_axis(rows, self.rows()) || !valid_axis(columns, self.cols()) {
+        if !valid_axis(rows, MAX_ROWS) || !valid_axis(columns, MAX_COLS) {
             return Err(Error::Bounds);
         }
         if rows.len().checked_mul(columns.len()).is_none_or(|n|n>MAX_OPERATION_CELLS){return Err(Error::Limit)}
@@ -135,8 +135,8 @@ impl Workbook {
         if payload.version != 1
             || !valid_axis(&payload.rows, MAX_ROWS)
             || !valid_axis(&payload.columns, MAX_COLS)
-            || !valid_axis(rows, self.rows())
-            || !valid_axis(columns, self.cols())
+            || !valid_axis(rows, MAX_ROWS)
+            || !valid_axis(columns, MAX_COLS)
             || payload.rows.len() > rows.len()
             || payload.columns.len() > columns.len()
             || payload.styles.len() > 4096
@@ -160,6 +160,8 @@ impl Workbook {
         let dest_rows = &rows[..payload.rows.len()];
         let dest_cols = &columns[..payload.columns.len()];
         let mut state = self.history.current().clone();
+        state.sheet_mut().rows=state.sheet().rows.max(dest_rows.last().unwrap()+1);
+        state.sheet_mut().cols=state.sheet().cols.max(dest_cols.last().unwrap()+1);
         if state.sheet().protected {
             return Err(Error::Protected);
         }

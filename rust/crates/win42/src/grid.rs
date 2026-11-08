@@ -767,9 +767,20 @@ unsafe fn scroll(hwnd:HWND,vertical:bool,code:i32) {
     let mut info=SCROLLINFO{cbSize:size_of::<SCROLLINFO>()as u32,fMask:SIF_ALL,..zeroed()};GetScrollInfo(hwnd,bar,&mut info);
     let pos=if vertical{&mut st.y}else{&mut st.x};
     *pos=match code {SB_LINEUP=>pos.saturating_sub(20),SB_LINEDOWN=>pos.saturating_add(20),SB_PAGEUP=>pos.saturating_sub(range.page),SB_PAGEDOWN=>pos.saturating_add(range.page),SB_THUMBTRACK|SB_THUMBPOSITION=>range.logical_position(info.nTrackPos),SB_TOP=>0,SB_BOTTOM=>range.maximum(),_=>*pos};
+    extend_view(hwnd);
     update_scroll(hwnd);InvalidateRect(hwnd,null(),0);
 }
+unsafe fn extend_view(hwnd:HWND) {
+    let Some(snap)=super::native::grid_snapshot()else{return};
+    let Some(st)=state(hwnd)else{return};
+    if snap.widths.is_empty()||snap.heights.is_empty(){return}
+    let mut rc=RECT::default();GetClientRect(hwnd,&mut rc);
+    let row=snap.heights.index_at((st.y+i64::from((rc.bottom-HEADER).max(1))).min(snap.heights.total().saturating_sub(1))).unwrap_or(0);
+    let col=snap.widths.index_at((st.x+i64::from((rc.right-ROW_HEADER).max(1))).min(snap.widths.total().saturating_sub(1))).unwrap_or(0);
+    super::native::grid_extend_view(row,col);
+}
 unsafe fn move_selection(hwnd: HWND, key: u16, shift: bool) {
+    if let Some((row,col))=super::native::grid_snapshot().and_then(|snap|snap.selected){super::native::grid_extend_view(row,col);}
     let Some(snap) = super::native::grid_snapshot() else {
         return;
     };
@@ -1419,6 +1430,7 @@ pub(super) unsafe fn create(parent: HWND, id: usize) -> HWND {
     )
 }
 pub(super) unsafe fn refresh(hwnd: HWND) {
+    extend_view(hwnd);
     let selected=super::native::grid_snapshot().and_then(|s|s.selected);
     let moved=state(hwnd).is_some_and(|st|{let changed=st.last_focus!=selected;st.last_focus=selected;changed});
     update_scroll(hwnd);

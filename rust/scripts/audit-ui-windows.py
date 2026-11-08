@@ -1175,6 +1175,36 @@ def audit_sheet_tabs(process,main,binary,output,results):
     results['checks'].append('normal add/switch-sheet commands and actual editor text; native and independent XLSX/ODS active-sheet import, external tab-only saves and standard single-tab flags, unchanged worksheet data/styles/unknown parts, complete Undo/Redo with byte-exact original restoration and saved reopen')
 
 
+def audit_grid_expansion(process,main,binary,output,results):
+    seed=output/'growth-source.csv';seed.write_text('KEEP\n',encoding='utf-8');original=seed.read_bytes();open_fixture(process,main,seed)
+    def saved(name):
+        path=output/('growth-'+name+'.xls42');save_as(main);choose_file(process,path,format_name='XLS42 workbook');output_ready(process,main,path,b'{');return json.loads(path.read_text(encoding='utf-8'))
+    before=saved('before');grid=u.GetDlgItem(main,102)
+    bounded_send(grid,0x115,7,0);bounded_send(grid,0x114,7,0)  # Native bottom-scroll commands extend viewport space.
+    scrolled=saved('scrolled');assert scrolled['sheets']==before['sheets']and scrolled['selection']==before['selection'],'Scrolling changed workbook data'
+    fill_prompt(process,main,25,'Range (1-based)',['501','31','501','31']);edit=u.GetDlgItem(main,101);wait_for(lambda:text(edit)=='','virtual empty cell selected',process)
+    selected=saved('selected');assert selected['sheets']==before['sheets']and selected['selection']==before['selection'],'Blank viewport selection allocated document cells'
+    replace_editor_text(edit,'=10+20');changed=saved('edited');sheet=changed['sheets'][0];assert (sheet['rows'],sheet['cols'])==(501,31)
+    cells=lambda project:{(v['row'],v['col']):v for v in project['sheets'][0]['cells']}
+    assert cells(changed)[(500,30)]['content']['value']['raw']=='=10+20'and {k:v for k,v in cells(changed).items()if k!=(500,30)}==cells(before)
+    bounded_send(grid,0x000F);capture_window(grid,output/'XLS42-expanded-grid.bmp')
+    command(main,4);undone=saved('undo');assert undone['sheets']==before['sheets']and undone['selection']==before['selection'],'Growth was not undone with the cell edit'
+    command(main,5);redone=saved('redo');assert redone['sheets']==changed['sheets']and redone['selection']==changed['selection']
+    fill_prompt(process,main,25,'Range (1-based)',['800','41','800','41']);command(main,31);formatted=saved('formatted');assert (formatted['sheets'][0]['rows'],formatted['sheets'][0]['cols'])==(800,41)
+    style=cells(formatted)[(799,40)]['style'];assert formatted['styles'][style]['bold']and cells(formatted)[(799,40)]['content']['value']['raw']==''
+    command(main,4);format_undo=saved('format-undo');assert format_undo['sheets']==changed['sheets']and format_undo['selection']==changed['selection'];command(main,5);format_redo=saved('format-redo');assert format_redo['sheets']==formatted['sheets']and format_redo['selection']==formatted['selection']
+    fill_prompt(process,main,25,'Range (1-based)',['900','51','900','51'])
+    # Copy real text from the standard editor, then invoke the spreadsheet's normal Paste command.
+    replace_editor_text(edit,'10\t20\r\n30\t=1+2');u.SendMessageW(edit,0xB1,0,-1);u.SendMessageW(edit,0x301,0,0);assert clipboard_text()=='10\t20\r\n30\t=1+2'
+    command(main,4)  # Undo the temporary source cell so Paste is the only operation under test.
+    baseline=saved('paste-baseline');command(main,40);pasted=saved('pasted');assert (pasted['sheets'][0]['rows'],pasted['sheets'][0]['cols'])==(901,52)
+    assert {(r,c):v['content']['value']['raw']for(r,c),v in cells(pasted).items()if r>=899}=={(899,50):'10',(899,51):'20',(900,50):'30',(900,51):'=1+2'}
+    command(main,4);paste_undo=saved('paste-undo');assert paste_undo['sheets']==baseline['sheets']and paste_undo['selection']==baseline['selection'];command(main,5);paste_redo=saved('paste-redo');assert paste_redo['sheets']==pasted['sheets']and paste_redo['selection']==pasted['selection']
+    open_fixture(process,main,output/'growth-paste-redo.xls42');wait_for(lambda:text(edit)=='10','expanded project reopens at saved selection',process)
+    assert seed.read_bytes()==original
+    results['checks'].append('native scroll extends blank grid without document mutation; normal far-range selection remains virtual; actual text edit, empty-cell Bold and clipboard Paste allocate only written bounds with complete one-step dimensions/data/style/selection Undo/Redo and saved reopen; source unchanged')
+
+
 def audit_sparse_capacity(process,main,binary,output,results):
     import xml.etree.ElementTree as ET
     seed=output/'sparse-seed.csv';seed.write_text('2,KEEP\n',encoding='utf-8');open_fixture(process,main,seed)
@@ -2537,6 +2567,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_solver(process,main,binary,output,results)
             audit_sparse_capacity(process,main,binary,output,results)
             audit_sheet_tabs(process,main,binary,output,results)
+            audit_grid_expansion(process,main,binary,output,results)
         if statistical_formulas and binary.stem.lower()=="xls42":
             audit_statistical_formulas(process,main,output,binary,results)
         if array_formulas and binary.stem.lower()=="xls42":

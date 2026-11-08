@@ -757,3 +757,15 @@ after image selection; image unit regressions are now included in quick CI.
   IFS still validates equal shapes. Full-column/full-sheet and independent XLSX/ODS regressions pass.
   Workspace 548/0/1, GNU all targets pass, fixed Swift oracle 492 pass/0 gaps/2 explicit skips. New native
   saved-cache assertions await a compatible Windows build. Remaining function semantics stay open.
+
+- Run 42524909435 (e32b332) native artifacts pass all 37 UI groups and MSVC 551/0/1, including normal
+  Add/Switch Sheet commands, independent XLSX/ODS tab-only saves, complete Undo/Redo and reopen.
+- Run 42525411109 (e7d4cd8) native artifacts pass all 37 UI groups and MSVC 553/0/1, including saved
+  whole-column COUNTIF/SUMIF/SUMIFS/AVERAGEIF/MINIFS/COUNTIFS caches and the existing full-size scenario.
+- Blank viewport growth is now independent of workbook allocation/history; scroll/keyboard edges extend
+  sparse grid space and the range dialog can select virtual cells. Text edits, empty-cell formatting and
+  mapped typed/TSV paste grow only written bounds, with complete one-step Undo/Redo. Independent XLSX/ODS
+  far-value edits preserve unknown entries and undo to the byte-exact original. Protection/error/no-op/
+  validation guards, saved selection and existing hidden/filtered mappings pass portable tests: workspace
+  554/0/1. Native scroll/edit/format/paste/history/reopen audit added; Windows pending. Some other range
+  commands still require allocated areas. Full grid/format/function parity remains open.

@@ -5712,6 +5712,13 @@ pub(super) fn grid_snapshot() -> Option<crate::grid::Snapshot> {
 pub(super) fn grid_row_label(row:usize)->String {
     STATE.with(|s|s.borrow().as_ref().map_or_else(String::new,|s|s.app.grid_row_label(row)))
 }
+pub(super) fn grid_extend_view(row:usize,col:usize)->bool {
+    STATE.with(|state| {
+        let mut state=state.borrow_mut();let Some(state)=state.as_mut()else{return false};
+        if !state.app.extend_grid_view(row,col){return false}
+        state.sparse_grid=state.app.sparse_table();true
+    })
+}
 pub(super) fn grid_style(row: usize, col: usize) -> Option<crate::GridCellStyle> {
     STATE.with(|s| s.borrow().as_ref()?.app.grid_cell_style(row, col))
 }

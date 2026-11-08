@@ -907,5 +907,15 @@ counts are computed algebraically, formula-empty strings count as empty, and spi
 SUMIF/AVERAGEIF align their optional target from its top-left corner; IFS ranges require equal shapes.
 Portable tests include full columns/full sheets, distant values, selected errors, wildcards, numeric-only
 averages and complete history/Office round trips. Independent XLSX/ODS packages without the native snapshot
-exercise these formulas too. The native far-cell scenario now checks their saved caches; Windows pending.
+exercise these formulas too. Run 42525411109 verifies their saved caches through the actual Windows UI: 37 groups pass,
+MSVC 553/0/1.
 Other function/localization semantics and materialization limits remain as described in PARITY.md.
+
+Blank spreadsheet viewport space now grows near scroll/keyboard edges without changing allocated workbook
+bounds or history. The range dialog can address any valid Excel cell. Editing a newly visible cell, formatting
+it and pasting typed/TSV clipboard data grow only the affected document bounds, with complete one-step Undo.
+Protection, operation limits and validation still apply. XLSX/ODS external value edits use the existing
+surgical package paths, and independent format tests verify far formulas/opaque parts and byte-exact Undo.
+Saved project reopening restores the stored selection. Workspace tests pass; the new native scroll/edit/
+format/paste/Undo/Redo/reopen scenario awaits Windows verification. Some range tools still require allocated
+data; this is not a claim that every command or format supports unlimited areas.

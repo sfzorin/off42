@@ -986,3 +986,12 @@ counts exclude blank/text/logical targets, while selected errors propagate. Crit
 so formula-empty strings and nonempty spill cells are distinguished. Work for stored traversal, predicates
 and wildcard matching shares the existing evaluation budget. SUMIF/AVERAGEIF target anchoring follows the
 criteria dimensions with global bounds; IFS validates equal shapes before traversal.
+
+Windows blank-grid growth is per-document viewport state, keyed by sheet identity. Scroll/keyboard edges
+request extra rows/columns through App::extend_grid_view; the native host refreshes its sparse projection
+without mutating document data or history. Out-of-allocation selections remain in the viewport until edited.
+Workbook::edit_expanding runs an edit against a private bounded state and commits dimensions/selection/data
+as one history step. Errors and no-ops preserve the original state and redo branch. Mapped typed/TSV paste
+validates global mapping axes, then grows to the actually used destinations in its existing atomic edit.
+External ODS positive blank allocation growth does not shift references; value-only saves normalize this
+allocation difference when choosing the surgical XML path. Shrinking/structural changes keep their guards.

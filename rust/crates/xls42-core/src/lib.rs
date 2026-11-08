@@ -11,6 +11,7 @@ mod layout;
 pub use layout::{PrintSettings, SheetFilter, SheetView};
 mod display;
 mod sparse_display;
+mod grid_edit;
 #[cfg(test)]
 mod capacity_tests;
 pub use analytics::{Chart, ChartData, ChartKind, ChartSeries, Pivot, PivotAggregate};
@@ -2407,8 +2408,8 @@ impl Workbook {
             || cols.len() > MAX_COLS
             || rows.windows(2).any(|x| x[0] >= x[1])
             || cols.windows(2).any(|x| x[0] >= x[1])
-            || rows.last().is_none_or(|r| *r >= self.rows())
-            || cols.last().is_none_or(|c| *c >= self.cols())
+            || rows.last().is_none_or(|r| *r >= MAX_ROWS)
+            || cols.last().is_none_or(|c| *c >= MAX_COLS)
         {
             return Err(Error::Bounds);
         }
@@ -2522,8 +2523,8 @@ impl Workbook {
             || cols.len() > MAX_COLS
             || rows.windows(2).any(|x| x[0] >= x[1])
             || cols.windows(2).any(|x| x[0] >= x[1])
-            || rows.last().is_none_or(|r| *r >= self.rows())
-            || cols.last().is_none_or(|c| *c >= self.cols())
+            || rows.last().is_none_or(|r| *r >= MAX_ROWS)
+            || cols.last().is_none_or(|c| *c >= MAX_COLS)
         {
             return Err(Error::Bounds);
         }
@@ -2553,6 +2554,8 @@ impl Workbook {
         let selected_cols = &cols[..width];
         let mut state = self.history.current().clone();
         let sheet = state.sheet_mut();
+        sheet.rows=sheet.rows.max(selected_rows.last().unwrap()+1);
+        sheet.cols=sheet.cols.max(selected_cols.last().unwrap()+1);
         if sheet.protected {
             return Err(Error::Protected);
         }

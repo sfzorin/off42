@@ -3,6 +3,7 @@ mod charts;
 mod print;
 mod goal_seek;
 mod solver;
+mod viewport;
 use std::path::Path;
 use xls42_core::{
     Chart, ChartKind, ChartSeries, Condition, ConditionalFormat, DataValidation, Pivot,
@@ -13,6 +14,7 @@ struct Xls {
     goal_seek:goal_seek::Session,
     solver:solver::Session,
     book: Workbook,
+    viewport: std::cell::RefCell<viewport::Viewport>,
     row: usize,
     col: usize,
     preview: Option<u64>,
@@ -30,14 +32,14 @@ impl Xls {
                 .unwrap_or(self.row);
         }
         if view.hidden_columns.contains(&self.col) {
-            self.col = (self.col..self.book.cols())
+            self.col = (self.col..self.view_bounds().1)
                 .chain((0..self.col).rev())
                 .find(|col| !view.hidden_columns.contains(col))
                 .unwrap_or(self.col);
         }
     }
     fn compute_sparse_rows(&self,cells:&std::collections::BTreeMap<(usize,usize),String>)->Vec<usize>{
-        let mut rows=self.book.visible_rows_from_cells(cells);if self.row<self.book.rows()&&!self.book.sheet_view().hidden_rows.contains(&self.row){if let Err(i)=rows.binary_search(&self.row){rows.insert(i,self.row);}}rows
+        let mut rows=self.book.visible_rows_from_cells(cells);rows.extend(self.book.rows()..self.view_bounds().0);if self.row<self.view_bounds().0&&!self.book.sheet_view().hidden_rows.contains(&self.row){if let Err(i)=rows.binary_search(&self.row){rows.insert(i,self.row);}}rows
     }
     fn visible_rows(&self) -> std::sync::Arc<[usize]> {
         if self.visible_cache.borrow().is_empty() {
@@ -67,7 +69,7 @@ impl Xls {
         self.selection_range()
     }
     fn selection_range(&self) -> Range {
-        let r = self.book.selection();
+        let r = self.viewport.borrow().selection.filter(|(id,_)|*id==self.book.active_sheet()).map(|(_,r)|r).unwrap_or_else(||self.book.selection());
         if self.row >= r.top && self.row <= r.bottom && self.col >= r.left && self.col <= r.right {
             r
         } else {
@@ -412,12 +414,13 @@ impl win42::App for Xls {
             .iter().copied()
             .filter(|row| *row >= self.row)
             .collect();
-        let cols: Vec<_> = (self.col..self.book.cols())
+        let cols: Vec<_> = (self.col..self.view_bounds().1)
             .filter(|col| !self.book.sheet_view().hidden_columns.contains(col))
             .collect();
         self.book
             .paste_clipboard_mapped(&rows, &cols, &bytes)
             .map_err(|e| e.to_string())?;
+        self.viewport.borrow_mut().selection=None;
         self.clear_visible_cache();
         Ok(())
     }
@@ -430,12 +433,13 @@ impl win42::App for Xls {
             .iter().copied()
             .filter(|row| *row >= self.row)
             .collect();
-        let cols: Vec<_> = (self.col..self.book.cols())
+        let cols: Vec<_> = (self.col..self.view_bounds().1)
             .filter(|col| !self.book.sheet_view().hidden_columns.contains(col))
             .collect();
         self.book
             .paste_tsv_mapped(&rows, &cols, &text)
             .map_err(|e| e.to_string())?;
+        self.viewport.borrow_mut().selection=None;
         self.clear_visible_cache();
         Ok(())
     }
@@ -457,7 +461,7 @@ impl win42::App for Xls {
         match id {
             34 => Some(win42::DialogRequest::Font),
             35 | 36 => {
-                let s = self.book.style(self.row, self.col)?;
+                let s = self.book.style(self.row, self.col).cloned().unwrap_or_default();
                 let color = if id == 35 { s.foreground } else { s.background }
                     .unwrap_or(if id == 35 { 0 } else { 0xffffff });
                 Some(win42::DialogRequest::Color([
@@ -484,11 +488,7 @@ impl win42::App for Xls {
             self.book.set_print_settings(s).map_err(|e| e.to_string())?;
             return Ok(());
         }
-        let mut style = self
-            .book
-            .style(self.row, self.col)
-            .ok_or("Invalid selection")?
-            .clone();
+        let mut style=self.book.style(self.row,self.col).cloned().unwrap_or_default();
         match (id, result) {
             (34, win42::DialogResult::Font(f)) => {
                 style.font = f.family;
@@ -507,9 +507,7 @@ impl win42::App for Xls {
             }
             _ => return Err("Unexpected dialog result".into()),
         }
-        self.book
-            .set_style(self.active_range(), style)
-            .map_err(|e| e.to_string())?;
+        let range=self.active_range();self.edit_range(range,|book|book.set_style(range,style))?;
         Ok(())
     }
     fn input_multiline_fields(&self,id:u16)->Vec<usize>{if id==solver::START{vec![4]}else{vec![]}}
@@ -841,11 +839,10 @@ impl win42::App for Xls {
                     right: n(3)?,
                 };
                 if id == 25 {
-                    self.book.set_selection(range)
+                    self.choose_range(range,(range.top,range.left))?;
                 } else {
-                    self.book.fill_range(self.active_range(), range)
+                    let source=self.active_range();self.edit_range(range,|book|book.fill_range(source,range))?;
                 }
-                .map_err(|e| e.to_string())?;
                 self.row = range.top;
                 self.col = range.left;
             }
@@ -862,9 +859,7 @@ impl win42::App for Xls {
                         range.bottom -= 1;
                     }
                 }
-                self.book
-                    .sort_range(range, n(0)?, v[1].eq_ignore_ascii_case("yes"))
-                    .map_err(|e| e.to_string())?;
+                let column=n(0)?;let descending=v[1].eq_ignore_ascii_case("yes");self.edit_range(range,|book|book.sort_range(range,column,descending))?;
             }
             70 => {
                 let mut view = self.book.sheet_view().clone();
@@ -873,9 +868,7 @@ impl win42::App for Xls {
                 self.book.set_sheet_view(view).map_err(|e| e.to_string())?;
             }
             68 => {
-                self.book
-                    .add_table(&v[0], self.active_range(), v[1].eq_ignore_ascii_case("yes"))
-                    .map_err(|e| e.to_string())?;
+                let range=self.active_range();self.edit_range(range,|book|book.add_table(&v[0],range,v[1].eq_ignore_ascii_case("yes")))?;
             }
             67 => {
                 self.book
@@ -1045,7 +1038,7 @@ impl win42::App for Xls {
                     allow_blank: v[2].eq_ignore_ascii_case("yes"),
                     kind: ValidationKind::Number { minimum, maximum },
                 };
-                self.book.add_validation(rule).map_err(|e| e.to_string())?;
+                self.edit_range(rule.range,|book|book.add_validation(rule))?;
             }
             42 => {
                 let values = v[0].split(';').map(str::to_owned).collect();
@@ -1054,7 +1047,7 @@ impl win42::App for Xls {
                     allow_blank: v[1].eq_ignore_ascii_case("yes"),
                     kind: ValidationKind::List { values },
                 };
-                self.book.add_validation(rule).map_err(|e| e.to_string())?;
+                self.edit_range(rule.range,|book|book.add_validation(rule))?;
             }
             44 => {
                 let condition = match v[0].to_lowercase().as_str() {
@@ -1082,11 +1075,7 @@ impl win42::App for Xls {
                     .map_err(|e| e.to_string())?;
             }
             37 | 38 => {
-                let mut style = self
-                    .book
-                    .style(self.row, self.col)
-                    .ok_or("Invalid selection")?
-                    .clone();
+                let mut style = self.book.style(self.row,self.col).cloned().unwrap_or_default();
                 if id == 37 {
                     style.borders = v[0]
                         .parse::<u8>()
@@ -1096,14 +1085,13 @@ impl win42::App for Xls {
                 } else {
                     style.number_format = v[0].clone()
                 }
-                self.book
-                    .set_style(self.active_range(), style)
-                    .map_err(|e| e.to_string())?;
+                let range=self.active_range();
+                self.edit_range(range,|book|book.set_style(range,style))?;
             }
             _ => return Err("Unsupported command".into()),
         }
-        self.row = self.row.min(self.book.rows() - 1);
-        self.col = self.col.min(self.book.cols() - 1);
+        self.row = self.row.min(self.view_bounds().0 - 1);
+        self.col = self.col.min(self.view_bounds().1 - 1);
         self.normalize_focus();
         self.clear_visible_cache();
         Ok(())
@@ -1137,7 +1125,7 @@ impl win42::App for Xls {
         let mut widths=self.book.column_width_overrides().collect::<std::collections::BTreeMap<_,_>>();
         for &c in &self.book.sheet_view().hidden_columns {widths.insert(c,0);}
         let heights=self.book.row_height_overrides().filter_map(|(r,h)|rows.binary_search(&r).ok().map(|i|(i,h))).collect();
-        Some((win42::GridAxis::new(self.book.cols(),80,widths)?,win42::GridAxis::new(rows.len(),20,heights)?))
+        Some((win42::GridAxis::new(self.view_bounds().1,80,widths)?,win42::GridAxis::new(rows.len(),20,heights)?))
     }
     fn grid_column_width(&self, column: usize) -> u16 {
         if self.book.sheet_view().hidden_columns.contains(&column) {
@@ -1174,6 +1162,11 @@ impl win42::App for Xls {
         self.visible_at(row)
             .map(|r| (r + 1).to_string())
             .unwrap_or_default()
+    }
+    fn extend_grid_view(&mut self,row:usize,col:usize)->bool {
+        let physical=self.visible_at(row).unwrap_or(self.row);
+        let changed=self.viewport.borrow_mut().extend(&self.book,physical,col);
+        if changed{self.clear_visible_cache();}changed
     }
     fn grid_clipboard_commands(&self) -> Option<(u16, u16)> {
         Some((39, 40))
@@ -1221,10 +1214,7 @@ impl win42::App for Xls {
             bottom,
             right: r.right,
         };
-        if self.book.set_selection(range).is_ok() {
-            self.row = range.top;
-            self.col = range.left
-        }
+        let _=self.choose_range(range,(range.top,range.left));
     }
     fn select_grid_range_with_focus(&mut self, r: win42::GridRange, focus: (usize, usize)) {
         let Some(top) = self.visible_at(r.top) else {
@@ -1242,10 +1232,7 @@ impl win42::App for Xls {
             bottom,
             right: r.right,
         };
-        if self.book.set_selection(range).is_ok() {
-            self.row = active;
-            self.col = focus.1;
-        }
+        let _=self.choose_range(range,(active,focus.1));
     }
     fn select_grid_picture(&mut self, id: Option<u64>) {
         self.selected_picture =
@@ -1324,7 +1311,7 @@ impl win42::App for Xls {
     }
     fn grid_cell_style(&self, row: usize, column: usize) -> Option<win42::GridCellStyle> {
         let row = self.visible_at(row)?;
-        let s = self.book.effective_style(row, column)?;
+        let s = self.book.effective_style(row, column).or_else(||(row<self.view_bounds().0&&column<self.view_bounds().1).then(Default::default))?;
         let rgb = |c: u32| [(c >> 16) as u8, (c >> 8) as u8, c as u8];
         let merged = self
             .book
@@ -1353,7 +1340,7 @@ impl win42::App for Xls {
         if self.preview.is_some(){return None}
         let cells=self.book.display_cells();let rows=self.compute_sparse_rows(&cells);let count=rows.len();
         let projected=cells.into_iter().filter_map(|((r,c),text)|rows.binary_search(&r).ok().map(|index|((index,c),text))).collect();self.visible_cache.replace(rows.into());
-        win42::SparseTable::new(count,self.book.cols(),projected).ok()
+        win42::SparseTable::new(count,self.view_bounds().1,projected).ok()
     }
     #[cfg(test)]
     fn table(&self)->Option<Vec<Vec<String>>>{
@@ -1402,7 +1389,7 @@ impl win42::App for Xls {
             self.row = actual;
             self.clear_visible_cache();
         }
-        self.col = col.min(self.book.cols() - 1);
+        self.col = col.min(self.view_bounds().1 - 1);
     }
     fn selected_cell(&self) -> Option<(usize, usize)> {
         Some((self.visible_position(self.row)?, self.col))
@@ -1495,13 +1482,13 @@ impl win42::App for Xls {
         .map_err(|e| e.to_string())?;
         for (_,_,_,text) in book.cell_inputs(){win42::validate_editable(text)?;}
         self.book = book;
+        self.viewport.replace(Default::default());
         self.goal_seek.cancel();
         self.solver.cancel();
         self.selected_picture = None;
         self.preview = None;
         self.clear_visible_cache();
-        self.row = 0;
-        self.col = 0;
+        let selection=self.book.selection();self.row=selection.top;self.col=selection.left;
         self.normalize_focus();
         Ok(())
     }
@@ -1521,9 +1508,8 @@ impl win42::App for Xls {
         .map_err(|e| e.to_string())
     }
     fn edit(&mut self, s: String) -> Result<(), String> {
-        self.book
-            .set_cell_editor_text(self.row, self.col, win42::from_native_text(&s))
-            .map_err(|e| e.to_string())?;
+        let (row,col)=(self.row,self.col);let range=self.selection_range();
+        self.edit_range(range,|book|book.set_cell_editor_text(row,col,win42::from_native_text(&s)))?;
         self.clear_visible_cache();
         Ok(())
     }
@@ -1623,9 +1609,7 @@ impl win42::App for Xls {
                     .map_err(|e| e.to_string())?;
             }
             29 => {
-                self.book
-                    .merge(self.active_range())
-                    .map_err(|e| e.to_string())?;
+                let range=self.active_range();self.edit_range(range,|book|book.merge(range))?;
             }
             30 => {
                 self.book
@@ -1633,15 +1617,10 @@ impl win42::App for Xls {
                     .map_err(|e| e.to_string())?;
             }
             31 => {
-                let mut style = self
-                    .book
-                    .style(self.row, self.col)
-                    .ok_or("Invalid selection")?
-                    .clone();
+                let mut style = self.book.style(self.row,self.col).cloned().unwrap_or_default();
                 style.bold = !style.bold;
-                self.book
-                    .set_style(self.active_range(), style)
-                    .map_err(|e| e.to_string())?;
+                let range=self.active_range();
+                self.edit_range(range,|book|book.set_style(range,style))?;
             }
             58 => {
                 let mut p = self.book.print_settings().clone();
@@ -1680,8 +1659,8 @@ impl win42::App for Xls {
             }
             _ => {}
         }
-        self.row = self.row.min(self.book.rows() - 1);
-        self.col = self.col.min(self.book.cols() - 1);
+        self.row = self.row.min(self.view_bounds().0 - 1);
+        self.col = self.col.min(self.view_bounds().1 - 1);
         self.normalize_focus();
         self.clear_visible_cache();
         if self
@@ -1703,6 +1682,7 @@ fn main() {
         preview: None,
         visible_cache: std::cell::RefCell::new(Default::default()),
         picture_cache: Default::default(),
+            viewport: Default::default(),
         selected_picture: None,
     }))
 }
@@ -1723,6 +1703,7 @@ mod tests {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         assert_eq!(a.text(), "a\r\nb");
@@ -1747,6 +1728,7 @@ mod regression {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         app.book.set_cell(0, 1, "=A1".into()).unwrap();
@@ -1819,6 +1801,7 @@ mod regression {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         assert_eq!(
@@ -1909,6 +1892,7 @@ mod regression {
             preview: None,
             visible_cache: Default::default(),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         let win42::LabelSource::Rows(rows) = app.label_source().unwrap() else {
@@ -1956,6 +1940,7 @@ mod regression {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         let rendered = app.sparse_table().unwrap();
@@ -2044,6 +2029,7 @@ mod regression {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         let rendered = app.table().unwrap();
@@ -2090,6 +2076,7 @@ mod regression {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         app.book.set_cell(1, 1, "hidden value".into()).unwrap();
@@ -2143,6 +2130,7 @@ mod regression {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         app.book.set_cell(0, 0, "Amount".into()).unwrap();
@@ -2182,6 +2170,7 @@ mod regression {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         app.select_cell(1, 1);
@@ -2223,6 +2212,7 @@ mod regression {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         a.select_cell(1, 1);
@@ -2266,6 +2256,7 @@ mod regression {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         a.edit("a".into()).unwrap();
@@ -2293,6 +2284,7 @@ mod regression {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         assert!(!a.enabled(10));
@@ -2319,6 +2311,7 @@ mod policy_regression {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         a.edit("single".into()).unwrap();
@@ -2377,6 +2370,7 @@ mod filter_ui_regression {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         assert_eq!(app.table().unwrap().len(), 3);
@@ -2420,6 +2414,7 @@ mod custom_grid_regression {
             preview: None,
             visible_cache: std::cell::RefCell::new(Default::default()),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         assert!(app.uses_custom_grid());
@@ -2463,6 +2458,7 @@ mod picture_regression {
             preview: None,
             visible_cache: Default::default(),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         let recipe = label42::TechnicalElement {
@@ -2542,6 +2538,7 @@ mod technical_edit_regression {
             preview: None,
             visible_cache: Default::default(),
             picture_cache: Default::default(),
+            viewport: Default::default(),
             selected_picture: None,
         };
         let first = win42::TechnicalElement {
@@ -2596,7 +2593,7 @@ mod sparse_open_regression {
         source.set_cell(xls42_core::MAX_ROWS-1,xls42_core::MAX_COLS-1,"LAST".into()).unwrap();
         let path=std::env::temp_dir().join(format!("off42-sparse-open-{}.xls42",std::process::id()));
         std::fs::write(&path,source.project_bytes().unwrap()).unwrap();
-        let mut app=Xls{goal_seek:Default::default(),solver:Default::default(),book:Workbook::new(2,2).unwrap(),row:0,col:0,preview:None,visible_cache:Default::default(),picture_cache:Default::default(),selected_picture:None};
+        let mut app=Xls{goal_seek:Default::default(),solver:Default::default(),book:Workbook::new(2,2).unwrap(),row:0,col:0,preview:None,visible_cache:Default::default(),picture_cache:Default::default(),viewport:Default::default(),selected_picture:None};
         app.open(&path).unwrap();let table=app.sparse_table().unwrap();assert_eq!(table.cell(1_048_575,16_383),"LAST");
         let before=app.book.project_bytes().unwrap();
         source.add_sheet("Other").unwrap();
@@ -2616,7 +2613,7 @@ mod far_picture_geometry_regression {
         let mut book=Workbook::new(xls42_core::MAX_ROWS,xls42_core::MAX_COLS).unwrap();
         let mut png=std::io::Cursor::new(Vec::new());image::RgbaImage::from_pixel(1,1,image::Rgba([255,0,0,255])).write_to(&mut png,image::ImageFormat::Png).unwrap();
         let id=book.insert_image(1_048_574,16_382,png.into_inner(),1.,1.,"far".into()).unwrap();let original=book.images()[0].clone();
-        let mut app=Xls{goal_seek:Default::default(),solver:Default::default(),book,row:1_048_575,col:16_383,preview:None,visible_cache:Default::default(),picture_cache:Default::default(),selected_picture:Some(id)};
+        let mut app=Xls{goal_seek:Default::default(),solver:Default::default(),book,row:1_048_575,col:16_383,preview:None,visible_cache:Default::default(),picture_cache:Default::default(),viewport:Default::default(),selected_picture:Some(id)};
         let range=app.grid_selection().unwrap();assert_eq!((range.top,range.bottom),(1_048_575,1_048_575));assert_eq!(app.grid_frozen_panes(),(0,0));
         app.move_grid_picture(id,80.,20.).unwrap();let moved=app.book.images()[0].clone();
         assert_eq!((moved.row,moved.column),(1_048_575,16_383));assert_eq!((moved.offset_x,moved.offset_y),(0.,0.));assert_eq!(moved.data,original.data);

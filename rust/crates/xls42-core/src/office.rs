@@ -2640,7 +2640,7 @@ fn changed_cells(
             }
         };
         if (!allow_geometry && a.name != b.name)
-            || (!allow_geometry && (a.rows != b.rows || a.cols != b.cols))
+            || (!allow_geometry && (a.rows > b.rows || a.cols > b.cols))
             || (!allow_geometry && (a.row_heights != b.row_heights || a.col_widths != b.col_widths))
             || a.protected != b.protected
             || a.filter != b.filter
@@ -3236,7 +3236,13 @@ fn patch_ods(
     // Layout/style/filter/structural edits keep their existing stronger reconstruction checks.
     let mut shape=current.clone();shape.selection=old.selection;
     if shape.sheets.len()==old.sheets.len() {
-        for (after,before)in shape.sheets.iter_mut().zip(&old.sheets){after.cells=before.cells.clone();}
+        for (after,before)in shape.sheets.iter_mut().zip(&old.sheets){
+            after.cells=before.cells.clone();
+            // Growing blank allocation does not shift references or alter existing XML geometry.
+            if after.rows>=before.rows&&after.cols>=before.cols&&!after.source_structure {
+                after.rows=before.rows;after.cols=before.cols;
+            }
+        }
         let styles_unchanged=changes.iter().enumerate().all(|(i,cells)|cells.iter().all(|(p,c)|old.sheets[i].cells.get(p).map_or(0,|c|c.style)==c.as_ref().map_or(0,|c|c.style)));
         if &shape==old&&styles_unchanged&&current.sheets.iter().all(|s|s.filter.is_none()) {
             return dynamic_arrays::patch_ods_inputs(bytes,changes,current);
