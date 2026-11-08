@@ -5692,18 +5692,14 @@ pub(super) fn grid_snapshot() -> Option<crate::grid::Snapshot> {
         let s = s.as_ref()?;
         let rows=s.sparse_grid.clone().or_else(||s.grid_cache.clone().and_then(crate::SparseTable::from_dense))?;
         let cols=rows.columns();
-        let widths = (0..cols)
-            .map(|c| s.app.grid_column_width(c) as i32)
-            .collect();
-        let heights = (0..rows.len())
-            .map(|r| s.app.grid_row_height(r) as i32)
-            .collect();
-        let labels = (0..rows.len()).map(|r| s.app.grid_row_label(r)).collect();
+        let (widths,heights)=s.app.grid_axes().unwrap_or_else(||(
+            crate::GridAxis::new(cols,0,(0..cols).map(|c|(c,s.app.grid_column_width(c))).collect()).unwrap(),
+            crate::GridAxis::new(rows.len(),0,(0..rows.len()).map(|r|(r,s.app.grid_row_height(r))).collect()).unwrap()
+        ));
         Some(crate::grid::Snapshot {
             rows,
             widths,
             heights,
-            labels,
             selected: s.app.selected_cell(),
             range: s.app.grid_selection(),
             frozen: s.app.grid_frozen_panes(),
@@ -5712,6 +5708,9 @@ pub(super) fn grid_snapshot() -> Option<crate::grid::Snapshot> {
             pictures: s.app.grid_pictures(),
         })
     })
+}
+pub(super) fn grid_row_label(row:usize)->String {
+    STATE.with(|s|s.borrow().as_ref().map_or_else(String::new,|s|s.app.grid_row_label(row)))
 }
 pub(super) fn grid_style(row: usize, col: usize) -> Option<crate::GridCellStyle> {
     STATE.with(|s| s.borrow().as_ref()?.app.grid_cell_style(row, col))

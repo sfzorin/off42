@@ -1147,6 +1147,13 @@ impl win42::App for Xls {
             .count();
         (visible, self.book.sheet_view().frozen_columns)
     }
+    fn grid_axes(&self)->Option<(win42::GridAxis,win42::GridAxis)> {
+        let rows=self.visible_rows();
+        let mut widths=self.book.column_width_overrides().collect::<std::collections::BTreeMap<_,_>>();
+        for &c in &self.book.sheet_view().hidden_columns {widths.insert(c,0);}
+        let heights=self.book.row_height_overrides().filter_map(|(r,h)|rows.binary_search(&r).ok().map(|i|(i,h))).collect();
+        Some((win42::GridAxis::new(self.book.cols(),80,widths)?,win42::GridAxis::new(rows.len(),20,heights)?))
+    }
     fn grid_column_width(&self, column: usize) -> u16 {
         if self.book.sheet_view().hidden_columns.contains(&column) {
             0
@@ -2018,6 +2025,12 @@ mod regression {
         assert_eq!(app.grid_row_label(0), "2");
         assert_eq!(app.grid_row_label(1), "4");
         assert_eq!(app.grid_row_height(1), 44);
+        let (widths,heights)=app.grid_axes().unwrap();
+        assert_eq!(heights[1],44);
+        assert_eq!(heights.offset(2),64);
+        assert_eq!(widths[1],0);
+        assert_eq!(widths.index_at(80),Some(2));
+
         assert!(app.grid_cell_style(1, 0).unwrap().bold);
         assert_eq!(app.grid_frozen_panes(), (2, 0));
         app.select_cell(1, 0);

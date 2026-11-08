@@ -660,3 +660,12 @@ after image selection; image unit regressions are now included in quick CI.
   the sparse host bridge; new format/spill/error/far-cell and full-size host-storage regressions pass.
   Workspace 528/0/1 and GNU all targets compile. Native repeat is pending. Workbook limits remain unchanged;
   virtual geometry and independent large-operation bounds are required before increasing capacity.
+
+- Run 42515993014 (5d62d85) completes all 37 native UI groups without errors. Header-font choices/color,
+  actual embedded families and Cyrillic text, independently distinct glyph pixels, selected-page scope,
+  Undo/Redo/reopen and Microsoft Print to PDF now pass. Spelling body/table/emoji correction also passes.
+- Grid geometry now uses sparse shared size overrides and 64-bit prefix coordinates; painting/row labels
+  and header resize hit tests visit only visible cells, skipping hidden runs. Scrollbar scaling preserves
+  exact endpoints beyond 32-bit total height. Full-height/far-cell/frozen/hit/merge/scroll regressions and
+  existing hidden-row editing checks pass: workspace 530/0/1, GNU all targets compile. Actual native repeat
+  is pending; core worksheet limits remain 1,000 by 100 until remaining large operations/file paths migrate.

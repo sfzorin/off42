@@ -911,3 +911,11 @@ legacy `table` adapters remain available. The host caches the chosen source on r
 for either representation, and painting reads missing coordinates as empty text. The XLS physical row map is
 shared, sorted and binary searched; hidden/filtered rows keep their physical editing/clipboard coordinates.
 This removes empty-cell text allocation, but does not yet increase workbook limits or virtualize grid geometry.
+
+`App::grid_axes` optionally supplies sparse `GridAxis` geometry: default length plus overrides and cumulative
+64-bit deltas in shared immutable storage. Prefix/hit queries binary search; visible traversal skips zero-length
+runs and visits only cells intersecting the frozen/scrolled viewport. XLS translates physical size overrides
+through its existing row map. Row labels are requested only while painting visible headers. The grid keeps a
+64-bit origin, uses clipped 32-bit GDI pixels, and scales only the native scrollbar thumb when total geometry
+exceeds the OS range; both scrollbar endpoints retain exact logical coordinates. Existing custom grids can use
+the bounded legacy length adapter. Geometry/hit/merge/resize/editor/picture paths use the same axes.

@@ -861,3 +861,8 @@ XLS42 now sends occupied cell and spill text to the native grid without allocati
 worksheet area. Filtering, clipboard, labels, chart/pivot calculations, validation and print text use the same
 sparse projections. Existing worksheet limits remain 1,000 rows by 100 columns while geometry and remaining
 large-operation paths are being migrated; this change alone does not establish large-workbook support.
+
+The Windows grid also uses sparse row/column dimensions and paints visible cells and headers only.
+Hidden runs, frozen panes and merged cells share hit geometry. A 64-bit origin and a scaled native scrollbar
+avoid pixel overflow on long axes. Workbook dimension limits are still unchanged pending large-operation and
+file-adapter work; native verification of this geometry change is tracked separately in `PARITY.md`.

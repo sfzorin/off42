@@ -1268,6 +1268,12 @@ impl Workbook {
         self.validate_external_table_edit(&st)?;
         Ok(self.history.apply(st))
     }
+    pub fn row_height_overrides(&self) -> impl Iterator<Item=(usize,u16)> + '_ {
+        self.history.current().sheet().row_heights.iter().map(|(&i,&v)|(i,v))
+    }
+    pub fn column_width_overrides(&self) -> impl Iterator<Item=(usize,u16)> + '_ {
+        self.history.current().sheet().col_widths.iter().map(|(&i,&v)|(i,v))
+    }
     pub fn row_height(&self, row: usize) -> Option<u16> {
         let s = self.history.current().sheet();
         if row >= s.rows {

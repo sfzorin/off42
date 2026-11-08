@@ -1,5 +1,7 @@
 pub mod ocr;
 pub mod recovery;
+mod grid_axis;
+pub use grid_axis::GridAxis;
 mod sparse_table;
 pub use sparse_table::SparseTable;
 mod system_font;
@@ -443,6 +445,7 @@ pub trait App {
     fn uses_custom_grid(&self) -> bool {
         false
     }
+    fn grid_axes(&self) -> Option<(GridAxis,GridAxis)> {None}
     fn grid_column_width(&self, _column: usize) -> u16 {
         80
     }
