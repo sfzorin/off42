@@ -271,7 +271,7 @@ jobs:
           if ($env:AUDIT_LABELS -eq 'true') { $extra += @('--label-sources', '--label-preview') }
           if ($env:AUDIT_LANGUAGES -eq 'true') { $extra += '--languages' }
           if ($env:AUDIT_PAGES -eq 'true') { $extra += '--page-exports' }
-          if ($env:AUDIT_HOST_COMMANDS -eq 'true') { $extra += @('--host-commands', '--recovery') }
+          if ($env:AUDIT_HOST_COMMANDS -eq 'true') { $extra += @('--host-commands', '--recovery', '--rich-search') }
           if ($env:AUDIT_ENGINEERING -eq 'true') { $extra += '--engineering' }
           python rust/scripts/audit-ui-windows.py --bin-dir build/preview/off42 --output build/native-ui @extra
       - uses: actions/upload-artifact@v4
