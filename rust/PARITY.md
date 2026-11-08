@@ -632,3 +632,11 @@ after image selection; image unit regressions are now included in quick CI.
   the original document is preserved. Mapping now permits at most one such space after each expected image
   marker, rejects extra spaces/unmatched objects, and has a new actual Rich Edit/core integration regression.
   Complete correction assertions remain unchanged; the new native repeat is pending.
+
+- PDF headers/footers now offer bundled Noto Sans plus actual Windows Arial/Arial Bold, Times New Roman/
+  Times New Roman Bold and Courier New, with color. Immutable TrueType programs carry real glyph advances,
+  metrics and Unicode maps into saved page content and batch headers. Restricted/bitmap-only embedding is
+  refused and no-subsetting flags are honored. Font data and caches are bounded. Portable embedding/rights/
+  Unicode/history/reopen regressions pass: workspace 526/0/1; GNU all targets compile. Native family/style,
+  actual embedded-font, independently rendered glyphs, full history/reopen and virtual print checks are added,
+  awaiting their first compatible Windows build. This does not add complex-script shaping coverage.

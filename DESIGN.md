@@ -890,3 +890,12 @@ application availability with user visibility, and the existing DPI layout recla
 space. `Window Layout` preferences persist the visibility flags with the normal placement; default flags are
 omitted to retain the old placement representation. Generated UI controls still exist while hidden, so their
 commands and document models remain available. Menu checks reflect availability and current visibility.
+
+PDF header/footer font programs are bounded immutable values, shared across decoration history and batch
+workers. Windows GDI resolves the requested family/style to its actual TrueType bytes; substitution to a
+missing family is refused. The shared PDF font layer validates outline-embedding permissions and preserves
+full programs when subsetting is prohibited. Embedded metrics and Unicode maps come from that face. A
+process-local program identity separates glyph-subset caches; actual data equality defines settings equality.
+The default Noto Sans path stays available without system-font access. This font-program boundary does not
+implement new shaping or font fallback behavior. Machine-readable embedding rules follow the
+[OpenType OS/2 specification](https://learn.microsoft.com/typography/opentype/spec/os2).

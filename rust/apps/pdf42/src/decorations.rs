@@ -4,6 +4,8 @@ use pdf42_core::decorations::{DecorationKind, HeaderFooter, NumberFormat, PageNu
 pub(super) struct Settings {
     watermark: Watermark,
     header: HeaderFooter,
+    header_font:String,
+    font_cache:std::collections::BTreeMap<String,suite42_pdf_text::FontProgram>,
 }
 impl Settings {
     pub(super) fn batch_settings(&self) -> HeaderFooter {
@@ -24,6 +26,7 @@ impl Settings {
         }
     }
 }
+const HEADER_FONTS:[&str;6]=["Noto Sans","Arial","Arial Bold","Times New Roman","Times New Roman Bold","Courier New"];
 const POSITIONS: [&str; 6] = [
     "Top left",
     "Top center",
@@ -110,6 +113,8 @@ impl Pdf {
                         "Also number other PDF files (Bates numbers continue)",
                         "No".into(),
                     ),
+                    ("Font",if settings.header_font.is_empty(){"Noto Sans".into()}else{settings.header_font.clone()}),
+                    ("Color (#RRGGBB)",hex(h.color)),
                 ]);
                 win42::InputRequest {
                     title: "Header & Footer",
@@ -158,7 +163,7 @@ impl Pdf {
                 (3, vec!["No".into(), "Yes".into()]),
             ]
         } else if id == 92 {
-            vec![(10, vec!["No".into(), "Yes".into()])]
+            vec![(10, vec!["No".into(), "Yes".into()]),(11,HEADER_FONTS.iter().map(|s|(*s).into()).collect())]
         } else {
             vec![]
         }
@@ -227,7 +232,7 @@ impl Pdf {
                     self.doc.as_mut().unwrap().add_page_numbers(&pages, &spec)?;
                 }
                 92 => {
-                    if !matches!(values.len(), 10 | 11) {
+                    if !matches!(values.len(), 10 | 11 | 12 | 13) {
                         return Err("Invalid header/footer settings".into());
                     }
                     let batch = match values.get(10).map(String::as_str).unwrap_or("No") {
@@ -238,7 +243,18 @@ impl Pdf {
                     if batch && self.batch_headers.is_some() {
                         return Err("A PDF header batch is already running".into());
                     }
-                    let mut spec = self.decorations.header.clone();
+                    let font_title=values.get(11).map(String::as_str).unwrap_or(if self.decorations.header_font.is_empty(){"Noto Sans"}else{&self.decorations.header_font});
+                    if !HEADER_FONTS.contains(&font_title){return Err("Choose a header/footer font".into())}
+                    let font_title=font_title.to_owned();
+                    let font=if font_title=="Noto Sans"{None}else{
+                        if !self.decorations.font_cache.contains_key(&font_title){
+                            let(family,bold)=match font_title.as_str(){"Arial"=>("Arial",false),"Arial Bold"=>("Arial",true),"Times New Roman"=>("Times New Roman",false),"Times New Roman Bold"=>("Times New Roman",true),"Courier New"=>("Courier New",false),_=>unreachable!()};
+                            let program=suite42_pdf_text::FontProgram::new(win42::system_font_program(family,bold)?)?;self.decorations.font_cache.insert(font_title.clone(),program);
+                        }
+                        self.decorations.font_cache.get(&font_title).cloned()
+                    };
+                    let mut spec = self.decorations.header.clone();spec.font=font;
+                    if let Some(value)=values.get(12){spec.color=color(value)?;}
                     spec.texts = std::array::from_fn(|i| values[i].clone());
                     spec.size = number(&values[6])?;
                     spec.vertical = number(&values[7])?;
@@ -255,6 +271,7 @@ impl Pdf {
                         .add_header_footer(&pages, &spec)?;
                     spec.bates_start = next;
                     self.decorations.header = spec;
+                    self.decorations.header_font=font_title;
                     if batch {
                         self.pending_command = Some(112);
                     }
@@ -511,5 +528,22 @@ mod tests {
             original
         );
         assert!(!app.dirty());
+    }
+}
+
+#[cfg(all(test,windows))]
+mod native_font_tests{
+    use super::*;
+    use win42::App;
+    #[test]
+    fn header_choices_embed_each_actual_windows_font_and_preserve_history(){
+        let directory=tempfile::tempdir().unwrap();let source=directory.path().join("source.pdf");std::fs::write(&source,include_bytes!("../fixtures/page-export.pdf")).unwrap();
+        for choice in HEADER_FONTS.into_iter().skip(1){
+            let mut app=Pdf::default();app.open(&source).unwrap();let baseline=app.doc.as_ref().unwrap().save_snapshot().unwrap().0;
+            let values=["FONT-42 Привет","","","","","","14","28","36","1","No",choice,"#AA0011"].map(str::to_owned);
+            app.input_action(92,&values).unwrap();let program=app.decorations.header.font.as_ref().unwrap();assert_ne!(program.name(),"NotoSans");assert_eq!(app.decorations.header.color,[170,0,17]);assert_eq!(app.input_request(92).unwrap().fields[11].1,choice);
+            let changed=app.doc.as_ref().unwrap().save_snapshot().unwrap().0;let pdf=lopdf::Document::load_mem(&changed).unwrap();assert!(pdf.objects.values().any(|o|o.as_dict().is_ok_and(|d|d.get(b"BaseFont").is_ok_and(|v|v.as_name().is_ok_and(|n|n==program.name().as_bytes())))));
+            app.action(4).unwrap();assert_eq!(app.doc.as_ref().unwrap().save_snapshot().unwrap().0,baseline);app.action(5).unwrap();assert_eq!(app.doc.as_ref().unwrap().save_snapshot().unwrap().0,changed);
+        }
     }
 }

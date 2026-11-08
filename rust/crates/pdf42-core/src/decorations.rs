@@ -34,6 +34,7 @@ pub struct HeaderFooter {
     /// Top left/center/right, bottom left/center/right. Tokens match the macOS workflow.
     pub texts: [String; 6],
     pub size: f64,
+    pub font:Option<suite42_pdf_text::FontProgram>,
     pub color: [u8; 3],
     pub horizontal: f64,
     pub vertical: f64,
@@ -56,6 +57,7 @@ impl Default for HeaderFooter {
                 String::new(),
             ],
             size: 10.0,
+            font:None,
             color: [0, 0, 0],
             horizontal: 36.0,
             vertical: 28.0,
@@ -90,6 +92,7 @@ pub(super) enum Content {
         kind: DecorationKind,
         lines: [String; 6],
         size: f64,
+        font:Option<suite42_pdf_text::FontProgram>,
         color: [u8; 3],
         horizontal: f64,
         vertical: f64,
@@ -114,11 +117,12 @@ fn size(value: f64) -> bool {
 fn margin(value: f64) -> bool {
     value.is_finite() && (0.0..=1440.0).contains(&value)
 }
-fn check_line(text: &str) -> Result<(), String> {
+fn check_line(text: &str) -> Result<(), String> {check_line_font(text,None)}
+fn check_line_font(text:&str,font:Option<&suite42_pdf_text::FontProgram>)->Result<(),String>{
     if text.len() > 4096 || text.chars().any(|c| c.is_control()) {
         return Err("Use a single line up to 4096 bytes".into());
     }
-    suite42_pdf_text::PdfFont::validate(text)
+    if let Some(font)=font{font.validate(text)}else{suite42_pdf_text::PdfFont::validate(text)}
 }
 impl PdfDocument {
     fn decoration_pages(&self, indices: &[usize]) -> Result<Vec<(usize, ObjectId)>, String> {
@@ -167,6 +171,11 @@ impl PdfDocument {
         if bytes > 8 * 1024 * 1024 {
             return Err("Page decoration text exceeds limits".into());
         }
+        let mut fonts=std::collections::BTreeSet::new();let mut font_bytes=0usize;
+        for decoration in state.decorations.iter().chain(&added){
+            if let Content::Text{font:Some(font),..}=&decoration.content{if fonts.insert(font.cache_id()){font_bytes=font_bytes.checked_add(font.byte_len()).ok_or("Font data exceeds limits")?;}}
+        }
+        if font_bytes>32*1024*1024{return Err("Page decoration font data exceeds limits".into())}
         state.decorations.extend(added);
         self.history.apply(state);
         Ok(())
@@ -248,7 +257,7 @@ impl PdfDocument {
                     .replace("<<bates>>", &bates)
             });
             for line in &lines {
-                check_line(line)?;
+                check_line_font(line,spec.font.as_ref())?;
             }
             added.push(Decoration {
                 page,
@@ -256,6 +265,7 @@ impl PdfDocument {
                     kind: DecorationKind::HeaderFooter,
                     lines,
                     size: spec.size,
+                    font:spec.font.clone(),
                     color: spec.color,
                     horizontal: spec.horizontal,
                     vertical: spec.vertical,
@@ -302,6 +312,7 @@ impl PdfDocument {
                         kind: DecorationKind::PageNumber,
                         lines,
                         size: spec.size,
+                        font:None,
                         color: [0, 0, 0],
                         horizontal: spec.margin,
                         vertical: spec.margin,
@@ -504,21 +515,23 @@ fn drawing(
         Content::Text {
             lines,
             size,
+            font:program,
             color,
             horizontal,
             vertical,
             ..
         } => {
             let all = lines.join("");
-            let key = all
+            let glyphs = all
                 .chars()
                 .collect::<std::collections::BTreeSet<_>>()
                 .into_iter()
                 .collect::<String>();
+            let key=format!("{}:{}",program.as_ref().map_or(0,|f|f.cache_id()),glyphs);
             if !fonts.contains_key(&key) {
                 fonts.insert(
                     key.clone(),
-                    suite42_pdf_text::PdfFont::embed_subset(doc, &all)?,
+                    if let Some(program)=program{program.embed_subset(doc,&all)?}else{suite42_pdf_text::PdfFont::embed_subset(doc, &all)?},
                 );
             }
             let font = &fonts[&key];
@@ -629,6 +642,19 @@ mod tests {
             }
         }
         text
+    }
+    #[test]
+    fn selected_font_program_survives_header_snapshot_history_and_reopen(){
+        let program=suite42_pdf_text::FontProgram::new(include_bytes!("../../doc42-layout-probe/fixtures/NotoSans.ttf").to_vec()).unwrap();
+        let mut doc=source();let baseline=doc.save_snapshot().unwrap().0;
+        let mut spec=HeaderFooter::default();spec.texts=["FONT Привет 42".into(),String::new(),String::new(),String::new(),String::new(),String::new()];spec.font=Some(program.clone());
+        doc.add_header_footer(&[0,2],&spec).unwrap();let changed=doc.save_snapshot().unwrap().0;
+        let saved=Document::load_mem(&changed).unwrap();assert!(extracted_text(&saved,1).contains("FONT Привет 42"));assert!(!extracted_text(&saved,2).contains("FONT Привет 42"));
+        assert!(saved.objects.values().any(|o|o.as_dict().is_ok_and(|d|d.get(b"BaseFont").is_ok_and(|v|v.as_name().is_ok_and(|n|n==program.name().as_bytes()))&&d.get(b"ToUnicode").is_ok())));
+        assert!(saved.objects.values().any(|o|o.as_dict().is_ok_and(|d|d.get(b"FontFile2").is_ok())));
+        doc.undo();assert_eq!(doc.save_snapshot().unwrap().0,baseline);doc.redo();assert_eq!(doc.save_snapshot().unwrap().0,changed);
+        let reopened=PdfDocument::open_bytes(&changed).unwrap();assert_eq!(reopened.page_count(),4);
+        let current=doc.save_snapshot().unwrap().0;let mut missing=spec.clone();missing.texts[0]="\u{10FFFF}".into();assert!(doc.add_header_footer(&[0],&missing).is_err());assert_eq!(doc.save_snapshot().unwrap().0,current);
     }
     fn headers() -> HeaderFooter {
         let mut spec = HeaderFooter::default();

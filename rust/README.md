@@ -841,3 +841,18 @@ MSVC tests), but catches unrelated font substitutions during whole-RTF spelling 
 prepare exact source-run changes in DOC/PPT and commit only after native projection verification. Portable
 regressions cover exact styles/links/images/history, Cancel, stale state and PPT font precision; workspace
 524/0/1 and GNU targets compile. Native correction and the extended panel tests await a repeat on this fix.
+
+
+### Header/footer fonts (Windows native audit pending)
+
+PDF42's existing Header & Footer dialog adds a font choice and color. Choices are the bundled Noto Sans,
+Arial/Arial Bold, Times New Roman/Times New Roman Bold and Courier New. Selected system font programs are
+embedded in the saved PDF with actual widths/metrics and ToUnicode maps; their appearance is retained without
+requiring that font on the recipient's computer. Missing fonts or missing glyphs refuse the operation. These
+choices also apply to batch headers. TrueType embedding flags are checked, forbidden outline embedding is
+refused, and a font marked no-subsetting is embedded in full. Each program is limited to 16 MB and live
+page-decoration programs to 32 MB; the UI caches only its fixed choices. Complex-script shaping is unchanged.
+
+Portable tests cover permission flags, retained Unicode/metrics, selected pages, atomic refusal, complete
+Undo/Redo and reopen; workspace 526/0/1 and GNU all-targets compile. Real Windows font/style selection,
+independent pixels/text, native UI history/reopen and virtual-printer checks await the next compatible run.

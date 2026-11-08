@@ -1405,6 +1405,32 @@ def audit_pdf_decorations(process,main,binary,output,results):
     results["checks"].append("text/image watermarks with opacity, selected-page pixels/rotation, searchable Unicode headers/Bates/date/file tokens, ordered numbering, atomic Undo/Redo/removal and saved PDFium text/pixels")
 
 
+def audit_pdf_header_fonts(process,main,binary,output,results,include_print=False):
+    source=output/'header-fonts-source.pdf';minimal_pdf(source,['FONT-BODY-ONE','FONT-BODY-TWO']);original=source.read_bytes()
+    choices=[('Arial','Arial'),('Arial Bold','Arial-Bold'),('Times New Roman','TimesNewRoman'),('Times New Roman Bold','TimesNewRomanPS-Bold'),('Courier New','CourierNew')]
+    rendered=[]
+    def save(name):
+        path=output/('header-font-'+name+'.pdf');save_as(main);choose_file(process,path,format_name='PDF document');output_ready(process,main,path,b'%PDF-');return path
+    for index,(choice,font_name)in enumerate(choices):
+        open_fixture(process,main,source)
+        fill_prompt(process,main,92,'Header & Footer',['','WWW iii FONT-42 Привет','','','','','14','28','36','2','No',choice,'#AA0011'])
+        saved=save(str(index));data=saved.read_bytes();assert b'/FontFile2'in data and b'/ToUnicode'in data
+        names=re.findall(rb'/BaseFont\s*/([^\s/<>\[\]()]+)',data);assert any(font_name.encode()in n for n in names),(choice,names)
+        pages=pdf_text(binary.parent/'pdfium.dll',saved,by_page=True);assert 'WWW iii FONT-42 Привет'in pages[1]and'FONT-42 Привет'not in pages[0]
+        pixels=pdf_pixels(binary.parent/'pdfium.dll',saved,1);red=sum(pixels[2][i+2]>pixels[2][i]+40 and pixels[2][i+2]>pixels[2][i+1]+40 for i in range(0,len(pixels[2]),4));assert red>100,(choice,red)
+        assert all(pixels!=other for other in rendered),'Different selected font families/styles rendered identically';rendered.append(pixels)
+        command(main,4);undone=save('undo-'+str(index));assert 'FONT-42 Привет'not in pdf_text(binary.parent/'pdfium.dll',undone)
+        command(main,5);redone=save('redo-'+str(index));assert pdf_pixels(binary.parent/'pdfium.dll',redone,1)==pixels
+        open_fixture(process,main,redone);reopened=save('reopened-'+str(index));assert pdf_pixels(binary.parent/'pdfium.dll',reopened,1)==pixels and 'FONT-42 Привет'in pdf_text(binary.parent/'pdfium.dll',reopened)
+    if include_print:
+        caption=text(main);printed=print_to_virtual_pdf(process,main,lambda:command(main,52),output/'header-font-printed.pdf',output)
+        assert len(pdf_text(binary.parent/'pdfium.dll',printed,by_page=True))==1
+        _,_,pixels=pdf_pixels(binary.parent/'pdfium.dll',printed);assert sum(pixels[i+2]>pixels[i]+40 and pixels[i+2]>pixels[i+1]+40 for i in range(0,len(pixels),4))>50,'Selected-font colored header was lost by the real PDF printer'
+        assert text(main)==caption
+    assert source.read_bytes()==original
+    results['checks'].append('five actual Windows header fonts and header color chosen in the normal dialog; embedded TrueType/ToUnicode and Cyrillic text, distinct independently rendered glyph pixels, selected page, full Undo/Redo and reopen retain exact appearance; virtual printing retains the colored header when enabled; source unchanged')
+
+
 def audit_pdf_comparison(process,main,binary,output,results):
     source=output/"comparison-source.pdf";other=output/"comparison-other.pdf"
     minimal_pdf(source,["BOARD uses 10k resistor","REMOVE THIS"])
@@ -2428,6 +2454,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_pdf_text_exports(process, main, binary, output, results)
         if pdf_decorations and binary.stem.lower()=="pdf42":
             audit_pdf_decorations(process,main,binary,output,results)
+            audit_pdf_header_fonts(process,main,binary,output,results,native_print)
         if pdf_comparison and binary.stem.lower()=="pdf42":
             audit_pdf_comparison(process,main,binary,output,results)
         if pdf_merge and binary.stem.lower()=="pdf42":

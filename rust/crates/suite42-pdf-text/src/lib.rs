@@ -1,6 +1,8 @@
 //! Embedded Noto Sans Type0 font shared by PDF-producing applications.
 use lopdf::{dictionary, Document, Object, ObjectId, Stream};
 use std::collections::BTreeMap;
+mod font_program;
+pub use font_program::FontProgram;
 
 pub struct PdfFont {
     pub id: ObjectId,
@@ -34,6 +36,9 @@ impl PdfFont {
     fn embed_impl(doc: &mut Document, text: &str, subset: bool, invisible:bool) -> Result<Self, String> {
         // Noto Sans is distributed under OFL 1.1 alongside the bundled font.
         let font_data = include_bytes!("../../doc42-layout-probe/fixtures/NotoSans.ttf");
+        Self::embed_data(doc,text,subset,invisible,font_data,"NotoSans")
+    }
+    fn embed_data(doc:&mut Document,text:&str,subset:bool,invisible:bool,font_data:&[u8],name:&str)->Result<Self,String>{
         let face = ttf_parser::Face::parse(font_data, 0)
             .map_err(|e| format!("Invalid bundled font: {e:?}"))?;
         let mut chars = std::collections::BTreeMap::new();
@@ -58,7 +63,10 @@ impl PdfFont {
         } else {
             Self::full_font_stream(doc, font_data)
         };
-        let descriptor = doc.add_object(dictionary! {"Type"=>"FontDescriptor", "FontName"=>"NotoSans", "Flags"=>32, "FontBBox"=>vec![(-1000).into(),(-1000).into(),3000.into(),3000.into()], "ItalicAngle"=>0, "Ascent"=>1100, "Descent"=>-300, "CapHeight"=>750, "StemV"=>80, "FontFile2"=>font_stream});
+        let metric=|v:i16|(f64::from(v)*1000./f64::from(face.units_per_em())).round()as i64;
+        let bounds=face.global_bounding_box();
+        let flags=32+i64::from(face.is_monospaced())+if face.is_italic(){64}else{0};
+        let descriptor = doc.add_object(dictionary! {"Type"=>"FontDescriptor", "FontName"=>name, "Flags"=>flags, "FontBBox"=>vec![metric(bounds.x_min).into(),metric(bounds.y_min).into(),metric(bounds.x_max).into(),metric(bounds.y_max).into()], "ItalicAngle"=>face.italic_angle().unwrap_or(0.)as f64, "Ascent"=>metric(face.ascender()), "Descent"=>metric(face.descender()), "CapHeight"=>metric(face.capital_height().unwrap_or(face.ascender())), "StemV"=>80, "FontFile2"=>font_stream});
         let mut cid_to_gid = vec![0u8; (chars.len() + 1) * 2];
         let mut widths = vec![Object::Integer(0); chars.len() + 1];
         let mut cmap = String::from("/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n/CMapName /SCN42Unicode def\n/CMapType 2 def\n1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n");
@@ -81,8 +89,8 @@ impl PdfFont {
         cmap.push_str("endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend\n");
         let map = doc.add_object(Stream::new(dictionary! {}, cid_to_gid));
         let unicode = doc.add_object(Stream::new(dictionary! {}, cmap.into_bytes()));
-        let cidfont = doc.add_object(dictionary! {"Type"=>"Font", "Subtype"=>"CIDFontType2", "BaseFont"=>"NotoSans", "CIDSystemInfo"=>dictionary! {"Registry"=>Object::string_literal("Adobe"), "Ordering"=>Object::string_literal("Identity"), "Supplement"=>0}, "FontDescriptor"=>descriptor, "CIDToGIDMap"=>map, "W"=>vec![Object::Integer(0), Object::Array(widths)]});
-        let font = doc.add_object(dictionary! {"Type"=>"Font", "Subtype"=>"Type0", "BaseFont"=>"NotoSans", "Encoding"=>"Identity-H", "DescendantFonts"=>vec![Object::Reference(cidfont)], "ToUnicode"=>unicode});
+        let cidfont = doc.add_object(dictionary! {"Type"=>"Font", "Subtype"=>"CIDFontType2", "BaseFont"=>name, "CIDSystemInfo"=>dictionary! {"Registry"=>Object::string_literal("Adobe"), "Ordering"=>Object::string_literal("Identity"), "Supplement"=>0}, "FontDescriptor"=>descriptor, "CIDToGIDMap"=>map, "W"=>vec![Object::Integer(0), Object::Array(widths)]});
+        let font = doc.add_object(dictionary! {"Type"=>"Font", "Subtype"=>"Type0", "BaseFont"=>name, "Encoding"=>"Identity-H", "DescendantFonts"=>vec![Object::Reference(cidfont)], "ToUnicode"=>unicode});
         Ok(Self { id: font, chars })
     }
     /// Reuses only an actual identical embedded font stream. CID maps and
