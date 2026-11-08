@@ -170,6 +170,19 @@ def fill_prompt(process, main, identifier, title, values):
     return dialog
 
 
+def open_fixture(process,main,path):
+    """Replace this isolated audit process's previous fixture through the normal discard prompt."""
+    command(main,1);choose_file(process,path)
+    def opened_or_discard():
+        if path.name in text(main)and u.IsWindowEnabled(main):return('opened',None)
+        dialog=next((h for h in windows(process.pid)if classname(h)=='#32770'and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
+        return('discard',dialog)if dialog else None
+    state,dialog=wait_for(opened_or_discard,'fixture open or unsaved-change prompt',process)
+    if state=='discard':
+        click(dialog,7)
+        wait_for(lambda:path.name in text(main)and u.IsWindowEnabled(main),'previous audit fixture discarded',process)
+
+
 def choose_file(process, path, format_name=None, keep_preview=False, open_preview=True):
     preview=[None]
     def filename_control():
@@ -806,9 +819,7 @@ def audit_rich_format(process,main,binary,output,results):
         +br'\pard {\pict\pngblip\picw2\pich2\picwgoal240\pichgoal240 '+picture.read_bytes().hex().encode('ascii')
         +br'}\par After\par Tail\par}')
     original=source.read_bytes()
-    command(main,1);choose_file(process,source)
-    discard=next((h for h in windows(process.pid)if classname(h)=='#32770'and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
-    if discard:click(discard,7)
+    open_fixture(process,main,source)
     wait_for(lambda:source.name in text(main)and u.IsWindowEnabled(main),'format fixture opened',process)
     edit=u.GetDlgItem(main,101)
     def saved(name):
@@ -946,9 +957,7 @@ def audit_goal_seek(process,main,binary,output,results):
     source=output/'goal-seek-source.csv'
     with source.open('w',encoding='utf-8',newline='')as stream:
         csv.writer(stream).writerows([['1','=A1^2','UNCHANGED'],['1000','=PMT(0.05/12,120,A2)','OTHER'],['0','=1','CONSTANT']])
-    original=source.read_bytes();command(main,1);choose_file(process,source)
-    discard=next((h for h in windows(process.pid)if classname(h)=='#32770'and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
-    if discard:click(discard,7)
+    original=source.read_bytes();open_fixture(process,main,source)
     wait_for(lambda:source.name in text(main)and u.IsWindowEnabled(main),'Goal Seek fixture opened',process)
     caption=text(main)
     fill_prompt(process,main,79,'Goal Seek',['B1','2','A1'])
@@ -1013,8 +1022,7 @@ def audit_engineering_formulas(process, main, binary, output, results, include_e
     with source.open("w", encoding="utf-8", newline="") as file:
         csv.writer(file).writerows(records)
     original = source.read_bytes()
-    command(main, 1)
-    choose_file(process, source)
+    open_fixture(process,main,source)
     wait_for(lambda: source.name in text(main) and u.IsWindowEnabled(main), "engineering source opened", process)
     fill_prompt(process, main, 25, "Range (1-based)", ["1", "2", "1", "2"])
     wait_for(lambda: any("R1 C2" in text(h) for h in windows(process.pid, main)), "B1 selected", process)

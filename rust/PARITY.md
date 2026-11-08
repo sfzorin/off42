@@ -568,3 +568,7 @@ after image selection; image unit regressions are now included in quick CI.
   Source fixes separate private recovery extensions from user-facing filters and tolerate only destroyed
   dialog handles in the harness. A portable regression also reproduces/fixes RTF image/table order.
   Rejected DOC projections are now captured only under the explicit audit-output environment.
+- The RTF picture parser now balances nested BLIP UID groups and length-prefixed binary picture bytes,
+  including braces/backslashes inside payloads; truncated, negative and mixed encodings are refused.
+  Portable import/ordering/body-preservation regressions pass. Actual rejected Windows RTF capture is
+  still needed to confirm which producer representation caused the native typing failure.

@@ -741,3 +741,7 @@ Focused Windows run 42445175112 catches a native DOC picture-projection refusal 
 extension guard; those GUI scenarios are not yet verified. The private IMG extension now has an explicit
 recovery-only capability, and a reproduced RTF table/picture ordering defect is fixed with a portable
 regression. The new DOC diagnostic retains rejected fixture RTF only when OFF42_AUDIT_OUTPUT is set.
+
+The RTF picture reader also handles nested BLIP identifiers and bounded binary image payloads. It keeps
+following body text separate and refuses truncated/mixed encodings. Portable regressions pass; the exact
+Windows typing failure remains under native verification.

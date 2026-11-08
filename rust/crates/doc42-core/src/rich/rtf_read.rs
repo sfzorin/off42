@@ -878,11 +878,7 @@ fn decode_inner(bytes: &[u8], projection: bool) -> Result<State, Error> {
                     }
                     if !r.in_table { r.flush_table()?; }
                     let start = i - 1;
-                    let end = bytes[i..]
-                        .iter()
-                        .position(|b| *b == b'}')
-                        .map(|n| i + n + 1)
-                        .ok_or_else(|| fail("unterminated picture"))?;
+                    let end = super::rtf_picture::group_end(bytes,start)?;
                     let image = super::rtf_picture::parse(&bytes[start..end], r.next_id)?;
                     r.next_id += 1;
                     r.blocks.push(Block::Image(image));
