@@ -919,3 +919,9 @@ through its existing row map. Row labels are requested only while painting visib
 64-bit origin, uses clipped 32-bit GDI pixels, and scales only the native scrollbar thumb when total geometry
 exceeds the OS range; both scrollbar endpoints retain exact logical coordinates. Existing custom grids can use
 the bounded legacy length adapter. Geometry/hit/merge/resize/editor/picture paths use the same axes.
+
+External XLSX values and shared-formula text are read through Calamine's pinned `worksheet_cells_reader`
+stream, one actual XML cell record at a time. No worksheet-range matrix is constructed. Types, dates,
+modern error substitutions, per-cell formula caches, layout imports and original-package preservation retain
+existing policy; record count and cumulative input text are checked before model insertion. ODS and XLS
+still use their existing readers pending separate migrations.

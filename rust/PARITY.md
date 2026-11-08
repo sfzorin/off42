@@ -669,3 +669,8 @@ after image selection; image unit regressions are now included in quick CI.
   exact endpoints beyond 32-bit total height. Full-height/far-cell/frozen/hit/merge/scroll regressions and
   existing hidden-row editing checks pass: workspace 530/0/1, GNU all targets compile. Actual native repeat
   is pending; core worksheet limits remain 1,000 by 100 until remaining large operations/file paths migrate.
+
+- External XLSX values/formulas now stream cell records rather than materializing a dense bounding
+  rectangle. An independent edge-coordinate workbook checks literal formula-looking text, booleans,
+  calculated caches, editing/Undo/Redo/reopen and exact unknown ZIP part preservation. Core 144/0;
+  GNU all targets compile. Existing dimensions remain unchanged until remaining paths are bounded.

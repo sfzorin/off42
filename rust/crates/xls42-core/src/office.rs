@@ -9,6 +9,7 @@ mod pictures;
 mod formula_cache;
 mod filters;
 mod dynamic_arrays;
+mod sparse_import;
 fn date_time(raw: &str) -> Result<chrono::NaiveDateTime, Error> {
     chrono::NaiveDateTime::parse_from_str(raw, "%Y-%m-%dT%H:%M:%S%.f")
         .ok()
@@ -1595,6 +1596,9 @@ impl Workbook {
         let bytes = repaired.as_ref();
         use calamine::{Data, Reader};
         let (reader_bytes, modern_errors) = dynamic_arrays::working_copy(bytes, kind)?;
+        let (sheets,cache)=if kind=="xlsx" {
+            sparse_import::xlsx(reader_bytes.as_ref(),&modern_errors)?
+        }else{
         let mut source = calamine::open_workbook_auto_from_rs(Cursor::new(reader_bytes.as_ref()))
             .map_err(|_| Error::Invalid("unsupported or invalid spreadsheet"))?;
         let names = source.sheet_names().to_vec();
@@ -1690,6 +1694,8 @@ impl Workbook {
             }
             sheets.push(sheet);
         }
+            (sheets,cache)
+        };
         let mut state = State {
             next_id: sheets.len() as u64 + 1,
             sheets,

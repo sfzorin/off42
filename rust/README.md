@@ -866,3 +866,7 @@ The Windows grid also uses sparse row/column dimensions and paints visible cells
 Hidden runs, frozen panes and merged cells share hit geometry. A 64-bit origin and a scaled native scrollbar
 avoid pixel overflow on long axes. Workbook dimension limits are still unchanged pending large-operation and
 file-adapter work; native verification of this geometry change is tracked separately in `PARITY.md`.
+
+XLSX import reads actual cell records without expanding the bounding rectangle between distant cells.
+Literal text, typed values, shared formulas, caches and untouched package parts retain their existing handling.
+ODS/XLS import and large-operation limits are being addressed separately.
