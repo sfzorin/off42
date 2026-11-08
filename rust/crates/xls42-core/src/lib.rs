@@ -12,6 +12,8 @@ pub use layout::{PrintSettings, SheetFilter, SheetView};
 mod display;
 mod sparse_display;
 mod grid_edit;
+mod sorting;
+pub use sorting::{SortKey,SortOptions};
 #[cfg(test)]
 mod capacity_tests;
 pub use analytics::{Chart, ChartData, ChartKind, ChartSeries, Pivot, PivotAggregate};
@@ -1439,65 +1441,7 @@ impl Workbook {
         key_column: usize,
         descending: bool,
     ) -> Result<bool, Error> {
-        self.require_structural_edit()?;
-        let mut st = self.history.current().clone();
-        let s = st.sheet();
-        if s.protected {
-            return Err(Error::Protected);
-        }
-        if !range.valid(s) || key_column < range.left || key_column > range.right {
-            return Err(Error::Bounds);
-        }
-        if s.merges.iter().any(|m| m.overlaps(range)) {
-            return Err(Error::Invalid("sort involving merged cells is unsupported"));
-        }
-        range.bounded_operation()?;
-        let display = self.display_cells();
-        let mut rows: Vec<usize> = (range.top..=range.bottom).collect();
-        rows.sort_by(|a, b| {
-            let a = display.get(&(*a,key_column)).map_or("",String::as_str);
-            let b = display.get(&(*b,key_column)).map_or("",String::as_str);
-            let order = match (a.parse::<f64>(), b.parse::<f64>()) {
-                (Ok(a), Ok(b)) if a.is_finite() && b.is_finite() => a.total_cmp(&b),
-                _ => a.to_lowercase().cmp(&b.to_lowercase()),
-            };
-            if descending {
-                order.reverse()
-            } else {
-                order
-            }
-        });
-        let snapshot: Vec<_> = rows
-            .iter()
-            .map(|r| {
-                (range.left..=range.right)
-                    .map(|c| s.cells.get(&(*r, c)).cloned())
-                    .collect::<Vec<_>>()
-            })
-            .collect();
-        let s = st.sheet_mut();
-        for (offset, (old_row, cells)) in rows.into_iter().zip(snapshot).enumerate() {
-            let dest = range.top + offset;
-            for (offset, cell) in cells.into_iter().enumerate() {
-                let key = (dest, range.left + offset);
-                if let Some(mut cell) = cell {
-                    if matches!(cell.text, CellContent::Formula(_)) {
-                        cell.text = CellContent::from_raw(translate_refs(
-                            cell.text.raw(),
-                            dest as isize - old_row as isize,
-                            0,
-                        ));
-                    }
-                    s.cells.insert(key, cell);
-                } else {
-                    s.cells.remove(&key);
-                }
-            }
-        }
-        rules::validate_range(&st, range)?;
-        tables::reconcile_headers(self.history.current(), &mut st)?;
-        self.validate_external_table_edit(&st)?;
-        Ok(self.history.apply(st))
+        self.sort_with_options(range,&[SortKey{index:key_column,descending}],&SortOptions::default())
     }
     /// Return matching row indexes without modifying the sheet.
     pub fn matching_rows(

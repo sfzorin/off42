@@ -867,7 +867,7 @@ records, preserving spaces, tabs, line breaks and paragraphs. Value-only ODS edi
 styles and no active filter preserve neighboring XML directly; other ODS edits retain preservation guards.
 
 Stored cells are limited to one million across the book, with four MB of text. Operations that materialize
-rectangles (copy/paste, style, fill, sort and CSV) retain a separate 100,000-cell bound; charts allow up to
+rectangles (copy/paste, style, fill and CSV) retain a separate 100,000-cell bound; charts allow up to
 1,000 points per series. Printing supports up to 100,000 cells and 4,096 pages: select a smaller print area
 for distant sparse data. Oversized operations are refused before document mutation. Dense rectangular text
 projections are test helpers; data-processing clients use `display_cells` or `calculated_cells`.
@@ -875,7 +875,7 @@ projections are test helpers; data-processing clients use `display_cells` or `ca
 Portable tests cover far references, independent XLSX/ODS edge imports, all native formats, validation,
 atomic operation refusals and selected-area printing. The full-size native UI scenario passes in run 42521108743: far selection/scroll, edit, scalar summary
 caches, distinct error/text types and complete history/reopen. Run 42523096085 also passes the
-flushed-paint selected-cell pixel assertion; its capture shows XFD1048576 with the expected value. Automatic grid expansion and remaining full-sheet formula semantics remain in `PARITY.md`.
+flushed-paint selected-cell pixel assertion; its capture shows XFD1048576 with the expected value. Native blank-grid growth is verified below; remaining formula/format semantics remain in `PARITY.md`.
 
 Explicit reference aggregates (SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, PRODUCT and aggregate math) traverse
 stored values and spill results; COUNTBLANK computes implicit blanks without expanding the reference area.
@@ -948,3 +948,20 @@ Its new QR assertion incorrectly looked for plain text inside a base64 descripto
 descriptor and embedded PNG confirms the expected QR recipe. The audit now checks both decoded objects.
 A separate PDF artwork scenario queried a visible canvas immediately after asynchronous rotation; it now
 waits for that actual canvas before the unchanged gesture/geometry checks. A repeat is still required.
+
+Basic sorting now uses typed calculated keys with stable ordering: numbers, text, logical values, errors,
+then blanks; blank lines stay last in both directions. Advanced Sort adds multiple keys, a header, row/
+column direction, case sensitivity, natural ASCII digit segments and custom priorities in one menu dialog.
+Sorting traverses stored keys/cells and computes blank-line positions algebraically, including full-sheet
+selections and distant XFD data. It preserves cell contents/styles and translates relative formula references.
+Key slots are bounded to one million; merged/array/spill blocks and failed validation refuse atomically.
+Foreign Office source packages retain their existing sort-preservation guard. Unicode lexical text ordering
+does not establish every locale's collation; custom-list preferences remain open. Tests verify full-sheet/
+multikey/horizontal sorting, types, exact history and native Office round trips; numeric-format XLSX retains
+its format while the existing unsupported ODS numeric-format export remains explicitly refused. Workspace
+566/0/1 and GNU all targets pass; normal native advanced/full-size sort scenarios await Windows verification.
+
+Run 42528597238 (a7e4302) passes all 37 Windows UI groups, MSVC 566/0/1: new grid text/Bold/Paste,
+QR insertion/geometry, serial identifiers, localized formula entry/cache/history and PDF area gestures pass.
+The inspected expanded-grid capture shows AE501 = 30 with correct scroll and selection. The next audit
+strengthens same-file reopen cases by first making a distinct unsaved change and explicitly discarding it.

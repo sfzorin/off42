@@ -4,6 +4,7 @@ mod print;
 mod goal_seek;
 mod solver;
 mod viewport;
+mod sorting;
 use std::path::Path;
 use xls42_core::{
     Chart, ChartKind, ChartSeries, Condition, ConditionalFormat, DataValidation, Pivot,
@@ -301,6 +302,7 @@ impl win42::App for Xls {
             (26, "Copy range to"),
             (27, "Fill range"),
             (28, "Sort range"),
+            (sorting::COMMAND, "Advanced sort..."),
             (29, "Merge selection"),
             (30, "Unmerge selection"),
             (31, "Toggle bold"),
@@ -498,9 +500,10 @@ impl win42::App for Xls {
         let range=self.active_range();self.edit_range(range,|book|book.set_style(range,style))?;
         Ok(())
     }
-    fn input_multiline_fields(&self,id:u16)->Vec<usize>{if id==solver::START{vec![4]}else{vec![]}}
-    fn input_choices(&self,id:u16)->Vec<(usize,Vec<String>)>{if id==solver::START{solver::choices()}else{vec![]}}
+    fn input_multiline_fields(&self,id:u16)->Vec<usize>{if id==solver::START{vec![4]}else if id==sorting::COMMAND{vec![0]}else{vec![]}}
+    fn input_choices(&self,id:u16)->Vec<(usize,Vec<String>)>{if id==solver::START{solver::choices()}else if id==sorting::COMMAND{sorting::choices()}else{vec![]}}
     fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+        if id==sorting::COMMAND{return Some(sorting::request(self));}
         if id==solver::START{return Some(solver::request(&self.book,(self.row,self.col)));}
         if id==goal_seek::START{return Some(win42::InputRequest{title:"Goal Seek",fields:vec![("Formula cell:",goal_seek::reference((self.row,self.col))),("Target value:","0".into()),("Variable cell:",String::new())]});}
         if id == 77 {
@@ -722,6 +725,11 @@ impl win42::App for Xls {
         Some(win42::InputRequest { title, fields })
     }
     fn input_action(&mut self, id: u16, v: &[String]) -> Result<(), String> {
+        if id==sorting::COMMAND{
+            if !self.enabled(id){return Err("Sort is unavailable".into())}
+            let(keys,options)=sorting::parse(v)?;let range=self.active_range();self.edit_range(range,|book|book.sort_with_options(range,&keys,&options))?;
+            self.clear_visible_cache();return Ok(());
+        }
         if id==solver::START{if !self.enabled(id){return Err("Solver is unavailable".into())}let model=solver::parse(v,&self.book)?;return self.solver.start(self.book.solver_task(model).map_err(|e|e.to_string())?);}
         if id==goal_seek::START{
             if !self.enabled(id)||v.len()!=3{return Err("Goal Seek is unavailable".into());}
@@ -1486,6 +1494,7 @@ impl win42::App for Xls {
     }
     fn enabled(&self, id: u16) -> bool {
         match id {
+            sorting::COMMAND=>!self.book.is_read_only()&&!self.book.is_protected()&&!self.book.has_external_source()&&self.preview.is_none(),
             solver::START=>!self.solver.running()&&!self.goal_seek.running()&&!self.book.is_read_only()&&!self.book.is_protected()&&self.preview.is_none(),
             solver::CANCEL=>self.solver.running(),
             solver::RESULT=>self.solver.has_outcome(),

@@ -1177,6 +1177,36 @@ def audit_sheet_tabs(process,main,binary,output,results):
     results['checks'].append('normal add/switch-sheet commands and actual editor text; native and independent XLSX/ODS active-sheet import, external tab-only saves and standard single-tab flags, unchanged worksheet data/styles/unknown parts, complete Undo/Redo with byte-exact original restoration and saved reopen')
 
 
+def audit_advanced_sort(process,main,binary,output,results):
+    import xml.etree.ElementTree as ET
+    seed=output/'sort-source.csv';seed.write_text('Priority,Part,ID\nlow,R10,first\nHIGH,R2,second\nMedium,R1,third\nlow,R02,fourth\n',encoding='utf-8');original=seed.read_bytes();open_fixture(process,main,seed)
+    def saved(name,kind='XLS42 workbook',extension='xls42'):
+        path=output/('sort-'+name+'.'+extension);save_as(main);choose_file(process,path,format_name=kind);output_ready(process,main,path,b'{'if extension=='xls42'else b'PK');return json.loads(path.read_text(encoding='utf-8'))if extension=='xls42'else path
+    def cells(project):return {(v['row'],v['col']):v['content']['value']['raw']for v in project['sheets'][0]['cells']}
+    fill_prompt(process,main,25,'Range (1-based)',['1','1','8','3']);before=saved('before')
+    fill_prompt(process,main,85,'Advanced Sort',['1 asc\n2 asc','Rows','yes','no','yes','high;medium;low']);changed=saved('multi')
+    assert [cells(changed)[(row,2)]for row in range(1,5)]==['second','third','fourth','first'];assert [cells(changed)[(0,col)]for col in range(3)]==['Priority','Part','ID']
+    command(main,4);undo=saved('undo');assert undo['sheets']==before['sheets']and undo['selection']==before['selection'];command(main,5);redo=saved('redo');assert redo['sheets']==changed['sheets']and redo['selection']==changed['selection']
+    for extension,kind in [('xlsx','Excel workbook'),('ods','OpenDocument spreadsheet')]:
+        path=saved('multi-'+extension,kind,extension);replace_editor_text(u.GetDlgItem(main,101),'REOPEN-STALE');open_fixture(process,main,path);assert cells(saved('reopened-'+extension))==cells(changed)
+    assert seed.read_bytes()==original
+    horizontal=output/'sort-horizontal.csv';horizontal.write_text('Label,R10,R2,R1,R02\nValue,=B3*2,=C3*2,=D3*2,=E3*2\nN,10,20,30,40\n',encoding='utf-8');horizontal_bytes=horizontal.read_bytes();open_fixture(process,main,horizontal)
+    fill_prompt(process,main,25,'Range (1-based)',['1','1','3','5']);before=saved('horizontal-before');fill_prompt(process,main,85,'Advanced Sort',['1 asc','Columns','yes','no','yes','']);changed=saved('horizontal')
+    assert [cells(changed)[(0,col)]for col in range(5)]==['Label','R1','R2','R02','R10'];assert [cells(changed)[(1,col)]for col in range(1,5)]==['=B3*2','=C3*2','=D3*2','=E3*2'];assert [cells(changed)[(2,col)]for col in range(1,5)]==['30','20','40','10']
+    path=saved('horizontal-xlsx','Excel workbook','xlsx');ns={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+    with zipfile.ZipFile(path)as archive:root=ET.fromstring(archive.read('xl/worksheets/sheet1.xml'))
+    cached={v.attrib['r']:v.findtext('s:v',namespaces=ns)for v in root.findall('.//s:c',ns)};assert [cached[key]for key in('B2','C2','D2','E2')]==['60','40','80','20']
+    command(main,4);undo=saved('horizontal-undo');assert undo['sheets']==before['sheets']and undo['selection']==before['selection'];command(main,5);redo=saved('horizontal-redo');assert redo['sheets']==changed['sheets']and redo['selection']==changed['selection'];assert horizontal.read_bytes()==horizontal_bytes
+    model=saved('full-seed');sheet=model['sheets'][0];sheet['rows']=1048576;sheet['cols']=16384;sheet['cells']=[]
+    for row,col,kind,raw in[(0,0,'Number','3'),(0,16383,'Text','THREE'),(99,0,'Number','2'),(99,16383,'Text','TWO'),(1048575,0,'Number','1'),(1048575,16383,'Text','ONE')]:sheet['cells'].append({'row':row,'col':col,'content':{'type':kind,'value':{'raw':raw,'crlf':False}},'style':0})
+    model['selection']={'top':0,'left':0,'bottom':0,'right':0};source=output/'sort-full-source.xls42';source.write_text(json.dumps(model),encoding='utf-8');source_bytes=source.read_bytes();open_fixture(process,main,source)
+    fill_prompt(process,main,25,'Range (1-based)',['1','1','1048576','16384']);before=saved('full-before');fill_prompt(process,main,28,'Sort selection',['1','no']);changed=saved('full')
+    assert cells(changed)=={(0,0):'1',(0,16383):'ONE',(1,0):'2',(1,16383):'TWO',(2,0):'3',(2,16383):'THREE'}
+    command(main,4);undo=saved('full-undo');assert undo['sheets']==before['sheets']and undo['selection']==before['selection'];command(main,5);redo=saved('full-redo');assert redo['sheets']==changed['sheets']and redo['selection']==changed['selection']
+    replace_editor_text(u.GetDlgItem(main,101),'99');open_fixture(process,main,output/'sort-full-redo.xls42');assert cells(saved('full-reopened'))==cells(changed);assert source.read_bytes()==source_bytes
+    results['checks'].append('normal Advanced Sort multiline keys and choices; custom priorities, natural part numbers, stable header and complete rows; horizontal column sort translates every formula and independently checked XLSX caches; full Excel-size sparse row sort moves XFD data; complete dimensions/data/selection Undo/Redo, XLSX/ODS and native reopen; sources unchanged')
+
+
 def audit_grid_expansion(process,main,binary,output,results):
     seed=output/'growth-source.csv';seed.write_text('KEEP\n',encoding='utf-8');original=seed.read_bytes();open_fixture(process,main,seed)
     def saved(name):
@@ -1202,7 +1232,7 @@ def audit_grid_expansion(process,main,binary,output,results):
     baseline=saved('paste-baseline');command(main,40);pasted=saved('pasted');assert (pasted['sheets'][0]['rows'],pasted['sheets'][0]['cols'])==(901,52)
     assert {(r,c):v['content']['value']['raw']for(r,c),v in cells(pasted).items()if r>=899}=={(899,50):'10',(899,51):'20',(900,50):'30',(900,51):'=1+2'}
     command(main,4);paste_undo=saved('paste-undo');assert paste_undo['sheets']==baseline['sheets']and paste_undo['selection']==baseline['selection'];command(main,5);paste_redo=saved('paste-redo');assert paste_redo['sheets']==pasted['sheets']and paste_redo['selection']==pasted['selection']
-    open_fixture(process,main,output/'growth-paste-redo.xls42');wait_for(lambda:text(edit)=='10','expanded project reopens at saved selection',process)
+    replace_editor_text(edit,'REOPEN-STALE');open_fixture(process,main,output/'growth-paste-redo.xls42');wait_for(lambda:text(edit)=='10','expanded project reopens at saved selection',process)
     fill_prompt(process,main,25,'Range (1-based)',['1200','81','1200','81']);fill_prompt(process,main,65509,'Symbol or Code',['QR','PCB-GROW-42','20','no'])
     artwork=saved('artwork');assert (artwork['sheets'][0]['rows'],artwork['sheets'][0]['cols'])==(1200,81)
     import base64
@@ -2608,6 +2638,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_sparse_capacity(process,main,binary,output,results)
             audit_sheet_tabs(process,main,binary,output,results)
             audit_grid_expansion(process,main,binary,output,results)
+            audit_advanced_sort(process,main,binary,output,results)
         if statistical_formulas and binary.stem.lower()=="xls42":
             audit_statistical_formulas(process,main,output,binary,results)
         if array_formulas and binary.stem.lower()=="xls42":

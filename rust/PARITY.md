@@ -15,7 +15,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Printing | Verified File/Ctrl+P dialogs in all six apps; actual-size label and centered/shrink-only PDF paths, per-printer calibration and measurement sheet | Printer copies/calibration scenarios and physical driver checks |
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction and bounded offline OCR | Richer forms, certificate signing and validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
-| XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, remaining automatic-expansion UI verification and virtual-area range tools, legacy arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, split panes, per-cell/password protection and fuller format fidelity |
+| XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, remaining virtual-area range tools, legacy arrays, full floating-object editing, advanced filtering, locale-aware sort collation/preferences, validation controls, outlines/subtotals, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, show tools and export workflows |
 | IMG42 | Image decoding, transforms, adjustments, selections, recognized text selection/copy, metadata and batch output | Full markup selection/editing, smart lasso, full Live Text interaction, background removal, viewing panels and additional supported system codecs |
 | SCN42 | WIA acquisition and verified virtual rescan, image/PDF import, page processing, OCR and searchable output | Scan areas, device/preset controls, scan history, full export settings and physical-device checks |
@@ -798,3 +798,15 @@ after image selection; image unit regressions are now included in quick CI.
   before sheet punctuation. Independent/native Office and external-edit history regressions pass: workspace
   561/0/1, GNU all targets pass, Swift oracle 492/0 gaps/2 skips. Actual native localized input/cache/history
   assertions are added; pending a compatible build. Other locale syntax/format semantics remain open.
+
+- Run 42528597238 (a7e4302) succeeds in all 37 UI groups, MSVC 566/0/1. Actual grid growth, text/
+  formatting/Paste, QR insertion and geometry, serials, localized formula input/cache/history and PDF label
+  area gestures pass. Inspected AE501 capture shows value 30 and correct scroll/selection. Reopen checks
+  are strengthened for the next build with a distinct unsaved value and explicit discard.
+- Stable typed sparse sort replaces dense row materialization. Advanced Sort offers multiple keys, custom
+  priorities, natural ASCII digit text, case sensitivity, a header and horizontal orientation. Full-sheet
+  tests preserve far data/styles/relative formulas and complete history; mixed types are transitive, blanks
+  always last. Merged/array/spill blocks, invalid keys/protection/validation and key/evaluation budgets are
+  guarded. XLSX number formats persist; unsupported ODS numeric formats remain explicitly refused. Workspace
+  566/0/1, GNU all targets pass; native advanced/horizontal/full-size sort and strengthened reopen await a
+  compatible build. Foreign Office sorting, full locale collation and saved custom lists remain open.

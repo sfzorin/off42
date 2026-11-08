@@ -2307,6 +2307,18 @@ pub(super) struct Calculation {
     pub values: std::collections::BTreeMap<(usize, usize), Value>,
     pub spills: std::collections::BTreeMap<(usize, usize), crate::Range>,
 }
+pub(super) fn typed_cells_at(book:&Workbook,cells:impl IntoIterator<Item=(usize,usize)>,now:chrono::NaiveDateTime)->Result<Calculation,&'static str>{
+    let sheet=book.active_sheet();let mut eval=Eval::new(book,now);eval.ensure_spills(sheet,0);
+    let mut values=std::collections::BTreeMap::new();
+    for(row,col)in cells{
+        if eval.steps>=MAX_STEPS{return Err("Sort calculation exceeds the evaluation budget")}
+        let value=eval.cell(sheet,row,col,0);if matches!(value,Value::Error("#LIMIT!")){return Err("Sort calculation exceeds the evaluation budget")}
+        values.insert((row,col),value);
+    }
+    values.extend(eval.spills.into_iter().filter(|((s,_,_),_)|*s==sheet).map(|((_,r,c),v)|((r,c),v)));
+    let spills=eval.spill_ranges.into_iter().filter(|((s,_,_),_)|*s==sheet).map(|((_,r,c),v)|((r,c),v)).collect();
+    Ok(Calculation{values,spills})
+}
 pub(super) fn numeric_cell_at(book:&Workbook,cell:(usize,usize),now:chrono::NaiveDateTime)->Result<f64,&'static str>{
     let mut eval=Eval::new(book,now);
     match eval.cell(book.active_sheet(),cell.0,cell.1,0){

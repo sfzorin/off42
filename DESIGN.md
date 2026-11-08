@@ -937,13 +937,12 @@ and nonexistent attribute removals need no namespace declaration. Newly material
 
 
 Worksheet capacity is now 1,048,576 by 16,384. It is independent of one-million stored-cell/four-MB text
-budgets and the 100,000-cell rectangle-operation budget. Copy/paste/style/fill/sort/CSV and native print
+budgets and the 100,000-cell rectangle-operation budget. Copy/paste/style/fill/CSV and native print
 check operation area before expansion; native merge encoders have the same bound. Full-range validation
 visits stored coordinates, checking implicit blanks algebraically. Chart series retain the old 1,000-point
 maximum independently of sheet dimensions. Dense text APIs compile only for core tests; examples and app
 consumers use sparse projections. Grid refresh brings a changed focus into view without snapping ordinary
-scrolling back to an unchanged focus; headers fit seven-digit row numbers. Automatic viewport expansion
-and full-column formula aggregation remain separate work.
+scrolling back to an unchanged focus; headers fit seven-digit row numbers. Viewport expansion and full-column formula aggregation are described below.
 
 The Windows XLS open boundary validates stored editor inputs from `Workbook::cell_inputs` across all
 sheets before replacing the live session. It does not iterate the logical worksheet rectangle; implicit
@@ -1009,3 +1008,11 @@ editor input. Semicolons become argument separators only outside inline arrays; 
 structured headers are copied intact. Unicode unquoted sheet prefixes are quoted for standard output.
 Error constants are normalized before ODF reference tokenization (OpenFormula 1.3 §5.12). Tests inspect
 independent packages and retain exact original-state Undo for external edits.
+
+Stable sorting uses typed keys from one bounded evaluation session. Nonempty-key line indexes are ordered
+explicitly; omitted all-blank lines map algebraically into the stable trailing group. Only stored cells move,
+including styles and relative formula inputs. This removes rectangular materialization from sorting. Rows
+and columns share the same permutation, with optional headers, multiple directions, natural ASCII number
+segments and custom priorities. Key slots and evaluation work are independently bounded; failed rules,
+merged/array/spill blocks and unsupported external sources leave the original history untouched. The basic
+sort dialog stays compact; advanced options have their own menu dialog.

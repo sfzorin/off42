@@ -89,7 +89,8 @@ fn oversized_rectangles_refuse_atomically_while_far_sparse_edits_remain_availabl
         ),
         Err(Error::Limit)
     ));
-    assert!(matches!(b.sort_range(full(), 0, false), Err(Error::Limit)));
+    // Sorting an all-blank key is a sparse no-op, independently of rectangular export/fill limits.
+    assert!(!b.sort_range(full(), 0, false).unwrap());
     let text = ("\t".repeat(199) + "\n").repeat(501);
     assert!(matches!(b.paste_tsv(0, 0, &text), Err(Error::Limit)));
     assert_eq!(b.project_bytes().unwrap(), before);
