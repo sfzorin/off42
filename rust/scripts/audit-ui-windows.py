@@ -1716,15 +1716,17 @@ def audit_pdf_label_artwork(process,main,binary,output,results):
     # Native mouse selection on the rotated, cropped page must follow the same
     # unrotated PDF geometry as an independently entered region.
     for _ in range(4):
-        command(main,16)
+        u.SendMessageW(main,WM_COMMAND,16,0)
         wait_for(lambda:not(u.GetMenuState(u.GetMenu(main),117,0)&3),'render before region gesture',process)
     canvas=next(h for h in windows(process.pid,main)if classname(h)=='Suite42Canvas')
     command(main,117)
+    wait_for(lambda:any('Drag an area for labels'in text(h)for h in windows(process.pid,main)),'PDF area tool active',process)
     u.SendMessageW(canvas,0x201,1,(280<<16)|430);u.SendMessageW(canvas,0x200,1,(5<<16)|380)
     u.SendMessageW(canvas,0x100,27,0)
     wait_for(lambda:not any('Drag an area for labels'in text(h)for h in windows(process.pid,main)),'Escape cancels PDF label region',process)
     assert not any(classname(h)=='Suite42InputDialog'for h in windows(process.pid))
     command(main,117)
+    wait_for(lambda:any('Drag an area for labels'in text(h)for h in windows(process.pid,main)),'PDF area tool active',process)
     u.SendMessageW(canvas,0x201,1,(280<<16)|430);u.SendMessageW(canvas,0x200,1,(5<<16)|380)
     u.RedrawWindow.argtypes=[w.HWND,c.c_void_p,w.HANDLE,w.UINT]
     assert u.RedrawWindow(canvas,None,None,0x185)
@@ -1803,13 +1805,34 @@ def audit_label_preview(process,main,binary,output,results):
     click(printer,2);wait_for(lambda:u.IsWindowEnabled(preview),'Print Cancel returns to preview',process)
     assert not u.IsWindowEnabled(main)
     click(preview,3);printer=modal(process,title='Print',native_class='#32770')
-    combo=u.GetDlgItem(printer,1139);assert combo,controls
-    selected=u.SendMessageW(combo,0x147,0,0);assert selected>=0
-    value=c.create_unicode_buffer(512);u.SendMessageW(combo,0x148,selected,c.cast(value,c.c_void_p).value)
-    assert value.value=='Microsoft Print to PDF',('Refusing a job to an unidentified/physical printer',value.value)
-    click(printer,1058)
-    wait_for(lambda:u.SendMessageW(u.GetDlgItem(printer,1058),0xF0,0,0)==1,'Print page range selected',process)
-    set_text(u.GetDlgItem(printer,1152),'2');set_text(u.GetDlgItem(printer,1153),'2')
+    combo=u.GetDlgItem(printer,1139)
+    if combo:
+        selected=u.SendMessageW(combo,0x147,0,0);assert selected>=0
+        value=c.create_unicode_buffer(512);u.SendMessageW(combo,0x148,selected,c.cast(value,c.c_void_p).value)
+        assert value.value=='Microsoft Print to PDF',('Refusing an unidentified printer',value.value)
+        click(printer,1058)
+        wait_for(lambda:u.SendMessageW(u.GetDlgItem(printer,1058),0xF0,0,0)==1,'Print page range selected',process)
+        set_text(u.GetDlgItem(printer,1152),'2');set_text(u.GetDlgItem(printer,1153),'2')
+    else:
+        # ComCtl v6 presents printers through a shell list instead of cmb4.
+        # Require the only installed/default queue to be the explicit virtual PDF driver.
+        spool=c.WinDLL('winspool.drv',use_last_error=True)
+        spool.GetDefaultPrinterW.argtypes=[w.LPWSTR,c.POINTER(w.DWORD)]
+        size=w.DWORD();spool.GetDefaultPrinterW(None,c.byref(size));value=c.create_unicode_buffer(size.value)
+        assert spool.GetDefaultPrinterW(value,c.byref(size))and value.value=='Microsoft Print to PDF',('Refusing the default printer',value.value)
+        class Printer(c.Structure):_fields_=[('name',w.LPWSTR),('server',w.LPWSTR),('attributes',w.DWORD)]
+        spool.EnumPrintersW.argtypes=[w.DWORD,w.LPWSTR,w.DWORD,c.c_void_p,w.DWORD,c.POINTER(w.DWORD),c.POINTER(w.DWORD)]
+        needed=w.DWORD();count=w.DWORD();spool.EnumPrintersW(6,None,4,None,0,c.byref(needed),c.byref(count));buffer=c.create_string_buffer(needed.value)
+        assert spool.EnumPrintersW(6,None,4,buffer,needed.value,c.byref(needed),c.byref(count))
+        queues=c.cast(buffer,c.POINTER(Printer));names=[queues[i].name for i in range(count.value)]
+        assert names==['Microsoft Print to PDF'],('Refusing ambiguous installed printers',names)
+        selector=next(h for h in windows_for_dialog(printer)if classname(h)=='SysListView32')
+        assert u.SendMessageW(selector,0x1004,0,0)==1 and u.SendMessageW(selector,0x100C,-1,2)==0,'Virtual printer must be selected'
+        radio=next(h for h in windows_for_dialog(printer)if u.GetDlgCtrlID(h)==1059)
+        click(u.GetParent(radio),1059)
+        wait_for(lambda:u.SendMessageW(radio,0xF0,0,0)==1,'modern Print page range selected',process)
+        entry=next(h for h in windows_for_dialog(printer)if u.GetDlgCtrlID(h)==1152)
+        set_text(entry,'2')
     click(printer,1)
     printed=output/'labels-native-printed-page-2.pdf';choose_file(process,printed,keep_preview=True)
     wait_for(lambda:printed.is_file()and printed.stat().st_size>100 and u.IsWindowEnabled(preview),'native PDF printer completes',process,timeout=60)
