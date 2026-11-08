@@ -704,7 +704,7 @@ impl Workbook {
         } else {
             bytes
         };
-        embed(bytes, "xlsx", self.project_bytes()?)
+        embed(solver::files::patch(&bytes,"xlsx",None,state)?, "xlsx", self.project_bytes()?)
     }
     pub fn open_office(path: &Path, kind: &str) -> Result<Self, Error> {
         let mut bytes = Vec::new();
@@ -1514,7 +1514,7 @@ impl Workbook {
         let bytes = spreadsheet_ods::write_ods_buf(&mut book, Vec::new())
             .map_err(|_| Error::Invalid("cannot encode ODS"))?;
         let bytes=if state.sheets.iter().any(|s|s.filter.is_some()){add_ods_database_ranges(&bytes,state)?}else{bytes};
-        embed(bytes, "ods", self.project_bytes()?)
+        embed(solver::files::patch(&bytes,"ods",None,state)?, "ods", self.project_bytes()?)
     }
 }
 
@@ -1586,7 +1586,7 @@ mod tests {
 }
 
 impl Workbook {
-    fn from_external_office(bytes: &[u8], kind: &str) -> Result<Self, Error> {
+    pub(crate) fn from_external_office(bytes: &[u8], kind: &str) -> Result<Self, Error> {
         let repaired = if kind == "ods" {
             repair_missing_project_manifest(bytes)?
         } else {
@@ -1717,6 +1717,7 @@ impl Workbook {
             }
             import_xlsx_layout(bytes, &mut state)?;
         }
+        solver::files::import(bytes, kind, &mut state)?;
         dynamic_arrays::import(bytes, kind, &mut state)?;
         pictures::import(bytes, kind, &mut state)?;
         if kind == "xlsx" {
@@ -2671,6 +2672,7 @@ impl Workbook {
         let mut output = self.patch_external_cells(kind)?;
         if let Some(old) = &self.external_baseline {
             output = pictures::patch(&output, kind, old, self.history.current())?;
+            output = solver::files::patch(&output,kind,Some(old),self.history.current())?;
         }
         Ok(output)
     }
@@ -2750,6 +2752,7 @@ fn patch_ods_structure(bytes: &[u8], old: &State, current: &State) -> Result<Vec
     if current.sheets.iter().any(|sheet| sheet.source_structure) {
         if d.descendants().any(|n| {
             n.is_element()
+                && !solver::files::owned_ods_names(n,old)
                 && (matches!(
                     n.tag_name().name(),
                     "named-expressions"

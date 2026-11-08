@@ -2,6 +2,8 @@
 mod analytics;
 mod goal_seek;
 pub use goal_seek::{GoalSeekResult, GoalSeekTask};
+mod solver;
+pub use solver::{SolverModel,SolverConstraint,SolverGoal,SolverOp,SolverTask,SolverResult,SolverStatus};
 mod clipboard;
 mod tables;
 pub use tables::SpreadsheetTable;
@@ -179,6 +181,7 @@ struct Sheet {
     images: Vec<SheetImage>,
     pivots: Vec<Pivot>,
     tables: Vec<SpreadsheetTable>,
+    solver:Option<SolverModel>,
     view: SheetView,
     opaque_table_headers: Vec<Range>,
     protected_formula_ranges: Vec<Range>,
@@ -214,6 +217,7 @@ impl Sheet {
             images: Vec::new(),
             pivots: Vec::new(),
             tables: Vec::new(),
+            solver:None,
             view: SheetView::default(),
             opaque_table_headers: Vec::new(),
             protected_formula_ranges: Vec::new(),
@@ -250,7 +254,7 @@ impl State {
             .iter()
             .flat_map(|s| s.cells.values())
             .map(|c| c.text.raw().len())
-            .sum()
+            .sum::<usize>() + self.sheets.iter().filter_map(|s|s.solver.as_ref()).map(solver::model_bytes).sum::<usize>()
     }
 }
 pub struct Workbook {
@@ -353,7 +357,7 @@ impl Workbook {
         if self
             .external_baseline
             .as_ref()
-            .is_some_and(|base| base.sheets == self.history.current().sheets)
+            .is_some_and(|base| base.sheets.len()==self.history.current().sheets.len() && base.sheets.iter().zip(&self.history.current().sheets).all(|(a,b)| { if a==b{return true} let mut a=a.clone();a.solver=b.solver.clone();a==*b }))
         {
             for (&(sheet, row, col), value) in &self.external_cache {
                 if sheet == self.active_sheet()
@@ -1094,6 +1098,7 @@ impl Workbook {
         {
             return Err(Error::Bounds);
         }
+        if let Some(model)=s.solver.take(){s.solver=solver::shift(model,rows,at,count,delete);}
         for table in &mut s.tables {
             table.range = shift_range(table.range, rows, at, count, delete)
                 .ok_or(Error::Invalid("Deleting a whole table is not supported"))?;

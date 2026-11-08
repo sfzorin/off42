@@ -868,3 +868,9 @@ a bounded file barrier for deterministic cancellation/delayed callbacks; it neve
 Toolbar commands may declare toggle semantics. Native pushlike check controls receive the same checked state
 as menus, while dialog/action buttons retain ordinary button semantics. Control updates occur outside model
 borrows to avoid synchronous native notification reentrancy.
+
+Windows constrained optimization runs through a sealed XLS42 task/result boundary. Tasks own a frozen private
+workbook, share one evaluator per trial point and carry the source history identity; trial writes bypass live
+history. Accepted values are first validated in a private candidate workbook, then the sheet model and all
+values enter live history together. Discard keeps only the model. The native form declares its multiline
+field indices through `input_multiline_fields`; existing first-field multiline forms retain their behavior.

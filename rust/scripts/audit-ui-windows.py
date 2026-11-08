@@ -29,6 +29,8 @@ u.GetWindowTextW.argtypes = [w.HWND, w.LPWSTR, c.c_int]
 u.GetDlgItem.argtypes = [w.HWND, c.c_int]
 u.GetDlgItem.restype = w.HWND
 u.GetDlgCtrlID.argtypes = [w.HWND]
+u.GetWindowLongW.argtypes=[w.HWND,c.c_int]
+u.GetWindowLongW.restype=c.c_long
 u.GetParent.argtypes, u.GetParent.restype = [w.HWND], w.HWND
 u.GetMenu.argtypes, u.GetMenu.restype = [w.HWND], w.HMENU
 u.GetMenuState.argtypes, u.GetMenuState.restype = [w.HMENU, w.UINT, w.UINT], w.UINT
@@ -235,8 +237,13 @@ def choose_file(process, path, format_name=None, keep_preview=False, open_previe
 
 
 def output_ready(process, main, path, signature):
-    wait_for(lambda: path.is_file() and path.stat().st_size > 32 and u.IsWindowEnabled(main), str(path), process)
-    assert path.read_bytes().startswith(signature), path
+    def ready():
+        try:
+            return path.stat().st_size > 32 and u.IsWindowEnabled(main) and path.read_bytes().startswith(signature)
+        except (FileNotFoundError, PermissionError):
+            # Atomic replace can briefly remove/lock the destination between the existence check and read.
+            return False
+    wait_for(ready, str(path), process)
 
 
 def minimal_pdf(path, labels=None, logical_prefix=None):
@@ -1013,6 +1020,72 @@ def audit_goal_seek(process,main,binary,output,results):
     wait_for(lambda:'goal-seek-after.xls42'in text(main)and' * - 'not in text(main),'Goal Seek result reopened',process)
     assert saved('goal-seek-reopened.xls42')['sheets']==changed['sheets'] and source.read_bytes()==original
     results['checks'].append('background Goal Seek trials and No preserve the clean source, accepted square-root value changes one numeric cell, complete one-step Undo/Redo and reopen retain formulas and other cells, unsolvable trials are readonly, and protected sheets disable the command')
+
+
+def audit_solver(process,main,binary,output,results):
+    source=output/'solver-source.csv'
+    with source.open('w',encoding='utf-8',newline='')as stream:
+        csv.writer(stream).writerows([['0','0','=3*A1+5*B1','UNCHANGED'],['=A1'],['=2*B1'],['=3*A1+2*B1']])
+    original=source.read_bytes();open_fixture(process,main,source)
+    def saved(name,kind='XLS42 workbook'):
+        path=output/name;save_as(main);choose_file(process,path,format_name=kind)
+        output_ready(process,main,path,b'{'if kind=='XLS42 workbook'else b'PK')
+        return json.loads(path.read_text(encoding='utf-8'))if kind=='XLS42 workbook'else path
+    def cells(project):return {(v['row'],v['col']):v for v in project['sheets'][0]['cells']}
+    def number(project,cell):
+        content=cells(project)[cell]['content'];assert content['type']=='Number';return float(content['value']['raw'])
+    values=['C1','Maximum','0','A1:B1','A2 <= 4\r\nA3 <= 12\r\nA4 <= 18','Yes','Linear (simplex)']
+    before=saved('solver-before.xls42');caption=text(main)
+    fill_prompt(process,main,82,'Solver',values);found=modal(process,title='Solver found a solution',native_class='#32770')
+    assert text(main)==caption and source.read_bytes()==original,'Solver trials mutated the live book'
+    details=' '.join(text(h)for h in windows_for_dialog(found));assert 'A1 = 2'in details and'B1 = 6'in details,details
+    click(found,7);wait_for(lambda:u.IsWindowEnabled(main),'Solver No closed',process)
+    model_only=saved('solver-model-only.xls42');assert cells(model_only)==cells(before)
+    model=model_only['sheets'][0]['solver'];assert model['objective']==[0,2]and model['variables']==[[0,0],[0,1]]and len(model['constraints'])==3
+    # A saved model prefills all seven native fields, including a multiline constraints control.
+    command(main,82);dialog=modal(process,title='Solver',native_class='Suite42InputDialog')
+    assert text(u.GetDlgItem(dialog,100))=='C1'and'A3 <= 12'in text(u.GetDlgItem(dialog,104))
+    assert u.GetWindowLongW(u.GetDlgItem(dialog,104),-16)&4,'Constraints field must accept multiple lines'
+    capture_window(dialog,output/'XLS42-solver-dialog.bmp');click(dialog,1)
+    found=modal(process,title='Solver found a solution',native_class='#32770');click(found,6);wait_for(lambda:u.IsWindowEnabled(main),'Solver Yes closed',process)
+    changed=saved('solver-after.xls42');assert abs(number(changed,(0,0))-2)<1e-8 and abs(number(changed,(0,1))-6)<1e-8
+    assert {k:v for k,v in cells(changed).items()if k not in((0,0),(0,1))}=={k:v for k,v in cells(before).items()if k not in((0,0),(0,1))}
+    command(main,4);assert saved('solver-undo.xls42')['sheets']==model_only['sheets']
+    command(main,5);assert saved('solver-redo.xls42')['sheets']==changed['sheets']
+    for ext,kind in [('xlsx','Excel workbook'),('ods','OpenDocument spreadsheet')]:
+        open_fixture(process,main,output/'solver-after.xls42')
+        path=saved('solver-office.'+ext,kind)
+        with zipfile.ZipFile(path)as archive:
+            xml=archive.read('xl/workbook.xml'if ext=='xlsx'else'content.xml').decode('utf-8')
+            assert all(name in xml for name in('solver_opt','solver_adj','solver_lhs1','solver_rel3','solver_num'))
+            independent=output/('solver-independent.'+ext)
+            with zipfile.ZipFile(independent,'w')as target:
+                for item in archive.infolist():
+                    if item.filename!='xls42/project.json':target.writestr(item,archive.read(item.filename))
+        open_fixture(process,main,independent)
+        command(main,82);dialog=modal(process,title='Solver',native_class='Suite42InputDialog');assert text(u.GetDlgItem(dialog,100))=='C1'and'A4 <= 18'in text(u.GetDlgItem(dialog,104));click(dialog,2)
+        reopened=saved('solver-independent-reopened.'+ext,kind)
+        import xml.etree.ElementTree as ET
+        with zipfile.ZipFile(reopened)as archive:
+            if ext=='xlsx':
+                root=ET.fromstring(archive.read('xl/worksheets/sheet1.xml'));ns={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+                actual={cell.attrib['r']:cell.findtext('s:v',namespaces=ns)for cell in root.findall('.//s:c',ns)}
+                assert float(actual['A1'])==2 and float(actual['B1'])==6
+            else:
+                ns={'t':'urn:oasis:names:tc:opendocument:xmlns:table:1.0','o':'urn:oasis:names:tc:opendocument:xmlns:office:1.0'}
+                root=ET.fromstring(archive.read('content.xml'));row=root.find('.//t:table/t:table-row',ns)
+                actual=[cell.attrib.get('{'+ns['o']+'}value')for cell in row.findall('t:table-cell',ns)]
+                assert float(actual[0])==2 and float(actual[1])==6
+    integer_source=output/'solver-integer.csv';integer_source.write_text('0,=A1,2.5\n',encoding='utf-8');open_fixture(process,main,integer_source)
+    fill_prompt(process,main,82,'Solver',['B1','Maximum','0','A1','A1 <= C1\r\nA1 integer','Yes','Linear (simplex)']);found=modal(process,title='Solver found a solution',native_class='#32770');click(found,6);wait_for(lambda:u.IsWindowEnabled(main),'integer Solver accepted',process)
+    integer=saved('solver-integer.xls42');assert number(integer,(0,0))==2
+    nonlinear_source=output/'solver-nonlinear.csv';nonlinear_source.write_text('0,0,=(A1-3)^2+(B1-2)^2\n',encoding='utf-8');open_fixture(process,main,nonlinear_source)
+    fill_prompt(process,main,82,'Solver',['C1','Minimum','0','A1:B1','','Yes','Nonlinear (Nelder–Mead)']);found=modal(process,title='Solver found a solution',native_class='#32770');click(found,6);wait_for(lambda:u.IsWindowEnabled(main),'nonlinear Solver accepted',process)
+    nonlinear=saved('solver-nonlinear.xls42');assert abs(number(nonlinear,(0,0))-3)<1e-5 and abs(number(nonlinear,(0,1))-2)<1e-5
+    command(main,32);wait_for(lambda:u.GetMenuState(u.GetMenu(main),82,0)&3,'protected Solver disabled',process)
+    command(main,33);wait_for(lambda:u.GetMenuState(u.GetMenu(main),82,0)&3==0,'Solver enabled after unprotect',process)
+    assert source.read_bytes()==original
+    results['checks'].append('native Solver menu/form and multiline constraints; readonly LP trials; No retains model only; Yes writes exact two-cell optimum; full one-step Undo/Redo; real XLSX/ODS hidden names and independent imports prefill model; integer optimum and nonlinear minimum; protected-sheet disablement; source preserved')
 
 
 def audit_engineering_formulas(process, main, binary, output, results, include_extended=False):
@@ -2298,6 +2371,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
         if engineering and binary.stem.lower() == "xls42":
             audit_engineering_formulas(process, main, binary, output, results, include_extended=extended_formulas)
             audit_goal_seek(process,main,binary,output,results)
+            audit_solver(process,main,binary,output,results)
         if statistical_formulas and binary.stem.lower()=="xls42":
             audit_statistical_formulas(process,main,output,binary,results)
         if array_formulas and binary.stem.lower()=="xls42":

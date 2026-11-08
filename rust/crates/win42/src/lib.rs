@@ -366,6 +366,10 @@ pub trait App {
     fn multiline_input(&self, _id: u16) -> bool {
         false
     }
+    /// Multiline fields in the native input dialog; existing first-field forms retain their behavior.
+    fn input_multiline_fields(&self, id:u16)->Vec<usize> {
+        if self.multiline_input(id) { vec![0] } else { vec![] }
+    }
     /// Mask the first native input field and clear the returned buffers after dispatch.
     fn password_input(&self, _id: u16) -> bool {
         false

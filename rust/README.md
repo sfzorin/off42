@@ -785,3 +785,23 @@ Run 42446821420 on 33e173d succeeds: 502 MSVC tests and all 36 native groups pas
 Cancel/focus, insertion/table/range styles, paragraph alignment, original picture bytes, complete Undo/Redo
 and persistence pass; the resulting document screenshot was inspected. This precedes the rescan addition.
 Native formatting toggle buttons now display their authoritative checked state in the compact toolbar.
+
+### Constrained Solver (Windows native audit pending)
+
+XLS42's **Tools → Solver…** edits a sheet's objective (maximum, minimum or target value), variable cells,
+constraints (`<=`, `>=`, `=`, `integer`, `binary`), non-negative assumption and linear/nonlinear method in
+one dialog. Constraints have a multiline field; the primary toolbar stays compact. **Cancel Solver** cancels
+its private background task. Trials freeze calculation time and never modify live cells or history. The
+result confirmation applies either the model alone (No) or the model and values (Yes), as one undoable edit.
+Stale results, protected sheets, invalid cells and final data-validation failures refuse the whole commit.
+Linear models use two-phase simplex with integer branch-and-bound; nonlinear models use bounded penalized
+Nelder–Mead and report approximate results rather than a global optimum. Limits: 32 variables, 128 constraint
+entries / 256 scalar rows, 100,000 work steps and 15 seconds, checked between bounded evaluations.
+
+Models persist in private workbooks and standard sheet-scoped hidden `solver_*` names in XLSX/ODS, including
+unknown option values and matching LibreOffice engine names. Imported models prefill the same dialog. Unrelated
+names/package parts stay intact; unsupported or invalid models remain opaque. Structural edits shift native
+model references; deleting its objective clears the model. Portable tests cover linear/integer/binary/free
+variables, numeric/reference RHS, nonlinear/target cases, infeasible versus unbounded integer relaxations,
+readonly trials, cancel, stale state, final validation, history and independent Office imports. Native UI
+assertions are added; actual Windows dispatch and rendered dialog coverage await the next compatible build.

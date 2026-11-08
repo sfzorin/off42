@@ -2411,6 +2411,12 @@ pub(super) fn numeric_cell_at(book:&Workbook,cell:(usize,usize),now:chrono::Naiv
         Value::Error(error)=>Err(error),_=>Err("The formula must return a finite number"),
     }
 }
+pub(super) fn optimization_values_at(book:&Workbook,cells:&[(usize,usize)],now:chrono::NaiveDateTime)->Option<Vec<f64>>{
+    let mut eval=Eval::new(book,now);
+    cells.iter().map(|&(row,col)|match eval.cell(book.active_sheet(),row,col,0){
+        Value::Number(value)if value.is_finite()=>Some(value),Value::Boolean(value)=>Some(if value{1.}else{0.}),_=>None,
+    }).collect()
+}
 pub(super) fn calculation_at(book: &Workbook, now: chrono::NaiveDateTime) -> Calculation {
     let sheet = book.active_sheet();
     let mut eval = Eval::new(book, now);

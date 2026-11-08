@@ -2854,11 +2854,11 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 let (multiline, password) = STATE.with(|s| {
                     let s = s.borrow();
                     let a = &s.as_ref().unwrap().app;
-                    (a.multiline_input(id), a.password_input(id))
+                    (a.input_multiline_fields(id), a.password_input(id))
                 });
                 let choices = STATE.with(|s| s.borrow().as_ref().unwrap().app.input_choices(id));
                 if let Some(mut values) =
-                    crate::prompt::show_choices(hwnd, &req, multiline, password, &choices)
+                    crate::prompt::show_choices_for_fields(hwnd, &req, &multiline, password, &choices)
                 {
                     let r = STATE.with(|s| {
                         s.borrow_mut()

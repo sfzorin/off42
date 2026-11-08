@@ -36,6 +36,8 @@ struct ProjectSheet {
     pivots: Vec<Pivot>,
     #[serde(default)]
     tables: Vec<SpreadsheetTable>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    solver:Option<SolverModel>,
     #[serde(default)]
     view: SheetView,
     #[serde(default)]
@@ -88,6 +90,7 @@ impl Project {
                     images: sh.images.clone(),
                     pivots: sh.pivots.clone(),
                     tables: sh.tables.clone(),
+                    solver:sh.solver.clone(),
                     view: sh.view.clone(),
                     filter: sh.filter.clone(),
                     print: sh.print.clone(),
@@ -171,6 +174,8 @@ impl Project {
             s.charts = sh.charts;
             s.pivots = sh.pivots;
             s.tables = sh.tables;
+            if sh.solver.as_ref().is_some_and(|model|!solver::valid_model(model,s.rows,s.cols)){return Err(Error::Invalid("Invalid saved Solver model"));}
+            s.solver=sh.solver;
             s.view = sh.view;
             if sh
                 .filter

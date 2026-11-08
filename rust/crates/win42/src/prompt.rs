@@ -99,6 +99,11 @@ pub unsafe fn show_choices(
     password: bool,
     choices: &[(usize, Vec<String>)],
 ) -> Option<Vec<String>> {
+    show_choices_for_fields(owner,req,if multiline { &[0] } else { &[] },password,choices)
+}
+pub unsafe fn show_choices_for_fields(
+    owner:HWND, req:&InputRequest, multiline:&[usize], password:bool, choices:&[(usize,Vec<String>)]
+) -> Option<Vec<String>> {
     if PROMPT.with(|p| p.borrow().is_some()) {
         return None;
     }
@@ -156,7 +161,7 @@ pub unsafe fn show_choices(
                 DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX,
             );
             let label_height = (rect.bottom - rect.top).max(scale(20));
-            let extra = if multiline && index == 0 {
+            let extra = if multiline.contains(&index) {
                 scale(100)
             } else {
                 0
@@ -251,7 +256,7 @@ pub unsafe fn show_choices(
                 | WS_TABSTOP
                 | if combo {
                     WS_VSCROLL | CBS_DROPDOWN as u32 | CBS_AUTOHSCROLL as u32
-                } else if multiline && i == 0 {
+                } else if multiline.contains(&i) {
                     WS_VSCROLL | ES_MULTILINE as u32 | ES_AUTOVSCROLL as u32 | ES_WANTRETURN as u32
                 } else {
                     ES_AUTOHSCROLL as u32
@@ -290,7 +295,7 @@ pub unsafe fn show_choices(
         SendMessageW(
             e,
             if combo { CB_LIMITTEXT } else { EM_SETLIMITTEXT },
-            if multiline && i == 0 { 65536 } else { 4096 },
+            if multiline.contains(&i) { 65536 } else { 4096 },
             0,
         );
         fields.push(e);
@@ -339,10 +344,10 @@ pub unsafe fn show_choices(
             }
             break;
         }
-        if multiline
+        if !multiline.is_empty()
             && m.message == WM_KEYDOWN
             && m.wParam == VK_RETURN as usize
-            && fields.first().is_some_and(|f| *f == GetFocus())
+            && multiline.iter().any(|i|fields.get(*i).is_some_and(|f|*f==GetFocus()))
             && GetKeyState(VK_CONTROL as i32) >= 0
         {
             TranslateMessage(&m);

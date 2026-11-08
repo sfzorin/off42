@@ -15,10 +15,10 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Printing | Verified File/Ctrl+P dialogs in all six apps; actual-size label and centered/shrink-only PDF paths, per-printer calibration and measurement sheet | Printer copies/calibration scenarios and physical driver checks |
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction and bounded offline OCR | Decoration font choices, richer forms, certificate signing and validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
-| XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout | Full formula semantics/syntax and locale formats, capacity/automatic expansion, legacy arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, goal seek/solver, split panes, per-cell/password protection and fuller format fidelity |
+| XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek; constrained Solver awaits native audit | Full formula semantics/syntax and locale formats, capacity/automatic expansion, legacy arrays, full floating-object editing, advanced filtering/sorting, validation controls, outlines/subtotals, full Solver verification, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, show tools and export workflows |
 | IMG42 | Image decoding, transforms, adjustments, selections, recognized text selection/copy, metadata and batch output | Full markup selection/editing, smart lasso, full Live Text interaction, background removal, viewing panels and additional supported system codecs |
-| SCN42 | WIA acquisition, image/PDF import, page processing, OCR and searchable output | Scan areas and rescan, device/preset controls, scan history, full export settings and physical-device checks |
+| SCN42 | WIA acquisition and verified virtual rescan, image/PDF import, page processing, OCR and searchable output | Scan areas, device/preset controls, scan history, full export settings and physical-device checks |
 
 ## Recorded checks
 
@@ -591,3 +591,13 @@ after image selection; image unit regressions are now included in quick CI.
   Core/adapter regressions pass including full capacity, OCR clearing, complete history and persistence.
   Workspace 506/0/1; GNU targets compile. The new normal-UI virtual STA/WIC acquisition scenario is pending;
   physical scanner controls/hardware and the other scanning gaps remain open.
+
+- Focused run 42448751616 verifies virtual WIA rescan, exact pixels/DPI, target identity after selection changes,
+  old OCR clearing, complete Undo/Redo, Cancel, late callback rejection and source preservation on abff0ab.
+  Physical scanning is not covered. The run also catches a DOC harness file-stat race during atomic replace;
+  output readiness now retries that temporary missing/locked destination and still requires the full signature.
+- Constrained Solver is implemented through the normal Tools menu, cancelable worker and single-commit
+  model/value confirmation. Standard sheet-scoped Excel/LibreOffice names round-trip without private metadata;
+  unrelated names and cached formulas are preserved on model-only edits. Portable tests cover LP/MIP/NLP,
+  numeric/reference constraints, binary/free variables, target mode, failure/cancel/stale state, validation,
+  full Undo/Redo and model reference shifts. Workspace 519/0/1, including the foreign-name/cache regression; GNU all-targets compile. Native assertions are added, awaiting their first compatible build.

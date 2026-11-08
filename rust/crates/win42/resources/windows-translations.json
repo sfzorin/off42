@@ -29,7 +29,10 @@
     "Recover Unsaved Document": "Восстановить несохранённый документ",
     "Print PDF as Image…": "Печатать PDF как изображение…",
     "Print PDF as Image": "Печатать PDF как изображение",
-    "Cancel Goal Seek": "Отменить подбор параметра"
+    "Cancel Goal Seek": "Отменить подбор параметра",
+    "Cancel Solver": "Отменить поиск решения",
+    "Approximate solution": "Приближённое решение",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Ограничения (по одному на строку: A1 <= 10; B1 integer; C1 binary):"
   },
   "zh-Hans": {
     "Symbol or Code": "符号或条码",
@@ -61,7 +64,10 @@
     "Recover Unsaved Document": "恢复未保存的文档",
     "Print PDF as Image…": "将 PDF 作为图像打印…",
     "Print PDF as Image": "将 PDF 作为图像打印",
-    "Cancel Goal Seek": "取消单变量求解"
+    "Cancel Goal Seek": "取消单变量求解",
+    "Cancel Solver": "取消规划求解",
+    "Approximate solution": "近似解",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "约束（每行一项：A1 <= 10; B1 integer; C1 binary）："
   },
   "zh-Hant": {
     "Symbol or Code": "符號或條碼",
@@ -93,7 +99,10 @@
     "Recover Unsaved Document": "復原未儲存的文件",
     "Print PDF as Image…": "將 PDF 作為影像列印…",
     "Print PDF as Image": "將 PDF 作為影像列印",
-    "Cancel Goal Seek": "取消目標搜尋"
+    "Cancel Goal Seek": "取消目標搜尋",
+    "Cancel Solver": "取消規劃求解",
+    "Approximate solution": "近似解",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "約束（每行一項：A1 <= 10; B1 integer; C1 binary）："
   },
   "es": {
     "Symbol or Code": "Símbolo o código",
@@ -125,7 +134,10 @@
     "Recover Unsaved Document": "Recuperar documento sin guardar",
     "Print PDF as Image…": "Imprimir PDF como imagen…",
     "Print PDF as Image": "Imprimir PDF como imagen",
-    "Cancel Goal Seek": "Cancelar búsqueda de objetivo"
+    "Cancel Goal Seek": "Cancelar búsqueda de objetivo",
+    "Cancel Solver": "Cancelar Solver",
+    "Approximate solution": "Solución aproximada",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Restricciones (una por línea: A1 <= 10; B1 integer; C1 binary):"
   },
   "ar": {
     "Symbol or Code": "رمز أو باركود",
@@ -157,7 +169,10 @@
     "Recover Unsaved Document": "استرداد مستند غير محفوظ",
     "Print PDF as Image…": "طباعة PDF كصورة…",
     "Print PDF as Image": "طباعة PDF كصورة",
-    "Cancel Goal Seek": "إلغاء البحث عن الهدف"
+    "Cancel Goal Seek": "إلغاء البحث عن الهدف",
+    "Cancel Solver": "إلغاء الحلّال",
+    "Approximate solution": "حل تقريبي",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "القيود (واحد في كل سطر: A1 <= 10; B1 integer; C1 binary):"
   },
   "fr": {
     "Symbol or Code": "Symbole ou code",
@@ -189,7 +204,10 @@
     "Recover Unsaved Document": "Récupérer un document non enregistré",
     "Print PDF as Image…": "Imprimer le PDF comme une image…",
     "Print PDF as Image": "Imprimer le PDF comme une image",
-    "Cancel Goal Seek": "Annuler la recherche de valeur cible"
+    "Cancel Goal Seek": "Annuler la recherche de valeur cible",
+    "Cancel Solver": "Annuler le solveur",
+    "Approximate solution": "Solution approchée",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Contraintes (une par ligne : A1 <= 10; B1 integer; C1 binary) :"
   },
   "pt": {
     "Symbol or Code": "Símbolo ou código",
@@ -221,7 +239,10 @@
     "Recover Unsaved Document": "Recuperar documento não salvo",
     "Print PDF as Image…": "Imprimir PDF como imagem…",
     "Print PDF as Image": "Imprimir PDF como imagem",
-    "Cancel Goal Seek": "Cancelar atingir meta"
+    "Cancel Goal Seek": "Cancelar atingir meta",
+    "Cancel Solver": "Cancelar Solver",
+    "Approximate solution": "Solução aproximada",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Restrições (uma por linha: A1 <= 10; B1 integer; C1 binary):"
   },
   "id": {
     "Symbol or Code": "Simbol atau kode",
@@ -253,7 +274,10 @@
     "Recover Unsaved Document": "Pulihkan Dokumen yang Belum Disimpan",
     "Print PDF as Image…": "Cetak PDF sebagai Gambar…",
     "Print PDF as Image": "Cetak PDF sebagai Gambar",
-    "Cancel Goal Seek": "Batalkan pencarian sasaran"
+    "Cancel Goal Seek": "Batalkan pencarian sasaran",
+    "Cancel Solver": "Batalkan Solver",
+    "Approximate solution": "Solusi perkiraan",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Batasan (satu per baris: A1 <= 10; B1 integer; C1 binary):"
   },
   "de": {
     "Symbol or Code": "Symbol oder Code",
@@ -285,7 +309,10 @@
     "Recover Unsaved Document": "Ungespeichertes Dokument wiederherstellen",
     "Print PDF as Image…": "PDF als Bild drucken…",
     "Print PDF as Image": "PDF als Bild drucken",
-    "Cancel Goal Seek": "Zielwertsuche abbrechen"
+    "Cancel Goal Seek": "Zielwertsuche abbrechen",
+    "Cancel Solver": "Solver abbrechen",
+    "Approximate solution": "Näherungslösung",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Bedingungen (eine pro Zeile: A1 <= 10; B1 integer; C1 binary):"
   },
   "ja": {
     "Symbol or Code": "記号またはコード",
@@ -317,7 +344,10 @@
     "Recover Unsaved Document": "未保存の書類を復元",
     "Print PDF as Image…": "PDFを画像として印刷…",
     "Print PDF as Image": "PDFを画像として印刷",
-    "Cancel Goal Seek": "ゴールシークをキャンセル"
+    "Cancel Goal Seek": "ゴールシークをキャンセル",
+    "Cancel Solver": "ソルバーをキャンセル",
+    "Approximate solution": "近似解",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "制約（1行に1件: A1 <= 10; B1 integer; C1 binary）:"
   },
   "vi": {
     "Symbol or Code": "Ký hiệu hoặc mã",
@@ -349,7 +379,10 @@
     "Recover Unsaved Document": "Khôi phục tài liệu chưa lưu",
     "Print PDF as Image…": "In PDF dưới dạng ảnh…",
     "Print PDF as Image": "In PDF dưới dạng ảnh",
-    "Cancel Goal Seek": "Hủy tìm giá trị đích"
+    "Cancel Goal Seek": "Hủy tìm giá trị đích",
+    "Cancel Solver": "Hủy Solver",
+    "Approximate solution": "Nghiệm gần đúng",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Ràng buộc (mỗi dòng một mục: A1 <= 10; B1 integer; C1 binary):"
   },
   "tr": {
     "Symbol or Code": "Sembol veya kod",
@@ -381,7 +414,10 @@
     "Recover Unsaved Document": "Kaydedilmemiş Belgeyi Kurtar",
     "Print PDF as Image…": "PDF’yi Görüntü Olarak Yazdır…",
     "Print PDF as Image": "PDF’yi Görüntü Olarak Yazdır",
-    "Cancel Goal Seek": "Hedef aramayı iptal et"
+    "Cancel Goal Seek": "Hedef aramayı iptal et",
+    "Cancel Solver": "Çözücüyü iptal et",
+    "Approximate solution": "Yaklaşık çözüm",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Kısıtlar (her satıra bir tane: A1 <= 10; B1 integer; C1 binary):"
   },
   "fil": {
     "Symbol or Code": "Simbolo o code",
@@ -413,7 +449,10 @@
     "Recover Unsaved Document": "Ibalik ang Hindi Na-save na Dokumento",
     "Print PDF as Image…": "I-print ang PDF bilang Larawan…",
     "Print PDF as Image": "I-print ang PDF bilang Larawan",
-    "Cancel Goal Seek": "Kanselahin ang paghahanap ng target"
+    "Cancel Goal Seek": "Kanselahin ang paghahanap ng target",
+    "Cancel Solver": "Kanselahin ang Solver",
+    "Approximate solution": "Tinatayang solusyon",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Mga kondisyon (isa bawat linya: A1 <= 10; B1 integer; C1 binary):"
   },
   "ko": {
     "Symbol or Code": "기호 또는 코드",
@@ -445,7 +484,10 @@
     "Recover Unsaved Document": "저장하지 않은 문서 복구",
     "Print PDF as Image…": "PDF를 이미지로 인쇄…",
     "Print PDF as Image": "PDF를 이미지로 인쇄",
-    "Cancel Goal Seek": "목표값 찾기 취소"
+    "Cancel Goal Seek": "목표값 찾기 취소",
+    "Cancel Solver": "해 찾기 취소",
+    "Approximate solution": "근사 해",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "제약 조건 (한 줄에 하나: A1 <= 10; B1 integer; C1 binary):"
   },
   "th": {
     "Symbol or Code": "สัญลักษณ์หรือรหัส",
@@ -477,7 +519,10 @@
     "Recover Unsaved Document": "กู้คืนเอกสารที่ยังไม่ได้บันทึก",
     "Print PDF as Image…": "พิมพ์ PDF เป็นรูปภาพ…",
     "Print PDF as Image": "พิมพ์ PDF เป็นรูปภาพ",
-    "Cancel Goal Seek": "ยกเลิกการค้นหาค่าเป้าหมาย"
+    "Cancel Goal Seek": "ยกเลิกการค้นหาค่าเป้าหมาย",
+    "Cancel Solver": "ยกเลิกตัวแก้ปัญหา",
+    "Approximate solution": "คำตอบโดยประมาณ",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "เงื่อนไข (หนึ่งรายการต่อบรรทัด: A1 <= 10; B1 integer; C1 binary):"
   },
   "it": {
     "Symbol or Code": "Simbolo o codice",
@@ -509,7 +554,10 @@
     "Recover Unsaved Document": "Recupera documento non salvato",
     "Print PDF as Image…": "Stampa PDF come immagine…",
     "Print PDF as Image": "Stampa PDF come immagine",
-    "Cancel Goal Seek": "Annulla ricerca obiettivo"
+    "Cancel Goal Seek": "Annulla ricerca obiettivo",
+    "Cancel Solver": "Annulla risolutore",
+    "Approximate solution": "Soluzione approssimata",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Vincoli (uno per riga: A1 <= 10; B1 integer; C1 binary):"
   },
   "pl": {
     "Symbol or Code": "Symbol lub kod",
@@ -541,7 +589,10 @@
     "Recover Unsaved Document": "Odzyskaj niezapisany dokument",
     "Print PDF as Image…": "Drukuj PDF jako obraz…",
     "Print PDF as Image": "Drukuj PDF jako obraz",
-    "Cancel Goal Seek": "Anuluj szukanie wyniku"
+    "Cancel Goal Seek": "Anuluj szukanie wyniku",
+    "Cancel Solver": "Anuluj Solver",
+    "Approximate solution": "Rozwiązanie przybliżone",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Ograniczenia (jedno w wierszu: A1 <= 10; B1 integer; C1 binary):"
   },
   "ms": {
     "Symbol or Code": "Simbol atau kod",
@@ -573,7 +624,10 @@
     "Recover Unsaved Document": "Pulihkan Dokumen Belum Disimpan",
     "Print PDF as Image…": "Cetak PDF sebagai Imej…",
     "Print PDF as Image": "Cetak PDF sebagai Imej",
-    "Cancel Goal Seek": "Batalkan pencarian sasaran"
+    "Cancel Goal Seek": "Batalkan pencarian sasaran",
+    "Cancel Solver": "Batalkan Solver",
+    "Approximate solution": "Penyelesaian anggaran",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Kekangan (satu setiap baris: A1 <= 10; B1 integer; C1 binary):"
   },
   "hu": {
     "Symbol or Code": "Szimbólum vagy kód",
@@ -605,6 +659,9 @@
     "Recover Unsaved Document": "Nem mentett dokumentum helyreállítása",
     "Print PDF as Image…": "PDF nyomtatása képként…",
     "Print PDF as Image": "PDF nyomtatása képként",
-    "Cancel Goal Seek": "Célértékkeresés megszakítása"
+    "Cancel Goal Seek": "Célértékkeresés megszakítása",
+    "Cancel Solver": "Solver megszakítása",
+    "Approximate solution": "Közelítő megoldás",
+    "Limiting conditions (one per line: A1 <= 10; B1 integer; C1 binary):": "Feltételek (soronként egy: A1 <= 10; B1 integer; C1 binary):"
   }
 }
