@@ -11,6 +11,7 @@ mod information;
 mod statistics;
 mod text;
 mod units;
+mod sparse_ranges;
 use crate::{CellContent, SheetId, Workbook};
 use std::collections::{HashMap, HashSet};
 
@@ -52,7 +53,7 @@ struct Eval<'a> {
     text_bytes: usize,
     argument_text_bytes: usize,
     now: chrono::NaiveDateTime,
-    spills: HashMap<(SheetId, usize, usize), Value>,
+    spills: std::collections::BTreeMap<(SheetId, usize, usize), Value>,
     spill_ranges: std::collections::BTreeMap<(SheetId, usize, usize), crate::Range>,
     spills_done: HashSet<SheetId>,
     spills_scanning: HashSet<SheetId>,
@@ -67,7 +68,7 @@ impl<'a> Eval<'a> {
             text_bytes: 0,
             argument_text_bytes: 0,
             now,
-            spills: HashMap::new(),
+            spills: std::collections::BTreeMap::new(),
             spill_ranges: std::collections::BTreeMap::new(),
             spills_done: HashSet::new(),
             spills_scanning: HashSet::new(),
@@ -596,6 +597,7 @@ impl Parser<'_, '_> {
         if self.depth > MAX_DEPTH {
             return Value::Error("#LIMIT!");
         }
+        if name=="COUNTBLANK"{if let Some(value)=self.count_blank_reference(){return value;}}
         if text::handles(name)
             || statistics::handles(name)
             || distributions::handles(name)
@@ -674,25 +676,13 @@ impl Parser<'_, '_> {
                 if let Some((sheet, top, left, bottom, right)) =
                     range.filter(|_| matches!(self.input.get(self.pos), Some(b',' | b')')))
                 {
-                    self.eval.ensure_spills(sheet, self.depth + 1);
-                    for r in top..=bottom {
-                        for c in left..=right {
-                            self.eval.steps += 1;
-                            if self.eval.steps > MAX_STEPS {
-                                return Value::Error("#LIMIT!");
-                            }
-                            if !self.eval.raw(sheet, r, c).unwrap_or("").is_empty()
-                                || self.eval.spills.contains_key(&(sheet, r, c))
-                            {
-                                nonempty += 1;
-                            }
-                            match self.eval.range_cell(sheet, r, c, self.depth + 1) {
-                                Some(Value::Number(n)) => values.push(n),
-                                Some(Value::Error(e)) if name != "COUNT" && name != "COUNTA" => {
-                                    return Value::Error(e)
-                                }
-                                _ => {}
-                            }
+                    let coordinates=match self.eval.occupied_range(sheet,top,left,bottom,right,self.depth+1){Ok(v)=>v,Err(e)=>return Value::Error(e)};
+                    for (r,c)in coordinates {
+                        nonempty+=1;
+                        match self.eval.range_cell(sheet,r,c,self.depth+1){
+                            Some(Value::Number(n))=>values.push(n),
+                            Some(Value::Error(e))if name!="COUNT"&&name!="COUNTA"=>return Value::Error(e),
+                            _=>{}
                         }
                     }
                 } else {

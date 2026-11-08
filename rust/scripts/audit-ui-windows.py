@@ -1141,6 +1141,7 @@ def audit_sparse_capacity(process,main,binary,output,results):
     model=saved('seed');sheet=model['sheets'][0];sheet['rows']=1048576;sheet['cols']=16384
     sheet['cells'][0]['content']={'type':'Formula','value':{'raw':'=XFD1048576*3','crlf':False}}
     sheet['cells'].append({'row':1048575,'col':16383,'content':{'type':'Number','value':{'raw':'7','crlf':False}},'style':0})
+    for row,kind,raw,col in [(1,'Formula','=SUM(XFD1:XFD1048576)',0),(2,'Formula','=COUNTBLANK(XFD1:XFD1048576)',0),(3,'Error','#N/A',0),(1,'Text','#N/A',1)]:sheet['cells'].append({'row':row,'col':col,'content':{'type':kind,'value':{'raw':raw,'crlf':False}},'style':0})
     source=output/'sparse-full-size.xls42';source.write_text(json.dumps(model),encoding='utf-8');original=source.read_bytes();open_fixture(process,main,source)
     grid=u.GetDlgItem(main,102);assert classname(grid)=='Off42VariableGrid'
     fill_prompt(process,main,25,'Range (1-based)',['1048576','16384','1048576','16384'])
@@ -1160,13 +1161,15 @@ def audit_sparse_capacity(process,main,binary,output,results):
         ns={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
         with zipfile.ZipFile(path)as archive:root=ET.fromstring(archive.read('xl/worksheets/sheet1.xml'))
         values={cell.attrib['r']:cell.findtext('s:v',namespaces=ns)for cell in root.findall('.//s:c',ns)}
-        assert values['XFD1048576']=='11'and values['A1']=='33',values
+        assert values['XFD1048576']=='11'and values['A1']=='33'and values['A2']=='11'and values['A3']=='1048575',values
+        cells={cell.attrib['r']:cell for cell in root.findall('.//s:c',ns)};assert cells['A4'].attrib.get('t')=='e'and values['A4']=='#N/A';assert cells['B2'].attrib.get('t')in('s','inlineStr'),'Error-looking text lost its distinct string type'
+
     verify_xlsx(path)
     command(main,4);undone=saved('undo');assert undone['sheets']==before['sheets']and undone['selection']==before['selection']
     command(main,5);redone=saved('redo');assert redone['sheets']==changed['sheets']and redone['selection']==changed['selection']
     open_fixture(process,main,output/'sparse-redo.xls42');verify_xlsx(saved('reopened','Excel workbook'))
     assert source.read_bytes()==original
-    results['checks'].append('full 1048576 by 16384 sparse workbook opens through the normal dialog; selecting XFD1048576 scrolls both axes, native editing changes only that cell, saved XLSX has independently checked far value and dependent A1 cache, complete one-step Undo/Redo and reopen preserve every sheet cell and original source')
+    results['checks'].append('full 1048576 by 16384 sparse workbook opens through the normal dialog; selecting XFD1048576 scrolls both axes, native editing changes only that cell, saved XLSX has independently checked far value, dependent A1/SUM/COUNTBLANK caches and distinct literal-error/text cell types, complete one-step Undo/Redo and reopen preserve every sheet cell and original source')
 
 
 def audit_engineering_formulas(process, main, binary, output, results, include_extended=False):

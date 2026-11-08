@@ -11,6 +11,12 @@ mod filters;
 mod dynamic_arrays;
 mod sparse_import;
 mod sparse_ods;
+#[cfg(test)]
+mod literal_errors;
+fn xlsx_error(value:&str)->Result<&'static str,Error>{
+    const ERRORS:&[&str]=&["#DIV/0!","#N/A","#NAME?","#NULL!","#NUM!","#REF!","#VALUE!","#GETTING_DATA","#SPILL!","#CALC!","#FIELD!","#BLOCKED!","#CONNECT!","#UNKNOWN!","#BUSY!","#PYTHON!"];
+    ERRORS.iter().copied().find(|e|*e==value).ok_or(Error::Invalid("Unsupported literal XLSX error code"))
+}
 fn date_time(raw: &str) -> Result<chrono::NaiveDateTime, Error> {
     chrono::NaiveDateTime::parse_from_str(raw, "%Y-%m-%dT%H:%M:%S%.f")
         .ok()
@@ -290,16 +296,6 @@ impl Workbook {
         }
         let state = self.history.current();
         for sheet in &state.sheets{for range in &sheet.merges{range.bounded_operation()?;}}
-        if state
-            .sheets
-            .iter()
-            .flat_map(|s| s.cells.values())
-            .any(|c| matches!(c.text, CellContent::Error(_)))
-        {
-            return Err(Error::Invalid(
-                "XLSX export of error cells is unsupported",
-            ));
-        }
         if state.styles.iter().any(|s| s.borders & !15 != 0) {
             return Err(Error::Invalid("unsupported border style"));
         }
@@ -371,6 +367,11 @@ impl Workbook {
                 let f = &formats[cell.style];
                 match &cell.text {
                     CellContent::Text(t) => ws.write_string_with_format(r, c, t.raw(), f),
+                    CellContent::Error(t)=>{
+                        let error=xlsx_error(t.raw())?;
+                        typed_results.get_mut(&(sheet_index+1)).unwrap().insert((r as usize,c as usize),formula::Value::Error(error));
+                        ws.write_string_with_format(r,c,error,f)
+                    },
                     CellContent::Number(t) => ws.write_number_with_format(
                         r,
                         c,
@@ -431,7 +432,6 @@ impl Workbook {
                             )
                         }
                     }
-                    _ => unreachable!(),
                 }
                 .map_err(|_| Error::Invalid("cannot encode XLSX cell"))?;
             }
@@ -1335,15 +1335,12 @@ impl Workbook {
         }
         if state.sheets.iter().any(|s| {
             s.protected
-                || s.cells
-                    .values()
-                    .any(|c| matches!(c.text, CellContent::Error(_)))
         }) || state
             .styles
             .iter()
             .any(|s| s.borders & !15 != 0 || !s.number_format.is_empty())
         {
-            return Err(Error::Invalid("ODS export of protection, errors, unknown borders or number formats is unsupported"));
+            return Err(Error::Invalid("ODS export of protection, unknown borders or number formats is unsupported"));
         }
         let mut book = WorkBook::default();
         let mut styles = Vec::new();
@@ -1435,7 +1432,7 @@ impl Workbook {
             for (&(r, c), cell) in &sh.cells {
                 let (r, c) = (r as u32, c as u32);
                 match &cell.text {
-                    CellContent::Text(t) => sheet.set_value(r, c, t.raw()),
+                    CellContent::Text(t) | CellContent::Error(t) => sheet.set_value(r, c, t.raw()),
                     CellContent::Number(t) => sheet.set_value(
                         r,
                         c,
@@ -1464,7 +1461,6 @@ impl Workbook {
                         }
                         sheet.set_formula(r, c, ods_formula(t.raw())?)
                     }
-                    _ => unreachable!(),
                 }
                 sheet.set_cellstyle(r, c, &styles[cell.style]);
             }
@@ -1517,6 +1513,8 @@ impl Workbook {
         }
         let bytes = spreadsheet_ods::write_ods_buf(&mut book, Vec::new())
             .map_err(|_| Error::Invalid("cannot encode ODS"))?;
+        let errors=state.sheets.iter().map(|s|s.cells.iter().filter_map(|(&p,c)|matches!(c.text,CellContent::Error(_)).then_some((p,Some(c.clone())))).collect()).collect::<Vec<_>>();
+        let bytes=if errors.iter().any(|s:&Vec<_>|!s.is_empty()){dynamic_arrays::patch_ods_inputs(&bytes,&errors,state)?}else{bytes};
         let bytes=if state.sheets.iter().any(|s|s.filter.is_some()){add_ods_database_ranges(&bytes,state)?}else{bytes};
         embed(solver::files::patch(&bytes,"ods",None,state)?, "ods", self.project_bytes()?)
     }

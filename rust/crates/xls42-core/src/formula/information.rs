@@ -32,7 +32,7 @@ pub(super) fn reference_handles(n: &str) -> bool {
             | "COLUMN"
     )
 }
-pub(super) const ERRORS: [&str; 12] = [
+pub(super) const ERRORS: [&str; 18] = [
     "#DIV/0!",
     "#N/A",
     "#NAME?",
@@ -43,6 +43,12 @@ pub(super) const ERRORS: [&str; 12] = [
     "#GETTING_DATA",
     "#SPILL!",
     "#CALC!",
+    "#FIELD!",
+    "#BLOCKED!",
+    "#CONNECT!",
+    "#UNKNOWN!",
+    "#BUSY!",
+    "#PYTHON!",
     "#CYCLE!",
     "#LIMIT!",
 ];

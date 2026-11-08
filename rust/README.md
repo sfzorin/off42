@@ -875,3 +875,15 @@ projections are test helpers; data-processing clients use `display_cells` or `ca
 Portable tests cover far references, independent XLSX/ODS edge imports, all native formats, validation,
 atomic operation refusals and selected-area printing. The full-size native UI scenario is pending its first
 compatible build. Automatic grid expansion and full-sheet formula semantics remain tracked in `PARITY.md`.
+
+Explicit reference aggregates (SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, PRODUCT and aggregate math) traverse
+stored values and spill results; COUNTBLANK computes implicit blanks without expanding the reference area.
+Full-sheet calculations preserve number/text/boolean/error distinctions and empty-string formula semantics.
+Whole-column syntax and other full-range functions remain separate work. The 492 fixed macOS formula cases
+still match; the two locale/volatile examples remain explicitly skipped.
+
+Native XLSX/ODS exports now preserve literal error cells separately from error-looking text and keep cell
+formatting. Standard and supported modern XLSX error codes retain their error type; unknown literal XLSX
+error codes are refused. Independent packages without the private snapshot verify all sixteen supported
+codes, direct error propagation, ISERROR, ordinary strings and formatting. This does not expand the existing
+guards for external XLSX error-input edits or all ODS layout/style changes.

@@ -26,7 +26,8 @@ pub(in crate::office) fn working_copy<'a>(
             let error = value.text().unwrap_or("");
             if matches!(
                 error,
-                "#SPILL!"
+                "#GETTING_DATA"
+                    | "#SPILL!"
                     | "#CALC!"
                     | "#FIELD!"
                     | "#BLOCKED!"

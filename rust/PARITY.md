@@ -710,3 +710,14 @@ after image selection; image unit regressions are now included in quick CI.
   cells). It now iterates stored inputs from every sheet before replacing the session. A real App::open
   regression opens the full-size file and refuses bad text in a nonactive sheet without replacing the
   live book: app 26/0; GNU all targets compile. A compatible native repeat is still required.
+
+- Explicit-reference SUM/AVERAGE/MIN/MAX/COUNT/COUNTA/PRODUCT and math aggregates now traverse stored
+  coordinates and ordered spills. COUNTBLANK checks implicit blanks algebraically. A full-sheet test covers
+  typed values, formula-empty strings, errors and spills, with native-format round trips. Whole-axis syntax
+  and remaining large-reference functions are still open.
+- Native XLSX/ODS literal error export retains error types and formatting while preserving ordinary strings
+  containing the same codes. Sixteen codes are checked in independent packages with no private snapshot,
+  including direct propagation and ISERROR; unsupported literal XLSX codes refuse. GETTING_DATA's reader
+  compatibility path and modern evaluator error recognition are covered. Workspace 541/0/1, GNU all targets
+  compile; fixed Swift oracle 492 pass/0 gaps/2 explicit skips. Full-size native scenario now checks SUM,
+  COUNTBLANK and distinct saved error/text types too, pending a compatible build.

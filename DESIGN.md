@@ -948,3 +948,16 @@ and full-column formula aggregation remain separate work.
 The Windows XLS open boundary validates stored editor inputs from `Workbook::cell_inputs` across all
 sheets before replacing the live session. It does not iterate the logical worksheet rectangle; implicit
 blanks cannot contain unsupported control characters. Refusal preserves the previous document and caches.
+
+Reference aggregates traverse the union of stored nonempty coordinates and ordered spill entries, in row-major
+order, charging stored-data scans against the common calculation budget. SUM/AVERAGE/MIN/MAX/COUNT/COUNTA/
+PRODUCT and aggregate math retain their typed range rules without visiting implicit blanks. COUNTBLANK uses
+reference area minus calculated nonempty coordinates, including empty-string formula results and spill values.
+Other operations still enforce their materialization budgets. This does not add whole-column reference syntax.
+
+Native XLSX literal error inputs are emitted as formatted placeholders and corrected through the existing typed
+cache XML writer to standard `t="e"` cells without formulas. Supported legacy/modern codes retain their exact
+raw errors; unrecognized literal XLSX error codes are refused. Native ODS literal errors are tagged by the shared
+surgical typed-input patcher. Ordinary error-looking strings stay strings. The disposable Calamine working copy
+also normalizes GETTING_DATA before restoring the original code, and the evaluator recognizes the supported
+modern errors without changing ERROR.TYPE's explicit mappings.
