@@ -559,3 +559,9 @@ Portable workspace: 460 tests pass, zero fail, one external OCR fixture ignored;
 compile. New actual IMG pointer/clipboard/drawing/navigation assertions are pending Windows CI. The earlier
 static OCR build has passed its runtime dependency gate and targeted Windows tests; complete run evidence
 will be recorded after the workflow finishes.
+
+Windows run 42429149583 on ebc82b8 succeeded: 362 targeted MSVC tests passed, zero failed, one external OCR
+fixture ignored, all 30 existing native groups passed, and the seven-PE static runtime gate passed. This
+includes actual recognition of image pixels and verification of all twenty bundled models. New PDF/SCN/IMG
+OCR GUI workflows remain pending. Follow-up native canvas changes refresh Copy availability immediately
+after image selection; image unit regressions are now included in quick CI.

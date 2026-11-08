@@ -3961,6 +3961,7 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                     if let Err(e) = result {
                         msg(h, &e, MB_OK | MB_ICONERROR);
                     }
+                    update_caption();
                     InvalidateRect(h, null(), 0);
                 }
             }

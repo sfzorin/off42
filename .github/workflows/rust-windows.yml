@@ -156,7 +156,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force target/x86_64-pc-windows-msvc/debug/deps | Out-Null
           Copy-Item build/off42/pdfium.dll target/x86_64-pc-windows-msvc/debug/deps/pdfium.dll
-          cargo test --locked -p win42 -p pdf42-core -p pdf42 -p doc42-core -p xls42-core -p ppt42-core -p ppt42 -p scn42-core -p scn42
+          cargo test --locked -p win42 -p pdf42-core -p pdf42 -p doc42-core -p xls42-core -p ppt42-core -p ppt42 -p scn42-core -p scn42 -p img42-core -p img42
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Audit native commands in the packaged apps
         run: python scripts/audit-ui-windows.py --bin-dir build/off42 --output build/native-ui --extended --pictures --technical-objects --label-sources --languages --recents --page-exports --host-commands --engineering --text-exports --extended-formulas --multiwindow --window-layout --rich-search --preset-shapes --pdf-decorations --statistical-formulas --pdf-comparison --pdf-merge --pdf-batch-headers --array-formulas --ocr

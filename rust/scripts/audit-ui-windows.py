@@ -1604,7 +1604,7 @@ def audit_bundled_ocr(process,main,binary,output,results):
         replaced=save('replaced');assert pdf_text(dll,replaced,by_page=True)==pages
         assert pdf_pixels(dll,replaced,1)==pdf_pixels(dll,baseline,1)
         open_pdf(source)
-        fill_prompt(process,main,114,'Recognize PDF Text',['1-2','eng','180'])
+        fill_prompt(process,main,114,'Recognize PDF Text',['1-2','eng','300'])
         command(main,115)
         wait_for(lambda:'recognition cancelled'in status().lower(),'PDF OCR cancellation',process)
         cancelled=save('cancelled');assert '1234567890'not in pdf_text(dll,cancelled)
@@ -1639,6 +1639,7 @@ def audit_image_live_text(process,main,binary,output,results):
     def point(x,y):return(round((rect.bottom-320*scale)/2+y*scale)<<16)|round((rect.right-1200*scale)/2+x*scale)
     p=point(330,110)
     u.SendMessageW(canvas,0x201,1,p);u.SendMessageW(canvas,0x203,1,p);u.SendMessageW(canvas,0x202,0,p)
+    wait_for(lambda:not(u.GetMenuState(u.GetMenu(main),44,0)&3),'copy command enabled after text selection',process)
     command(main,44);wait_for(lambda:clipboard_text()=='offline','native double-click recognized word',process)
     command(main,46);command(main,44);wait_for(lambda:clipboard_text()==all_text,'native select all recognized text',process)
     u.SendMessageW(canvas,0x100,27,0)

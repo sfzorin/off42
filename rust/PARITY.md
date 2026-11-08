@@ -447,3 +447,9 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 - Pixel, history and frame invalidation/selection regressions pass. Portable workspace: 460/0/1; GNU all
   targets compile. Native menu/pointer/clipboard/drawing/reopen checks are added but pending Windows CI.
 - Recognition settings stay in a separate menu; the primary toolbar shows only viewing and text Copy.
+
+Windows run 42429149583 on ebc82b8 succeeded: 362 targeted MSVC tests passed, zero failed, one external OCR
+fixture ignored, all 30 existing native groups passed, and the seven-PE static runtime gate passed. This
+includes actual recognition of image pixels and verification of all twenty bundled models. New PDF/SCN/IMG
+OCR GUI workflows remain pending. Follow-up native canvas changes refresh Copy availability immediately
+after image selection; image unit regressions are now included in quick CI.
