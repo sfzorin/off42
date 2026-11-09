@@ -3126,6 +3126,47 @@ def audit_smart_lasso(process, main, output, results):
     results["checks"].append("IMG42 native Smart Lasso drag and Escape, edge-snapped PNG selection with measured alpha overlap, ordinary File export, complementary delete pixels, exact Undo/Redo and PNG reopen")
 
 
+def audit_uniform_background(process, main, output, results):
+    source = output / "uniform-background-source.png"
+    original = bytearray()
+    expected = bytearray()
+    for y in range(32):
+        for x in range(32):
+            foreground = 8 <= x < 24 and 8 <= y < 24
+            pixel = [40, 80, 100, 255] if foreground and (x, y) != (15, 15) else [240 + x % 8, 245, 246, 255]
+            original.extend(pixel)
+            expected.extend(pixel if foreground else [0, 0, 0, 0])
+    write_png(source, 32, 32, original)
+    source_bytes = source.read_bytes()
+    open_fixture(process, main, source)
+    command(main, 52)
+    dialog = modal(process, title="Remove Uniform Background", native_class="Suite42InputDialog")
+    click(dialog, 2)
+    wait_for(lambda: not u.IsWindow(dialog), "uniform-background dialog cancelled", process)
+    assert text(main).startswith(source.name + " - ")
+    fill_prompt(process, main, 52, "Remove Uniform Background", ["16"])
+    wait_for(lambda: any("Uniform background removed" in text(h) for h in windows(process.pid, main)),
+             "offline uniform background removed", process)
+
+    def saved(suffix):
+        path = output / f"uniform-background-{suffix}.png"
+        save_as(main)
+        choose_file(process, path, format_name="PNG image")
+        output_ready(process, main, path, b"\x89PNG\r\n\x1a\n")
+        return path
+
+    removed = saved("removed")
+    assert png_pixels(removed) == (32, 32, bytes(expected))
+    command(main, 4)
+    assert png_pixels(saved("undo")) == (32, 32, bytes(original))
+    command(main, 5)
+    assert png_pixels(saved("redo")) == (32, 32, bytes(expected))
+    open_fixture(process, main, removed)
+    assert png_pixels(saved("reopened")) == (32, 32, bytes(expected))
+    assert source.read_bytes() == source_bytes
+    results["checks"].append("IMG42 native uniform-background settings and Cancel, asynchronous edge-connected alpha, preserves disconnected matching color, exact Undo/Redo and PNG reopen")
+
+
 def audit_image_live_text(process,main,binary,output,results):
     folder=output/'live-text-images';folder.mkdir()
     first=folder/'a-text.png';first.write_bytes((Path(__file__).resolve().parent.parent/'crates/win42/fixtures/ocr-english.png').read_bytes())
@@ -3556,7 +3597,9 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
         if binary.stem.lower() not in {"doc42", "pdf42", "xls42"}:
             if ocr and binary.stem.lower()=="scn42":audit_bundled_ocr(process,main,binary,output,results)
             if ocr and binary.stem.lower()=="img42":audit_image_live_text(process,main,binary,output,results)
-            if extended and binary.stem.lower()=="img42":audit_smart_lasso(process,main,output,results)
+            if extended and binary.stem.lower()=="img42":
+                audit_smart_lasso(process,main,output,results)
+                audit_uniform_background(process,main,output,results)
             if technical and binary.stem.lower() == "ppt42":
                 audit_technical_objects(process, main, binary, output, results)
             if preset_shapes and binary.stem.lower() == "ppt42":

@@ -3,12 +3,14 @@ mod batch;
 mod pdf_view;
 mod live_text;
 mod recovery;
+mod uniform_background;
 use img42_core::ImageDocument;
 use std::path::Path;
 const EXPORT_SELECTION: u16 = 51;
 #[derive(Default)]
 struct Img {
     live_text:live_text::LiveText,
+    background: uniform_background::Removal,
     batch: Option<batch::Worker>,
     batch_outcomes: Vec<String>,
     batch_done: Option<bool>,
@@ -84,7 +86,13 @@ impl win42::App for Img {
         Ok(())
     }
     fn poll_background(&mut self) -> bool {
-        let mut changed = self.live_text.poll(self.doc.as_ref());
+        let (background_changed, applied) = self.background.poll(self.doc.as_mut());
+        if applied {
+            self.selection = None;
+            self.mask = None;
+            self.gesture.clear();
+        }
+        let mut changed = self.live_text.poll(self.doc.as_ref()) || background_changed;
         let mut done = None;
         if let Some(worker) = &self.batch {
             loop {
@@ -165,6 +173,7 @@ impl win42::App for Img {
         self.frame_index = 0;
         self.doc = self.frames[0].take();
         self.live_text.reset();
+        self.background = uniform_background::Removal::default();
         self.delays = vec![image::Delay::from_numer_denom_ms(0, 1); count];
         self.animation_loop = img42_core::AnimationLoop::Once;
         self.conversion_risk = true;
@@ -400,6 +409,7 @@ impl win42::App for Img {
             (38, "Next image in folder"),
             (39, "Lasso selection tool"),
             (50, "Smart Lasso"),
+            (uniform_background::COMMAND, "Remove Uniform Background…"),
             (40, "Batch convert folder..."),
             (41, "Cancel batch"),
             (42, "Batch outcomes..."),
@@ -426,6 +436,12 @@ impl win42::App for Img {
         }
     }
     fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+        if id == uniform_background::COMMAND {
+            return Some(win42::InputRequest {
+                title: "Remove Uniform Background",
+                fields: vec![("Color tolerance (0–64)", "24".into())],
+            });
+        }
         if id==43 {return Some(win42::InputRequest{title:"Recognize Image Text",fields:vec![("Language (auto, en-US, eng+rus; up to 3)",if self.live_text.language.is_empty(){"auto".into()}else{self.live_text.language.clone()})]});}
 
         if id == 40 {
@@ -527,6 +543,16 @@ impl win42::App for Img {
         Some(win42::InputRequest { title, fields })
     }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
+        if id == uniform_background::COMMAND {
+            let [value] = values else { return Err("Invalid background settings".into()) };
+            let tolerance = value.trim().parse::<u8>().ok()
+                .filter(|value| *value <= 64).ok_or("Enter a color tolerance from 0 to 64")?;
+            if self.background.running() {
+                return Err("Background removal is already running".into());
+            }
+            self.batch_done = None;
+            return self.background.start(self.doc.as_ref().ok_or("Open an image first")?, tolerance);
+        }
         if id==43 {
             let language=values.first().ok_or("Missing OCR language")?.trim();
             if language.is_empty()||language.len()>128||!language.chars().all(|c|c.is_ascii_alphanumeric()||matches!(c,'-'|'_'|'+')) {return Err("Choose auto or up to three built-in OCR languages".into());}
@@ -853,14 +879,15 @@ impl win42::App for Img {
             .as_ref()
             .map(|d| {
                 format!(
-                    "{} × {} pixels | {}",
+                    "{} × {} pixels | {}{}",
                     d.width(),
                     d.height(),
                     self.zoom
                         .map(|z| format!("{:.0}%", 100.0 * z))
                         .unwrap_or_else(|| "Fit".into())
                         + if self.live_text.status(d).is_empty() {""} else {" | "}
-                        + self.live_text.status(d)
+                        + self.live_text.status(d),
+                    if self.background.status().is_empty() { String::new() } else { format!(" | {}", self.background.status()) }
                 )
             })
             .unwrap_or_else(|| "Open a PNG or JPEG image".into())
@@ -880,6 +907,7 @@ impl win42::App for Img {
     }
     fn enabled(&self, id: u16) -> bool {
         match id {
+            uniform_background::COMMAND => self.doc.is_some() && !self.background.running(),
             43|49=>self.doc.is_some(),
             44|47=>self.tool==0&&self.doc.as_ref().is_some_and(|d|self.live_text.selected(d)),
             45|46=>self.doc.as_ref().is_some_and(|d|self.live_text.ready(d)),
@@ -911,6 +939,7 @@ impl win42::App for Img {
         self.frame_index = 0;
         self.doc = self.frames[0].take();
         self.live_text.reset();
+        self.background = uniform_background::Removal::default();
         self.delays = delays;
         self.animation_loop = animation_loop;
         self.conversion_risk = conversion_risk;
@@ -945,6 +974,7 @@ impl win42::App for Img {
             self.doc = self.frames[i].take();
             self.frame_index = i;
             self.live_text.reset();
+            self.background = uniform_background::Removal::default();
             self.selection = None;
             self.mask = None;
             self.gesture.clear();
@@ -954,6 +984,9 @@ impl win42::App for Img {
         self.frame_index
     }
     fn action(&mut self, id: u16) -> Result<(), String> {
+        if matches!(id, 4 | 5) {
+            self.background = uniform_background::Removal::default();
+        }
         if matches!(id,44..=49) {
             match id {
                 44|45=>return Ok(()),

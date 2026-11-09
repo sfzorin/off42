@@ -17,7 +17,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured Find/Replace with case, whole words, regex captures and next/previous, body/selection text and editor-line statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, broader regex syntax and cross-paragraph rich replacement, table/image editing caret mapping, page counts and dictionary word segmentation, picture geometry and rich page decorations |
 | XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, list-validation choices, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, remaining virtual-area range tools, legacy arrays, full floating-object editing, advanced filtering, locale-aware sort collation/preferences, advanced validation rules and format fidelity, outlines/subtotals, split panes and per-cell/password protection |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, speaker-notes editing with PPTX/ODP persistence, basic transitions, windowed/fullscreen show navigation, hidden slides, loop/blank controls, single-window presenter rehearsal, RTF/Markdown outline and PNG/JPEG slide exports, PPTX/ODP and printing | Rich notes and notes-page output, custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, dual-display presenter view, ink/laser/overview and PDF/movie exports |
-| IMG42 | Image decoding, transforms, adjustments, freehand and edge-refined selections, recognized text selection/copy, metadata and batch output | Full markup selection/editing, subject-mask guidance for Smart Lasso, full Live Text interaction, background removal, viewing panels and additional supported system codecs |
+| IMG42 | Image decoding, transforms, adjustments, freehand and edge-refined selections, edge-connected uniform-background removal, recognized text selection/copy, metadata and batch output | Full markup selection/editing, subject-mask guidance for Smart Lasso and background removal, full Live Text interaction, viewing panels and additional supported system codecs |
 | SCN42 | WIA acquisition and verified virtual rescan, image/PDF import, page processing, OCR, optional searchable layer, PDF quality presets and per-page PDF output, local export history with reopen and removal | Scan areas, device/preset controls, history thumbnails, archival/other export formats, naming/preview settings and physical-device checks |
 
 ## Recorded checks
@@ -951,3 +951,14 @@ after image selection; image unit regressions are now included in quick CI.
   reopen, removal, declined clear and confirmed clear with unchanged output files. XLS42 still used
   the earlier keyboard-driven test. PDF42 reached the virtual print dialog before the printer row
   was selected. The audit now waits for the only verified virtual queue to become selected.
+- Run 42695688890 (0854474) passed all 37 native groups and MSVC 600/0/1. XLS42 verified native
+  arrow and Alt+Down, Cancel, literal values including leading zeros, history, XLSX XML and reopen.
+  PPT42 verified PNG pixels, JPEG dimensions, hidden slide scope and no-clobber behavior. SCN42
+  export history and DOC42 line counts also passed.
+- Run 42696471579 (796d24e) passed all 37 native groups and MSVC 601/0/1. XLS42 verified list
+  selection in an ordinary workbook without an off42 project part, exact literal text and standard
+  list metadata preserved through the external adapter.
+- IMG42 adds asynchronous removal of a uniform edge-connected background at an explicit color
+  tolerance. The edit preserves foreground pixels of the same color when they are disconnected
+  from the background. Results for different pixel snapshots are discarded. Local alpha/history
+  tests pass. A native PNG/Undo/Redo check awaits CI. Vision-style subject segmentation remains open.

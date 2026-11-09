@@ -564,6 +564,11 @@ compile. New actual IMG pointer/clipboard/drawing/navigation assertions are pend
 static OCR build has passed its runtime dependency gate and targeted Windows tests; complete run evidence
 will be recorded after the workflow finishes.
 
+**Remove Uniform Background** makes border-connected pixels transparent when their color matches a
+uniform background within the chosen tolerance. It runs offline, retains the image dimensions and
+uses one Undo step. It is intended for solid or nearly solid backgrounds. Subject segmentation for
+complex scenes remains open.
+
 Windows run 42429149583 on ebc82b8 succeeded: 362 targeted MSVC tests passed, zero failed, one external OCR
 fixture ignored, all 30 existing native groups passed, and the seven-PE static runtime gate passed. This
 includes actual recognition of image pixels and verification of all twenty bundled models. New PDF/SCN/IMG
