@@ -1254,6 +1254,11 @@ pub enum DialogRequest {
         title: &'static str,
     },
     Information { title: &'static str, text: String },
+    SelectionInformation {
+        title: &'static str,
+        text: String,
+        describe: fn(&[u16]) -> Option<String>,
+    },
     Color([u8; 3]),
     Font,
     PageSetup(PageMargins),

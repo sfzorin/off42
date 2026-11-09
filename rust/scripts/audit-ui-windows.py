@@ -979,19 +979,28 @@ def audit_rich_search(process,main,binary,output,results):
     command(main,1);choose_file(process,source)
     wait_for(lambda:source.name in text(main)and u.IsWindowEnabled(main),"rich table/picture source opened",process)
     edit=u.GetDlgItem(main,101)
-    def statistics(characters):
-        command(main,360)
-        dialog=modal(process,title="Statistics",native_class="#32770")
-        value=" ".join(text(h)for h in windows_for_dialog(dialog))
-        assert "Words: 8" in value and f"Characters (with spaces): {characters}" in value and f"Characters (no spaces): {characters-5}" in value and "Paragraphs: 4" in value,value
-        click(dialog,1)
-        wait_for(lambda:u.IsWindowEnabled(main),"read-only statistics closed",process)
-        wait_for(lambda:any("8 words"in text(h)for h in windows(process.pid,main)),"structured document status word count",process)
-    statistics(49)
-    u.SendMessageW(edit,0xB1,0,0)
     def selection():
         packed=u.SendMessageW(edit,0xB0,0,0)
         return packed&0xffff,(packed>>16)&0xffff
+    def statistics(characters, selected=None):
+        before = selection()
+        command(main,360)
+        dialog=modal(process,title="Statistics",native_class="#32770")
+        value=" ".join(text(h)for h in windows_for_dialog(dialog))
+        document, _, part = value.partition("Selection\n")
+        assert "Words: 8" in document and f"Characters (with spaces): {characters}" in document and f"Characters (no spaces): {characters-5}" in document and "Paragraphs: 4" in document,value
+        if selected is not None:
+            words, count, nonspace, paragraphs = selected
+            assert (f"Words: {words}\n" in part and f"Characters (with spaces): {count}\n" in part
+                    and f"Characters (no spaces): {nonspace}\n" in part and f"Paragraphs: {paragraphs}" in part), value
+        elif before[0] == before[1]:
+            assert not part and "Selection statistics unavailable" not in value, value
+        click(dialog,1)
+        wait_for(lambda:u.IsWindowEnabled(main),"read-only statistics closed",process)
+        assert selection() == before
+        wait_for(lambda:any("8 words"in text(h)for h in windows(process.pid,main)),"structured document status word count",process)
+    statistics(49)
+    u.SendMessageW(edit,0xB1,0,0)
     positions=[]
     for index in range(4):
         previous=selection()
@@ -1001,6 +1010,10 @@ def audit_rich_search(process,main,binary,output,results):
         assert copied_selection(edit)=="TARGET"
         positions.append(selection())
     assert positions[0][0]<positions[1][0]<positions[2][0] and positions[3]==positions[0],positions
+    u.SendMessageW(edit, 0xB1, positions[1][0], positions[1][1])
+    statistics(49, (1, 6, 6, 1))
+    u.SendMessageW(edit, 0xB1, positions[0][0], positions[2][1])
+    statistics(49, (7, 40, 37, 4))
     assert " * - " not in text(main) and source.read_bytes()==original
     def saved(name):
         target=output/name
@@ -1040,7 +1053,7 @@ def audit_rich_search(process,main,binary,output,results):
     wait_for(lambda:selection()[1]-selection()[0]==8,"reopened rich text search",process)
     assert copied_selection(edit)=="REPLACED" and source.read_bytes()==original
     statistics(55)
-    results["checks"].append("structured body/table/image statistics retain Unicode grapheme counts through replace/history/reopen; native rich Find traverses body/table/image offsets and wraps; Replace All retains table/image bytes, complete Undo/Redo/save and dirty/discard/reopen")
+    results["checks"].append("structured body/table/image and selection statistics retain Unicode grapheme counts through replace/history/reopen, across cells and around an image; native rich Find traverses offsets and wraps; Replace All retains table/image bytes, complete Undo/Redo/save and dirty/discard/reopen")
 
 
 def audit_doc_search_options(process, main, output, results):

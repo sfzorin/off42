@@ -454,6 +454,18 @@ impl Doc {
         self.doc.editor_text().unwrap_or_default()
     }
 }
+
+fn statistics_text(stats: doc42_core::rich::TextStatistics) -> String {
+    let label = win42::localization::text;
+    format!(
+        "{}: {}\n{}: {}\n{}: {}\n{}: {}",
+        label("Words"), stats.words,
+        label("Characters (with spaces)"), stats.characters,
+        label("Characters (no spaces)"), stats.characters_without_spaces,
+        label("Paragraphs"), stats.paragraphs,
+    )
+}
+
 impl App for Doc {
     fn supports_technical_elements(&self) -> bool {
         true
@@ -2186,24 +2198,14 @@ impl App for Doc {
     }
     fn dialog_request(&self, id: u16) -> Option<DialogRequest> {
         match id {
-            360 => {
-                let stats = self.doc.statistics();
-                let label = win42::localization::text;
-                Some(DialogRequest::Information {
-                    title: "Statistics",
-                    text: format!(
-                        "{}: {}\n{}: {}\n{}: {}\n{}: {}",
-                        label("Words"),
-                        stats.words,
-                        label("Characters (with spaces)"),
-                        stats.characters,
-                        label("Characters (no spaces)"),
-                        stats.characters_without_spaces,
-                        label("Paragraphs"),
-                        stats.paragraphs
-                    ),
-                })
-            }
+            360 => Some(DialogRequest::SelectionInformation {
+                title: "Statistics",
+                text: format!("{}\n{}", win42::localization::text("Document"), statistics_text(self.doc.statistics())),
+                describe: |units| {
+                    let stats = doc42_core::rich::TextStatistics::from_native_selection(units)?;
+                    Some(format!("{}\n{}", win42::localization::text("Selection"), statistics_text(stats)))
+                },
+            }),
             303 => Some(DialogRequest::Font),
             304 => Some(DialogRequest::Color([0, 0, 0])),
             309 => {
@@ -3712,7 +3714,7 @@ mod statistics_tests {
         assert!(app.doc.editor_text().is_err());
         let before = app.doc.encode(Format::Project).unwrap();
         assert!(app.command_state(360).enabled);
-        let Some(DialogRequest::Information { title, text }) = app.dialog_request(360) else {
+        let Some(DialogRequest::SelectionInformation { title, text, .. }) = app.dialog_request(360) else {
             panic!("Expected read-only statistics")
         };
         assert_eq!(title, "Statistics");

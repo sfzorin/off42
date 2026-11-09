@@ -2943,6 +2943,18 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                         MessageBoxW(hwnd,wide(&text).as_ptr(),wide(&crate::localization::text(title)).as_ptr(),MB_OK|MB_ICONINFORMATION);
                         None
                     }
+                    crate::DialogRequest::SelectionInformation { title, mut text, describe } => {
+                        let (start, end) = crate::rich_edit::selection(edit);
+                        if start < end {
+                            let details = crate::proofing::raw_text_for_search(edit).ok()
+                                .and_then(|raw| raw.get(start..end).and_then(describe))
+                                .unwrap_or_else(|| crate::localization::text("Selection statistics unavailable"));
+                            text.push_str("\n\n");
+                            text.push_str(&details);
+                        }
+                        MessageBoxW(hwnd, wide(&text).as_ptr(), wide(&crate::localization::text(title)).as_ptr(), MB_OK | MB_ICONINFORMATION);
+                        return;
+                    }
                     crate::DialogRequest::Color(c) => {
                         crate::dialogs::color(hwnd, c).map(crate::DialogResult::Color)
                     }

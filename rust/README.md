@@ -316,10 +316,10 @@ This is a development artifact, separate from the public preview.3 download; it 
 ## Body statistics and statistical formulas (development branch)
 
 DOC42's **Statistics…** dialog counts body words, grapheme characters with/without spaces and nonempty
-paragraphs, including table cells even when pictures prevent a plain editor projection. The status word count
-uses the same whole-body traversal. Counting is read-only and retains formatting/history. It excludes notes,
-comments, image alternate text and page decorations. Unicode word boundaries do not establish the same
-language-specific dictionary segmentation as macOS; selection statistics and layout line counts remain work.
+paragraphs. When text is selected, it shows the same counts for the selected native range, including across
+table cells and images. The status bar shows the whole body word count. Statistics exclude notes, comments,
+image alternate text and page decorations. Counting preserves the selection and document history. Dictionary
+segmentation, page counts and laid-out line counts remain work.
 
 XLS42 adds descriptive statistics, ranks/percentiles/quartiles, regression/covariance and probability
 distributions/inverses (normal, lognormal, Student t, chi-square, F, gamma, beta, binomial and Poisson),

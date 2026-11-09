@@ -14,8 +14,12 @@ impl TextStatistics {
             .runs
             .iter()
             .map(|r| r.text.as_str())
-            .collect::<String>()
-            .replace(['\u{fffc}', '\u{000c}'], "");
+            .collect::<String>();
+        self.add_text(&text);
+    }
+
+    fn add_text(&mut self, text: &str) {
+        let text = text.replace(['\u{fffc}', '\u{000c}'], "");
         self.words += text.unicode_words().count();
         for grapheme in text
             .graphemes(true)
@@ -30,6 +34,16 @@ impl TextStatistics {
             .split(['\r', '\n', '\u{2028}', '\u{2029}'])
             .filter(|s| !s.trim().is_empty())
             .count();
+    }
+
+    /// Count a Rich Edit selection in its native UTF-16 coordinate space.
+    pub fn from_native_selection(units: &[u16]) -> Option<Self> {
+        let selected = String::from_utf16(units).ok()?;
+        let mut stats = Self::default();
+        for paragraph in selected.split(['\r', '\n', '\u{7}', '\u{fff9}', '\u{fffa}', '\u{fffb}', '\u{fffc}']) {
+            stats.add_text(paragraph);
+        }
+        Some(stats)
     }
 }
 impl RichDocument {
@@ -109,5 +123,15 @@ mod tests {
             let reopened = RichDocument::decode(&bytes, format).unwrap();
             assert_eq!(reopened.statistics(), changed);
         }
+    }
+
+    #[test]
+    fn selection_ignores_native_table_and_image_markers() {
+        let text = "café e\u{301} 😀\r\u{fff9}one\u{7}two\u{fffb}\r\u{fffc}\rafter";
+        let selection = text.encode_utf16().collect::<Vec<_>>();
+        assert_eq!(TextStatistics::from_native_selection(&selection), Some(TextStatistics {
+            words: 5, characters: 19, characters_without_spaces: 17, paragraphs: 4,
+        }));
+        assert_eq!(TextStatistics::from_native_selection(&[0xd83d]), None);
     }
 }
