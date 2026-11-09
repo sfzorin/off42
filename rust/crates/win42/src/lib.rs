@@ -399,14 +399,11 @@ pub trait App {
     fn supports_find_replace(&self) -> bool {
         false
     }
-    fn find_next(
-        &self,
-        _query: &str,
-        _start_utf16: usize,
-    ) -> Result<Option<(usize, usize)>, String> {
-        Err("Find unavailable".into())
-    }
-    fn replace_all(&mut self, _query: &str, _replacement: &str) -> Result<usize, String> {
+    fn replace_all(
+        &mut self,
+        _search: &suite42_core::text_search::Search,
+        _replacement: &str,
+    ) -> Result<usize, String> {
         Err("Replace unavailable".into())
     }
     fn view_actions(&self) -> &'static [(u16, &'static str)] {

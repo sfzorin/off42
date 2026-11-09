@@ -1002,6 +1002,68 @@ def audit_rich_search(process,main,binary,output,results):
     results["checks"].append("structured body/table/image statistics retain Unicode grapheme counts through replace/history/reopen; native rich Find traverses body/table/image offsets and wraps; Replace All retains table/image bytes, complete Undo/Redo/save and dirty/discard/reopen")
 
 
+def audit_doc_search_options(process, main, output, results):
+    picture = output / "search-picture.png"
+    image = picture.read_bytes()
+    source = output / "search-options.rtf"
+    body = br"{\rtf1\ansi\deff0{\fonttbl{\f0 Arial;}}\pard \u-10179?\u-8704? \b Cat-17\b0  cat-23 SCAT-99\par "
+    body += br"\trowd\cellx2000\cellx4000\pard\intbl cat-42\cell Other cell\cell\row "
+    body += br"\pard {\pict\pngblip\picw2\pich2\picwgoal240\pichgoal240 " + image.hex().encode("ascii") + br"}\par After CAT-55\par}"
+    source.write_bytes(body)
+    open_fixture(process, main, source)
+    edit = u.GetDlgItem(main, 101)
+
+    def saved(suffix):
+        target = output / ("search-options-" + suffix + ".doc42")
+        save_as(main)
+        choose_file(process, target, format_name="DOC42 project")
+        output_ready(process, main, target, b"{")
+        return json.loads(target.read_text(encoding="utf-8"))["state"]
+
+    def find(pattern, match_case, regex, direction, expected):
+        fill_prompt(process, main, 7, "Find next", [pattern, match_case, "Yes", regex, direction])
+        wait_for(lambda: u.IsWindowEnabled(main) and copied_selection(edit) == expected,
+                 "DOC42 find selected " + expected, process)
+
+    baseline = saved("before")
+    u.SendMessageW(edit, 0xB1, 0, 0)
+    find("cat", "Yes", "No", "Next", "cat")
+    u.SendMessageW(edit, 0xB1, 0, 0)
+    pattern = r"cat-(\d+)"
+    find(pattern, "No", "Yes", "Next", "Cat-17")
+    find(pattern, "No", "Yes", "Previous", "CAT-55")
+    fill_prompt(process, main, 8, "Replace all", [pattern, "REF:$1", "No", "Yes", "Yes", "Replace"])
+    wait_for(lambda: u.IsWindowEnabled(main) and copied_selection(edit) == "Cat-17",
+             "replace selection wrapped to next match", process)
+    one = saved("one")
+    assert one["blocks"][:-1] == baseline["blocks"][:-1]
+    assert "REF:55" in "".join(run["text"] for run in one["blocks"][-1]["Paragraph"]["runs"])
+    command(main, 4)
+    assert saved("one-undo")["blocks"] == baseline["blocks"]
+    command(main, 5)
+    assert saved("one-redo")["blocks"] == one["blocks"]
+    fill_prompt(process, main, 8, "Replace all", [pattern, "ID-$1", "No", "Yes", "Yes", "Replace All"])
+    confirmation = wait_for(lambda: next((h for h in windows(process.pid) if classname(h) == "#32770"
+        and "Replaced 3" in " ".join(text(c) for c in windows_for_dialog(h))), None),
+        "three whole-word capture replacements", process)
+    click(confirmation, 1)
+    changed = saved("all")
+    first = changed["blocks"][0]["Paragraph"]["runs"]
+    assert "ID-17 ID-23 SCAT-99" in "".join(run["text"] for run in first)
+    assert any("ID-17" in run["text"] and run["style"]["bold"] for run in first)
+    table = next(block["Table"] for block in changed["blocks"] if "Table" in block)
+    assert table["rows"][0][0]["paragraphs"][0]["runs"][0]["text"] == "ID-42"
+    assert [block for block in changed["blocks"] if "Image" in block] == [block for block in baseline["blocks"] if "Image" in block]
+    command(main, 4)
+    assert saved("all-undo")["blocks"] == one["blocks"]
+    command(main, 5)
+    assert saved("all-redo")["blocks"] == changed["blocks"]
+    open_fixture(process, main, output / "search-options-all.doc42")
+    assert saved("reopened")["blocks"] == changed["blocks"]
+    assert source.read_bytes() == body and picture.read_bytes() == image
+    results["checks"].append("DOC42 case-sensitive whole words, Unicode-aware next/previous, regex captures, one rich replacement with next match, whole-word all replacement, intact bold/table/image, Undo/Redo and normal reopen")
+
+
 def audit_goal_seek(process,main,binary,output,results):
     source=output/'goal-seek-source.csv'
     with source.open('w',encoding='utf-8',newline='')as stream:
@@ -2706,6 +2768,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_table_labels(process, main, binary, output, results)
         if rich_search and binary.stem.lower() == "doc42":
             audit_rich_search(process, main, binary, output, results)
+            audit_doc_search_options(process, main, output, results)
             audit_rich_format(process, main, binary, output, results)
             audit_spelling(process,main,binary,output,results)
         if engineering and binary.stem.lower() == "xls42":

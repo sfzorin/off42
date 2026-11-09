@@ -2682,34 +2682,12 @@ impl App for Doc {
     fn supports_find_replace(&self) -> bool {
         true
     }
-    fn find_next(&self, query: &str, start_utf16: usize) -> Result<Option<(usize, usize)>, String> {
-        let text = self.text();
-        let start = text
-            .char_indices()
-            .scan(0usize, |n, (i, c)| {
-                let old = *n;
-                *n += c.len_utf16();
-                Some((i, old))
-            })
-            .find(|(_, n)| *n >= start_utf16)
-            .map(|(i, _)| i)
-            .unwrap_or(text.len());
-        if query.is_empty() {
-            return Ok(None);
-        }
-        let found = text[start..]
-            .find(query)
-            .map(|i| start + i)
-            .or_else(|| text.find(query));
-        Ok(found.map(|i| {
-            let n = text[..i].encode_utf16().count();
-            (n, n + query.encode_utf16().count())
-        }))
-    }
-    fn replace_all(&mut self, query: &str, replacement: &str) -> Result<usize, String> {
-        self.doc
-            .replace_all_text(query, replacement)
-            .map_err(|e| e.to_string())
+    fn replace_all(
+        &mut self,
+        search: &suite42_core::text_search::Search,
+        replacement: &str,
+    ) -> Result<usize, String> {
+        self.doc.replace_matches(search, replacement).map_err(|e| e.to_string())
     }
 }
 fn main() {
@@ -3572,34 +3550,6 @@ mod policy_regression {
         assert!(!a.can_redo());
         a.edit("branch\r\nend".into()).unwrap();
         assert_eq!(a.doc.editor_text().unwrap(), "branch\r\nend");
-    }
-}
-
-#[cfg(test)]
-mod find_adapter_regression {
-    use super::*;
-    use win42::App;
-    #[test]
-    fn native_caret_inside_match_wraps_across_emoji_and_crlf() {
-        let d = RichDocument::decode("x😀z\r\nend".as_bytes(), Format::Text).unwrap();
-        let a = Doc {
-            doc: d,
-            ..Doc::new()
-        };
-        assert_eq!(a.find_next("😀z\r\n", 3).unwrap(), Some((1, 6)));
-        assert_eq!(a.find_next("😀z\r\n", 4).unwrap(), Some((1, 6)));
-    }
-    #[test]
-    fn native_offsets_wrap_across_unicode_and_crlf() {
-        let d = RichDocument::decode("😀 a\n😀 a".as_bytes(), Format::Text).unwrap();
-        let a = Doc {
-            doc: d,
-            ..Doc::new()
-        };
-        assert_eq!(a.find_next("😀", 0).unwrap(), Some((0, 2)));
-        assert_eq!(a.find_next("😀", 2).unwrap(), Some((6, 8)));
-        assert_eq!(a.find_next("😀", 8).unwrap(), Some((0, 2)));
-        assert_eq!(a.find_next("missing", 0).unwrap(), None);
     }
 }
 

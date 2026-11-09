@@ -2,7 +2,7 @@
 #[cfg(windows)]
 mod windows;
 #[cfg(windows)]
-pub(crate) use windows::{raw_text, show};
+pub(crate) use windows::{raw_text, raw_text_for_search, show};
 fn boundary(text: &[u16], at: usize) -> bool {
     at <= text.len()
         && !(at > 0

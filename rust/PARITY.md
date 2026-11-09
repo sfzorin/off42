@@ -14,7 +14,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers, PDF page/region and DOC picture artwork | Vector fidelity for mixed DOC selections; precise picture/caret integration |
 | Printing | Verified File/Ctrl+P dialogs in all six apps; actual-size label and centered/shrink-only PDF paths, per-printer calibration and measurement sheet | Printer copies/calibration scenarios and physical driver checks |
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction and bounded offline OCR | Richer forms, certificate signing and validation, remote signing and CryptoPro integration |
-| DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured literal Find/Replace, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, text search options, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
+| DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured Find/Replace with case, whole words, regex captures and next/previous, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, broader regex syntax and cross-paragraph rich replacement, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
 | XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, remaining virtual-area range tools, legacy arrays, full floating-object editing, advanced filtering, locale-aware sort collation/preferences, validation controls, outlines/subtotals, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, show tools and export workflows |
 | IMG42 | Image decoding, transforms, adjustments, selections, recognized text selection/copy, metadata and batch output | Full markup selection/editing, smart lasso, full Live Text interaction, background removal, viewing panels and additional supported system codecs |
@@ -834,3 +834,12 @@ after image selection; image unit regressions are now included in quick CI.
   TEXT and standard ODS styles. Tests cover exponent carry, negative exponents and exact numeric
   values, independent import, external edits and Undo. XLSX import also resolves the corresponding
   standard numeric built-in format IDs. Native verification awaits a compatible build.
+- Run 42571190012 (521ebfa) compiled the Windows executables and stopped during PDFium staging
+  with HTTP 504. PDFium download now retries transient errors three times with the same pinned
+  archive, DLL SHA-256 and license checks. The numeric-format UI checks await a compatible build.
+- DOC42 normal Find/Replace dialogs add Unicode case, whole words, regular expressions, next/previous
+  wraparound and selected-match replacement. Replacement all preserves run styles and remaps anchors
+  in one transaction. Windows selection replacement uses the existing guarded native rich-edit commit.
+  Regex lookaround and pattern backreferences, cross-paragraph rich replacement and a persistent search
+  panel remain open. Portable navigation, captures and Office/annotation regressions pass. A native
+  navigation, selection/whole-word replacement, history and file reopen audit has been added.

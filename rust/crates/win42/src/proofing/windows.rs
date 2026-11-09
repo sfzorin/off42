@@ -183,13 +183,19 @@ struct GetText {
     used_default: *mut i32,
 }
 pub(crate) unsafe fn raw_text(edit: HWND) -> Result<Vec<u16>, String> {
+    raw_text_with_limit(edit, 1_000_000)
+}
+pub(crate) unsafe fn raw_text_for_search(edit: HWND) -> Result<Vec<u16>, String> {
+    raw_text_with_limit(edit, 16 * 1024 * 1024)
+}
+unsafe fn raw_text_with_limit(edit: HWND, limit: isize) -> Result<Vec<u16>, String> {
     let length = TextLength {
         flags: 2 | 8,
         codepage: 1200,
     };
     let n = SendMessageW(edit, WM_USER + 95, &length as *const _ as usize, 0);
-    if !(0..=1_000_000).contains(&n) {
-        return Err("Select up to 1,000,000 characters for spelling".into());
+    if !(0..=limit).contains(&n) {
+        return Err(format!("Editor text exceeds {limit} UTF-16 units"));
     }
     let mut out = vec![0; n as usize + 1];
     let request = GetText {
@@ -206,10 +212,10 @@ pub(crate) unsafe fn raw_text(edit: HWND) -> Result<Vec<u16>, String> {
         out.as_mut_ptr() as isize,
     );
     if copied < 0 || copied as usize > n as usize {
-        return Err("Could not read the spelling text".into());
+        return Err("Could not read the editor text".into());
     }
     out.truncate(copied as usize);
-    String::from_utf16(&out).map_err(|_| "Invalid spelling text")?;
+    String::from_utf16(&out).map_err(|_| "Invalid UTF-16 in editor text")?;
     Ok(out)
 }
 /// The owner commits through its existing guarded Rich Edit adapter; this module owns no document state.

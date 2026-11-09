@@ -1,5 +1,14 @@
-//! Literal body replacement with formatting and anchor preservation.
+//! Body replacement with formatting and anchor preservation.
 use super::*;
+use suite42_core::text_search::{Budget, Replacement, Search};
+
+fn search_error(error: suite42_core::text_search::Error) -> Error {
+    match error {
+        suite42_core::text_search::Error::Invalid(message) => Error::Invalid(message),
+        suite42_core::text_search::Error::Limit(_) => Error::Limit,
+    }
+}
+
 impl RichDocument {
     /// Replace literal occurrences across paragraphs as one transaction, retaining run formatting.
     pub fn replace_all_text(&mut self, query: &str, replacement: &str) -> Result<usize, Error> {
@@ -21,6 +30,70 @@ impl RichDocument {
             }
             return Ok(count);
         }
+        self.replace_paragraph_matches(|text, limit| {
+            let ranges = text
+                .match_indices(query)
+                .take(limit)
+                .map(|(start, _)| start..start + query.len())
+                .collect::<Vec<_>>();
+            if ranges.len().saturating_mul(replacement.len()) > MAX_BYTES {
+                return Err(Error::Limit);
+            }
+            Ok(ranges
+                .into_iter()
+                .map(|range| Replacement {
+                    range,
+                    text: replacement.into(),
+                })
+                .collect())
+        })
+    }
+
+    /// Replace nonempty matches. Rich edits stay inside body and table-cell paragraphs.
+    pub fn replace_matches(&mut self, search: &Search, template: &str) -> Result<usize, Error> {
+        let mut budget = Budget::default();
+        let template = template.replace("\r\n", "\n");
+        if self.can_edit_plain() {
+            let text = self.editor_text()?.replace("\r\n", "\n");
+            let edits = search
+                .replacements(&text, &template, &mut budget)
+                .map_err(search_error)?;
+            if edits.is_empty() {
+                return Ok(0);
+            }
+            let mut result = String::with_capacity(text.len());
+            let mut cursor = 0;
+            for edit in &edits {
+                result.push_str(&text[cursor..edit.range.start]);
+                result.push_str(&edit.text);
+                cursor = edit.range.end;
+            }
+            result.push_str(&text[cursor..]);
+            if result != text {
+                self.set_plain_editor_text(&result)?;
+            }
+            return Ok(edits.len());
+        }
+        self.replace_paragraph_matches(|text, _| {
+            let edits = search
+                .replacements(text, &template, &mut budget)
+                .map_err(search_error)?;
+            if edits
+                .iter()
+                .any(|edit| edit.text.contains(['\r', '\n', '\0']))
+            {
+                return Err(Error::Unsupported(
+                    "replacement across rich paragraphs".into(),
+                ));
+            }
+            Ok(edits)
+        })
+    }
+
+    fn replace_paragraph_matches(
+        &mut self,
+        mut match_paragraph: impl FnMut(&str, usize) -> Result<Vec<Replacement>, Error>,
+    ) -> Result<usize, Error> {
         let mut count = 0;
         self.transact(|s| {
             let paragraphs = s.blocks.iter().flat_map(|block| match block {
@@ -56,21 +129,22 @@ impl RichDocument {
                 );
             for paragraph in paragraphs {
                 let text: String = paragraph.runs.iter().map(|run| run.text.as_str()).collect();
-                let matches: Vec<usize> = text
-                    .match_indices(query)
-                    .take(100_001 - count)
-                    .map(|(index, _)| index)
-                    .collect();
+                let matches = match_paragraph(&text, 100_001 - count)?;
                 count += matches.len();
                 if count > 100_000 {
                     return Err(Error::Limit);
                 }
-                let inserted = replacement
-                    .len()
-                    .checked_mul(matches.len())
+                let (removed, inserted) = matches
+                    .iter()
+                    .try_fold((0usize, 0usize), |(old, new), edit| {
+                        Some((
+                            old.checked_add(edit.range.len())?,
+                            new.checked_add(edit.text.len())?,
+                        ))
+                    })
                     .ok_or(Error::Limit)?;
                 resulting_bytes = resulting_bytes
-                    .checked_add(text.len() - query.len() * matches.len())
+                    .checked_add(text.len() - removed)
                     .and_then(|n| n.checked_add(inserted))
                     .filter(|n| *n <= MAX_BYTES)
                     .ok_or(Error::Limit)?;
@@ -84,9 +158,9 @@ impl RichDocument {
                 }
                 if s.footnotes.iter().any(|note| {
                     note.at.paragraph == paragraph.id
-                        && matches.iter().any(|start| {
-                            *start <= note.at.offset && note.at.offset < start + query.len()
-                        })
+                        && matches
+                            .iter()
+                            .any(|edit| edit.range.contains(&note.at.offset))
                 }) {
                     return Err(Error::Unsupported(
                         "replacement includes a footnote or endnote marker".into(),
@@ -117,30 +191,34 @@ impl RichDocument {
                 }
                 let mut output = vec![];
                 let mut cursor = 0;
-                for &start in &matches {
+                let mut remaps = Vec::with_capacity(matches.len());
+                for edit in matches {
+                    let start = edit.range.start;
+                    let inserted = edit.text.len();
                     append_indexed_run_slice(&paragraph.runs, &ends, cursor..start, &mut output);
-                    if !replacement.is_empty() {
+                    if inserted != 0 {
                         let index = ends.partition_point(|end| *end <= start);
                         let mut run = paragraph
                             .runs
                             .get(index)
                             .ok_or_else(|| Error::Invalid("replace position".into()))?
                             .clone();
-                        run.text = replacement.into();
+                        run.text = edit.text;
                         output.push(run);
                     }
-                    cursor = start + query.len();
+                    cursor = edit.range.end;
+                    remaps.push((edit.range, inserted));
                 }
                 append_indexed_run_slice(&paragraph.runs, &ends, cursor..text.len(), &mut output);
-                plans.push((paragraph.id, output, matches));
+                plans.push((paragraph.id, output, remaps));
             }
             for (id, runs, matches) in plans {
                 paragraph_mut(s, id)
                     .ok_or_else(|| Error::Invalid("replacement paragraph missing".into()))?
                     .runs = runs;
                 // Original byte ranges remain valid when applied from right to left.
-                for start in matches.into_iter().rev() {
-                    annotations::remap_edit(s, id, start..start + query.len(), replacement.len());
+                for (range, length) in matches.into_iter().rev() {
+                    annotations::remap_edit(s, id, range, length);
                 }
             }
             if count > 0 {
@@ -315,7 +393,17 @@ mod tests {
         .unwrap();
         doc.mark_saved();
         let before = doc.snapshot();
-        assert_eq!(doc.replace_all_text("target", "replacement").unwrap(), 3);
+        let search = Search::new(
+            "(TAR)(GET)",
+            suite42_core::text_search::Options {
+                regex: true,
+                whole_words: true,
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(doc.replace_matches(&search, "replacement").unwrap(), 3);
         assert_eq!(text(doc.state(), 1), "aa replacement tail");
         assert_eq!(text(doc.state(), 4), "replacement cell");
         assert_eq!(text(doc.state(), 5), "after replacement end");

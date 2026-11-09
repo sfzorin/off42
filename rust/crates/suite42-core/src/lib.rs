@@ -1,5 +1,6 @@
 //! Shared bounded history and non-destructive file publication.
 pub mod ocr;
+pub mod text_search;
 use std::{
     io::{self, Write},
     path::{Path, PathBuf},

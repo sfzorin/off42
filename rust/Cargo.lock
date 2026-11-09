@@ -2247,6 +2247,7 @@ dependencies = [
 name = "suite42-core"
 version = "0.1.0"
 dependencies = [
+ "regex",
  "serde",
  "tempfile",
  "windows-sys",

@@ -98,6 +98,7 @@ pub unsafe fn set_selection(hwnd: HWND, selection: (usize, usize)) {
     SendMessageW(hwnd, EM_EXSETSEL, 0, &range as *const _ as LPARAM);
 }
 /// Search the actual native text projection, including tables and object offsets.
+#[cfg(test)]
 pub unsafe fn find_next(
     hwnd: HWND,
     query: &str,

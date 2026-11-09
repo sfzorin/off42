@@ -2263,15 +2263,15 @@ unsafe fn native_rich_format(
     result
 }
 
-unsafe fn native_spelling_replace(edit:HWND,range:(usize,usize),value:&str,expected:&[u16])->Result<(),String>{
-    if crate::proofing::raw_text(edit)?!=expected{return Err("The document changed; check spelling again".into())}
+unsafe fn native_rich_replace(edit:HWND,range:(usize,usize),value:&str,expected:&[u16])->Result<(),String>{
+    if crate::proofing::raw_text(edit)?!=expected{return Err("The document changed before the replacement".into())}
     let before=crate::rich_edit::extract(edit)?;let selection=crate::rich_edit::selection(edit);
     let previous=REFRESHING.with(|flag|flag.replace(true));let mut prepared=false;
     let result=(||{
         let projection=STATE.with(|slot|slot.borrow_mut().as_mut().unwrap().app.prepare_rich_word(expected,range,value))?;prepared=true;
         crate::rich_edit::load(edit,&projection)?;
         let inserted:Vec<_>=value.encode_utf16().collect();let mut after=expected.to_vec();after.splice(range.0..range.1,inserted.iter().copied());
-        if crate::proofing::raw_text(edit)?!=after{return Err("The spelling replacement could not be preserved".into())}
+        if crate::proofing::raw_text(edit)?!=after{return Err("The replacement could not be preserved".into())}
         let caret=range.0+inserted.len();crate::rich_edit::set_selection(edit,(caret,caret));
         STATE.with(|slot|{let mut slot=slot.borrow_mut();let app=&mut slot.as_mut().unwrap().app;app.finish_rich_word(true)?;app.set_rich_selection((caret,caret));Ok::<(),String>(())})?;prepared=false;
         Ok(())
@@ -2281,6 +2281,113 @@ unsafe fn native_spelling_replace(edit:HWND,range:(usize,usize),value:&str,expec
         let _=crate::rich_edit::load(edit,&before);crate::rich_edit::set_selection(edit,selection);
     }
     REFRESHING.with(|flag|flag.set(previous));flush_deferred_commands();update_caption();result
+}
+
+unsafe fn find_replace(hwnd: HWND, replace: bool) -> Result<(), String> {
+    use suite42_core::text_search::{Options, Search};
+
+    let Some(edit) = STATE.with(|slot| {
+        let slot = slot.borrow();
+        let state = slot.as_ref()?;
+        (state.app.supports_find_replace() && state.app.uses_rich_edit())
+            .then_some(state.edit)
+    }) else {
+        return Ok(());
+    };
+    let mut fields = vec![("Find", String::new())];
+    if replace {
+        fields.push(("Replace with", String::new()));
+    }
+    let options_start = fields.len();
+    fields.extend([
+        ("Match case", "No".into()),
+        ("Whole words", "No".into()),
+        ("Regular expression", "No".into()),
+        if replace {
+            ("Action", "Replace All".into())
+        } else {
+            ("Direction", "Next".into())
+        },
+    ]);
+    let mut choices: Vec<_> = (options_start..options_start + 3)
+        .map(|index| (index, vec!["No".into(), "Yes".into()]))
+        .collect();
+    choices.push((
+        options_start + 3,
+        if replace {
+            vec!["Replace All".into(), "Replace".into()]
+        } else {
+            vec!["Next".into(), "Previous".into()]
+        },
+    ));
+    let request = crate::InputRequest {
+        title: if replace { "Replace all" } else { "Find next" },
+        fields,
+    };
+    let Some(values) = crate::prompt::show_choices(hwnd, &request, false, false, &choices) else {
+        return Ok(());
+    };
+    let options = Options {
+        match_case: values[options_start] == "Yes",
+        whole_words: values[options_start + 1] == "Yes",
+        regex: values[options_start + 2] == "Yes",
+    };
+    let query = values[0].replace("\r\n", "\n").replace('\r', "\n");
+    let Some(search) = Search::new(&query, options).map_err(|error| error.to_string())? else {
+        return Ok(());
+    };
+    let action = &values[options_start + 3];
+    if replace {
+        if STATE.with(|slot| slot.borrow().as_ref().unwrap().app.text_readonly()) {
+            return Err("This document is read-only".into());
+        }
+        if action == "Replace All" {
+            let count = STATE.with(|slot| {
+                slot.borrow_mut().as_mut().unwrap().app.replace_all(&search, &values[1])
+            })?;
+            if count > 0 {
+                refresh();
+            }
+            msg(hwnd, &format!("Replaced {count} occurrence(s)."), MB_OK);
+            return Ok(());
+        }
+    }
+
+    let projection = |raw: &[u16]| {
+        String::from_utf16(raw)
+            .map(|text| text.replace('\r', "\n"))
+            .map_err(|_| "Invalid UTF-16 in editor text")
+    };
+    let raw = crate::proofing::raw_text_for_search(edit)?;
+    let mut selected = crate::rich_edit::selection(edit);
+    let mut text = projection(&raw)?;
+    let mut changed = false;
+    if replace {
+        if let Some(value) = search
+            .selected(&text, selected, &values[1])
+            .map_err(|error| error.to_string())?
+        {
+            let original = raw.get(selected.0..selected.1).ok_or("Invalid selection")?;
+            let inserted: Vec<_> = value.encode_utf16().collect();
+            if original != inserted {
+                native_rich_replace(edit, selected, &value, &raw)?;
+                changed = true;
+                text = projection(&crate::proofing::raw_text_for_search(edit)?)?;
+                selected = crate::rich_edit::selection(edit);
+            }
+        }
+    }
+    let result = search
+        .find(&text, selected, action == "Previous")
+        .map_err(|error| error.to_string())?;
+    SetFocus(edit);
+    if let Some(range) = result {
+        crate::rich_edit::set_selection(edit, range);
+        SendMessageW(edit, EM_SCROLLCARET, 0, 0);
+    } else if !changed {
+        msg(hwnd, "Text not found.", MB_OK);
+    }
+    Ok(())
 }
 
 unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
@@ -2415,7 +2522,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
     }
     if id==CHECK_SPELLING{
         let edit=STATE.with(|slot|{let slot=slot.borrow();let state=slot.as_ref().unwrap();(state.app.uses_rich_edit()&&!state.app.text_readonly()&&IsWindowVisible(state.edit)!=0&&state.async_open.is_none()).then_some(state.edit)});
-        if let Some(edit)=edit{if let Err(error)=crate::proofing::show(hwnd,edit,|range,value,expected|native_spelling_replace(edit,range,value,expected)){msg(hwnd,&crate::localization::text(&error),MB_OK|MB_ICONERROR);}}
+        if let Some(edit)=edit{if let Err(error)=crate::proofing::show(hwnd,edit,|range,value,expected|native_rich_replace(edit,range,value,expected)){msg(hwnd,&crate::localization::text(&error),MB_OK|MB_ICONERROR);}}
         update_caption();return;
     }
     if id == TOGGLE_PROOFING {
@@ -2571,76 +2678,8 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
             return;
         }
         FIND | REPLACE => {
-            if !STATE.with(|s| s.borrow().as_ref().unwrap().app.supports_find_replace()) {
-                return;
-            }
-            let req = if id == FIND {
-                crate::InputRequest {
-                    title: "Find next",
-                    fields: vec![("Find", String::new())],
-                }
-            } else {
-                crate::InputRequest {
-                    title: "Replace all",
-                    fields: vec![("Find", String::new()), ("Replace with", String::new())],
-                }
-            };
-            if let Some(values) = crate::prompt::show(hwnd, &req) {
-                if id == FIND {
-                    let edit = STATE.with(|s| s.borrow().as_ref().unwrap().edit);
-                    let rich = STATE.with(|s| s.borrow().as_ref().unwrap().app.uses_rich_edit());
-                    let result = if rich {
-                        crate::rich_edit::find_next(
-                            edit,
-                            &values[0],
-                            crate::rich_edit::selection(edit).1,
-                        )
-                    } else {
-                        let mut end: u32 = 0;
-                        SendMessageW(edit, EM_GETSEL, 0, &mut end as *mut _ as isize);
-                        STATE.with(|s| {
-                            s.borrow()
-                                .as_ref()
-                                .unwrap()
-                                .app
-                                .find_next(&values[0], end as usize)
-                        })
-                    };
-                    match result {
-                        Ok(Some((start, end))) => {
-                            SetFocus(edit);
-                            if rich {
-                                crate::rich_edit::set_selection(edit, (start, end));
-                            } else {
-                                SendMessageW(edit, EM_SETSEL, start, end as isize);
-                            }
-                            SendMessageW(edit, EM_SCROLLCARET, 0, 0);
-                        }
-                        Ok(None) => {
-                            msg(hwnd, "Text not found.", MB_OK);
-                        }
-                        Err(e) => {
-                            msg(hwnd, &e, MB_OK | MB_ICONERROR);
-                        }
-                    }
-                    return;
-                }
-                let result = STATE.with(|s| {
-                    s.borrow_mut()
-                        .as_mut()
-                        .unwrap()
-                        .app
-                        .replace_all(&values[0], &values[1])
-                });
-                match result {
-                    Ok(n) => {
-                        refresh();
-                        msg(hwnd, &format!("Replaced {n} occurrence(s)."), MB_OK);
-                    }
-                    Err(e) => {
-                        msg(hwnd, &e, MB_OK | MB_ICONERROR);
-                    }
-                }
+            if let Err(error) = find_replace(hwnd, id == REPLACE) {
+                msg(hwnd, &error, MB_OK | MB_ICONERROR);
             }
             return;
         }
@@ -3695,7 +3734,7 @@ pub fn run(app: Box<dyn App>) {
         item(editmenu, REDO, "&Redo\tCtrl+Y");
         if app.supports_find_replace() {
             item(editmenu, FIND, "&Find...\tCtrl+F");
-            item(editmenu, REPLACE, "&Replace All...\tCtrl+H");
+            item(editmenu, REPLACE, "&Replace...\tCtrl+H");
         }
         if app.uses_rich_edit() {
             item(editmenu, TOGGLE_PROOFING, "Check Spelling as You Type");

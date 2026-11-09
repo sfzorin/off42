@@ -290,11 +290,13 @@ cases use printable ASCII. This does not replace checking actual printed labels 
 
 ### Find and Replace in structured documents (development branch)
 
-DOC42's literal **Find next** uses actual native Rich Edit offsets, so table cells, pictures and surrogate pairs
-no longer break selection or wraparound. **Replace all** includes body/table paragraphs while preserving picture
-bytes/geometry, run formatting and hyperlinks. Bookmarks, comments and note anchors follow the changed text;
-Undo/Redo covers the whole operation. Replacements across rich paragraph boundaries, cached TOC content and
-matches covering note markers and matched revision/field anchors remain guarded. It does not add regex or whole-word options.
+DOC42 searches the native Rich Edit text with next/previous wrapping, match case, whole words and
+regular expressions. Replace can update the selected match and advance, or replace all matches in one
+history step. Regular expressions accept capture references such as `$1` in replacements. Rich
+replacement preserves table/image geometry, run formatting, hyperlinks and remapped annotation
+anchors. Rich replacements are scoped to body and table paragraphs. Matches that would alter note
+markers, revision/field anchors or imported cached TOC entries are guarded. Regex lookaround and
+pattern backreferences are still outside the supported subset. Native options await a compatible build.
 
 ODT import also retains surrounding body bookmarks when a paragraph contains an inline footnote/endnote. Portable
 regressions reopen project, DOCX and ODT output and verify bookmark destinations plus tables, pictures, comments and
