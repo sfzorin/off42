@@ -5,6 +5,7 @@ PDFIUM_ARCHIVE can point to the pinned archive instead of downloading it.
 PDFIUM_DLL + PDFIUM_DLL_SHA256 + PDFIUM_LICENSE_DIR select a verified custom DLL.
 """
 import hashlib
+import http.client
 import os
 from pathlib import Path
 import shutil
@@ -12,6 +13,8 @@ import struct
 import sys
 import tarfile
 import tempfile
+import time
+import urllib.error
 import urllib.request
 
 VERSION = "chromium/8125"
@@ -22,6 +25,21 @@ DLL_SHA256 = "4b0dec92555d69437bef0df37be630181ab3e83a6823ca264ede355a4f2ef994"
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def download_archive():
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(URL, timeout=60) as response:
+                return response.read(100_000_001)
+        except (urllib.error.URLError, TimeoutError, http.client.IncompleteRead) as error:
+            if isinstance(error, urllib.error.HTTPError) and error.code not in (408, 429, 500, 502, 503, 504):
+                raise
+            if attempt == 2:
+                raise
+            delay = 2 ** (attempt + 1)
+            print(f"PDFium download attempt {attempt + 1} failed ({error}); retry in {delay}s", file=sys.stderr)
+            time.sleep(delay)
 
 
 def check_dll(data):
@@ -59,8 +77,7 @@ def main():
         if archive_path:
             archive = Path(archive_path).read_bytes()
         else:
-            with urllib.request.urlopen(URL, timeout=60) as response:
-                archive = response.read(100_000_001)
+            archive = download_archive()
         if sha(archive) != ARCHIVE_SHA256:
             raise ValueError("Pinned PDFium archive SHA-256 mismatch")
         with tempfile.TemporaryFile() as f:
@@ -88,5 +105,5 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (OSError, ValueError, tarfile.TarError) as e:
+    except (OSError, ValueError, tarfile.TarError, http.client.IncompleteRead) as e:
         sys.exit(str(e))
