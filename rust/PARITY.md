@@ -929,8 +929,8 @@ after image selection; image unit regressions are now included in quick CI.
 - XLS42 provides a native active-cell list-validation popup from the arrow, Alt+Down or Cells menu.
   Exact option text is retained through the typed-cell write path in one history step. Portable tests
   verify literal formula-like strings, rejection, blank, and Undo/Redo. Native popup interaction,
-  standard XLSX list metadata and reopen await a compatible build. General external validation import
-  and ODS validation output remain open.
+  standard XLSX list metadata and reopen await a compatible build. Formula/range-backed rules and
+  ODS validation output remain open.
 - SCN42 now tracks PDF, per-page PDF, TIFF, PNG and JPEG output metadata in a local export history.
   Entries keep paths, timestamps, page counts and sizes. A separate lock serializes history edits
   across windows. Reopen starts a new window and removing or clearing history leaves all files in
@@ -943,3 +943,7 @@ after image selection; image unit regressions are now included in quick CI.
   publisher stages the batch and preserves existing paths, including a collision discovered after
   staging. SCN42 uses the same publisher for per-page PDFs. Windows GNU checks pass. The native
   file picker, rendered PNG pixels, JPEG sizes, hidden scope and collision refusal await CI.
+- XLS42 reads compatible inline list rules in ordinary XLSX files with visible dropdowns and stop
+  errors. A portable external-package regression adds a literal value in the range, checks rejection
+  of other text, saves and reopens, and compares the original validation XML bytes. A native test
+  removes the embedded project part to exercise the actual external adapter.

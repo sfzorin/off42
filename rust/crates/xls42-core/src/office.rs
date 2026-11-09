@@ -15,6 +15,7 @@ mod views;
 mod ods_formats;
 #[cfg(test)]
 mod literal_errors;
+mod validation_lists;
 fn xlsx_error(value:&str)->Result<&'static str,Error>{
     const ERRORS:&[&str]=&["#DIV/0!","#N/A","#NAME?","#NULL!","#NUM!","#REF!","#VALUE!","#GETTING_DATA","#SPILL!","#CALC!","#FIELD!","#BLOCKED!","#CONNECT!","#UNKNOWN!","#BUSY!","#PYTHON!"];
     ERRORS.iter().copied().find(|e|*e==value).ok_or(Error::Invalid("Unsupported literal XLSX error code"))
@@ -2379,6 +2380,7 @@ fn import_xlsx_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
             sheet.cols = sheet.cols.max(range.right + 1);
         }
         filters::import_xlsx(&d, sheet)?;
+        validation_lists::import_xlsx(&d, sheet);
         if let Some(pane) = d.descendants().find(|n| {
             n.has_tag_name("pane") && matches!(n.attribute("state"), Some("frozen" | "frozenSplit"))
         }) {

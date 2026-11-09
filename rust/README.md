@@ -962,7 +962,8 @@ Key slots are bounded to one million; merged/array/spill blocks and failed valid
 For a supported list-validation rule, select the cell and click its arrow or press **Alt+Down**.
 The **Cells → Choose Allowed Value** command opens the same list. Choices preserve text such as
 `007` and formula-like identifiers literally. Applying a value is one Undo step. Supported rules
-are retained in native projects and off42-generated XLSX files.
+are retained in native projects and off42-generated XLSX files. XLS42 also reads visible inline
+lists with stop-style errors from ordinary XLSX files and preserves their original validation XML.
 Foreign Office source packages retain their existing sort-preservation guard. Unicode lexical text ordering
 does not establish every locale's collation; custom-list preferences remain open. Tests verify full-sheet/
 multikey/horizontal sorting, types, exact history and native Office round trips; numeric-format XLSX retains

@@ -1482,8 +1482,33 @@ def audit_validation_choices(process, main, output, results):
     pick(1, "007")
     reopened, reopened_rule = content("reopened")
     assert reopened == {"type": "Text", "value": {"raw": "007", "crlf": False}} and reopened_rule == rule
+    foreign = output / "validation-external.xlsx"
+    with zipfile.ZipFile(xlsx) as package, zipfile.ZipFile(foreign, "w", zipfile.ZIP_DEFLATED) as stripped:
+        for name in package.namelist():
+            if name == "xls42/project.json":
+                continue
+            payload = package.read(name)
+            if name == "[Content_Types].xml":
+                types = ET.fromstring(payload)
+                for node in list(types):
+                    if node.get("PartName") == "/xls42/project.json":
+                        types.remove(node)
+                payload = ET.tostring(types, encoding="utf-8")
+            stripped.writestr(name, payload)
+    foreign_original = foreign.read_bytes()
+    open_fixture(process, main, foreign)
+    wait_for(lambda: text(edit) == "=40+2", "external XLSX source opened", process)
+    u.SetForegroundWindow(main)
+    u.SendMessageW(grid, 0x104, 40, 1 << 29)
+    pick(1, "007")
+    foreign_saved = saved("external-edited", "xlsx", "Excel workbook")
+    with zipfile.ZipFile(foreign) as before, zipfile.ZipFile(foreign_saved) as after:
+        before_sheet = ET.fromstring(before.read("xl/worksheets/sheet1.xml"))
+        after_sheet = ET.fromstring(after.read("xl/worksheets/sheet1.xml"))
+        assert ET.tostring(before_sheet.find("s:dataValidations", ns)) == ET.tostring(after_sheet.find("s:dataValidations", ns))
+    assert foreign.read_bytes() == foreign_original
     assert source.read_bytes() == original
-    results["checks"].append("XLS42 list validation uses an active-cell arrow and Alt+Down native popup, Cancel, typed literal and leading zeros, Undo/Redo, standard XLSX list metadata and normal reopen")
+    results["checks"].append("XLS42 list validation uses an active-cell arrow and Alt+Down native popup, Cancel, typed literal and leading zeros, Undo/Redo, standard XLSX list metadata and normal reopen with or without an off42 project part")
 
 
 def audit_grid_expansion(process,main,binary,output,results):
