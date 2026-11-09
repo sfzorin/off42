@@ -7,6 +7,7 @@ mod slide_images;
 #[cfg(windows)]
 mod slide_pdf;
 mod show_settings;
+mod show_markup;
 use show_settings::ShowSettings;
 const EXPORT_PDF: u16 = 78;
 const PRINT_LAYOUT: u16 = 79;
@@ -150,6 +151,7 @@ struct Show {
     blank: Option<(bool, std::time::Instant)>,
     digits: String,
     settings: ShowSettings,
+    markup: show_markup::Markup,
 }
 impl Show {
     fn new(now: std::time::Instant, windowed: bool) -> Self {
@@ -164,6 +166,7 @@ impl Show {
             blank: None,
             digits: String::new(),
             settings: ShowSettings::default(),
+            markup: show_markup::Markup::default(),
         }
     }
 
@@ -358,6 +361,7 @@ impl Ppt {
         }
         let paused = show.paused.is_some();
         self.deck.select(index)?;
+        show.markup.moved_slide();
         let timing = self.deck.slides()[index].timing;
         show.since = now;
         show.previous = (!paused && timing.transition != ppt42_core::Transition::Cut).then_some(old);
@@ -404,6 +408,9 @@ impl Ppt {
             return Ok(());
         };
         let settings = show.settings;
+        if show.markup.handle(event, self.deck.current(), show.blank.is_some()) {
+            return Ok(());
+        }
         match event {
             Key { code: 27, .. } if !show.digits.is_empty() => show.digits.clear(),
             Key { code: 27 | 81, .. } => self.stop_show(),
@@ -419,10 +426,11 @@ impl Ppt {
             Key { code: 66 | 87 | 188 | 190, .. } => {
                 if !show.reveal(now) {
                     let white = matches!(event, Key { code: 87 | 188, .. });
+                    show.markup.moved_slide();
                     show.blank = Some((white, now));
                 }
             }
-            Key { code: 80, .. } if show.blank.is_none() => {
+            Key { code: 19, .. } | Key { code: 80, modifiers: 2 } if show.blank.is_none() => {
                 if let Some(paused) = show.paused.take() {
                     show.since += now.saturating_duration_since(paused);
                 } else {
@@ -1987,8 +1995,15 @@ impl win42::App for Ppt {
                     ]
                 };
             }
+            show.markup.add_overlay(self.deck.current(), &mut current.items);
         }
         Some(current)
+    }
+    fn canvas_tracks_hover(&self) -> bool {
+        self.show.as_ref().is_some_and(|show| show.blank.is_none() && show.markup.track_hover())
+    }
+    fn canvas_cursor_hidden(&self) -> bool {
+        self.show.as_ref().is_some_and(|show| show.blank.is_none() && show.markup.hide_cursor())
     }
     fn poll_background(&mut self) -> bool {
         self.show_tick(std::time::Instant::now())
@@ -2877,7 +2892,7 @@ mod tests {
         app.presenting = true;
         app.show = Some(Show::new(start, false));
         let key = |code| win42::CanvasEvent::Key { code, modifiers: 0 };
-        app.show_event(key(80), start + Duration::from_millis(50))
+        app.show_event(key(19), start + Duration::from_millis(50))
             .unwrap();
         app.show_event(key(39), start + Duration::from_millis(100))
             .unwrap();
@@ -2895,7 +2910,7 @@ mod tests {
         assert_eq!(app.deck.current(), 1);
         assert!(!app.show_tick(start + Duration::from_secs(20)));
         assert_eq!(app.deck.current(), 1);
-        app.show_event(key(80), start + Duration::from_secs(20))
+        app.show_event(key(19), start + Duration::from_secs(20))
             .unwrap();
         assert!(!app.show_tick(start + Duration::from_secs(20) + Duration::from_millis(199)));
         assert!(app.show_tick(start + Duration::from_secs(20) + Duration::from_millis(200)));

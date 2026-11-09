@@ -184,6 +184,9 @@ dated binary/test/installation evidence with each audit; native action tests and
 - Windows rehearsal reuses the normal slide-show order, transitions and navigation. The host lays out the current
   canvas alongside an independent next-slide preview and a read-only, scrollable notes control. Blanking affects
   the current canvas alone. Ending rehearsal destroys its controls and restores the editor window.
+- Windows laser and pen overlays belong to the active slide show. A captured stroke stays on its slide
+  until erased or the show ends. Pointer leave clears the laser, and canvas-only cursor hiding never
+  changes the system cursor visibility counter. Saving, exporting and editing use the unmarked scene.
 - Windows slide image exports render the presentation scene in a bounded, opaque offscreen buffer. Batch output
   preserves original slide numbering and stages every file before publication. A destination conflict leaves
   existing files intact and rollback removes only outputs whose identities still match the published files.

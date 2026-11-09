@@ -248,7 +248,12 @@ def choose_file(process, path, format_name=None, keep_preview=False, open_previe
     if path is None:
         click(dialog, 2)
         return dialog
-    set_text(control, str(path))
+    if text(control):
+        # The shell caches a supplied filename until the edit sends a change
+        # notification. Replace the selected text through the edit's input path.
+        replace_editor_text(control, str(path))
+    else:
+        set_text(control, str(path))
     click(dialog, 1)
     if preview[0]is not None and not keep_preview:
         window=preview[0]
@@ -1923,6 +1928,44 @@ def audit_ppt_show(process, main, output, results):
     wait_for(playing, "PPT42 playing in its window", process)
     assert placement() == prior and not u.GetWindowLongW(main, -16) & 0x80000000
     expect(colors[0], "first slide rendered")
+    canvas = current_canvas()
+    canvas_rect = w.RECT()
+    assert u.GetClientRect(canvas, c.byref(canvas_rect))
+    cx, cy = canvas_rect.right // 2, canvas_rect.bottom // 2
+    center = w.POINT(cx, cy)
+    u.ClientToScreen.argtypes = [w.HWND, c.POINTER(w.POINT)]
+    u.SetCursorPos.argtypes = [c.c_int, c.c_int]
+    assert u.ClientToScreen(canvas, c.byref(center))
+    assert u.SetCursorPos(center.x, center.y)
+    key(ord("L"))
+    assert u.PostMessageW(canvas, 0x200, 0, cx | (cy << 16))
+    expect([230, 32, 36], "laser pointer tracks hover without a button")
+    assert u.PostMessageW(canvas, 0x2A3, 0, 0)
+    expect(colors[0], "laser pointer clears when leaving the canvas")
+    key(27)
+    key(ord("P"))
+    assert u.PostMessageW(canvas, 0x201, 1, (cx - 35) | (cy << 16))
+    assert u.PostMessageW(canvas, 0x200, 1, cx | (cy << 16))
+    assert u.PostMessageW(canvas, 0x202, 0, (cx + 35) | (cy << 16))
+
+    def ink_visible():
+        u.RedrawWindow(canvas, None, None, 0x101)
+        dc = u.GetDC(canvas)
+        try:
+            red = 230 | 32 << 8 | 36 << 16
+            return any(gdi.GetPixel(dc, cx, y) == red for y in range(cy - 2, cy + 3))
+        finally:
+            u.ReleaseDC(canvas, dc)
+
+    wait_for(ink_visible, "pen draws without advancing", process)
+    key(39)
+    expect(colors[2], "ink stays on its own slide")
+    key(37)
+    wait_for(ink_visible, "ink returns when revisiting the slide", process)
+    key(ord("E"))
+    wait_for(lambda: not ink_visible(), "erase clears the current slide ink", process)
+    key(27)
+    assert playing()
     key(66)
     expect([0, 0, 0], "black screen covers slide and surrounding area", uniform=True)
     key(39)
@@ -1966,6 +2009,7 @@ def audit_ppt_show(process, main, output, results):
     fill_prompt(process, main, 72, "Slide Show Settings", ["No", "No"])
     assert source.read_bytes() == original
     results["checks"].append("PPT42 normal Hide Slide and complete history, native PPTX/ODP visibility metadata, windowed and fullscreen pixels, black/white screens, navigation and skipping, persisted include-hidden and loop, restored editor window")
+    results["checks"].append("PPT42 presentation laser follows native hover and clears on leave; pen draws without advancing, stays with its slide, returns on revisit and erases without changing the presentation")
 
 
 def audit_ppt_notes(process, main, output, results):

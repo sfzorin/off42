@@ -1020,8 +1020,11 @@ blank the display and hold slide timing. Navigation reveals the slide before adv
 ends the show. Hide Slide is undoable and saved in native projects, PPTX and ODP. Slide Show Settings
 stores whether to loop and include hidden slides. **Rehearse with Presenter View** shows the
 current slide and next preview alongside scrollable notes, an elapsed timer and presentation
-controls. The editor window returns when the show ends. Dual-display presenter view and
-ink/laser tools remain open. The windowed/full-screen audit passes in run 42573274769.
+controls. The editor window returns when the show ends. During a show, L activates the laser
+pointer, P activates the pen, E erases the current slide's ink and C toggles the cursor. The
+first Esc leaves the active tool. Pause or Shift+P pauses and resumes automatic timing. Ink
+belongs to the current show and is never written to the presentation. Dual-display presenter
+view and slide overview remain open. The windowed/full-screen audit passes in run 42573274769.
 
 **Edit Speaker Notes** opens a multiline editor for the selected slide. An accepted change is one
 Undo step. Notes stay with the slide when it moves or is duplicated and are saved in native

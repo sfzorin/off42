@@ -235,6 +235,12 @@ pub trait App {
     fn canvas_pointer_modifiers(&self) -> bool {
         false
     }
+    fn canvas_tracks_hover(&self) -> bool {
+        false
+    }
+    fn canvas_cursor_hidden(&self) -> bool {
+        false
+    }
     /// A RichEdit overlay in canvas document coordinates; None uses normal layout.
     fn inline_rich_rect(&self) -> Option<CanvasRect> {
         None

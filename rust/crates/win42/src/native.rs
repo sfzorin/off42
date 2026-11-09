@@ -20,7 +20,7 @@ use windows_sys::Win32::{
         HiDpi::*,
         Input::KeyboardAndMouse::{
             EnableWindow, IsWindowEnabled, GetFocus, GetKeyState, ReleaseCapture, SetCapture, SetFocus, VK_CONTROL,
-            VK_SHIFT,
+            TrackMouseEvent, TRACKMOUSEEVENT, TME_LEAVE, VK_SHIFT,
         },
         Shell::{DragAcceptFiles, DragFinish, DragQueryFileW, ShellExecuteW, DefSubclassProc, SetWindowSubclass, RemoveWindowSubclass},
         WindowsAndMessaging::*,
@@ -4399,11 +4399,35 @@ pub fn run(app: Box<dyn App>) {
 }
 
 unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT {
+    if m == WM_SETCURSOR && (l as u16) == HTCLIENT as u16
+        && STATE.with(|slot| slot.borrow().as_ref().is_some_and(|state| state.app.canvas_cursor_hidden()))
+    {
+        SetCursor(null_mut());
+        return 1;
+    }
+    if m == WM_MOUSELEAVE {
+        if STATE.with(|slot| slot.borrow().as_ref().is_some_and(|state| state.app.canvas_tracks_hover())) {
+            let _ = STATE.with(|slot| slot.borrow_mut().as_mut().unwrap().app.canvas_event(crate::CanvasEvent::Cancel));
+            InvalidateRect(h, null(), 0);
+        }
+        return 0;
+    }
     // SetCapture may deliver a move at the cursor's old position. Only moves
     // that still carry MK_LBUTTON belong to the active pointer gesture.
     const LEFT_BUTTON_DOWN: usize = 0x0001;
-    if m == WM_MOUSEMOVE && (w & LEFT_BUTTON_DOWN == 0 || !DRAGGING.with(|dragging| dragging.get())) {
-        return 0;
+    let hover_move = m == WM_MOUSEMOVE
+        && (w & LEFT_BUTTON_DOWN == 0 || !DRAGGING.with(|dragging| dragging.get()));
+    if hover_move {
+        if !STATE.with(|slot| slot.borrow().as_ref().is_some_and(|state| state.app.canvas_tracks_hover())) {
+            return 0;
+        }
+        let mut tracking = TRACKMOUSEEVENT {
+            cbSize: size_of::<TRACKMOUSEEVENT>() as u32,
+            dwFlags: TME_LEAVE,
+            hwndTrack: h,
+            dwHoverTime: 0,
+        };
+        TrackMouseEvent(&mut tracking);
     }
     if m == WM_CAPTURECHANGED || m == WM_CANCELMODE {
         if DRAGGING.with(|d| d.replace(false)) {
@@ -4436,7 +4460,8 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                 .app
                 .canvas_event(crate::CanvasEvent::Key {
                     code: w as u32,
-                    modifiers: 0,
+                    modifiers: if GetKeyState(VK_SHIFT as i32) < 0 { 2 } else { 0 }
+                        | if GetKeyState(VK_CONTROL as i32) < 0 { 1 } else { 0 },
                 })
         });
         if let Err(e) = result {
@@ -4490,6 +4515,9 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
         let (image, zoom, scene, presentation) = STATE.with(|s| {
             let s = s.borrow();
             let a = &s.as_ref().unwrap().app;
+            if hover_move {
+                return (None, a.image_zoom(), Some(crate::CanvasScene::default()), a.presentation_size());
+            }
             (
                 a.image(),
                 a.image_zoom(),
@@ -4545,7 +4573,7 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                     }))
                 {
                     refresh();
-                } else {
+                } else if !hover_move {
                     update_caption();
                 }
                 InvalidateRect(h, null(), 0);
