@@ -330,6 +330,11 @@ pub fn translate_in(language: Language, source: &str) -> String {
         "create label sheet" => "create labels",
         "create symbol or code" => "symbol or code",
         "insert picture" => "image from file",
+        "speaker notes" => "notes",
+        "edit speaker notes" => "edit notes",
+        "export slide images" => "export images…",
+        "scan history" => "history",
+        "clear scan history" => "clear history",
         "sheets" => "sheet",
         "toggle bold" => "bold",
         _ => key.as_str(),
@@ -398,6 +403,11 @@ mod tests {
                 "Create Symbol or Code…",
                 "No Recent Documents",
                 "Check Spelling as You Type",
+                "Edit Speaker Notes…",
+                "Speaker Notes",
+                "Export Slide Images…",
+                "Scan History",
+                "Clear Scan History…",
             ] {
                 assert_ne!(translate_in(language, key), key, "{}: {key}", language.code);
             }

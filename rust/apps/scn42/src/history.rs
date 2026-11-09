@@ -37,11 +37,14 @@ impl Entry {
             })
             .unwrap_or_default();
         let name = self.path.file_name().unwrap_or_default().to_string_lossy();
+        let pages = if self.pages == 1 {
+            win42::localization::text("1 page")
+        } else {
+            win42::localization::text("%d pages").replace("%d", &self.pages.to_string())
+        };
         format!(
-            "{}. {name} · {date} · {} {} · {:.1} KiB · {}",
+            "{}. {name} · {date} · {pages} · {:.1} KiB · {}",
             index + 1,
-            self.pages,
-            win42::localization::text(if self.pages == 1 { "page" } else { "pages" }),
             self.bytes as f64 / 1024.0,
             self.path
                 .parent()
