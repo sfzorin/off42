@@ -210,4 +210,34 @@ mod tests {
         assert!(read(&history).unwrap().0.is_empty());
         assert_eq!(fs::read(a).unwrap(), b"private scan bytes");
     }
+
+    #[test]
+    fn concurrent_exports_retain_both_history_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let history = dir.path().join("history.json");
+        let first = dir.path().join("first.pdf");
+        let second = dir.path().join("second.pdf");
+        fs::write(&first, b"first").unwrap();
+        fs::write(&second, b"second").unwrap();
+        let ready = std::sync::Barrier::new(2);
+        std::thread::scope(|scope| {
+            let a = scope.spawn(|| {
+                ready.wait();
+                record_at(&history, &[(&first, 1)])
+            });
+            let b = scope.spawn(|| {
+                ready.wait();
+                record_at(&history, &[(&second, 1)])
+            });
+            a.join().unwrap().unwrap();
+            b.join().unwrap().unwrap();
+        });
+        let (entries, _) = read(&history).unwrap();
+        let mut names = entries
+            .iter()
+            .map(|entry| entry.path.file_name().unwrap())
+            .collect::<Vec<_>>();
+        names.sort();
+        assert_eq!(names, ["first.pdf", "second.pdf"]);
+    }
 }

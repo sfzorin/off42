@@ -3339,8 +3339,9 @@ def print_to_virtual_pdf(process,owner,request,printed,output):
         assert spool.EnumPrintersW(6,None,4,buffer,needed.value,c.byref(needed),c.byref(count))
         queues=c.cast(buffer,c.POINTER(Printer));names=[queues[i].name for i in range(count.value)]
         assert names==['Microsoft Print to PDF'],('Refusing ambiguous installed printers',names)
-        selector=next(h for h in windows_for_dialog(printer)if classname(h)=='SysListView32')
-        assert u.SendMessageW(selector,0x1004,0,0)==1 and u.SendMessageW(selector,0x100C,-1,2)==0,'Virtual printer must be selected'
+        wait_for(lambda: next((h for h in windows_for_dialog(printer)
+            if classname(h) == 'SysListView32' and u.SendMessageW(h, 0x1004, 0, 0) == 1
+            and u.SendMessageW(h, 0x100C, -1, 2) == 0), None), 'virtual printer is selected', process)
         radio=next(h for h in windows_for_dialog(printer)if u.GetDlgCtrlID(h)==1059)
         click(u.GetParent(radio),1059)
         wait_for(lambda:u.SendMessageW(radio,0xF0,0,0)==1,'modern Print page range selected',process)

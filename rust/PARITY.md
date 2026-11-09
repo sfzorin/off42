@@ -947,3 +947,7 @@ after image selection; image unit regressions are now included in quick CI.
   errors. A portable external-package regression adds a literal value in the range, checks rejection
   of other text, saves and reopens, and compares the original validation XML bytes. A native test
   removes the embedded project part to exercise the actual external adapter.
+- Run 42694860162 (0d82fa7) passed MSVC 599/0/1 and verified SCN42 native history recording, new-window
+  reopen, removal, declined clear and confirmed clear with unchanged output files. XLS42 still used
+  the earlier keyboard-driven test. PDF42 reached the virtual print dialog before the printer row
+  was selected. The audit now waits for the only verified virtual queue to become selected.
