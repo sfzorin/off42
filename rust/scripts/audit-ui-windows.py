@@ -2020,14 +2020,7 @@ try {
     extended.write_bytes(intact.read_bytes() + b"\n% unsigned bytes\n")
     fixtures = {path: path.read_bytes() for path in (intact, changed, extended, embedded)}
     original_caption = text(main)
-    for path, expected, coverage in [
-        (intact, "Signature intact. Certificate trust not established", "Entire file"),
-        (changed, "Signature verification failed", "Entire file"),
-        (extended, "Signature intact. Certificate trust not established", "Earlier revision"),
-        (embedded, "Invalid or non-detached CMS signature", ""),
-    ]:
-        command(main, 125)
-        choose_file(process, path)
+    def check_report(expected, coverage, capture=False):
         report = modal(process, title="PDF Signature Verification", native_class="Off42ReportWindow")
         table = u.GetDlgItem(report, 100)
         assert u.SendMessageW(table, 0x1004, 0, 0) == 1
@@ -2038,13 +2031,36 @@ try {
         assert coverage in details
         if "intact" in expected:
             assert "off42 audit signer" in details
-        if path == intact:
+        if capture:
             capture_window(report, output / "PDF42-signature-verification.bmp")
         click(report, 2)
         wait_for(lambda: not u.IsWindowVisible(report) and u.IsWindowEnabled(main), "signature report closed", process)
+
+    for path, expected, coverage in [
+        (intact, "Signature intact. Certificate trust not established", "Entire file"),
+        (changed, "Signature verification failed", "Entire file"),
+        (extended, "Signature intact. Certificate trust not established", "Earlier revision"),
+        (embedded, "Invalid or non-detached CMS signature", ""),
+    ]:
+        command(main, 125)
+        choose_file(process, path)
+        check_report(expected, coverage, capture=path == intact)
     assert all(path.read_bytes() == original for path, original in fixtures.items())
     assert text(main) == original_caption
     results["checks"].append("native PDF signature verification with ephemeral self-signed CMS, detached byte-range integrity, untrusted chain and earlier revision coverage, altered bytes and embedded content refusal, no source edits")
+    open_fixture(process, main, intact)
+    wait_for(lambda: any("signature fields and is open read-only" in text(h)
+                        for h in windows(process.pid, main)), "signed PDF opens read-only", process)
+    assert u.GetMenuState(u.GetMenu(main), 2, 0) & 3
+    assert u.GetMenuState(u.GetMenu(main), 10, 0) & 3
+    command(main, 126)
+    check_report("Signature intact. Certificate trust not established", "Entire file")
+    copy = output / "signature-audit-copy.pdf"
+    command(main, 127)
+    choose_file(process, copy)
+    output_ready(process, main, copy, b"%PDF-")
+    assert copy.read_bytes() == fixtures[intact] == intact.read_bytes()
+    results["checks"].append("normal signed PDF view protects editing and Save, validates its retained bytes and exports a byte-identical signed copy")
 
 
 def audit_pdf_comparison(process,main,binary,output,results):

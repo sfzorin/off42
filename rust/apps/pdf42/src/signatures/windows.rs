@@ -4,7 +4,10 @@ use std::{
     mem::size_of,
     path::PathBuf,
     ptr::{null, null_mut},
-    sync::mpsc::{self, Receiver},
+    sync::{
+        mpsc::{self, Receiver},
+        Arc,
+    },
 };
 use windows_sys::Win32::{Foundation::GetLastError, Security::Cryptography::*};
 
@@ -16,9 +19,17 @@ pub struct Worker(Receiver<Result<win42::ReportRequest, String>>);
 
 impl Worker {
     pub fn start(path: PathBuf) -> Self {
+        Self::spawn(move || inspect(path))
+    }
+
+    pub fn start_view(source: Arc<[u8]>, name: String) -> Self {
+        Self::spawn(move || inspect_bytes(&source, &name))
+    }
+
+    fn spawn(task: impl FnOnce() -> Result<win42::ReportRequest, String> + Send + 'static) -> Self {
         let (send, receive) = mpsc::channel();
         std::thread::spawn(move || {
-            let _ = send.send(inspect(path));
+            let _ = send.send(task());
         });
         Self(receive)
     }
@@ -39,11 +50,18 @@ fn inspect(path: PathBuf) -> Result<win42::ReportRequest, String> {
     std::fs::File::open(&path)
         .and_then(|file| file.take(MAX_FILE as u64 + 1).read_to_end(&mut data))
         .map_err(|error| error.to_string())?;
-    let doc = load(&data)?;
+    let name = path
+        .file_name()
+        .map_or_else(|| "PDF".into(), |name| name.to_string_lossy());
+    inspect_bytes(&data, &name)
+}
+
+fn inspect_bytes(data: &[u8], name: &str) -> Result<win42::ReportRequest, String> {
+    let doc = load(data)?;
     let mut rows = Vec::new();
     let mut work = 0usize;
     for field in fields(&doc)? {
-        let signature = match envelope(&field, &data) {
+        let signature = match envelope(&field, data) {
             Ok(signature) => signature,
             Err(error) => {
                 rows.push(vec![field.name, String::new(), error, String::new()]);
@@ -55,7 +73,7 @@ fn inspect(path: PathBuf) -> Result<win42::ReportRequest, String> {
         if work > MAX_VERIFY_BYTES {
             return Err("PDF signature verification work limit exceeded".into());
         }
-        if !is_bound_to_revision(&data, &signature)? {
+        if !is_bound_to_revision(data, &signature)? {
             rows.push(vec![
                 field.name,
                 String::new(),
@@ -95,9 +113,6 @@ fn inspect(path: PathBuf) -> Result<win42::ReportRequest, String> {
             rows.push(vec![field.name.clone(), signer, status, coverage.into()]);
         }
     }
-    let name = path
-        .file_name()
-        .map_or_else(|| "PDF".into(), |name| name.to_string_lossy());
     let summary = if rows.is_empty() {
         format!("{name} · No signed form fields")
     } else {

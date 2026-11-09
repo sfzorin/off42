@@ -191,13 +191,14 @@ impl PdfDocument {
         }
         let candidate = Self {
             source_identity: self.source_identity,
+            signature_source: None,
             doc: self.doc.clone(),
             root: self.root,
             original_pages: self.original_pages.clone(),
             history: SnapshotHistory::new(state.clone(), 0),
         };
         candidate.save_snapshot()?;
-        self.history.apply(state);
+        self.apply_edit(state)?;
         Ok(changed)
     }
     pub(super) fn bake_ocr(&self, doc: &mut Document, state: &State) -> Result<(), String> {

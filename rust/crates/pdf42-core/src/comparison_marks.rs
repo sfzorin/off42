@@ -23,7 +23,7 @@ impl PdfDocument {
     pub fn clear_comparison_marks(&mut self) {
         let mut state = self.history.current().clone();
         state.annotations.retain(|a| a.comparison.is_none());
-        self.history.apply(state);
+        let _ = self.apply_edit(state);
     }
     pub fn replace_comparison_marks(
         &mut self,
@@ -101,7 +101,7 @@ impl PdfDocument {
                 )),
             });
         }
-        self.history.apply(state);
+        self.apply_edit(state)?;
         Ok(())
     }
 }

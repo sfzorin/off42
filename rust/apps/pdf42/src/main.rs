@@ -12,6 +12,8 @@ mod signatures;
 use pdf42_core::PdfDocument;
 use std::path::Path;
 const VERIFY_SIGNATURES: u16 = 125;
+const VERIFY_VIEW_SIGNATURES: u16 = 126;
+const COPY_SIGNED_PDF: u16 = 127;
 #[cfg(windows)]
 mod pdfium_edit;
 #[cfg(windows)]
@@ -59,7 +61,7 @@ fn open_attempt(
             },
         }
     } else {
-        match PdfDocument::probe_open_bytes(&bytes)? {
+        match PdfDocument::probe_view_bytes(bytes.clone())? {
             pdf42_core::PdfOpenProbe::Ready(doc) => OpenAttempt::Ready(doc, identity),
             pdf42_core::PdfOpenProbe::PasswordRequired => OpenAttempt::Password {
                 bytes,
@@ -2239,6 +2241,14 @@ impl win42::App for Pdf {
                 pattern: "*.pdf",
             },
             win42::FileAction {
+                id: COPY_SIGNED_PDF,
+                title: "Save Signed PDF Copy…",
+                save: true,
+                extension: "pdf",
+                format: "PDF document",
+                pattern: "*.pdf",
+            },
+            win42::FileAction {
                 id: 97,
                 title: "Compare With…",
                 save: false,
@@ -2329,6 +2339,11 @@ impl win42::App for Pdf {
         ]
     }
     fn file_action(&mut self, id: u16, path: &Path) -> Result<(), String> {
+        if id == COPY_SIGNED_PDF {
+            let source = self.doc.as_ref().and_then(PdfDocument::signature_source)
+                .ok_or("Open a PDF containing signature fields first")?;
+            return suite42_core::write_new(path, source).map_err(|error| error.to_string());
+        }
         if id == VERIFY_SIGNATURES {
             #[cfg(windows)]
             {
@@ -2499,7 +2514,9 @@ impl win42::App for Pdf {
         ]
     }
     fn can_save_in_place(&self) -> bool {
-        !self.protected_session && (!self.encrypted_session || self.output_password.is_some())
+        !self.protected_readonly
+            && !self.protected_session
+            && (!self.encrypted_session || self.output_password.is_some())
     }
     fn save_snapshot_to(
         &mut self,
@@ -2609,6 +2626,7 @@ impl win42::App for Pdf {
     }
     fn actions(&self) -> &'static [(u16, &'static str)] {
         &[
+            (VERIFY_VIEW_SIGNATURES, "Verify Signatures in This PDF"),
             (117,"Create Labels from PDF Area…"),
             (114,"Recognize PDF Text…"),
             (115,"Cancel Text Recognition"),
@@ -2766,6 +2784,9 @@ impl win42::App for Pdf {
         if let Some(error) = &self.operation_error {
             return error.clone();
         }
+        if self.doc.as_ref().is_some_and(|doc| doc.signature_source().is_some()) {
+            return "This PDF contains signature fields and is open read-only".into();
+        }
         if self.protected_readonly {
             return "Protected PDF: document permissions make this session read-only".into();
         }
@@ -2838,9 +2859,15 @@ impl win42::App for Pdf {
         self.doc.as_ref().map_or(0, |d| d.current())
     }
     fn enabled(&self, id: u16) -> bool {
-        if id == VERIFY_SIGNATURES {
+        let signed_view = || self.doc.as_ref().is_some_and(|doc| doc.signature_source().is_some());
+        if id == COPY_SIGNED_PDF {
+            return signed_view();
+        }
+        if matches!(id, VERIFY_SIGNATURES | VERIFY_VIEW_SIGNATURES) {
             #[cfg(windows)]
-            return self.signature_worker.is_none() && self.signature_report.is_none();
+            return (id == VERIFY_SIGNATURES || signed_view())
+                && self.signature_worker.is_none()
+                && self.signature_report.is_none();
             #[cfg(not(windows))]
             return false;
         }
@@ -3036,15 +3063,15 @@ impl win42::App for Pdf {
         !self.future_documents.is_empty() || self.doc.as_ref().is_some_and(|d| d.can_redo())
     }
     fn open(&mut self, p: &Path) -> Result<(), String> {
-        let doc = PdfDocument::open(p)?;
+        let doc = PdfDocument::open_view(p)?;
         self.source_file_name = p
             .file_name()
             .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or_default();
         self.cancel_async_open();
+        self.protected_readonly = !doc.allows_changes();
         self.doc = Some(doc);
         self.protected_session = false;
-        self.protected_readonly = false;
         self.protected_original = None;
         self.encrypted_session = false;
         self.encrypted_current = None;
@@ -3079,6 +3106,9 @@ impl win42::App for Pdf {
         self.request_render()
     }
     fn save(&mut self, p: &Path) -> Result<(), String> {
+        if self.protected_readonly {
+            return Err("Document is open read-only".into());
+        }
         if self.protected_session || self.encrypted_session {
             return Err("Use the password-protected Save or choose Save As a copy".into());
         }
@@ -3099,10 +3129,18 @@ impl win42::App for Pdf {
     fn text_readonly(&self) -> bool {
         true
     }
-    fn toolbar_command_visible(&self,id:u16)->bool{!matches!(id,117|118)}
+    fn toolbar_command_visible(&self,id:u16)->bool{!matches!(id,117|118|VERIFY_VIEW_SIGNATURES)}
     fn action(&mut self, id: u16) -> Result<(), String> {
         if id >= 10 && !self.enabled(id) {
             return Err("Command unavailable".into());
+        }
+        #[cfg(windows)]
+        if id == VERIFY_VIEW_SIGNATURES {
+            let source = self.doc.as_ref().and_then(PdfDocument::signature_source)
+                .ok_or("Open a PDF containing signature fields first")?;
+            self.operation_error = None;
+            self.signature_worker = Some(signatures::Worker::start_view(source.clone(), self.source_file_name.clone()));
+            return Ok(());
         }
         self.label_region_tool=false;
         self.label_region_drag=None;

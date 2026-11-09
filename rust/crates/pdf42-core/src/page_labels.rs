@@ -140,13 +140,13 @@ impl PdfDocument {
             rules.insert(state.pages[index], rule);
         }
         state.page_labels = Some(rules);
-        self.history.apply(state);
+        self.apply_edit(state)?;
         Ok(())
     }
     pub fn clear_page_labels(&mut self) {
         let mut state = self.history.current().clone();
         state.page_labels = Some(HashMap::new());
-        self.history.apply(state);
+        let _ = self.apply_edit(state);
     }
 }
 #[cfg(test)]

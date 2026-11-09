@@ -177,7 +177,7 @@ impl PdfDocument {
         }
         if font_bytes>32*1024*1024{return Err("Page decoration font data exceeds limits".into())}
         state.decorations.extend(added);
-        self.history.apply(state);
+        self.apply_edit(state)?;
         Ok(())
     }
     pub fn add_watermark(&mut self, indices: &[usize], spec: Watermark) -> Result<(), String> {
@@ -332,7 +332,7 @@ impl PdfDocument {
     pub fn remove_decorations(&mut self, kinds: &[DecorationKind]) {
         let mut state = self.history.current().clone();
         state.decorations.retain(|d| !kinds.contains(&d.kind()));
-        self.history.apply(state);
+        let _ = self.apply_edit(state);
     }
     pub(super) fn bake_decorations(&self, doc: &mut Document, state: &State) -> Result<(), String> {
         let mut watermark_forms: Vec<(Watermark, f64, f64, ObjectId)> = Vec::new();
