@@ -274,6 +274,8 @@ These are source contracts; each audit records the exact tested binary, exercise
   physical page size and corresponding OCR geometry. Single-page encoders cannot silently drop extra pages. Each output
   file is atomically replaced after successful encoding; a multi-file batch is not one atomic transaction. History
   removal deletes its entry/thumbnail, not the saved document.
+- Windows batch PNG and JPEG export preserves each page's dimensions and DPI. It stages every file
+  before publication and refuses destination conflicts. History records the actual files after success.
 - Signature/stamp placement belongs to one page identity. Return or Print into Page commits the mark into both the
   displayed pixels and the geometry-corrected base with multiply blending; Escape, changing the shown page or its
   pixel revision, and closing the window cancel unfinished placement. Existing OCR text/geometry is preserved because

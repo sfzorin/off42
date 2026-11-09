@@ -3078,6 +3078,7 @@ def audit_scan_pdf_options(process, main, output, results, dll, project, origina
     assert actual[1][1] == [(400, 213)], actual
     assert pdf_text(dll, compact, by_page=True) == ["", ""]
     assert b"/DCTDecode" in compact.read_bytes()
+    audit_scan_image_batch(process, main, output, results, baseline)
     fill_prompt(process, main, 36, "Export quality and compression", ["90", "1", "Balanced (200 dpi)", "Yes"])
     prefix = output / "scan-pages.pdf"
     command(main, 40)
@@ -3102,6 +3103,53 @@ def audit_scan_pdf_options(process, main, output, results, dll, project, origina
     assert project.read_bytes() == original
     results["checks"].append("SCN42 PDF preset, physical page dimensions with independently checked raster DPI, searchable toggle, separate searchable page files, no clobber, and export leaves project history untouched")
     audit_scan_history(process, main, output, results, lossless, targets)
+
+
+def audit_scan_image_batch(process, main, output, results, baseline):
+    before = text(main)
+    fixture = Path(__file__).resolve().parent.parent / "crates/win42/fixtures/ocr-english.png"
+
+    def export(prefix, format):
+        fill_prompt(process, main, 43, "Export Pages as Images", [format])
+        choose_file(process, prefix)
+
+    records = []
+    for format, extension, magic in (("PNG", "png", b"\x89PNG\r\n\x1a\n"),
+                                     ("JPEG", "jpg", b"\xff\xd8")):
+        prefix = output / f"scan-image-batch.{extension}"
+        export(prefix, format)
+        for i in range(2):
+            path = output / f"scan-image-batch-{i + 1:03}.{extension}"
+            output_ready(process, main, path, magic)
+            records.append(path)
+            data = path.read_bytes()
+            (expected_width, expected_height), = baseline[i][1]
+            if format == "PNG":
+                assert png_pixels(path)[:2] == (expected_width, expected_height)
+                if i == 1:
+                    assert png_pixels(path) == png_pixels(fixture)
+                    x, y, unit = struct.unpack_from(">IIB", data, data.index(b"pHYs") + 4)
+                    assert unit == 1 and (round(x * 0.0254), round(y * 0.0254)) == (600, 300)
+            else:
+                assert struct.unpack_from(">HH", data, data.index(b"\xff\xc0") + 5) == (expected_height, expected_width)
+                if i == 1:
+                    density = data.index(b"JFIF\x00") + 7
+                    assert struct.unpack_from(">BHH", data, density) == (1, 600, 300)
+        assert not prefix.exists()
+    blocked = output / "scan-image-blocked-002.png"
+    blocked.write_bytes(b"occupied")
+    export(output / "scan-image-blocked.png", "PNG")
+    warning = wait_for(lambda: next((h for h in windows(process.pid) if classname(h) == "#32770"
+        and "Scan image export destination exists" in " ".join(text(child) for child in windows_for_dialog(h))), None),
+        "scan image batch collision rejected", process)
+    click(warning, 1)
+    wait_for(lambda: not u.IsWindowVisible(warning) and u.IsWindowEnabled(main), "image collision dialog closed", process)
+    assert not (output / "scan-image-blocked-001.png").exists() and blocked.read_bytes() == b"occupied"
+    history = output / "scan-audit-settings" / "off42" / "Scan History.json"
+    entries = {Path(entry["path"]).name: entry for entry in json.loads(history.read_text(encoding="utf-8"))}
+    assert all(entries[path.name]["pages"] == 1 and entries[path.name]["bytes"] == path.stat().st_size for path in records)
+    assert blocked.name not in entries and text(main) == before
+    results["checks"].append("SCN42 bulk PNG/JPEG native export, ordered files with original pixels/dimensions and unequal DPI, no partial output on conflict, history and unchanged project")
 
 
 def audit_scan_history(process, main, output, results, lossless, targets):

@@ -1043,6 +1043,10 @@ keeps the source physical page dimensions. Searchable Text controls whether reco
 written to the export. Export One PDF per Page uses the chosen filename as a prefix and appends
 `-001.pdf`, `-002.pdf`, and so on. Existing destination files cause the operation to stop.
 
+**File → Export Pages as Images** writes all pages as separate PNG or JPEG images. It uses the
+chosen path for one page and appends page numbers to the prefix for multiple pages. The batch
+keeps each page's pixel dimensions and physical resolution and stages all files before publication.
+
 **View → Scan History** lists up to 200 recent PDF, TIFF, PNG and JPEG exports with their dates,
 page counts and sizes. Each file can be opened in a new SCN42 window or removed from history.
 **View → Clear Scan History** clears the records and preserves the exported files. The history

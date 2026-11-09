@@ -16,7 +16,26 @@ const PDF_RASTERS: [(&str, PdfRaster); 4] = [
 const EXPORT_PDF_PAGES: u16 = 40;
 const SCAN_HISTORY: u16 = 41;
 const CLEAR_SCAN_HISTORY: u16 = 42;
+const EXPORT_PAGE_IMAGES: u16 = 43;
 const HISTORY_ACTIONS: [&str; 2] = ["Open in New Window", "Remove from History"];
+const IMAGE_FORMATS: [&str; 2] = ["PNG", "JPEG"];
+
+fn page_image(page: &scn42_core::Page) -> Result<img42_core::ImageDocument, String> {
+    img42_core::ImageDocument::from_rgba(
+        page.width,
+        page.height,
+        page.pixels.to_vec(),
+        Some((page.dpi_x, page.dpi_y)),
+    ).map_err(|error| error.to_string())
+}
+
+fn image_extension(values: &[String]) -> Result<&'static str, String> {
+    match values {
+        [format] if format == IMAGE_FORMATS[0] => Ok("png"),
+        [format] if format == IMAGE_FORMATS[1] => Ok("jpg"),
+        _ => Err("Choose PNG or JPEG".into()),
+    }
+}
 struct Scn {
     pending: Option<(u64, scn42_core::SaveState)>,
     pending_history_open: Option<std::path::PathBuf>,
@@ -354,6 +373,14 @@ impl win42::App for Scn {
                 pattern: "*.jpg;*.jpeg",
             },
             win42::FileAction {
+                id: EXPORT_PAGE_IMAGES,
+                title: "Export Pages as Images…",
+                save: true,
+                extension: "png",
+                format: "PNG filename prefix",
+                pattern: "*.png",
+            },
+            win42::FileAction {
                 id: EXPORT_PDF_PAGES,
                 title: "Export one PDF per page…",
                 save: true,
@@ -370,6 +397,52 @@ impl win42::App for Scn {
                 pattern: "*.pdf",
             },
         ]
+    }
+    fn file_input_request(&self, id: u16) -> Option<win42::InputRequest> {
+        (id == EXPORT_PAGE_IMAGES).then(|| win42::InputRequest {
+            title: "Export Pages as Images",
+            fields: vec![("Format", IMAGE_FORMATS[0].into())],
+        })
+    }
+    fn configured_file_action(&self, id: u16, values: &[String]) -> Result<win42::FileAction, String> {
+        let action = self.file_actions().iter().find(|action| action.id == id)
+            .copied().ok_or("Unsupported file action")?;
+        if id == EXPORT_PAGE_IMAGES && image_extension(values)? == "jpg" {
+            return Ok(win42::FileAction {
+                extension: "jpg", format: "JPEG filename prefix", pattern: "*.jpg", ..action
+            });
+        }
+        Ok(action)
+    }
+    fn file_action_with_input(&mut self, id: u16, path: &Path, values: &[String]) -> Result<(), String> {
+        if id != EXPORT_PAGE_IMAGES {
+            return self.file_action(id, path);
+        }
+        let extension = image_extension(values)?;
+        if !path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case(extension)) {
+            return Err("The image filename does not match the selected format".into());
+        }
+        let pages = self.doc.pages();
+        if pages.is_empty() {
+            return Err("No pages to export".into());
+        }
+        let stem = path.file_stem().ok_or("Missing image filename prefix")?;
+        let paths = if pages.len() == 1 {
+            vec![path.to_path_buf()]
+        } else {
+            (1..=pages.len()).map(|number| {
+                let mut name = stem.to_os_string();
+                name.push(format!("-{number:03}.{extension}"));
+                path.with_file_name(name)
+            }).collect()
+        };
+        let format = if extension == "jpg" { "jpeg" } else { extension };
+        let paths = suite42_core::publish_new_files(paths, "Scan image", |index| {
+            page_image(&pages[index])?.save_snapshot_format_quality(format, self.jpeg_quality)
+                .map(|(bytes, _)| bytes).map_err(|error| error.to_string())
+        })?;
+        self.remember_exports(&paths.iter().map(|path| (path.as_path(), 1)).collect::<Vec<_>>());
+        Ok(())
     }
     fn file_action(&mut self, id: u16, p: &Path) -> Result<(), String> {
         if id == 20 {
@@ -425,15 +498,7 @@ impl win42::App for Scn {
                 }
                 let images: Vec<_> = pages
                     .iter()
-                    .map(|page| {
-                        img42_core::ImageDocument::from_rgba(
-                            page.width,
-                            page.height,
-                            page.pixels.to_vec(),
-                            Some((page.dpi_x, page.dpi_y)),
-                        )
-                        .map_err(|e| e.to_string())
-                    })
+                    .map(|page| page_image(page))
                     .collect::<Result<_, _>>()?;
                 let bytes = if id == 30 {
                     let refs: Vec<_> = images.iter().collect();
@@ -625,6 +690,9 @@ impl win42::App for Scn {
         })
     }
     fn input_choices(&self, id: u16) -> Vec<(usize, Vec<String>)> {
+        if id == EXPORT_PAGE_IMAGES {
+            return vec![(0, IMAGE_FORMATS.map(str::to_owned).to_vec())];
+        }
         if id == SCAN_HISTORY {
             let entries = history::load();
             if entries.is_empty() {
@@ -913,7 +981,7 @@ impl win42::App for Scn {
     fn enabled(&self, id: u16) -> bool {
         let n = self.doc.pages().len();
         match id {
-            10 | 11 | 14 | 15 | 16 | 17 | 18 | 21 | 22 | EXPORT_PDF_PAGES => n > 0,
+            10 | 11 | 14 | 15 | 16 | 17 | 18 | 21 | 22 | EXPORT_PDF_PAGES | EXPORT_PAGE_IMAGES => n > 0,
             19 => self.scan.is_none(),
             39=>n>0&&self.scan.is_none()&&self.ocr.is_none()&&self.pdf_import.is_none(),
             23 | 37 => n > 0 && self.ocr.is_none(),
