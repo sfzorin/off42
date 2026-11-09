@@ -211,10 +211,10 @@ fn verify_cms(cms: &[u8], bytes: [&[u8]; 2], index: u32) -> Result<Certificate, 
 pub struct SignWorker(Receiver<Result<Option<PathBuf>, String>>);
 
 impl SignWorker {
-    pub fn start(draft: pdf42_core::SignatureDraft, path: PathBuf, parent: usize) -> Self {
+    pub fn start(input: pdf42_core::SignatureInput, path: PathBuf, parent: usize) -> Self {
         let (sender, receiver) = mpsc::channel();
         std::thread::spawn(move || {
-            let result = sign_copy(draft, path, parent);
+            let result = sign_copy(input, path, parent);
             let _ = sender.send(result);
         });
         Self(receiver)
@@ -230,7 +230,7 @@ impl SignWorker {
 }
 
 fn sign_copy(
-    draft: pdf42_core::SignatureDraft,
+    input: pdf42_core::SignatureInput,
     path: PathBuf,
     parent: usize,
 ) -> Result<Option<PathBuf>, String> {
@@ -251,6 +251,12 @@ fn sign_copy(
     let Some(cert) = choose_certificate(parent as HWND)? else {
         return Ok(None);
     };
+    let now = chrono::Utc::now();
+    let draft = input.prepare(
+        &subject(&cert),
+        &now.format("D:%Y%m%d%H%M%SZ").to_string(),
+        &now.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+    )?;
     let bytes = draft.signed_bytes();
     let cms = sign_cms(&cert, bytes)?;
     if cms_der(&cms).is_none() {
@@ -643,7 +649,15 @@ mod tests {
         pdf.save(&path).unwrap();
         let original = std::fs::read(&path).unwrap();
         let doc = pdf42_core::PdfDocument::open(&path).unwrap();
-        let draft = doc.prepare_signature().unwrap();
+        let draft = doc
+            .capture_signature(true, "Board revision 42")
+            .unwrap()
+            .prepare(
+                &super::subject(&cert),
+                "D:20261109210000Z",
+                "2026-11-09 21:00:00 UTC",
+            )
+            .unwrap();
         let cms = sign_cms(&cert, draft.signed_bytes()).unwrap();
         assert_eq!(cms_der(&cms), Some(cms.as_slice()));
         let mut signed = draft.finish(&cms).unwrap();
@@ -654,8 +668,23 @@ mod tests {
             report.rows[0][2].starts_with("Signature intact. Certificate trust not established")
         );
         assert_eq!(report.rows[0][3], "Entire file");
-        assert_eq!(signed[7], b'5');
-        signed[7] = b'6';
+        let parsed = load(&signed).unwrap();
+        let signature_fields = fields(&parsed).unwrap();
+        assert_eq!(signature_fields.len(), 1);
+        assert!(parsed
+            .objects
+            .values()
+            .filter_map(|object| object.as_dict().ok())
+            .any(
+                |node| node.get(b"FT").and_then(lopdf::Object::as_name).ok() == Some(b"Sig")
+                    && node.get(b"AP").and_then(lopdf::Object::as_dict).is_ok()
+            ));
+        let appearance = b"0.97 0.98 0.99 rg";
+        let position = signed
+            .windows(appearance.len())
+            .position(|window| window == appearance)
+            .unwrap();
+        signed[position + 2] = b'8';
         let changed = inspect_bytes(&signed, "changed.pdf").unwrap();
         assert!(changed.rows[0][2].starts_with("Signature verification failed"));
         assert_eq!(std::fs::read(path).unwrap(), original);

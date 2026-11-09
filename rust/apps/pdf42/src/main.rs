@@ -214,6 +214,23 @@ struct Pdf {
     )>,
 }
 impl Pdf {
+    fn start_signing(&mut self, path: &Path, visible: bool, reason: &str) -> Result<(), String> {
+        #[cfg(windows)]
+        {
+            if !win42::App::enabled(self, SIGN_PDF_COPY) {
+                return Err("Certificate signing is unavailable for this PDF".into());
+            }
+            let input = self.doc.as_ref().ok_or("Open a PDF first")?.capture_signature(visible, reason)?;
+            self.operation_error = None;
+            self.signing_worker = Some(signatures::SignWorker::start(input, path.to_path_buf(), self.native_window));
+            Ok(())
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = (path, visible, reason);
+            Err("Certificate signing requires Windows".into())
+        }
+    }
     #[cfg(windows)]
     fn page_point(&self, p: win42::Point) -> Result<[f64; 2], String> {
         let (width, height, _) = self
@@ -1539,6 +1556,9 @@ impl win42::App for Pdf {
         id == 76
     }
     fn input_choices(&self, id: u16) -> Vec<(usize, Vec<String>)> {
+        if id == SIGN_PDF_COPY {
+            return vec![(0, vec!["No".into(), "Yes".into()])];
+        }
         if id == 91 {
             return self.decoration_choices(id);
         }
@@ -2119,6 +2139,12 @@ impl win42::App for Pdf {
             return self.decoration_request(id);
         }
         let doc = self.doc.as_ref()?;
+        if id == SIGN_PDF_COPY {
+            return Some(win42::InputRequest {
+                title: "Certificate Signature",
+                fields: vec![("Visible on current page", "No".into()), ("Reason (optional)", String::new())],
+            });
+        }
         if id == 86 {
             return Some(win42::InputRequest {
                 title: "Export PDF Text",
@@ -2193,6 +2219,13 @@ impl win42::App for Pdf {
         path: &Path,
         values: &[String],
     ) -> Result<(), String> {
+        if id == SIGN_PDF_COPY {
+            let [visible, reason] = values else { return Err("Invalid certificate signature settings".into()) };
+            if !matches!(visible.as_str(), "No" | "Yes") {
+                return Err("Choose whether to show the signature".into());
+            }
+            return self.start_signing(path, visible == "Yes", reason);
+        }
         if id == 94 {
             return self.add_image_watermark(path, values);
         }
@@ -2361,18 +2394,7 @@ impl win42::App for Pdf {
     }
     fn file_action(&mut self, id: u16, path: &Path) -> Result<(), String> {
         if id == SIGN_PDF_COPY {
-            #[cfg(windows)]
-            {
-                if !self.enabled(id) {
-                    return Err("Certificate signing is unavailable for this PDF".into());
-                }
-                let draft = self.doc.as_ref().ok_or("Open a PDF first")?.prepare_signature()?;
-                self.operation_error = None;
-                self.signing_worker = Some(signatures::SignWorker::start(draft, path.to_path_buf(), self.native_window));
-                return Ok(());
-            }
-            #[cfg(not(windows))]
-            return Err("Certificate signing requires Windows".into());
+            return self.start_signing(path, false, "");
         }
         if id == COPY_SIGNED_PDF {
             let source = self.doc.as_ref().and_then(PdfDocument::signature_source)

@@ -1046,7 +1046,8 @@ at the current system time. Save Signed PDF Copy writes the retained bytes to a 
 
 
 Sign PDF Copy with Certificate prepares the current unsigned, unencrypted document and opens the
-Windows personal-store certificate picker. The output has an invisible detached approval signature.
-The app verifies the CMS signature against the prepared bytes before writing the new file. Visible
-signature appearances, additional signatures, timestamp policies and CryptoPro remain separate
-work items.
+Windows personal-store certificate picker. The detached approval signature can appear at the lower
+right of the current page. It shows the certificate display name, system time in UTC and an optional
+reason. Full Unicode metadata stays in the signature dictionary. The app verifies the CMS signature
+against the prepared bytes before writing the new file. Additional signatures, custom appearance
+placement, trusted timestamps and CryptoPro remain work items.

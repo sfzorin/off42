@@ -2445,6 +2445,19 @@ try {
     output_ready(process, main, copy, b"%PDF-")
     assert copy.read_bytes() == fixtures[intact] == intact.read_bytes()
     results["checks"].append("normal signed PDF view protects editing and Save, validates its retained bytes and exports a byte-identical signed copy")
+    unsigned = output / "signature-audit-unsigned.pdf"
+    minimal_pdf(unsigned, ["Unsigned certificate settings fixture"])
+    original = unsigned.read_bytes()
+    open_fixture(process, main, unsigned)
+    command(main, 128)
+    prompt = modal(process, title="Certificate Signature", native_class="Suite42InputDialog")
+    assert text(u.GetDlgItem(prompt, 100)) == "No"
+    set_text(u.GetDlgItem(prompt, 100), "Yes")
+    set_text(u.GetDlgItem(prompt, 101), "Board revision 42")
+    click(prompt, 2)
+    wait_for(lambda: not u.IsWindow(prompt) and u.IsWindowEnabled(main), "certificate settings cancelled", process)
+    assert text(main).startswith(unsigned.name + " - ") and unsigned.read_bytes() == original
+    results["checks"].append("certificate-signing settings offer an optional visible appearance and reason, and Cancel preserves the unsigned PDF")
 
 
 def audit_pdf_comparison(process,main,binary,output,results):
