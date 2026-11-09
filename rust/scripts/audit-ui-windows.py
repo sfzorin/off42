@@ -2111,6 +2111,58 @@ def audit_ppt_slide_images(process, main, output, results):
     results["checks"].append("PPT42 exports numbered PNG and JPEG through normal settings, actual PNG pixels, selected dimensions and hidden-slide scope, no clobber and unchanged presentation")
 
 
+def audit_ppt_pdf(process, main, binary, output, results):
+    dll = binary.parent / "pdfium.dll"
+
+    def export(name, layout, include_hidden):
+        path = output / name
+        fill_prompt(process, main, 78, "Export as PDF", [layout, include_hidden])
+        choose_file(process, path)
+        output_ready(process, main, path, b"%PDF")
+        return path
+
+    slides = output / "ppt-show-hidden.pptx"
+    open_fixture(process, main, slides)
+    before = text(main), slides.read_bytes()
+    for hidden, colors in (("No", [(200, 20, 20), (20, 20, 200)]),
+                           ("Yes", [(200, 20, 20), (20, 160, 20), (20, 20, 200)])):
+        path = export(f"ppt-slides-hidden-{hidden}.pdf", "Slides", hidden)
+        assert len(pdf_text(dll, path, by_page=True)) == len(colors)
+        for index, color in enumerate(colors):
+            width, height, pixels = pdf_pixels(dll, path, index)
+            assert (width, height) == (720, 405), (width, height)
+            center = (width * (height // 2) + width // 2) * 4
+            assert all(abs(a - b) <= 4 for a, b in zip(pixels[center:center + 3], reversed(color)))
+    assert (text(main), slides.read_bytes()) == before
+
+    project = output / "ppt-long-notes.json"
+    long_notes = ["Проверить питание и разъёмы"] + [f"NOTE-CUE-{i:03}" for i in range(1, 81)]
+    long_word = "SUPPLYTRACE" * 22
+    project.write_text(json.dumps({"version": 2, "next_id": 4, "slides": [
+        {"id": 1, "title_text": {"raw": "Visible slide", "crlf": False},
+         "notes": "\n".join(long_notes + [long_word, "END-CUE"])},
+        {"id": 2, "hidden": True, "notes": "HIDDEN-CUE"},
+        {"id": 3, "notes": "LAST-CUE"},
+    ]}), encoding="utf-8")
+    open_fixture(process, main, project)
+    before = text(main), project.read_bytes()
+    path = export("ppt-notes.pdf", "Notes Pages", "No")
+    pages = pdf_text(dll, path, by_page=True)
+    joined = "\n".join(pages)
+    assert len(pages) == 4 and pages[-1].strip() == "LAST-CUE", pages
+    assert all(joined.count(line) == 1 for line in long_notes)
+    assert "END-CUE" in pages[-2] and "HIDDEN-CUE" not in joined
+    assert long_word in "".join(joined.split())
+    for index, first_line_top in ((0, 350), (1, 54)):
+        width, height, pixels = pdf_pixels(dll, path, index)
+        assert (width, height) == (595, 842), (width, height)
+        region = (pixels[(y * width + x) * 4] for y in range(first_line_top, first_line_top + 22)
+                  for x in range(54, 230))
+        assert sum(value < 100 for value in region) > 20, "Notes must visibly render"
+    assert (text(main), project.read_bytes()) == before
+    results["checks"].append("PPT42 Slides/Notes Pages PDF chooser, original slide page size, hidden slide scope and rendered colors, A4 note pages with Unicode, whole long notes, visible text and unchanged source")
+
+
 def audit_preset_shapes(process,main,output,results):
     import xml.etree.ElementTree as ET
     command(main,68)
@@ -3622,6 +3674,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
                 audit_ppt_rehearsal(process,main,output,results)
                 audit_ppt_outline_export(process,main,output,results)
                 audit_ppt_slide_images(process,main,output,results)
+                audit_ppt_pdf(process,main,binary,output,results)
             return results
         if binary.stem.lower() == "pdf42" and not startup:
             source = output / "input.pdf"

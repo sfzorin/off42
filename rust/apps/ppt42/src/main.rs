@@ -4,8 +4,12 @@ use std::path::Path;
 mod outline;
 mod rich;
 mod slide_images;
+#[cfg(windows)]
+mod slide_pdf;
 mod show_settings;
 use show_settings::ShowSettings;
+const EXPORT_PDF: u16 = 78;
+const PDF_LAYOUTS: [&str; 2] = ["Slides", "Notes Pages"];
 fn decode_image(bytes: &[u8]) -> Result<image::DynamicImage, String> {
     let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes))
         .with_guessed_format()
@@ -516,6 +520,13 @@ impl Ppt {
             }
             self.drag = None;
             self.rubber_band = Some((p, p, add));
+        }
+    }
+    fn slide_size_points(&self) -> Option<(f64, f64)> {
+        if let Some(source) = &self.odp_source {
+            source.size_points()
+        } else {
+            Some(self.pptx_source.as_ref().map(|source| source.size_points()).unwrap_or((720.0, 405.0)))
         }
     }
     fn scene_for(&self, index: usize, show_selection: bool) -> Option<win42::CanvasScene> {
@@ -1081,14 +1092,7 @@ impl win42::App for Ppt {
         if id != 40 {
             return None;
         }
-        let (width, height) = if let Some(source) = &self.odp_source {
-            source.size_points()?
-        } else {
-            self.pptx_source
-                .as_ref()
-                .map(|s| s.size_points())
-                .unwrap_or((720.0, 405.0))
-        };
+        let (width, height) = self.slide_size_points()?;
         if !width.is_finite()
             || !height.is_finite()
             || width <= 0.0
@@ -1304,6 +1308,13 @@ impl win42::App for Ppt {
             extension: "png",
             format: "PNG filename prefix",
             pattern: "*.png",
+        }, win42::FileAction {
+            id: EXPORT_PDF,
+            title: "Export as PDF…",
+            save: true,
+            extension: "pdf",
+            format: "PDF",
+            pattern: "*.pdf",
         }]
     }
     fn file_input_request(&self, id: u16) -> Option<win42::InputRequest> {
@@ -1316,6 +1327,10 @@ impl win42::App for Ppt {
                 title: "Export Slide Images",
                 fields: vec![("Format", "PNG".into()), ("Width in pixels", "1920".into()),
                     ("Include hidden slides", "No".into())],
+            }),
+            EXPORT_PDF => Some(win42::InputRequest {
+                title: "Export as PDF",
+                fields: vec![("Layout", PDF_LAYOUTS[0].into()), ("Include hidden slides", "No".into())],
             }),
             _ => None,
         }
@@ -1332,6 +1347,24 @@ impl win42::App for Ppt {
         Ok(action)
     }
     fn file_action_with_input(&mut self, id: u16, path: &Path, values: &[String]) -> Result<(), String> {
+        if id == EXPORT_PDF {
+            #[cfg(windows)]
+            {
+                let [layout, hidden] = values else {
+                    return Err("Invalid slide PDF options".into());
+                };
+                if !PDF_LAYOUTS.contains(&layout.as_str()) || !matches!(hidden.as_str(), "No" | "Yes") {
+                    return Err("Invalid slide PDF options".into());
+                }
+                if !path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case("pdf")) {
+                    return Err("The slide PDF filename must end in .pdf".into());
+                }
+                self.finish_rich(true)?;
+                return slide_pdf::export(self, path, layout == PDF_LAYOUTS[1], hidden == "Yes");
+            }
+            #[cfg(not(windows))]
+            return Err("Slide PDF rendering requires Windows".into());
+        }
         if id == slide_images::COMMAND {
             #[cfg(windows)]
             {
@@ -1552,6 +1585,8 @@ impl win42::App for Ppt {
         } else if id == slide_images::COMMAND {
             vec![(0, slide_images::FORMATS.map(str::to_owned).to_vec()),
                  (1, slide_images::WIDTHS.map(str::to_owned).to_vec()), (2, vec!["No".into(), "Yes".into()])]
+        } else if id == EXPORT_PDF {
+            vec![(0, PDF_LAYOUTS.map(str::to_owned).to_vec()), (1, vec!["No".into(), "Yes".into()])]
         } else if id == 72 {
             vec![(0, vec!["No".into(), "Yes".into()]), (1, vec!["No".into(), "Yes".into()])]
         } else if matches!(id, 68 | 69) {

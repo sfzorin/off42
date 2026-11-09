@@ -4733,6 +4733,62 @@ unsafe fn draw_scene(dc: HDC, scene: &crate::CanvasScene) {
     draw_scene_items(dc, scene.viewport, &scene.items);
 }
 
+/// Measures text at the same font scale as the scene renderer.
+pub struct SceneTextMeasurer {
+    dc: HDC,
+    font: HFONT,
+    previous: HGDIOBJ,
+}
+
+impl SceneTextMeasurer {
+    pub fn new(font: &crate::SceneFont, dpi: i32) -> Result<Self, String> {
+        unsafe {
+            let font = crate::rich_print::font(font, dpi)?;
+            let dc = CreateCompatibleDC(null_mut());
+            if dc.is_null() {
+                DeleteObject(font);
+                return Err("Could not create a text measurement context".into());
+            }
+            let previous = SelectObject(dc, font);
+            if previous.is_null() || previous as isize == -1 {
+                DeleteObject(font);
+                DeleteDC(dc);
+                return Err("Could not select the text measurement font".into());
+            }
+            Ok(Self { dc, font, previous })
+        }
+    }
+
+    /// Returns the number of UTF-16 units that fit and the full measured width in pixels.
+    pub fn fit(&self, text: &str, width: i32) -> Result<(usize, i32), String> {
+        let mut units: Vec<u16> = text.encode_utf16().collect();
+        let count = i32::try_from(units.len()).map_err(|_| "Text is too long to measure")?;
+        if count == 0 {
+            return Ok((0, 0));
+        }
+        units.push(0);
+        let mut fit = 0;
+        let mut size = SIZE { cx: 0, cy: 0 };
+        let ok = unsafe {
+            GetTextExtentExPointW(self.dc, units.as_ptr(), count, width, &mut fit, null_mut(), &mut size)
+        };
+        if ok == 0 || !(0..=count).contains(&fit) || size.cx < 0 {
+            return Err("Could not measure scene text".into());
+        }
+        Ok((fit as usize, size.cx))
+    }
+}
+
+impl Drop for SceneTextMeasurer {
+    fn drop(&mut self) {
+        unsafe {
+            SelectObject(self.dc, self.previous);
+            DeleteObject(self.font);
+            DeleteDC(self.dc);
+        }
+    }
+}
+
 /// Render a document scene against an opaque white background in a top-down RGB raster.
 pub fn render_scene_rgb(
     mut scene: crate::CanvasScene,

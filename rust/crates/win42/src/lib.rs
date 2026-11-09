@@ -594,7 +594,7 @@ mod window_layout;
 #[cfg(windows)]
 mod native;
 #[cfg(windows)]
-pub use native::render_scene_rgb;
+pub use native::{render_scene_rgb, SceneTextMeasurer};
 #[cfg(windows)]
 mod report;
 #[cfg(any(windows, test))]

@@ -1626,8 +1626,11 @@ version = "0.1.0"
 dependencies = [
  "doc42-core",
  "image",
+ "lopdf",
  "ppt42-core",
  "suite42-core",
+ "suite42-pdf-text",
+ "unicode-segmentation",
  "win42",
 ]
 

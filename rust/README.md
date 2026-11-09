@@ -830,7 +830,7 @@ kept out of the stored model; a stale projection or adapter refusal preserves th
 Native UTF-16 positions include table delimiters, images and emoji, so visible-text offsets are never substituted.
 It checks a selected range or the current editor's text. Work is bounded to a million-character editor, 32,768-unit
 check chunks, eight million checked units and 1,000 review steps. Windows language-pack availability applies;
-interface translation does not install a spelling dictionary, and this feature does not promise full grammar review.
+interface translation does not install a spelling dictionary.
 Native engine/range and actual DOC correction/format/table/image/history/reopen assertions are added but pending.
 
 
@@ -845,8 +845,8 @@ geometry, history and relaunch assertions pass in run 42512382933.
 
 
 The native en-US review verifies body/table/emoji positions, exact formatting and image retention,
-Cancel/Skip, full Undo/Redo and saved reopen in run 42515993014. Other installed dictionaries and grammar
-coverage remain separate verification work.
+Cancel/Skip, full Undo/Redo and saved reopen in run 42515993014. Other installed dictionaries and editor
+surfaces remain in scope for spelling verification.
 
 
 ### Header/footer fonts
@@ -1020,6 +1020,11 @@ uses the native title and body or recognizes title placeholders in imported PPTX
 **File → Export Slide Images** writes PNG or JPEG files at 1280, 1920 or 3840 pixels wide.
 The chosen name becomes a prefix. Each output includes its original slide number, and hidden
 slides are optional. The exporter stages the complete batch and refuses existing destinations.
+
+**File → Export as PDF** writes slide-size pages or A4 speaker-note pages with slide thumbnails
+and continuation pages. Hidden slides are optional and omitted by default. Slides use the same
+Windows raster rendering as image export at up to 144 DPI. Speaker notes add a searchable Unicode
+text layer. The export preserves the presentation and refuses existing destinations.
 
 
 ### Scan PDF exports (development branch)
