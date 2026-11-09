@@ -1,4 +1,5 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
+mod navigator;
 use doc42_core::rich::{
     Alignment, Block, Cell, Field, FieldKind, Format, Image, ListMarker, Paragraph, ParagraphStyle,
     Position, RichDocument, Run, Selection, State, Table, TextStyle,
@@ -9,6 +10,7 @@ use std::{
     path::Path,
 };
 use win42::{App, CommandSpec, CommandState, DialogRequest, DialogResult, FileFormat};
+const NAVIGATOR: u16 = 361;
 struct Doc {
     doc: RichDocument,
     pending_word:Option<doc42_core::rich::PreparedWordEdit>,
@@ -18,6 +20,8 @@ struct Doc {
     zoom_percent: u16,
     next_revision: u64,
     snapshots: HashMap<u64, State>,
+    navigator_open: bool,
+    navigator_rows: std::cell::RefCell<Vec<navigator::Entry>>,
 }
 impl Doc {
     fn new() -> Self {
@@ -30,6 +34,8 @@ impl Doc {
             zoom_percent: 100,
             next_revision: 1,
             snapshots: HashMap::new(),
+            navigator_open: false,
+            navigator_rows: Default::default(),
         }
     }
     fn format(id: &str) -> Result<Format, String> {
@@ -1069,6 +1075,9 @@ impl App for Doc {
         .collect()
     }
     fn command_state(&self, id: u16) -> CommandState {
+        if id == NAVIGATOR {
+            return CommandState { enabled: true, checked: self.navigator_open };
+        }
         if id == 4 || id == 5 {
             return CommandState {
                 enabled: if id == 4 {
@@ -2286,11 +2295,33 @@ impl App for Doc {
         };
         self.apply_style(style)
     }
+    fn view_actions(&self) -> &'static [(u16, &'static str)] {
+        &[(NAVIGATOR, "Navigator")]
+    }
+    fn live_rich_sidebar(&self) -> bool {
+        self.navigator_open
+    }
+    fn rich_sidebar_selection(&self, index: usize, native: &[u16]) -> Result<Option<(usize, usize)>, String> {
+        let rows = self.navigator_rows.borrow();
+        let Some(target) = rows.get(index).and_then(|entry| entry.target.as_ref()) else {
+            return Ok(None);
+        };
+        match target {
+            navigator::Target::Text(start, end) => self.doc.native_text_range(native, start, end),
+            navigator::Target::Image(image) => self.doc.native_image_range(native, *image),
+        }.map(Some).map_err(|error| error.to_string())
+    }
     fn items(&self) -> Vec<String> {
-        vec![]
+        let entries = if self.navigator_open { navigator::entries(self.doc.state()) } else { Vec::new() };
+        let labels = entries.iter().map(|entry| entry.label.clone()).collect();
+        self.navigator_rows.replace(entries);
+        labels
+    }
+    fn selected(&self) -> usize {
+        usize::MAX
     }
     fn list_visible(&self) -> bool {
-        false
+        self.navigator_open
     }
     fn text(&self) -> String {
         win42::to_native_text(&self.visible_text())
@@ -2452,6 +2483,9 @@ impl App for Doc {
     }
     fn action(&mut self, id: u16) -> Result<(), String> {
         match id {
+            NAVIGATOR => {
+                self.navigator_open = !self.navigator_open;
+            }
             351 => {
                 let (p, range, _, selection) = self.selection_style()?;
                 self.doc

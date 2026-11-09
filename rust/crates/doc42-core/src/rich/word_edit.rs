@@ -25,7 +25,7 @@ fn structural(c: u16) -> bool {
 }
 enum Piece<'a> {
     Paragraph(&'a Paragraph),
-    Image,
+    Image(u64),
 }
 fn pieces(state: &State) -> Vec<Piece<'_>> {
     state
@@ -39,7 +39,7 @@ fn pieces(state: &State) -> Vec<Piece<'_>> {
                 .flatten()
                 .flat_map(|cell| cell.paragraphs.iter().map(Piece::Paragraph))
                 .collect(),
-            Block::Image(_) => vec![Piece::Image],
+            Block::Image(image) => vec![Piece::Image(image.id)],
             _ => vec![],
         })
         .collect()
@@ -57,33 +57,45 @@ fn byte_at(text: &str, offset: usize) -> Option<usize> {
     }
     (units == offset).then_some(text.len())
 }
-fn locate(
+fn projection_mismatch() -> Error {
+    Error::Invalid("native text projection no longer matches the document".into())
+}
+
+fn walk_projection(
     state: &State,
     native: &[u16],
-    range: (usize, usize),
-) -> Result<(u64, std::ops::Range<usize>), Error> {
-    let invalid = || Error::Invalid("native word projection no longer matches the document".into());
-    // GT_RAWTEXT preserves table start/end markers (FFF9/FFFB), cell delimiters and image markers.
-    // All image markers must match source images; ordinary spaces remain part of source paragraph text.
-    fn gap(c: u16, images: usize, seen: &mut usize) -> bool {
-        if c == 0xFFFC {
-            *seen += 1;
-            *seen <= images
+    mut visit: impl FnMut(Piece<'_>, std::ops::Range<usize>, &str) -> Result<(), Error>,
+) -> Result<(), Error> {
+    if native.len() > 1_000_000 {
+        return Err(Error::Limit);
+    }
+    // GT_RAWTEXT retains structural delimiters and one marker per displayed image.
+    fn gap(
+        native: &[u16],
+        at: usize,
+        images: &mut std::collections::VecDeque<u64>,
+        visit: &mut impl FnMut(Piece<'_>, std::ops::Range<usize>, &str) -> Result<(), Error>,
+    ) -> Result<(), Error> {
+        if native.get(at) == Some(&0xFFFC) {
+            let image = images.pop_front().ok_or_else(projection_mismatch)?;
+            visit(Piece::Image(image), at..at + 1, "")
+        } else if native.get(at).copied().is_some_and(structural) {
+            Ok(())
         } else {
-            structural(c)
+            Err(projection_mismatch())
         }
     }
-    let (mut cursor, mut work, mut images) = (0usize, 0usize, 0usize);
-    let mut target = None;
+    let (mut cursor, mut work) = (0usize, 0usize);
+    let mut images = std::collections::VecDeque::new();
     for piece in pieces(state) {
-        let p = match piece {
-            Piece::Image => {
-                images += 1;
+        let paragraph = match piece {
+            Piece::Image(image) => {
+                images.push_back(image);
                 continue;
             }
-            Piece::Paragraph(p) => p,
+            Piece::Paragraph(paragraph) => paragraph,
         };
-        let text: String = p.runs.iter().map(|r| r.text.as_str()).collect();
+        let text: String = paragraph.runs.iter().map(|run| run.text.as_str()).collect();
         if text.is_empty() {
             continue;
         }
@@ -91,7 +103,6 @@ fn locate(
             .encode_utf16()
             .map(|c| if c == 10 { 11 } else { c })
             .collect();
-        let mut seen = 0;
         loop {
             work = work
                 .checked_add(projected.len())
@@ -102,39 +113,90 @@ fn locate(
             {
                 break;
             }
-            if native
-                .get(cursor)
-                .copied()
-                .is_some_and(|c| gap(c, images, &mut seen))
-            {
-                cursor += 1
-            } else {
-                return Err(invalid());
-            }
+            gap(native, cursor, &mut images, &mut visit)?;
+            cursor += 1;
         }
-        if seen != images {
-            return Err(invalid());
+        if !images.is_empty() {
+            return Err(projection_mismatch());
         }
-        images = 0;
         let end = cursor + projected.len();
-        if range.0 >= cursor && range.1 <= end {
-            if target.is_some() {
-                return Err(invalid());
-            }
-            let start = byte_at(&text, range.0 - cursor).ok_or_else(invalid)?;
-            let end = byte_at(&text, range.1 - cursor).ok_or_else(invalid)?;
-            target = Some((p.id, start..end));
-        }
+        visit(Piece::Paragraph(paragraph), cursor..end, &text)?;
         cursor = end;
     }
-    let mut seen = 0;
-    if native[cursor..].iter().any(|&c| !gap(c, images, &mut seen)) || seen != images {
-        return Err(invalid());
+    for at in cursor..native.len() {
+        gap(native, at, &mut images, &mut visit)?;
     }
-    target.ok_or_else(invalid)
+    if !images.is_empty() {
+        return Err(projection_mismatch());
+    }
+    Ok(())
+}
+
+fn locate(
+    state: &State,
+    native: &[u16],
+    range: (usize, usize),
+) -> Result<(u64, std::ops::Range<usize>), Error> {
+    let mut target = None;
+    walk_projection(state, native, |piece, projected, text| {
+        let Piece::Paragraph(paragraph) = piece else {
+            return Ok(());
+        };
+        if range.0 >= projected.start && range.1 <= projected.end {
+            if target.is_some() {
+                return Err(projection_mismatch());
+            }
+            let start = byte_at(text, range.0 - projected.start).ok_or_else(projection_mismatch)?;
+            let end = byte_at(text, range.1 - projected.start).ok_or_else(projection_mismatch)?;
+            target = Some((paragraph.id, start..end));
+        }
+        Ok(())
+    })?;
+    target.ok_or_else(projection_mismatch)
 }
 
 impl RichDocument {
+    /// Map stable document positions to a verified native Rich Edit projection.
+    pub fn native_text_range(
+        &self,
+        native: &[u16],
+        start: &Position,
+        end: &Position,
+    ) -> Result<(usize, usize), Error> {
+        let mut bounds = [None, None];
+        walk_projection(self.state(), native, |piece, projected, text| {
+            let Piece::Paragraph(paragraph) = piece else {
+                return Ok(());
+            };
+            for (offset, position) in bounds.iter_mut().zip([start, end]) {
+                if position.paragraph == paragraph.id {
+                    let prefix = text
+                        .get(..position.offset)
+                        .ok_or_else(projection_mismatch)?;
+                    *offset = Some(projected.start + prefix.encode_utf16().count());
+                }
+            }
+            Ok(())
+        })?;
+        match bounds {
+            [Some(start), Some(end)] if start <= end => Ok((start, end)),
+            _ => Err(Error::Invalid(
+                "This position has no visible text in the editor".into(),
+            )),
+        }
+    }
+
+    pub fn native_image_range(&self, native: &[u16], id: u64) -> Result<(usize, usize), Error> {
+        let mut range = None;
+        walk_projection(self.state(), native, |piece, projected, _| {
+            if matches!(piece, Piece::Image(image) if image == id) {
+                range = Some((projected.start, projected.end));
+            }
+            Ok(())
+        })?;
+        range.ok_or_else(projection_mismatch)
+    }
+
     pub fn prepare_word_edit(
         &self,
         native: &[u16],
@@ -372,5 +434,30 @@ mod tests {
         let after = doc.state().clone();
         assert!(doc.commit_word_edit(edit).is_err());
         assert_eq!(doc.state(), &after);
+    }
+
+    #[test]
+    fn document_navigation_checks_the_full_projection_and_maps_image_and_heading_offsets() {
+        let (doc, native) = fixture();
+        let image = doc.native_image_range(&native, 5).unwrap();
+        assert_eq!(&native[image.0..image.1], &[0xFFFC]);
+        let start = Position {
+            paragraph: 6,
+            offset: 0,
+        };
+        let end = Position {
+            paragraph: 6,
+            offset: 5,
+        };
+        let heading = doc.native_text_range(&native, &start, &end).unwrap();
+        assert_eq!(
+            String::from_utf16(&native[heading.0..heading.1]).unwrap(),
+            "After"
+        );
+        assert!(heading.0 > image.1);
+        let mut changed = native.clone();
+        changed[image.0] = 32;
+        assert!(doc.native_text_range(&changed, &start, &end).is_err());
+        assert!(doc.native_image_range(&changed, 5).is_err());
     }
 }

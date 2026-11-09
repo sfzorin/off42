@@ -996,6 +996,14 @@ sort, horizontal formula shifts with independent XLSX caches, full-sheet XFD-dat
 pass, including strengthened same-file discard/reopen and XLSX/ODS outputs.
 
 
+### Document Navigator (development branch)
+
+**View → Navigator** opens a sidebar for headings, tables with text, pictures, bookmarks, comments,
+notes, links, sections and fields. Heading levels appear as indentation. Selecting a target jumps
+to it in the editor. The sidebar updates after edits and Undo. Navigation checks the native
+projection and preserves source bytes and edit history. Each category shows up to 1,000 entries.
+Chapter reordering and targets without a visible native anchor remain open.
+
 ### Spreadsheet list validation (development branch)
 
 The **List validation** dialog accepts semicolon-separated literal choices or a one-dimensional

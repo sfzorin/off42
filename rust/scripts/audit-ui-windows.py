@@ -1067,6 +1067,72 @@ def audit_rich_search(process,main,binary,output,results):
     results["checks"].append("structured body/table/image and selection statistics retain Unicode grapheme counts through replace/history/reopen, across cells and around an image; native rich Find traverses offsets and wraps; Replace All retains table/image bytes, complete Undo/Redo/save and dirty/discard/reopen")
 
 
+def audit_doc_navigator(process, main, output, results):
+    fixture = Path(__file__).resolve().parent.parent / "crates/doc42-core/fixtures/native-rich-edit-picture.doc42"
+    project = json.loads(fixture.read_text(encoding="utf-8"))
+    state = project["state"]
+    state["blocks"][0]["Paragraph"]["style"]["outline_level"] = 0
+    state["blocks"][2]["Image"]["alt"] = "Board photograph"
+    state["blocks"][3]["Paragraph"]["style"]["outline_level"] = 1
+    state["blocks"][3]["Paragraph"]["runs"][0]["link"] = "https://example.com/"
+    position = {"paragraph": 6, "offset": 0}
+    state["bookmarks"] = [{"id": 8, "name": "BoardTarget", "start": position, "end": position}]
+    state["next_id"] = 9
+    source = output / "doc-navigator-source.doc42"
+    source.write_text(json.dumps(project), encoding="utf-8")
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+    listing, edit = u.GetDlgItem(main, 100), u.GetDlgItem(main, 101)
+
+    def labels():
+        count = u.SendMessageW(listing, 0x18B, 0, 0)
+        assert 0 <= count <= 100
+        result = []
+        for index in range(count):
+            length = u.SendMessageW(listing, 0x18A, index, 0)
+            assert 0 <= length <= 512
+            buffer = c.create_unicode_buffer(length + 1)
+            u.SendMessageW(listing, 0x189, index, c.cast(buffer, c.c_void_p).value)
+            result.append(buffer.value)
+        return result
+
+    def selection():
+        packed = u.SendMessageW(edit, 0xB0, 0, 0)
+        return packed & 0xffff, (packed >> 16) & 0xffff
+
+    def jump(label, accept):
+        row = labels().index(label)
+        assert u.SendMessageW(listing, 0x186, row, 0) == row
+        command(main, 100 | (1 << 16))
+        return wait_for(lambda: selection() if accept(selection()) else None, f"Navigator jump to {label}", process)
+
+    assert not u.IsWindowVisible(listing)
+    command(main, 361)
+    wait_for(lambda: u.IsWindowVisible(listing) and "BoardTarget" in labels(), "Navigator sidebar shown", process)
+    assert labels()[:3] == ["Headings", "Head 😀", "  After"]
+    assert all(label in labels() for label in ("Tables", "Table 1", "Images", "Board photograph", "Bookmarks", "Links"))
+    head = jump("Head 😀", lambda selected: selected == (0, 7))
+    assert copied_selection(edit) == "Head 😀"
+    table = jump("Table 1", lambda selected: selected[0] == selected[1] and selected[0] > head[1])
+    picture = jump("Board photograph", lambda selected: selected[1] == selected[0] + 1 and selected[0] > table[0])
+    heading = jump("  After", lambda selected: selected[1] == selected[0] + 5 and selected[0] > picture[1])
+    assert copied_selection(edit) == "After"
+    assert jump("BoardTarget", lambda selected: selected == (heading[0], heading[0])) == (heading[0], heading[0])
+    assert " * - " not in text(main) and u.GetMenuState(u.GetMenu(main), 4, 0) & 3
+    jump("  After", lambda selected: selected == heading)
+    replacement = c.create_unicode_buffer("Updated heading")
+    u.SendMessageW(edit, 0xC2, 1, c.cast(replacement, c.c_void_p).value)
+    wait_for(lambda: "  Updated heading" in labels(), "Navigator heading changes after editing", process)
+    assert "  After" not in labels()
+    capture_window(main, output / "DOC42-navigator.bmp")
+    command(main, 4)
+    wait_for(lambda: "  After" in labels() and " * - " not in text(main), "Navigator and dirty state restored by Undo", process)
+    command(main, 361)
+    wait_for(lambda: not u.IsWindowVisible(listing), "Navigator hidden", process)
+    assert source.read_bytes() == original
+    results["checks"].append("DOC42 Navigator sidebar follows native edit and Undo, jumps through Unicode headings, tables, image markers and a bookmark after nontext blocks without changing source or edit history")
+
+
 def audit_doc_search_options(process, main, output, results):
     picture = output / "search-picture.png"
     image = picture.read_bytes()
@@ -3889,6 +3955,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_table_labels(process, main, binary, output, results)
         if rich_search and binary.stem.lower() == "doc42":
             audit_rich_search(process, main, binary, output, results)
+            audit_doc_navigator(process, main, output, results)
             audit_doc_search_options(process, main, output, results)
             audit_rich_format(process, main, binary, output, results)
             audit_spelling(process,main,binary,output,results)

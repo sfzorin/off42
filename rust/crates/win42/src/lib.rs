@@ -430,6 +430,14 @@ pub trait App {
     fn view_actions(&self) -> &'static [(u16, &'static str)] {
         &[]
     }
+    fn live_rich_sidebar(&self) -> bool {
+        false
+    }
+    fn rich_sidebar_selection(
+        &self, _index: usize, _native: &[u16],
+    ) -> Result<Option<(usize, usize)>, String> {
+        Ok(None)
+    }
     fn items(&self) -> Vec<String>;
     fn text(&self) -> String;
     fn status(&self) -> String;

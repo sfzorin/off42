@@ -2311,7 +2311,46 @@ unsafe fn native_rich_replace(edit:HWND,range:(usize,usize),value:&str,expected:
         if prepared{let _=STATE.with(|slot|slot.borrow_mut().as_mut().unwrap().app.finish_rich_word(false));}
         let _=crate::rich_edit::load(edit,&before);crate::rich_edit::set_selection(edit,selection);
     }
-    REFRESHING.with(|flag|flag.set(previous));flush_deferred_commands();update_caption();result
+    REFRESHING.with(|flag|flag.set(previous));
+    if result.is_ok() {
+        schedule_rich_sidebar_refresh(GetParent(edit));
+    }
+    flush_deferred_commands();update_caption();result
+}
+
+const RICH_SIDEBAR_TIMER: usize = 43;
+
+unsafe fn schedule_rich_sidebar_refresh(hwnd: HWND) {
+    let live = STATE.with(|slot| {
+        let slot = slot.borrow();
+        slot.as_ref().is_some_and(|state| state.app.live_rich_sidebar() && state.panels.sidebar)
+    });
+    if live {
+        SetTimer(hwnd, RICH_SIDEBAR_TIMER, 200, None);
+    }
+}
+
+unsafe fn refresh_rich_sidebar() {
+    let Some((list, items)) = STATE.with(|slot| {
+        let slot = slot.borrow();
+        let state = slot.as_ref()?;
+        (state.app.live_rich_sidebar() && IsWindowVisible(state.list) != 0)
+            .then(|| (state.list, state.app.items()))
+    }) else {
+        return;
+    };
+    let previous = REFRESHING.with(|flag| flag.replace(true));
+    let top = SendMessageW(list, LB_GETTOPINDEX, 0, 0).max(0) as usize;
+    SendMessageW(list, WM_SETREDRAW, 0, 0);
+    SendMessageW(list, LB_RESETCONTENT, 0, 0);
+    for item in &items {
+        SendMessageW(list, LB_ADDSTRING, 0, wide(item).as_ptr() as isize);
+    }
+    SendMessageW(list, LB_SETTOPINDEX, top.min(items.len().saturating_sub(1)), 0);
+    SendMessageW(list, WM_SETREDRAW, 1, 0);
+    InvalidateRect(list, null(), 1);
+    REFRESHING.with(|flag| flag.set(previous));
+    flush_deferred_commands();
 }
 
 unsafe fn find_replace(hwnd: HWND, replace: bool) -> Result<(), String> {
@@ -2618,6 +2657,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 msg(hwnd, &e, MB_OK | MB_ICONERROR);
                 refresh();
             } else {
+                schedule_rich_sidebar_refresh(hwnd);
                 update_caption();
             }
             return;
@@ -2664,9 +2704,30 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
         return;
     }
     if id == LIST as u16 && notify == LBN_SELCHANGE as u16 {
-        let l = STATE.with(|s| s.borrow().as_ref().unwrap().list);
+        let (l, edit, rich_sidebar) = STATE.with(|s| {
+            let s = s.borrow();
+            let s = s.as_ref().unwrap();
+            (s.list, s.edit, s.app.live_rich_sidebar())
+        });
         let i = SendMessageW(l, LB_GETCURSEL, 0, 0);
         if i >= 0 {
+            if rich_sidebar {
+                let result = crate::proofing::raw_text_for_search(edit).and_then(|native| {
+                    STATE.with(|s| s.borrow().as_ref().unwrap().app.rich_sidebar_selection(i as usize, &native))
+                });
+                match result {
+                    Ok(Some(selection)) => {
+                        SetFocus(edit);
+                        crate::rich_edit::set_selection(edit, selection);
+                        SendMessageW(edit, EM_SCROLLCARET, 0, 0);
+                        STATE.with(|s| s.borrow_mut().as_mut().unwrap().app.set_rich_selection(selection));
+                        update_caption();
+                    }
+                    Ok(None) => {}
+                    Err(error) => { msg(hwnd, &error, MB_OK | MB_ICONERROR); }
+                }
+                return;
+            }
             STATE.with(|s| {
                 let mut s = s.borrow_mut();
                 let a = &mut s.as_mut().unwrap().app;
@@ -3267,6 +3328,11 @@ unsafe fn select_grid_cell(row: usize, col: Option<usize>) {
 }
 unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT {
     match m {
+        WM_TIMER if w == RICH_SIDEBAR_TIMER => {
+            KillTimer(h, RICH_SIDEBAR_TIMER);
+            refresh_rich_sidebar();
+            0
+        }
         WM_TIMER if w == 42 => {
             poll_pending_open(h);
             if STATE.with(|s| s.borrow().as_ref().is_some_and(|s| s.async_open.is_some())) {
