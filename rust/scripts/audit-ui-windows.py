@@ -1422,19 +1422,31 @@ def audit_validation_choices(process, main, output, results):
         u.keybd_event(code, 0, 0, 0)
         u.keybd_event(code, 0, 2, 0)
 
-    def pick(keys, expected):
-        wait_for(popup, "native list-validation popup", process)
-        for code in keys:
-            key(code)
+    def pick(index, expected):
+        menu = wait_for(popup, "native list-validation popup", process)
+        if index is None:
+            key(27)
+        else:
+            rect = w.RECT()
+            assert u.GetWindowRect(menu, c.byref(rect))
+            assert rect.bottom - rect.top >= 50
+            x = (rect.left + rect.right) // 2
+            y = rect.top + (2 * index + 1) * (rect.bottom - rect.top) // 10
+            assert u.SetCursorPos(x, y)
+            u.mouse_event(2, 0, 0, 0, 0)
+            u.mouse_event(4, 0, 0, 0, 0)
         wait_for(lambda: not popup() and text(edit) == expected, "list-validation popup closed", process)
 
     u.keybd_event.argtypes = [c.c_ubyte, c.c_ubyte, w.DWORD, c.c_size_t]
+    u.GetWindowRect.argtypes = [w.HWND, c.POINTER(w.RECT)]
+    u.SetCursorPos.argtypes = [c.c_int, c.c_int]
+    u.mouse_event.argtypes = [w.DWORD, w.DWORD, w.DWORD, w.DWORD, c.c_size_t]
     u.SetForegroundWindow(main)
     u.SendMessageW(grid, 0x104, 40, 1 << 29)  # Alt+Down in the focused grid.
-    pick([27], "Keep")
+    pick(None, "Keep")
     # The selected cell's arrow is in the rightmost 18 logical pixels of A1.
     assert u.PostMessageW(grid, 0x201, 1, (35 << 16) | 138)
-    pick([36, 13], "=40+2")
+    pick(0, "=40+2")
 
     def saved(name, extension="xls42", kind="XLS42 workbook"):
         path = output / f"validation-{name}.{extension}"
@@ -1467,7 +1479,7 @@ def audit_validation_choices(process, main, output, results):
     open_fixture(process, main, xlsx)
     u.SetForegroundWindow(main)
     u.SendMessageW(grid, 0x104, 40, 1 << 29)
-    pick([36, 40, 13], "007")
+    pick(1, "007")
     reopened, reopened_rule = content("reopened")
     assert reopened == {"type": "Text", "value": {"raw": "007", "crlf": False}} and reopened_rule == rule
     assert source.read_bytes() == original
@@ -2030,6 +2042,48 @@ def audit_ppt_outline_export(process, main, output, results):
     assert "Second bullet" in rtf_text and "Private" not in rtf_text
     assert text(main) == before and source.read_bytes() == original
     results["checks"].append("PPT42 normal Outline export picker, UTF-8 Markdown escaping and notes, styled Unicode RTF, hidden slide order and unchanged source document")
+
+
+def audit_ppt_slide_images(process, main, output, results):
+    source = output / "ppt-show-hidden.pptx"
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+    caption = text(main)
+
+    def export(filename, options):
+        path = output / filename
+        fill_prompt(process, main, 77, "Export Slide Images", options)
+        choose_file(process, path)
+        return path
+
+    prefix = export("slide-images.png", ["PNG", "1280", "No"])
+    paths = [output / f"slide-images-{index:03}.png" for index in (1, 3)]
+    for path, color in zip(paths, [(200, 20, 20), (20, 20, 200)]):
+        output_ready(process, main, path, b"\x89PNG\r\n\x1a\n")
+        width, height, pixels = png_pixels(path)
+        assert (width, height) == (1280, 720)
+        center = (width * (height // 2) + width // 2) * 4
+        assert pixels[center:center + 4] == bytes([*color, 255])
+    assert not prefix.exists() and not (output / "slide-images-002.png").exists()
+    preserved = [path.read_bytes() for path in paths]
+    export(prefix.name, ["PNG", "1280", "Yes"])
+    collision = wait_for(lambda: next((h for h in windows(process.pid)
+        if classname(h) == "#32770" and "Slide image export destination exists" in
+        " ".join(text(child) for child in windows_for_dialog(h))), None),
+        "slide image destination collision refused", process)
+    click(collision, 1)
+    wait_for(lambda: not u.IsWindowVisible(collision) and u.IsWindowEnabled(main), "slide export collision closed", process)
+    assert [path.read_bytes() for path in paths] == preserved
+    assert not (output / "slide-images-002.png").exists()
+    export("slide-jpeg.jpg", ["JPEG", "1920", "Yes"])
+    for index in (1, 2, 3):
+        path = output / f"slide-jpeg-{index:03}.jpg"
+        output_ready(process, main, path, b"\xff\xd8")
+        jpeg = path.read_bytes()
+        sof = jpeg.index(b"\xff\xc0")
+        assert struct.unpack_from(">HH", jpeg, sof + 5) == (1080, 1920)
+    assert text(main) == caption and source.read_bytes() == original
+    results["checks"].append("PPT42 exports numbered PNG and JPEG through normal settings, actual PNG pixels, selected dimensions and hidden-slide scope, no clobber and unchanged presentation")
 
 
 def audit_preset_shapes(process,main,output,results):
@@ -3485,6 +3539,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
                 audit_ppt_notes(process,main,output,results)
                 audit_ppt_rehearsal(process,main,output,results)
                 audit_ppt_outline_export(process,main,output,results)
+                audit_ppt_slide_images(process,main,output,results)
             return results
         if binary.stem.lower() == "pdf42" and not startup:
             source = output / "input.pdf"

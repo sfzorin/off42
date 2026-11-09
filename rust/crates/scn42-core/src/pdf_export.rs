@@ -1,8 +1,8 @@
 use super::{Page, ScanDocument};
 use image::{codecs::jpeg::JpegEncoder, imageops, ExtendedColorType, RgbImage};
 use lopdf::{dictionary, Document, Object, Stream};
-use std::{io::Write, path::Path};
-use suite42_core::{session::FileIdentity, win32_path, write_new};
+use std::path::Path;
+use suite42_core::{publish_new_files, write_new};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum PdfRaster {
@@ -77,71 +77,12 @@ impl ScanDocument {
             .parent()
             .filter(|p| !p.as_os_str().is_empty())
             .unwrap_or_else(|| Path::new("."));
-        let directory = win32_path(parent).map_err(|error| error.to_string())?;
-        let mut paths = Vec::with_capacity(self.pages().len());
-        for number in 1..=self.pages().len() {
+        let paths = (1..=self.pages().len()).map(|number| {
             let mut name = stem.to_os_string();
             name.push(format!("-{number:03}.pdf"));
-            let target = directory.join(name);
-            match std::fs::symlink_metadata(&target) {
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => paths.push(target),
-                Ok(_) => {
-                    return Err(format!(
-                        "PDF export destination exists: {}",
-                        target.display()
-                    ))
-                }
-                Err(error) => return Err(error.to_string()),
-            }
-        }
-
-        let mut prepared = Vec::with_capacity(paths.len());
-        for (page, target) in self.pages().iter().zip(paths) {
-            let bytes = pdf(std::slice::from_ref(page), options)?;
-            let mut temp =
-                tempfile::NamedTempFile::new_in(&directory).map_err(|error| error.to_string())?;
-            temp.write_all(&bytes)
-                .and_then(|()| temp.as_file().sync_all())
-                .map_err(|error| error.to_string())?;
-            let modified = temp
-                .as_file()
-                .metadata()
-                .and_then(|meta| meta.modified())
-                .ok();
-            let identity = FileIdentity::from_bytes(&bytes, modified);
-            prepared.push((temp, target, identity));
-        }
-
-        let mut published: Vec<(std::path::PathBuf, FileIdentity)> = Vec::new();
-        let result = (|| {
-            for (temp, path, identity) in prepared {
-                drop(
-                    temp.persist_noclobber(&path)
-                        .map_err(|error| error.error.to_string())?,
-                );
-                published.push((path, identity));
-            }
-            Ok(())
-        })();
-        if let Err(error) = result {
-            let mut issues = Vec::new();
-            for (path, identity) in published.into_iter().rev() {
-                if !matches!(FileIdentity::read(&path), Ok(current) if current == identity)
-                    || !identity.metadata_matches(&path).unwrap_or(false)
-                    || std::fs::remove_file(&path).is_err()
-                {
-                    issues.push(path.display().to_string());
-                }
-            }
-            if issues.is_empty() {
-                return Err(error);
-            }
-            return Err(format!(
-                "{error}. Could not roll back: {}",
-                issues.join(", ")
-            ));
-        }
-        Ok(published.into_iter().map(|(path, _)| path).collect())
+            parent.join(name)
+        }).collect();
+        publish_new_files(paths, "PDF", |index| pdf(std::slice::from_ref(&self.pages()[index]), options))
     }
 }
 

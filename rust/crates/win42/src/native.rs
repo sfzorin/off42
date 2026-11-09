@@ -4733,6 +4733,73 @@ unsafe fn draw_scene(dc: HDC, scene: &crate::CanvasScene) {
     draw_scene_items(dc, scene.viewport, &scene.items);
 }
 
+/// Render a document scene against an opaque white background in a top-down RGB raster.
+pub fn render_scene_rgb(
+    mut scene: crate::CanvasScene,
+    logical_size: (f64, f64),
+    pixel_size: (u32, u32),
+) -> Result<Vec<u8>, String> {
+    let (width, height) = pixel_size;
+    let pixels = u64::from(width) * u64::from(height);
+    if width == 0 || height == 0 || pixels > 16_000_000
+        || ![logical_size.0, logical_size.1].iter().all(|value| value.is_finite() && *value > 0.0)
+    {
+        return Err("Invalid slide image size".into());
+    }
+    let zoom = (f64::from(width) / logical_size.0).min(f64::from(height) / logical_size.1);
+    if !zoom.is_finite() || zoom <= 0.0 {
+        return Err("Invalid scene scaling".into());
+    }
+    scene.viewport = crate::Viewport {
+        zoom,
+        pan: crate::Point {
+            x: (f64::from(width) - logical_size.0 * zoom) / 2.0,
+            y: (f64::from(height) - logical_size.1 * zoom) / 2.0,
+        },
+    };
+    unsafe {
+        let mut info: BITMAPINFO = zeroed();
+        info.bmiHeader.biSize = size_of::<BITMAPINFOHEADER>() as u32;
+        info.bmiHeader.biWidth = width as i32;
+        info.bmiHeader.biHeight = -(height as i32);
+        info.bmiHeader.biPlanes = 1;
+        info.bmiHeader.biBitCount = 32;
+        info.bmiHeader.biCompression = BI_RGB;
+        let dc = CreateCompatibleDC(null_mut());
+        if dc.is_null() {
+            return Err("Could not create an image rendering context".into());
+        }
+        let mut bits = null_mut();
+        let bitmap = CreateDIBSection(dc, &info, DIB_RGB_COLORS, &mut bits, null_mut(), 0);
+        let previous = if bitmap.is_null() { null_mut() } else { SelectObject(dc, bitmap) };
+        let output = if bits.is_null() || previous.is_null() || previous as isize == -1 {
+            Err("Could not allocate the slide image".into())
+        } else {
+            let bounds = RECT { left: 0, top: 0, right: width as i32, bottom: height as i32 };
+            FillRect(dc, &bounds, GetStockObject(WHITE_BRUSH) as HBRUSH);
+            let pan = scene.viewport.pan;
+            IntersectClipRect(dc, pan.x.round() as i32, pan.y.round() as i32,
+                (pan.x + logical_size.0 * zoom).round() as i32, (pan.y + logical_size.1 * zoom).round() as i32);
+            draw_scene(dc, &scene);
+            GdiFlush();
+            let bgra = std::slice::from_raw_parts(bits.cast::<u8>(), pixels as usize * 4);
+            let mut rgb = Vec::with_capacity(pixels as usize * 3);
+            for p in bgra.chunks_exact(4) {
+                rgb.extend_from_slice(&[p[2], p[1], p[0]]);
+            }
+            Ok(rgb)
+        };
+        if !previous.is_null() && previous as isize != -1 {
+            SelectObject(dc, previous);
+        }
+        if !bitmap.is_null() {
+            DeleteObject(bitmap);
+        }
+        DeleteDC(dc);
+        output
+    }
+}
+
 unsafe fn draw_scene_items(dc: HDC, viewport: crate::Viewport, items: &[crate::SceneItem]) {
     use crate::{Point, SceneItem};
     let cv = |p: Point| viewport.document_to_view(p);

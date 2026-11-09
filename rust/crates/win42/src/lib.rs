@@ -594,6 +594,8 @@ mod window_layout;
 #[cfg(windows)]
 mod native;
 #[cfg(windows)]
+pub use native::render_scene_rgb;
+#[cfg(windows)]
 mod report;
 #[cfg(any(windows, test))]
 mod note_pagination;

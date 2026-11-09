@@ -3,6 +3,7 @@ use ppt42_core::Presentation;
 use std::path::Path;
 mod outline;
 mod rich;
+mod slide_images;
 mod show_settings;
 use show_settings::ShowSettings;
 fn decode_image(bytes: &[u8]) -> Result<image::DynamicImage, String> {
@@ -1296,13 +1297,28 @@ impl win42::App for Ppt {
             extension: "rtf",
             format: "Rich Text Format",
             pattern: "*.rtf",
+        }, win42::FileAction {
+            id: slide_images::COMMAND,
+            title: "Export Slide Images…",
+            save: true,
+            extension: "png",
+            format: "PNG filename prefix",
+            pattern: "*.png",
         }]
     }
     fn file_input_request(&self, id: u16) -> Option<win42::InputRequest> {
-        (id == 76).then(|| win42::InputRequest {
-            title: "Export Outline",
-            fields: vec![("Format", outline::Output::CHOICES[0].into())],
-        })
+        match id {
+            76 => Some(win42::InputRequest {
+                title: "Export Outline",
+                fields: vec![("Format", outline::Output::CHOICES[0].into())],
+            }),
+            slide_images::COMMAND => Some(win42::InputRequest {
+                title: "Export Slide Images",
+                fields: vec![("Format", "PNG".into()), ("Width in pixels", "1920".into()),
+                    ("Include hidden slides", "No".into())],
+            }),
+            _ => None,
+        }
     }
     fn configured_file_action(&self, id: u16, values: &[String]) -> Result<win42::FileAction, String> {
         let action = self.file_actions().iter().find(|action| action.id == id).copied()
@@ -1310,9 +1326,25 @@ impl win42::App for Ppt {
         if id == 76 && matches!(outline::Output::from_choice(values)?, outline::Output::Markdown) {
             return Ok(win42::FileAction { extension: "md", format: "Markdown", pattern: "*.md", ..action });
         }
+        if id == slide_images::COMMAND && slide_images::Options::parse(values)?.extension() == "jpg" {
+            return Ok(win42::FileAction { extension: "jpg", format: "JPEG filename prefix", pattern: "*.jpg", ..action });
+        }
         Ok(action)
     }
     fn file_action_with_input(&mut self, id: u16, path: &Path, values: &[String]) -> Result<(), String> {
+        if id == slide_images::COMMAND {
+            #[cfg(windows)]
+            {
+                let options = slide_images::Options::parse(values)?;
+                if !path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case(options.extension())) {
+                    return Err("The slide image filename does not match its format".into());
+                }
+                self.finish_rich(true)?;
+                return options.export(self, path);
+            }
+            #[cfg(not(windows))]
+            return Err("Slide image rendering requires Windows".into());
+        }
         if id != 76 {
             return self.file_action(id, path);
         }
@@ -1517,6 +1549,9 @@ impl win42::App for Ppt {
     fn input_choices(&self, id: u16) -> Vec<(usize, Vec<String>)> {
         if id == 76 {
             vec![(0, outline::Output::CHOICES.map(str::to_owned).to_vec())]
+        } else if id == slide_images::COMMAND {
+            vec![(0, slide_images::FORMATS.map(str::to_owned).to_vec()),
+                 (1, slide_images::WIDTHS.map(str::to_owned).to_vec()), (2, vec!["No".into(), "Yes".into()])]
         } else if id == 72 {
             vec![(0, vec!["No".into(), "Yes".into()]), (1, vec!["No".into(), "Yes".into()])]
         } else if matches!(id, 68 | 69) {

@@ -1011,6 +1011,10 @@ complex notes parts are preserved. Notes-page printing remains open.
 Markdown also includes speaker notes as quotations. Hidden slides stay in deck order. The export
 uses the native title and body or recognizes title placeholders in imported PPTX and ODP files.
 
+**File → Export Slide Images** writes PNG or JPEG files at 1280, 1920 or 3840 pixels wide.
+The chosen name becomes a prefix. Each output includes its original slide number, and hidden
+slides are optional. The exporter stages the complete batch and refuses existing destinations.
+
 
 ### Scan PDF exports (development branch)
 

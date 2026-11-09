@@ -177,6 +177,9 @@ dated binary/test/installation evidence with each audit; native action tests and
 - Windows rehearsal reuses the normal slide-show order, transitions and navigation. The host lays out the current
   canvas alongside an independent next-slide preview and a read-only, scrollable notes control. Blanking affects
   the current canvas alone. Ending rehearsal destroys its controls and restores the editor window.
+- Windows slide image exports render the presentation scene in a bounded, opaque offscreen buffer. Batch output
+  preserves original slide numbering and stages every file before publication. A destination conflict leaves
+  existing files intact and rollback removes only outputs whose identities still match the published files.
 - Character/paragraph commands visit visible text containers in nested groups and table cells. Vertical alignment
   targets the edited table cell when one is active, otherwise all selected text containers. Empty-paragraph properties
   are data and must survive commit. The inspector reports effective styles from the same text-container traversal.

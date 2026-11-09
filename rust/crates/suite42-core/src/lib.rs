@@ -1,4 +1,6 @@
 //! Shared bounded history and non-destructive file publication.
+mod batch;
+pub use batch::publish_new_files;
 pub mod ocr;
 pub mod text_search;
 use std::{
