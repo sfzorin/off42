@@ -2943,17 +2943,53 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                         MessageBoxW(hwnd,wide(&text).as_ptr(),wide(&crate::localization::text(title)).as_ptr(),MB_OK|MB_ICONINFORMATION);
                         None
                     }
-                    crate::DialogRequest::SelectionInformation { title, mut text, describe } => {
+                    crate::DialogRequest::RichTextStatistics { title, mut text, describe } => {
                         let (start, end) = crate::rich_edit::selection(edit);
+                        let (document_lines, selected_lines) = crate::rich_edit::layout_line_counts(edit, (start, end));
+                        let lines = crate::localization::text("Lines");
+                        text.push_str(&format!("\n{lines}: {document_lines}"));
                         if start < end {
                             let details = crate::proofing::raw_text_for_search(edit).ok()
                                 .and_then(|raw| raw.get(start..end).and_then(describe))
                                 .unwrap_or_else(|| crate::localization::text("Selection statistics unavailable"));
                             text.push_str("\n\n");
                             text.push_str(&details);
+                            if let Some(count) = selected_lines {
+                                text.push_str(&format!("\n{lines}: {count}"));
+                            }
                         }
                         MessageBoxW(hwnd, wide(&text).as_ptr(), wide(&crate::localization::text(title)).as_ptr(), MB_OK | MB_ICONINFORMATION);
                         return;
+                    }
+                    crate::DialogRequest::GridChoices { values, checked } => {
+                        let grid = STATE.with(|slot| slot.borrow().as_ref().unwrap().table);
+                        let menu = CreatePopupMenu();
+                        if menu.is_null() {
+                            msg(hwnd, "Could not open the value list", MB_OK | MB_ICONERROR);
+                            return;
+                        }
+                        let added = values.iter().enumerate().all(|(index, value)| {
+                            let label = if value.is_empty() {
+                                crate::localization::text("(Blank)")
+                            } else {
+                                value.chars().map(|c| if c.is_control() { ' ' } else { c })
+                                    .collect::<String>().replace('&', "&&")
+                            };
+                            let flags = MF_STRING | if checked == Some(index) { MF_CHECKED } else { 0 };
+                            AppendMenuW(menu, flags, index + 1, wide(&label).as_ptr()) != 0
+                        });
+                        let anchor = crate::grid::choice_anchor(grid);
+                        let chosen = if added {
+                            TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY, anchor.x, anchor.y, 0, hwnd, null())
+                        } else {
+                            0
+                        };
+                        DestroyMenu(menu);
+                        if !added {
+                            msg(hwnd, "Could not open the value list", MB_OK | MB_ICONERROR);
+                        }
+                        (chosen as usize).checked_sub(1).and_then(|index| values.into_iter().nth(index))
+                            .map(crate::DialogResult::GridChoice)
                     }
                     crate::DialogRequest::Color(c) => {
                         crate::dialogs::color(hwnd, c).map(crate::DialogResult::Color)
@@ -5840,6 +5876,7 @@ pub(super) fn grid_snapshot() -> Option<crate::grid::Snapshot> {
             frozen: s.app.grid_frozen_panes(),
             readonly: s.app.text_readonly(),
             clipboard: s.app.grid_clipboard_commands(),
+            choice: s.app.grid_choice_command(),
             pictures: s.app.grid_pictures(),
         })
     })

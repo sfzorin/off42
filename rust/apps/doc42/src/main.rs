@@ -2198,7 +2198,7 @@ impl App for Doc {
     }
     fn dialog_request(&self, id: u16) -> Option<DialogRequest> {
         match id {
-            360 => Some(DialogRequest::SelectionInformation {
+            360 => Some(DialogRequest::RichTextStatistics {
                 title: "Statistics",
                 text: format!("{}\n{}", win42::localization::text("Document"), statistics_text(self.doc.statistics())),
                 describe: |units| {
@@ -3714,7 +3714,7 @@ mod statistics_tests {
         assert!(app.doc.editor_text().is_err());
         let before = app.doc.encode(Format::Project).unwrap();
         assert!(app.command_state(360).enabled);
-        let Some(DialogRequest::SelectionInformation { title, text, .. }) = app.dialog_request(360) else {
+        let Some(DialogRequest::RichTextStatistics { title, text, .. }) = app.dialog_request(360) else {
             panic!("Expected read-only statistics")
         };
         assert_eq!(title, "Statistics");

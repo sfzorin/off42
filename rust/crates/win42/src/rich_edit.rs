@@ -1,7 +1,7 @@
 use std::ptr;
 use windows_sys::Win32::{
     Foundation::{HWND, LPARAM},
-    UI::WindowsAndMessaging::{SendMessageW, WM_USER},
+    UI::{Controls::EM_GETLINECOUNT, WindowsAndMessaging::{SendMessageW, WM_USER}},
 };
 const EM_STREAMIN: u32 = WM_USER + 73;
 const EM_STREAMOUT: u32 = WM_USER + 74;
@@ -89,6 +89,19 @@ pub unsafe fn selection(hwnd: HWND) -> (usize, usize) {
     let mut range = CharRange { min: 0, max: 0 };
     SendMessageW(hwnd, EM_EXGETSEL, 0, &mut range as *mut _ as LPARAM);
     (range.min.max(0) as usize, range.max.max(0) as usize)
+}
+pub(crate) unsafe fn layout_line_counts(hwnd: HWND, selected: (usize, usize)) -> (usize, Option<usize>) {
+    const EM_EXLINEFROMCHAR: u32 = WM_USER + 54;
+    let document = SendMessageW(hwnd, EM_GETLINECOUNT, 0, 0).max(0) as usize;
+    let (start, end) = selected;
+    let selection = if start < end && end <= i32::MAX as usize {
+        let first = SendMessageW(hwnd, EM_EXLINEFROMCHAR, 0, start as isize);
+        let last = SendMessageW(hwnd, EM_EXLINEFROMCHAR, 0, (end - 1) as isize);
+        (first >= 0 && last >= first).then(|| (last - first + 1) as usize)
+    } else {
+        None
+    };
+    (document, selection)
 }
 pub unsafe fn set_selection(hwnd: HWND, selection: (usize, usize)) {
     let range = CharRange {

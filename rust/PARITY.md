@@ -14,7 +14,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers, PDF page/region and DOC picture artwork | Vector fidelity for mixed DOC selections; precise picture/caret integration |
 | Printing | Verified File/Ctrl+P dialogs in all six apps; actual-size label and centered/shrink-only PDF paths, per-printer calibration and measurement sheet | Printer copies/calibration scenarios and physical driver checks |
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction, bounded offline OCR, detached CMS verification, certificate-signed copies and byte-preserving signature-field views | Richer forms, visible and additional signatures, timestamp/revocation validation, remote signing and CryptoPro integration |
-| DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured Find/Replace with case, whole words, regex captures and next/previous, body/selection text statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, broader regex syntax and cross-paragraph rich replacement, table/image editing caret mapping, layout counts and dictionary word segmentation, picture geometry and rich page decorations |
+| DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured Find/Replace with case, whole words, regex captures and next/previous, body/selection text and editor-line statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, broader regex syntax and cross-paragraph rich replacement, table/image editing caret mapping, page counts and dictionary word segmentation, picture geometry and rich page decorations |
 | XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, remaining virtual-area range tools, legacy arrays, full floating-object editing, advanced filtering, locale-aware sort collation/preferences, validation controls, outlines/subtotals, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, speaker-notes editing with PPTX/ODP persistence, basic transitions, windowed/fullscreen show navigation, hidden slides, loop/blank controls, single-window presenter rehearsal, RTF/Markdown outline exports, PPTX/ODP and printing | Rich notes and notes-page output, custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, dual-display presenter view, ink/laser/overview and PDF/image/movie exports |
 | IMG42 | Image decoding, transforms, adjustments, freehand and edge-refined selections, recognized text selection/copy, metadata and batch output | Full markup selection/editing, subject-mask guidance for Smart Lasso, full Live Text interaction, background removal, viewing panels and additional supported system codecs |
@@ -918,4 +918,16 @@ after image selection; image unit regressions are now included in quick CI.
 - DOC42 Statistics shows body and selection counts together. It uses the actual Win32 Rich Edit
   UTF-16 range to count words, graphemes and nonempty paragraphs across table cells and images.
   Structural markers are excluded. A native cross-table/image range and selection preservation
-  check awaits a compatible build. Page and laid-out line counts remain open.
+  check awaits a compatible build. Editor-line counts use the Rich Edit layout and actual selection
+  endpoints. Paginated page counts remain open.
+- Run 42691396652 (87c8f4a) passed all 37 native groups and MSVC 595/0/1. PPT42 rehearsal verified
+  both rendered slide previews, scrollable notes, timer, hidden-slide order, native buttons and exit.
+- Run 42692057667 (439d680) passed all 37 native groups and MSVC 596/0/1. PPT42 verified both
+  outline formats through the picker, Unicode and literal Markdown, notes and unchanged source.
+- Run 42692578861 (2c4a7e3) passed all 37 native groups and MSVC 597/0/1. DOC42 verified
+  selection counts inside a table and spanning tables and an image, with unchanged selection and history.
+- XLS42 provides a native active-cell list-validation popup from the arrow, Alt+Down or Cells menu.
+  Exact option text is retained through the typed-cell write path in one history step. Portable tests
+  verify literal formula-like strings, rejection, blank, and Undo/Redo. Native popup interaction,
+  standard XLSX list metadata and reopen await a compatible build. General external validation import
+  and ODS validation output remain open.

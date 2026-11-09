@@ -55,6 +55,26 @@ impl Workbook {
     pub fn validations(&self) -> &[DataValidation] {
         &self.history.current().sheet().validations
     }
+    pub fn validation_at(&self, row: usize, col: usize) -> Option<&DataValidation> {
+        self.validations().iter().find(|rule| contains(rule.range, row, col))
+    }
+    pub fn set_list_choice(&mut self, row: usize, col: usize, value: String) -> Result<bool, Error> {
+        self.require_editable()?;
+        if self.is_protected() {
+            return Err(Error::Protected);
+        }
+        let rule = self.validation_at(row, col).ok_or(Error::Invalid("No list validation for this cell"))?;
+        let ValidationKind::List { values } = &rule.kind else {
+            return Err(Error::Invalid("No list validation for this cell"));
+        };
+        if !(rule.allow_blank && value.is_empty() || values.contains(&value)) {
+            return Err(Error::Invalid("This value is no longer available"));
+        }
+        if self.cell(row, col) == Some(value.as_str()) {
+            return Ok(false);
+        }
+        self.set_content(row, col, CellContent::Text(TextValue::from_raw(value)))
+    }
     pub fn add_validation(&mut self, rule: DataValidation) -> Result<bool, Error> {
         self.require_structural_edit()?;
         let mut st = self.history.current().clone();
@@ -230,6 +250,34 @@ pub(super) fn validate_mapped(state: &State, rows: &[usize], cols: &[usize]) -> 
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod list_choice_tests {
+    use super::*;
+
+    #[test]
+    fn list_choices_use_literal_text_and_a_single_history_entry() {
+        let mut book = Workbook::new(2, 2).unwrap();
+        book.set_cell(0, 0, "Keep".into()).unwrap();
+        let range = Range { top: 0, left: 0, bottom: 0, right: 0 };
+        book.add_validation(DataValidation {
+            range,
+            allow_blank: true,
+            kind: ValidationKind::List { values: vec!["=40+2".into(), "007".into()] },
+        }).unwrap();
+        assert!(book.set_list_choice(0, 0, "=40+2".into()).unwrap());
+        assert!(matches!(book.content(0, 0), Some(CellContent::Text(value)) if value.raw() == "=40+2"));
+        assert!(!book.set_list_choice(0, 0, "=40+2".into()).unwrap());
+        assert!(book.set_list_choice(0, 0, "other".into()).is_err());
+        assert!(book.undo());
+        assert_eq!(book.cell(0, 0), Some("Keep"));
+        assert!(book.redo());
+        assert_eq!(book.cell(0, 0), Some("=40+2"));
+        assert!(book.set_list_choice(0, 0, String::new()).unwrap());
+        assert_eq!(book.cell(0, 0), Some(""));
+        assert!(book.set_list_choice(1, 0, "007".into()).is_err());
+    }
 }
 pub(super) fn validate_range(state: &State, range: Range) -> Result<(), Error> {
     let sheet = state.sheet();

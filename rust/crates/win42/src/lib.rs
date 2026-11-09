@@ -482,6 +482,9 @@ pub trait App {
     fn grid_clipboard_commands(&self) -> Option<(u16, u16)> {
         None
     }
+    fn grid_choice_command(&self) -> Option<u16> {
+        None
+    }
     /// Sheet names and selected index for grid-based applications.
     fn grid_sheets(&self) -> Option<(Vec<String>, usize)> {
         None
@@ -1254,11 +1257,12 @@ pub enum DialogRequest {
         title: &'static str,
     },
     Information { title: &'static str, text: String },
-    SelectionInformation {
+    RichTextStatistics {
         title: &'static str,
         text: String,
         describe: fn(&[u16]) -> Option<String>,
     },
+    GridChoices { values: Vec<String>, checked: Option<usize> },
     Color([u8; 3]),
     Font,
     PageSetup(PageMargins),
@@ -1266,6 +1270,7 @@ pub enum DialogRequest {
 #[derive(Clone, Debug)]
 pub enum DialogResult {
     Confirmed(bool),
+    GridChoice(String),
     Files{inputs:Vec<std::path::PathBuf>,output:std::path::PathBuf},
     Color([u8; 3]),
     Font(FontChoice),

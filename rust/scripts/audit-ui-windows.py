@@ -989,10 +989,15 @@ def audit_rich_search(process,main,binary,output,results):
         value=" ".join(text(h)for h in windows_for_dialog(dialog))
         document, _, part = value.partition("Selection\n")
         assert "Words: 8" in document and f"Characters (with spaces): {characters}" in document and f"Characters (no spaces): {characters-5}" in document and "Paragraphs: 4" in document,value
+        lines = bounded_send(edit, 0xBA)  # EM_GETLINECOUNT
+        assert lines >= 4 and f"Lines: {lines}" in document, value
         if selected is not None:
             words, count, nonspace, paragraphs = selected
             assert (f"Words: {words}\n" in part and f"Characters (with spaces): {count}\n" in part
                     and f"Characters (no spaces): {nonspace}\n" in part and f"Paragraphs: {paragraphs}" in part), value
+            first = bounded_send(edit, 0x400 + 54, 0, before[0])
+            last = bounded_send(edit, 0x400 + 54, 0, before[1] - 1)
+            assert first <= last < lines and f"Lines: {last - first + 1}" in part, value
         elif before[0] == before[1]:
             assert not part and "Selection statistics unavailable" not in value, value
         click(dialog,1)
@@ -1398,6 +1403,75 @@ def audit_advanced_sort(process,main,binary,output,results):
     command(main,4);undo=saved('full-undo');assert undo['sheets']==before['sheets']and undo['selection']==before['selection'];command(main,5);redo=saved('full-redo');assert redo['sheets']==changed['sheets']and redo['selection']==changed['selection']
     replace_editor_text(u.GetDlgItem(main,101),'99');open_fixture(process,main,output/'sort-full-redo.xls42');assert cells(saved('full-reopened'))==cells(changed);assert source.read_bytes()==source_bytes
     results['checks'].append('normal Advanced Sort multiline keys and choices; custom priorities, natural part numbers, stable header and complete rows; horizontal column sort translates every formula and independently checked XLSX caches; full Excel-size sparse row sort moves XFD data; complete dimensions/data/selection Undo/Redo, XLSX/ODS and native reopen; sources unchanged')
+
+
+def audit_validation_choices(process, main, output, results):
+    import xml.etree.ElementTree as ET
+
+    source = output / "validation-source.csv"
+    source.write_text("Keep\n", encoding="utf-8")
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+    grid, edit = u.GetDlgItem(main, 102), u.GetDlgItem(main, 101)
+    fill_prompt(process, main, 42, "List validation", ["=40+2;007;Yes;R&D", "yes"])
+
+    def popup():
+        return next((h for h in windows(process.pid) if classname(h) == "#32768"), None)
+
+    def key(code):
+        u.keybd_event(code, 0, 0, 0)
+        u.keybd_event(code, 0, 2, 0)
+
+    def pick(keys, expected):
+        wait_for(popup, "native list-validation popup", process)
+        for code in keys:
+            key(code)
+        wait_for(lambda: not popup() and text(edit) == expected, "list-validation popup closed", process)
+
+    u.keybd_event.argtypes = [c.c_ubyte, c.c_ubyte, w.DWORD, c.c_size_t]
+    u.SetForegroundWindow(main)
+    u.SendMessageW(grid, 0x104, 40, 1 << 29)  # Alt+Down in the focused grid.
+    pick([27], "Keep")
+    # The selected cell's arrow is in the rightmost 18 logical pixels of A1.
+    assert u.PostMessageW(grid, 0x201, 1, (35 << 16) | 138)
+    pick([36, 13], "=40+2")
+
+    def saved(name, extension="xls42", kind="XLS42 workbook"):
+        path = output / f"validation-{name}.{extension}"
+        save_as(main)
+        choose_file(process, path, format_name=kind)
+        output_ready(process, main, path, b"{" if extension == "xls42" else b"PK")
+        return path
+
+    def content(name):
+        sheet = json.loads(saved(name).read_text(encoding="utf-8"))["sheets"][0]
+        cell = next(c for c in sheet["cells"] if (c["row"], c["col"]) == (0, 0))
+        return cell["content"], sheet["validations"]
+
+    chosen, rule = content("chosen")
+    assert chosen == {"type": "Text", "value": {"raw": "=40+2", "crlf": False}}
+    command(main, 4)
+    undone, undo_rule = content("undo")
+    assert undone["value"]["raw"] == "Keep" and undo_rule == rule
+    command(main, 5)
+    assert content("redo") == (chosen, rule)
+    xlsx = saved("exported", "xlsx", "Excel workbook")
+    ns = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    with zipfile.ZipFile(xlsx) as package:
+        root = ET.fromstring(package.read("xl/worksheets/sheet1.xml"))
+        cell = root.find(".//s:c[@r='A1']", ns)
+        assert cell.get("t") in {"s", "inlineStr"} and cell.find("s:f", ns) is None
+        validation = root.find(".//s:dataValidation", ns)
+        assert validation.get("type") == "list" and validation.get("sqref") == "A1"
+    open_fixture(process, main, source)
+    open_fixture(process, main, xlsx)
+    u.SetForegroundWindow(main)
+    u.SendMessageW(grid, 0x104, 40, 1 << 29)
+    pick([36, 40, 13], "007")
+    reopened, reopened_rule = content("reopened")
+    assert reopened == {"type": "Text", "value": {"raw": "007", "crlf": False}} and reopened_rule == rule
+    assert source.read_bytes() == original
+    results["checks"].append("XLS42 list validation uses an active-cell arrow and Alt+Down native popup, Cancel, typed literal and leading zeros, Undo/Redo, standard XLSX list metadata and normal reopen")
 
 
 def audit_grid_expansion(process,main,binary,output,results):
@@ -3441,6 +3515,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_sheet_tabs(process,main,binary,output,results)
             audit_grid_expansion(process,main,binary,output,results)
             audit_advanced_sort(process,main,binary,output,results)
+            audit_validation_choices(process,main,output,results)
             audit_ods_number_formats(process,main,binary,output,results)
         if statistical_formulas and binary.stem.lower()=="xls42":
             audit_statistical_formulas(process,main,output,binary,results)

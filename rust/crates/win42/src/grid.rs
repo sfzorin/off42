@@ -12,6 +12,7 @@ use windows_sys::Win32::{
     System::LibraryLoader::GetModuleHandleW,
     UI::{
         Controls::{SetScrollInfo, EM_SETSEL},
+        HiDpi::GetDpiForWindow,
         Input::KeyboardAndMouse::{
             GetKeyState, ReleaseCapture, SetCapture, SetFocus, VK_CONTROL, VK_DELETE, VK_DOWN,
             VK_END, VK_ESCAPE, VK_F2, VK_HOME, VK_LEFT, VK_NEXT, VK_PRIOR, VK_RETURN, VK_RIGHT,
@@ -30,6 +31,7 @@ pub(super) struct Snapshot {
     pub readonly: bool,
     pub frozen: (usize, usize),
     pub clipboard: Option<(u16, u16)>,
+    pub choice: Option<u16>,
     pub pictures: Vec<crate::GridPicture>,
 }
 const HEADER: i32 = 25;
@@ -179,6 +181,42 @@ fn rect_from_tuple(v: (i32, i32, i32, i32)) -> RECT {
     }
 }
 
+fn choice_button(snap: &Snapshot, st: &GridState, client: RECT, width: i32) -> Option<RECT> {
+    let (row, column) = snap.selected?;
+    snap.choice?;
+    if !st.editor.is_null() || st.preview_selection.is_some() {
+        return None;
+    }
+    let merged = super::native::grid_style(row, column).and_then(|style| style.merged);
+    let preferred = st.focus_pane.unwrap_or((row < snap.frozen.0, column < snap.frozen.1));
+    let fragment = cell_fragment(row, column, merged, &snap.widths, &snap.heights, st,
+        snap.frozen, (client.right, client.bottom), preferred)?;
+    let (left, top, right, bottom) = fragment.visible;
+    (right - left >= width && bottom - top >= 10).then_some(RECT {
+        left: right - width, top, right, bottom,
+    })
+}
+
+pub(super) unsafe fn choice_anchor(hwnd: HWND) -> POINT {
+    let mut client = RECT::default();
+    GetClientRect(hwnd, &mut client);
+    let rect = super::native::grid_snapshot().and_then(|snap| {
+        choice_button(&snap, state(hwnd)?, client, choice_width(hwnd))
+    });
+    let mut point = rect.map_or(POINT { x: ROW_HEADER, y: HEADER }, |rect| POINT { x: rect.left, y: rect.bottom });
+    ClientToScreen(hwnd, &mut point);
+    point
+}
+
+unsafe fn choice_width(hwnd: HWND) -> i32 {
+    (18 * GetDpiForWindow(hwnd).max(96) / 96) as i32
+}
+
+unsafe fn post_choice(hwnd: HWND, id: u16) {
+    SetFocus(hwnd);
+    PostMessageW(GetParent(hwnd), WM_COMMAND, id as usize, 0);
+}
+
 unsafe fn update_scroll(hwnd: HWND) {
     let Some((old_x,old_y))=state(hwnd).map(|s|(s.x,s.y))else{return};
     let Some(snap)=super::native::grid_snapshot()else{return};
@@ -209,6 +247,7 @@ unsafe fn paint(hwnd: HWND) {
     let dc = BeginPaint(hwnd, &mut ps);
     let mut rc = RECT::default();
     GetClientRect(hwnd, &mut rc);
+    let choice = choice_button(&snap, st, rc, choice_width(hwnd));
     fill(dc, &rc, [255, 255, 255]);
     let save = SaveDC(dc);
     IntersectClipRect(dc, ROW_HEADER, HEADER, rc.right, rc.bottom);
@@ -270,12 +309,17 @@ unsafe fn paint(hwnd: HWND) {
             fill(dc, &rect, bg);
             let fg = style.foreground.unwrap_or([0; 3]);
             let value = snap.rows.cell(ar,ac);
-            let inner = RECT {
+            let mut inner = RECT {
                 left: rect.left + 4,
                 top: rect.top,
                 right: rect.right - 3,
                 bottom: rect.bottom,
             };
+            if Some((ar, ac)) == snap.selected {
+                if let Some(button) = choice.filter(|button| button.top == fragment.visible.1 && button.right == fragment.visible.2) {
+                    inner.right = inner.right.min(button.left - 2);
+                }
+            }
             text(dc, inner, value, fg, style.bold, style.italic, false);
             line(
                 dc,
@@ -402,6 +446,10 @@ unsafe fn paint(hwnd: HWND) {
                 RestoreDC(dc, pane);
             }
         }
+    }
+    if let Some(button) = choice {
+        let mut button = button;
+        DrawFrameControl(dc, &mut button, DFC_SCROLL, DFCS_SCROLLDOWN);
     }
     RestoreDC(dc, save);
     let header = RECT {
@@ -990,6 +1038,16 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LR
             let Some(snap) = super::native::grid_snapshot() else {
                 return 0;
             };
+            if let Some(id) = snap.choice {
+                let mut client = RECT::default();
+                GetClientRect(hwnd, &mut client);
+                if state(hwnd).and_then(|st| choice_button(&snap, st, client, choice_width(hwnd)))
+                    .is_some_and(|button| PtInRect(&button, POINT { x, y }) != 0)
+                {
+                    post_choice(hwnd, id);
+                    return 0;
+                }
+            }
             let Some((sx, sy, old_anchor)) = state(hwnd).map(|s| (s.x, s.y, s.anchor)) else {
                 return 0;
             };
@@ -1322,6 +1380,13 @@ unsafe extern "system" fn proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LR
             0
         }
         WM_GETDLGCODE => DLGC_WANTARROWS as isize | DLGC_WANTCHARS as isize | DLGC_WANTTAB as isize,
+        WM_SYSKEYDOWN if w as u16 == VK_DOWN && (l as usize & (1 << 29)) != 0 => {
+            if let Some(id) = super::native::grid_snapshot().and_then(|snap| snap.choice) {
+                post_choice(hwnd, id);
+                return 0;
+            }
+            DefWindowProcW(hwnd, WM_SYSKEYDOWN, w, l)
+        }
         WM_KEYDOWN => {
             let key = w as u16;
             if key == VK_ESCAPE {

@@ -11,6 +11,7 @@ use xls42_core::{
     PivotAggregate, Range, SheetFilter, ValidationKind, Workbook,
 };
 type PictureCache = std::collections::BTreeMap<u64, (std::sync::Arc<[u8]>, std::sync::Arc<[u8]>)>;
+const VALIDATION_CHOICE: u16 = 86;
 struct Xls {
     goal_seek:goal_seek::Session,
     solver:solver::Session,
@@ -24,6 +25,11 @@ struct Xls {
     selected_picture: Option<u64>,
 }
 impl Xls {
+    fn validation_values(&self) -> Option<(&[String], bool)> {
+        let rule = self.book.validation_at(self.row, self.col)?;
+        let ValidationKind::List { values } = &rule.kind else { return None };
+        Some((values, rule.allow_blank && !values.iter().any(String::is_empty)))
+    }
     fn normalize_focus(&mut self) {
         let view = self.book.sheet_view();
         if view.hidden_rows.contains(&self.row) {
@@ -318,6 +324,7 @@ impl win42::App for Xls {
             (41, "Validate numeric range..."),
             (42, "Validate list..."),
             (43, "Remove validation"),
+            (VALIDATION_CHOICE, "Choose Allowed Value…"),
             (44, "Conditional formatting..."),
             (45, "Remove conditional formatting"),
             (50, "Insert chart..."),
@@ -449,6 +456,16 @@ impl win42::App for Xls {
             }));
         }
         match id {
+            VALIDATION_CHOICE if self.enabled(id) => {
+                let (values, blank) = self.validation_values()?;
+                let mut values = values.to_vec();
+                if blank {
+                    values.push(String::new());
+                }
+                let current = self.book.cell(self.row, self.col).unwrap_or_default();
+                let checked = values.iter().position(|value| value == current);
+                Some(win42::DialogRequest::GridChoices { values, checked })
+            }
             34 => Some(win42::DialogRequest::Font),
             35 | 36 => {
                 let s = self.book.style(self.row, self.col).cloned().unwrap_or_default();
@@ -464,6 +481,15 @@ impl win42::App for Xls {
         }
     }
     fn dialog_result(&mut self, id: u16, result: win42::DialogResult) -> Result<(), String> {
+        if let (VALIDATION_CHOICE, win42::DialogResult::GridChoice(value)) = (id, &result) {
+            if !self.enabled(id) {
+                return Err("This value is no longer available".into());
+            }
+            if self.book.set_list_choice(self.row, self.col, value.clone()).map_err(|error| error.to_string())? {
+                self.clear_visible_cache();
+            }
+            return Ok(());
+        }
         if let (solver::RESULT,win42::DialogResult::Confirmed(keep))=(id,&result){self.solver.accept(&mut self.book,*keep)?;self.clear_visible_cache();return Ok(());}
         if let (goal_seek::RESULT,win42::DialogResult::Confirmed(keep))=(id,&result){self.goal_seek.accept(&mut self.book,*keep)?;self.clear_visible_cache();return Ok(());}
         if let (60, win42::DialogResult::PageSetup(p)) = (id, &result) {
@@ -1094,6 +1120,9 @@ impl win42::App for Xls {
     fn uses_custom_grid(&self) -> bool {
         true
     }
+    fn grid_choice_command(&self) -> Option<u16> {
+        self.enabled(VALIDATION_CHOICE).then_some(VALIDATION_CHOICE)
+    }
     fn grid_frozen_panes(&self) -> (usize, usize) {
         let rows = self.book.sheet_view().frozen_rows;
         let visible = self.visible_rows().partition_point(|row|*row<rows);
@@ -1494,6 +1523,15 @@ impl win42::App for Xls {
     }
     fn enabled(&self, id: u16) -> bool {
         match id {
+            VALIDATION_CHOICE => {
+                !self.book.is_read_only() && !self.book.is_protected() && self.preview.is_none()
+                    && self.selected_picture.is_none() && !self.solver.running() && !self.goal_seek.running()
+                    && self.validation_values().is_some()
+                    && !self.book.merges().iter().any(|m| {
+                        (m.top..=m.bottom).contains(&self.row) && (m.left..=m.right).contains(&self.col)
+                            && (self.row, self.col) != (m.top, m.left)
+                    })
+            }
             sorting::COMMAND=>!self.book.is_read_only()&&!self.book.is_protected()&&!self.book.has_external_source()&&self.preview.is_none(),
             solver::START=>!self.solver.running()&&!self.goal_seek.running()&&!self.book.is_read_only()&&!self.book.is_protected()&&self.preview.is_none(),
             solver::CANCEL=>self.solver.running(),

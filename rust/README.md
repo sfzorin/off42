@@ -316,10 +316,11 @@ This is a development artifact, separate from the public preview.3 download; it 
 ## Body statistics and statistical formulas (development branch)
 
 DOC42's **Statistics…** dialog counts body words, grapheme characters with/without spaces and nonempty
-paragraphs. When text is selected, it shows the same counts for the selected native range, including across
-table cells and images. The status bar shows the whole body word count. Statistics exclude notes, comments,
-image alternate text and page decorations. Counting preserves the selection and document history. Dictionary
-segmentation, page counts and laid-out line counts remain work.
+paragraphs and displayed lines. When text is selected, it shows the same counts for the selected native
+range, including across table cells and images. The line count follows the current editor layout and wrapping.
+The status bar shows the whole body word count. Text statistics exclude notes, comments, image alternate text
+and page decorations. Counting preserves the selection and document history. Dictionary segmentation and
+paginated page counts remain work.
 
 XLS42 adds descriptive statistics, ranks/percentiles/quartiles, regression/covariance and probability
 distributions/inverses (normal, lognormal, Student t, chi-square, F, gamma, beta, binomial and Poisson),
@@ -957,6 +958,11 @@ column direction, case sensitivity, natural ASCII digit segments and custom prio
 Sorting traverses stored keys/cells and computes blank-line positions algebraically, including full-sheet
 selections and distant XFD data. It preserves cell contents/styles and translates relative formula references.
 Key slots are bounded to one million; merged/array/spill blocks and failed validation refuse atomically.
+
+For a supported list-validation rule, select the cell and click its arrow or press **Alt+Down**.
+The **Cells → Choose Allowed Value** command opens the same list. Choices preserve text such as
+`007` and formula-like identifiers literally. Applying a value is one Undo step. Supported rules
+are retained in native projects and off42-generated XLSX files.
 Foreign Office source packages retain their existing sort-preservation guard. Unicode lexical text ordering
 does not establish every locale's collation; custom-list preferences remain open. Tests verify full-sheet/
 multikey/horizontal sorting, types, exact history and native Office round trips; numeric-format XLSX retains
