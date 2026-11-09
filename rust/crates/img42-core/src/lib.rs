@@ -1,6 +1,7 @@
 //! Portable raster editor with bounded codecs and versioned image snapshots.
 mod exif_metadata;
 mod recovery;
+mod smart_lasso;
 use image::{ImageFormat, ImageReader, Limits};
 use std::{
     fmt,
@@ -1158,6 +1159,9 @@ impl ImageDocument {
     }
     pub fn pixels(&self) -> &[u8] {
         &self.current.pixels
+    }
+    pub fn refine_lasso(&self, trace: &[(u32, u32)], radius: f64) -> Option<Vec<(u32, u32)>> {
+        smart_lasso::refine(self, trace, radius)
     }
     pub fn capture_image(&self) -> ImageSnapshot { ImageSnapshot(self.current.clone()) }
     pub fn matches_image(&self, source: &ImageSnapshot) -> bool {

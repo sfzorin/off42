@@ -338,7 +338,10 @@ def png_pixels(path):
                 assert mode == 0
                 predictor = 0
             line[index] = (line[index] + predictor) & 255
-        rows.extend(line[i:i + 3] + b"\xff" for i in range(0, stride, channels))
+        if channels == 4:
+            rows.append(line)
+        else:
+            rows.extend(line[i:i + 3] + b"\xff" for i in range(0, stride, channels))
         previous = line
     return width, height, b"".join(rows)
 
@@ -2406,6 +2409,79 @@ def audit_bundled_ocr(process,main,binary,output,results):
     results['checks'].append('bundled static OCR recognizes real image pixels offline through native settings; selected page only, independent PDFium text/exact pixels, one-step Undo/Redo and saved reopen'+('; PDF crop/rotation retained, own layer replaced without duplicate text, settings and worker Cancel leave no OCR'if is_pdf else '; project retains recognized text'))
 
 
+def audit_smart_lasso(process, main, output, results):
+    source = output / "smart-lasso-source.png"
+    target = [32 <= x < 96 and 32 <= y < 96 for y in range(128) for x in range(128)]
+    original_pixels = b"".join(bytes([20, 20, 20, 255] if inside else [240, 240, 240, 255]) for inside in target)
+    write_png(source, 128, 128, original_pixels)
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+    u.SendMessageW(main, WM_COMMAND, 13, 0)  # 80% zoom from Fit to Window.
+    u.SendMessageW(main, WM_COMMAND, 50, 0)
+    canvas = wait_for(lambda: next((h for h in windows(process.pid, main)
+        if classname(h) == "Suite42Canvas" and u.IsWindowVisible(h)), None),
+        "smart lasso canvas visible", process)
+    rect = w.RECT()
+    assert u.GetClientRect(canvas, c.byref(rect))
+    scale = 0.8
+
+    def point(x, y):
+        px = round((rect.right - 128 * scale) / 2 + x * scale)
+        py = round((rect.bottom - 128 * scale) / 2 + y * scale)
+        return (py << 16) | px
+
+    def send(message, x, y):
+        u.SendMessageW(canvas, message, 1 if message != 0x202 else 0, point(x, y))
+
+    send(0x201, 25, 25)
+    send(0x200, 103, 25)
+    u.SendMessageW(canvas, 0x100, 27, 0)
+    assert u.GetMenuState(u.GetMenu(main), 51, 0) & 3
+    send(0x201, 25, 25)
+    send(0x200, 103, 25)
+    send(0x200, 103, 103)
+    send(0x200, 25, 103)
+    u.RedrawWindow.argtypes = [w.HWND, c.c_void_p, c.c_void_p, w.UINT]
+    u.RedrawWindow(canvas, None, None, 0x101)
+    capture_window(main, output / "IMG42-smart-lasso-drag.bmp")
+    send(0x202, 25, 25)
+    assert " * - " not in text(main)
+    command(main, 51)
+    selected_path = output / "smart-lasso-selected.png"
+    choose_file(process, selected_path, format_name="PNG image")
+    output_ready(process, main, selected_path, b"\x89PNG\r\n\x1a\n")
+    width, height, selected = png_pixels(selected_path)
+    assert (width, height) == (128, 128)
+    actual = [alpha == 255 for alpha in selected[3::4]]
+    intersection = sum(a and b for a, b in zip(actual, target))
+    union = sum(a or b for a, b in zip(actual, target))
+    assert intersection / union > 0.93, (intersection, union)
+    expected_selected = b"".join(original_pixels[i * 4:i * 4 + 4] if inside else b"\0" * 4
+                                 for i, inside in enumerate(actual))
+    assert selected == expected_selected
+
+    def saved(suffix):
+        path = output / f"smart-lasso-{suffix}.png"
+        save_as(main)
+        choose_file(process, path, format_name="PNG image")
+        output_ready(process, main, path, b"\x89PNG\r\n\x1a\n")
+        return path
+
+    command(main, 35)
+    removed = saved("removed")
+    expected_removed = b"".join(b"\0" * 4 if inside else original_pixels[i * 4:i * 4 + 4]
+                                for i, inside in enumerate(actual))
+    assert png_pixels(removed) == (128, 128, expected_removed)
+    command(main, 4)
+    assert png_pixels(saved("undo")) == (128, 128, original_pixels)
+    command(main, 5)
+    assert png_pixels(saved("redo")) == (128, 128, expected_removed)
+    open_fixture(process, main, removed)
+    assert png_pixels(saved("reopened")) == (128, 128, expected_removed)
+    assert source.read_bytes() == original
+    results["checks"].append("IMG42 native Smart Lasso drag and Escape, edge-snapped PNG selection with measured alpha overlap, ordinary File export, complementary delete pixels, exact Undo/Redo and PNG reopen")
+
+
 def audit_image_live_text(process,main,binary,output,results):
     folder=output/'live-text-images';folder.mkdir()
     first=folder/'a-text.png';first.write_bytes((Path(__file__).resolve().parent.parent/'crates/win42/fixtures/ocr-english.png').read_bytes())
@@ -2833,6 +2909,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
         if binary.stem.lower() not in {"doc42", "pdf42", "xls42"}:
             if ocr and binary.stem.lower()=="scn42":audit_bundled_ocr(process,main,binary,output,results)
             if ocr and binary.stem.lower()=="img42":audit_image_live_text(process,main,binary,output,results)
+            if extended and binary.stem.lower()=="img42":audit_smart_lasso(process,main,output,results)
             if technical and binary.stem.lower() == "ppt42":
                 audit_technical_objects(process, main, binary, output, results)
             if preset_shapes and binary.stem.lower() == "ppt42":

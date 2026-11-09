@@ -228,6 +228,10 @@ pub trait App {
     fn canvas_scene(&self) -> Option<CanvasScene> {
         None
     }
+    fn set_image_pointer_scale(&mut self, _dip_per_pixel: f64) {}
+    fn image_overlay(&self) -> Vec<SceneItem> {
+        Vec::new()
+    }
     fn canvas_pointer_modifiers(&self) -> bool {
         false
     }

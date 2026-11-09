@@ -4421,8 +4421,15 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                         WM_LBUTTONUP => crate::CanvasEvent::PointerUp(point),
                         _ => crate::CanvasEvent::PointerMove(point),
                     };
-                    let result =
-                        STATE.with(|s| s.borrow_mut().as_mut().unwrap().app.canvas_event(event));
+                    let result = STATE.with(|s| {
+                        let mut slot = s.borrow_mut();
+                        let app = &mut slot.as_mut().unwrap().app;
+                        if m == WM_LBUTTONDOWN {
+                            let dpi = f64::from(GetDpiForWindow(h).max(1));
+                            app.set_image_pointer_scale(scale * 96.0 / dpi);
+                        }
+                        app.canvas_event(event)
+                    });
                     if let Err(e) = result {
                         msg(h, &e, MB_OK | MB_ICONERROR);
                     }
@@ -4510,6 +4517,19 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                 DIB_RGB_COLORS,
                 SRCCOPY,
             );
+            let items = STATE.with(|slot| slot.borrow().as_ref().unwrap().app.image_overlay());
+            if !items.is_empty() {
+                draw_scene(dc, &crate::CanvasScene {
+                    viewport: crate::Viewport {
+                        zoom: scale,
+                        pan: crate::Point {
+                            x: f64::from((rect.right - dw) / 2),
+                            y: f64::from((rect.bottom - dh) / 2),
+                        },
+                    },
+                    items,
+                });
+            }
         }
     }
     EndPaint(h, &ps);

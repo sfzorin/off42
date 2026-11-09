@@ -5,6 +5,7 @@ mod live_text;
 mod recovery;
 use img42_core::ImageDocument;
 use std::path::Path;
+const EXPORT_SELECTION: u16 = 51;
 #[derive(Default)]
 struct Img {
     live_text:live_text::LiveText,
@@ -34,12 +35,18 @@ struct Img {
     zoom: Option<f64>,
     tool: u8,
     gesture: Vec<(u32, u32)>,
+    image_pointer_scale: f64,
     selection: Option<(u32, u32, u32, u32)>,
     mask: Option<Vec<bool>>,
     ink_color: [u8; 3],
     ink_width: u32,
 }
 impl Img {
+    fn lasso_radius(&self) -> f64 {
+        let scale = if self.image_pointer_scale > 0.0 { self.image_pointer_scale } else { 1.0 };
+        (12.0 / scale).clamp(1.0, 256.0)
+    }
+
     fn loses_precision(&self) -> bool {
         self.original_16bit.iter().enumerate().any(|(i, was_16)| {
             *was_16
@@ -345,7 +352,7 @@ impl win42::App for Img {
     }
     fn file_actions(&self) -> &'static [win42::FileAction] {
         &[win42::FileAction {
-            id: 40,
+            id: EXPORT_SELECTION,
             title: "Export selected pixels (8-bit PNG)...",
             save: true,
             extension: "png",
@@ -354,23 +361,17 @@ impl win42::App for Img {
         }]
     }
     fn file_action(&mut self, id: u16, path: &Path) -> Result<(), String> {
-        if id != 40 {
+        if id != EXPORT_SELECTION {
             return Err("Unknown action".into());
         }
-        let mask = self.mask.as_ref().ok_or("Select a color first")?;
+        let mask = self.mask.as_ref().ok_or("Make a pixel selection first")?;
         let bytes = self
             .doc
             .as_ref()
             .ok_or("Open an image first")?
             .masked_png(mask)
             .map_err(|e| e.to_string())?;
-        use std::io::Write;
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(path)
-            .map_err(|e| e.to_string())?;
-        file.write_all(&bytes).map_err(|e| e.to_string())
+        suite42_core::write_new(path, &bytes).map_err(|e| e.to_string())
     }
     fn actions(&self) -> &'static [(u16, &'static str)] {
         &[
@@ -398,6 +399,7 @@ impl win42::App for Img {
             (37, "Previous image in folder"),
             (38, "Next image in folder"),
             (39, "Lasso selection tool"),
+            (50, "Smart Lasso"),
             (40, "Batch convert folder..."),
             (41, "Cancel batch"),
             (42, "Batch outcomes..."),
@@ -755,18 +757,26 @@ impl win42::App for Img {
                 }
             }
             PointerUp(p) if !self.gesture.is_empty() => {
-                self.gesture.push(point(p));
+                let mut trace = std::mem::take(&mut self.gesture);
+                trace.push(point(p));
                 if self.tool == 1 {
-                    self.selection =
-                        Some(rectangle(self.gesture[0], *self.gesture.last().unwrap()));
-                } else if self.tool == 6 {
-                    self.mask = Some(polygon_mask(d.width(), d.height(), &self.gesture)?);
+                    self.selection = Some(rectangle(trace[0], *trace.last().unwrap()));
+                } else if matches!(self.tool, 6 | 7) {
+                    if self.tool == 7 {
+                        if trace.len() < 3 {
+                            return Ok(());
+                        }
+                        if let Some(outline) = d.refine_lasso(&trace, self.lasso_radius()) {
+                            trace = outline;
+                        }
+                    }
+                    self.mask = Some(polygon_mask(d.width(), d.height(), &trace)?);
                     self.selection = None;
                 } else {
-                    let start = self.gesture[0];
-                    let end = *self.gesture.last().unwrap();
+                    let start = trace[0];
+                    let end = *trace.last().unwrap();
                     let points = if self.tool == 2 {
-                        self.gesture.clone()
+                        trace
                     } else {
                         shape_points(self.tool, start, end, d.width(), d.height())
                     };
@@ -777,7 +787,6 @@ impl win42::App for Img {
                         .draw_stroke(&points, [r, g, b, 255], self.ink_width.max(1))
                         .map_err(|e| e.to_string())?;
                 }
-                self.gesture.clear();
             }
             Cancel => self.gesture.clear(),
             _ => {}
@@ -786,6 +795,32 @@ impl win42::App for Img {
     }
     fn image_zoom(&self) -> Option<f64> {
         self.zoom
+    }
+    fn set_image_pointer_scale(&mut self, dip_per_pixel: f64) {
+        self.image_pointer_scale = dip_per_pixel;
+    }
+    fn image_overlay(&self) -> Vec<win42::SceneItem> {
+        if self.tool != 7 || self.gesture.is_empty() {
+            return Vec::new();
+        }
+        let points: Vec<_> = self.gesture.iter().map(|&(x, y)| win42::Point {
+            x: f64::from(x),
+            y: f64::from(y),
+        }).collect();
+        let last = points[points.len() - 1];
+        let radius = self.lasso_radius();
+        let color = [0, 100, 245];
+        vec![
+            win42::SceneItem::Path { points, color, closed: false },
+            win42::SceneItem::Ellipse {
+                x: last.x - radius,
+                y: last.y - radius,
+                width: radius * 2.0,
+                height: radius * 2.0,
+                fill: None,
+                stroke: Some(color),
+            },
+        ]
     }
     fn status(&self) -> String {
         let completed = self
@@ -852,6 +887,7 @@ impl win42::App for Img {
             40 => self.batch.is_none(),
             41 => self.batch.is_some(),
             42 => !self.batch_outcomes.is_empty(),
+            EXPORT_SELECTION | 34 | 35 => self.doc.is_some() && self.mask.is_some(),
             _ => self.doc.is_some(),
         }
     }
@@ -1040,20 +1076,21 @@ impl win42::App for Img {
             return Ok(());
         }
         if id == 34 {
-            let mask = self.mask.as_mut().ok_or("Select a color first")?;
+            let mask = self.mask.as_mut().ok_or("Make a pixel selection first")?;
             for selected in mask {
                 *selected = !*selected;
             }
             return Ok(());
         }
         if id == 35 {
-            let mask = self.mask.take().ok_or("Select a color first")?;
-            return self
-                .doc
+            let mask = self.mask.as_ref().ok_or("Make a pixel selection first")?;
+            self.doc
                 .as_mut()
                 .ok_or("Open an image first")?
-                .erase_mask(&mask)
-                .map_err(|e| e.to_string());
+                .erase_mask(mask)
+                .map_err(|e| e.to_string())?;
+            self.mask = None;
+            return Ok(());
         }
         if matches!(id, 4 | 5 | 10 | 11 | 15 | 16) {
             self.selection = None;
@@ -1079,8 +1116,8 @@ impl win42::App for Img {
                 self.tool = 1;
                 self.gesture.clear();
             }
-            39 => {
-                self.tool = 6;
+            39 | 50 => {
+                self.tool = if id == 50 { 7 } else { 6 };
                 self.gesture.clear();
             }
             24 => {
@@ -1106,32 +1143,43 @@ fn polygon_mask(width: u32, height: u32, points: &[(u32, u32)]) -> Result<Vec<bo
     if points.len() < 3 || points.len() > 4096 {
         return Err("Draw a lasso with 3–4096 points".into());
     }
-    let mut mask = vec![false; width as usize * height as usize];
-    let min_y = points.iter().map(|p| p.1).min().unwrap();
-    let max_y = points
+    let mut edges = points
         .iter()
-        .map(|p| p.1)
-        .max()
-        .unwrap()
-        .min(height.saturating_sub(1));
-    for y in min_y..=max_y {
-        let scan = y as f64 + 0.5;
-        let mut intersections = Vec::new();
-        for i in 0..points.len() {
-            let (x1, y1) = points[i];
-            let (x2, y2) = points[(i + 1) % points.len()];
-            let (y1, y2) = (y1 as f64, y2 as f64);
-            if (y1 <= scan && scan < y2) || (y2 <= scan && scan < y1) {
-                intersections.push(x1 as f64 + (scan - y1) * (x2 as f64 - x1 as f64) / (y2 - y1));
-            }
+        .copied()
+        .zip(points.iter().copied().cycle().skip(1))
+        .filter_map(|(a, b)| {
+            let ((x1, y1), (x2, y2)) = if a.1 <= b.1 { (a, b) } else { (b, a) };
+            (y1 < y2).then_some((y1, y2, x1, x2))
+        })
+        .collect::<Vec<_>>();
+    edges.sort_unstable_by_key(|edge| edge.0);
+    let mut mask = vec![false; width as usize * height as usize];
+    let start = edges.first().map_or(0, |edge| edge.0);
+    let end = edges.iter().map(|edge| edge.1).max().unwrap_or(0).min(height);
+    let mut pending = edges.into_iter().peekable();
+    let mut active = Vec::new();
+    let mut intersections = Vec::new();
+    let mut work = 0usize;
+    for y in start..end {
+        active.retain(|&(_, y2, _, _)| y2 > y);
+        while pending.peek().is_some_and(|edge| edge.0 == y) {
+            active.push(pending.next().expect("pending edge"));
         }
+        work += active.len();
+        if work > 8_000_000 {
+            return Err("Lasso outline exceeds the selection work limit".into());
+        }
+        let scan = f64::from(y) + 0.5;
+        intersections.clear();
+        intersections.extend(active.iter().map(|&(y1, y2, x1, x2)| {
+            f64::from(x1) + (scan - f64::from(y1)) * (f64::from(x2) - f64::from(x1)) / f64::from(y2 - y1)
+        }));
         intersections.sort_by(f64::total_cmp);
         for pair in intersections.chunks_exact(2) {
             let x1 = (pair[0] - 0.5).ceil().max(0.0) as u32;
             let x2 = (pair[1] - 0.5).ceil().min(width as f64).max(0.0) as u32;
-            for x in x1.min(width)..x2 {
-                mask[(y * width + x) as usize] = true;
-            }
+            let row = (y * width) as usize;
+            mask[row + x1.min(width) as usize..row + x2 as usize].fill(true);
         }
     }
     Ok(mask)
@@ -1191,6 +1239,48 @@ fn main() {
 #[cfg(test)]
 mod selection_tests {
     use super::*;
+    #[test]
+    fn smart_lasso_snaps_to_subject_and_selection_edit_is_one_history_step() {
+        use win42::{App, CanvasEvent, Point};
+        let target: Vec<_> = (0..128).flat_map(|y| {
+            (0..128).map(move |x| (32..96).contains(&x) && (32..96).contains(&y))
+        }).collect();
+        let pixels: Vec<_> = target.iter().flat_map(|selected| {
+            let tone = if *selected { 20 } else { 240 };
+            [tone, tone, tone, 255]
+        }).collect();
+        let doc = ImageDocument::from_rgba(128, 128, pixels.clone(), None).unwrap();
+        let trace = [(25, 25), (103, 25), (103, 103), (25, 103), (25, 25)];
+        let raw = polygon_mask(128, 128, &trace).unwrap();
+        let overlap = |mask: &[bool]| {
+            let intersection = target.iter().zip(mask).filter(|&(&a, &b)| a && b).count();
+            let union = target.iter().zip(mask).filter(|&(&a, &b)| a || b).count();
+            intersection as f64 / union as f64
+        };
+        assert!(overlap(&raw) < 0.75);
+        let mut app = Img { doc: Some(doc), ..Default::default() };
+        app.action(50).unwrap();
+        app.set_image_pointer_scale(1.0);
+        let point = |(x, y): (u32, u32)| Point { x: x.into(), y: y.into() };
+        app.canvas_event(CanvasEvent::PointerDown(point(trace[0]))).unwrap();
+        for &coordinate in &trace[1..4] {
+            app.canvas_event(CanvasEvent::PointerMove(point(coordinate))).unwrap();
+        }
+        assert_eq!(app.image_overlay().len(), 2);
+        app.canvas_event(CanvasEvent::PointerUp(point(trace[4]))).unwrap();
+        assert!(app.image_overlay().is_empty());
+        let mask = app.mask.clone().unwrap();
+        assert!(overlap(&mask) > 0.94, "IoU {}", overlap(&mask));
+        assert!(!app.dirty());
+        app.action(35).unwrap();
+        let changed = app.doc.as_ref().unwrap().pixels().to_vec();
+        assert_eq!(changed.iter().skip(3).step_by(4).filter(|&&alpha| alpha == 0).count(),
+                   mask.iter().filter(|&&selected| selected).count());
+        app.action(4).unwrap();
+        assert_eq!(app.doc.as_ref().unwrap().pixels(), pixels);
+        app.action(5).unwrap();
+        assert_eq!(app.doc.as_ref().unwrap().pixels(), changed);
+    }
     #[test]
     fn png_with_srgb_can_save_in_place() {
         use image::ImageEncoder;
