@@ -822,3 +822,7 @@ after image selection; image unit regressions are now included in quick CI.
   Number Format controls/ODS output, independent foreign edit and complete history/reopen audit is added.
   Windows pending; remaining number-format families, locale/default-column/row styles and foreign format
   changes stay open. Unsupported formats continue to refuse rather than lose formatting.
+- Run 42531475412 (85ee07d) passed MSVC 573/0/1. The native audit stopped during the earlier
+  advanced-sort reopen: the file picker briefly enabled the main window before the unsaved-changes
+  prompt took over. The wait now requires the closed picker, clean caption and enabled main window,
+  with priority given to the discard prompt. ODS number-format UI checks were not reached in that run.

@@ -175,15 +175,29 @@ def fill_prompt(process, main, identifier, title, values):
 
 def open_fixture(process,main,path):
     """Replace this isolated audit process's previous fixture through the normal discard prompt."""
-    command(main,1);choose_file(process,path)
+    command(main, 1)
+    picker = choose_file(process, path)
+
+    def opened():
+        return (
+            not u.IsWindowVisible(picker)
+            and text(main).startswith(path.name + " - ")
+            and u.IsWindowEnabled(main)
+        )
+
     def opened_or_discard():
-        if path.name in text(main)and u.IsWindowEnabled(main):return('opened',None)
-        dialog=next((h for h in windows(process.pid)if classname(h)=='#32770'and all(u.GetDlgItem(h,i)for i in(2,6,7))),None)
-        return('discard',dialog)if dialog else None
-    state,dialog=wait_for(opened_or_discard,'fixture open or unsaved-change prompt',process)
-    if state=='discard':
-        click(dialog,7)
-        wait_for(lambda:path.name in text(main)and u.IsWindowEnabled(main),'previous audit fixture discarded',process)
+        dialog = next((h for h in windows(process.pid) if classname(h) == "#32770"
+                       and all(u.GetDlgItem(h, identifier) for identifier in (2, 6, 7))), None)
+        if dialog:
+            return "discard", dialog
+        if opened():
+            return "opened", None
+        return None
+
+    state, dialog = wait_for(opened_or_discard, "fixture open or unsaved-change prompt", process)
+    if state == "discard":
+        click(dialog, 7)
+        wait_for(lambda: not u.IsWindowVisible(dialog) and opened(), "previous audit fixture discarded", process)
 
 
 def choose_file(process, path, format_name=None, keep_preview=False, open_preview=True):
@@ -235,6 +249,7 @@ def choose_file(process, path, format_name=None, keep_preview=False, open_previe
         wait_for(lambda:not u.IsWindow(dialog)and u.IsWindowEnabled(window),"label preview after Save",process)
         click(window,2)
         wait_for(lambda:not u.IsWindow(window),"label preview closed",process)
+    return dialog
 
 
 def output_ready(process, main, path, signature):
