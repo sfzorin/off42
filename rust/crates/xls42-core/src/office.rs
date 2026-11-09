@@ -2319,6 +2319,13 @@ fn import_xlsx_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
                 let n = index("numFmtId");
                 style.number_format = numberformats.get(&n).cloned().unwrap_or_else(|| {
                     match n {
+                        1 => "0",
+                        2 => "0.00",
+                        3 => "#,##0",
+                        4 => "#,##0.00",
+                        9 => "0%",
+                        10 => "0.00%",
+                        11 => "0.00E+00",
                         14 => "mm-dd-yy",
                         15 => "d-mmm-yy",
                         16 => "d-mmm",

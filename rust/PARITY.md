@@ -826,3 +826,11 @@ after image selection; image unit regressions are now included in quick CI.
   advanced-sort reopen: the file picker briefly enabled the main window before the unsaved-changes
   prompt took over. The wait now requires the closed picker, clean caption and enabled main window,
   with priority given to the discard prompt. ODS number-format UI checks were not reached in that run.
+- Focused native replay 42570837076 used the 85ee07d binaries and updated audit. All six app
+  records have no error keys. The advanced-sort reopen and ODS fixed-decimal formats passed,
+  including normal controls, independent XML and source preservation, complete history,
+  external edits and byte-exact Undo.
+- XLS42 supports optional fractional zeros and one-digit-mantissa scientific codes in cell display,
+  TEXT and standard ODS styles. Tests cover exponent carry, negative exponents and exact numeric
+  values, independent import, external edits and Undo. XLSX import also resolves the corresponding
+  standard numeric built-in format IDs. Native verification awaits a compatible build.

@@ -1,75 +1,40 @@
-//! Standard fixed-decimal, zero-pad, grouping and percentage styles; original numeric values stay exact.
+//! Standard decimal, percentage and scientific styles with exact underlying numeric values.
 use super::*;
 const N: &str = "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0";
 const S: &str = "urn:oasis:names:tc:opendocument:xmlns:style:1.0";
 const O: &str = "urn:oasis:names:tc:opendocument:xmlns:office:1.0";
 const T: &str = "urn:oasis:names:tc:opendocument:xmlns:text:1.0";
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct Number {
-    integer: usize,
-    decimals: usize,
-    grouping: bool,
-    percent: bool,
-}
-impl Number {
-    fn parse(code: &str) -> Option<Self> {
-        let code = code.trim();
-        let (body, percent) = code.strip_suffix('%').map_or((code, false), |v| (v, true));
-        if body.ends_with('.') {
-            return None;
-        }
-        let (integer, decimals) = body.split_once('.').unwrap_or((body, ""));
-        let (grouping, integer) = integer
-            .strip_prefix("#,##")
-            .map_or((false, integer), |v| (true, v));
-        if integer.is_empty()
-            || integer.len() > 255
-            || !integer.bytes().all(|v| v == b'0')
-            || decimals.len() > 127
-            || !decimals.bytes().all(|v| v == b'0')
-        {
-            return None;
-        }
-        Some(Self {
-            integer: integer.len(),
-            decimals: decimals.len(),
-            grouping,
-            percent,
-        })
-    }
-    fn code(self) -> String {
-        format!(
-            "{}{}{}{}",
-            if self.grouping { "#,##" } else { "" },
-            "0".repeat(self.integer),
-            if self.decimals == 0 {
-                String::new()
-            } else {
-                format!(".{}", "0".repeat(self.decimals))
-            },
-            if self.percent { "%" } else { "" }
-        )
-    }
-    fn xml(self, name: &str) -> String {
+use crate::display::{Exponent, NumberPattern};
+
+impl NumberPattern {
+    fn ods_xml(self, name: &str) -> String {
         let kind = if self.percent {
             "percentage-style"
         } else {
             "number-style"
         };
+        let (element, exponent) = match self.exponent {
+            Some(exp) => (
+                "scientific-number",
+                format!(
+                    " number:min-exponent-digits=\"{}\" number:forced-exponent-sign=\"{}\"",
+                    exp.digits, exp.show_plus
+                ),
+            ),
+            None => ("number", String::new()),
+        };
+        let suffix = if self.percent {
+            "<number:text>%</number:text>"
+        } else {
+            ""
+        };
         format!(
-            "<number:{kind} xmlns:number=\"{N}\" xmlns:style=\"{S}\" style:name=\"{name}\" number:language=\"en\" number:country=\"US\"><number:number number:min-integer-digits=\"{}\" number:decimal-places=\"{}\" number:min-decimal-places=\"{}\" number:grouping=\"{}\"/>{}</number:{kind}>",
-            self.integer,
-            self.decimals,
-            self.decimals,
-            self.grouping,
-            if self.percent {
-                "<number:text>%</number:text>"
-            } else {
-                ""
-            }
+            "<number:{kind} xmlns:number=\"{N}\" xmlns:style=\"{S}\" style:name=\"{name}\" number:language=\"en\" number:country=\"US\"><number:{element} number:min-integer-digits=\"{}\" number:decimal-places=\"{}\" number:min-decimal-places=\"{}\" number:grouping=\"{}\"{exponent}/>{suffix}</number:{kind}>",
+            self.integer, self.decimals, self.minimum_decimals, self.grouping
         )
     }
-    fn read(node: roxmltree::Node<'_, '_>) -> Option<Self> {
+
+    fn read_ods(node: roxmltree::Node<'_, '_>) -> Option<Self> {
         let percent = node.has_tag_name((N, "percentage-style"));
         if !percent && !node.has_tag_name((N, "number-style")) {
             return None;
@@ -87,20 +52,27 @@ impl Number {
             .filter(|n| n.is_element())
             .collect::<Vec<_>>();
         if children.len() != if percent { 2 } else { 1 }
-            || !children[0].has_tag_name((N, "number"))
             || percent
                 && (!children[1].has_tag_name((N, "text")) || children[1].text() != Some("%"))
         {
             return None;
         }
         let number = children[0];
+        let scientific = number.has_tag_name((N, "scientific-number"));
+        if !scientific && !number.has_tag_name((N, "number")) {
+            return None;
+        }
         if number.children().any(|n| n.is_element())
             || number.attributes().any(|a| {
                 a.namespace() != Some(N)
-                    || !matches!(
+                    || !(matches!(
                         a.name(),
                         "min-integer-digits" | "decimal-places" | "min-decimal-places" | "grouping"
-                    )
+                    ) || scientific
+                        && matches!(
+                            a.name(),
+                            "min-exponent-digits" | "forced-exponent-sign" | "exponent-interval"
+                        ))
             })
         {
             return None;
@@ -120,40 +92,69 @@ impl Number {
             .transpose()
             .ok()?
             .unwrap_or(decimals);
-        if !(1..=255).contains(&integer) || decimals > 127 || minimum != decimals {
-            return None;
-        }
-        let grouping = match number.attribute((N, "grouping")).unwrap_or("false") {
-            "true" | "1" => true,
-            "false" | "0" => false,
-            _ => return None,
+        let grouping = ods_bool(number.attribute((N, "grouping")).unwrap_or("false"))?;
+        let exponent = if scientific {
+            if number
+                .attribute((N, "exponent-interval"))
+                .is_some_and(|v| v != "1")
+            {
+                return None;
+            }
+            Some(Exponent {
+                digits: number.attribute((N, "min-exponent-digits"))?.parse().ok()?,
+                show_plus: ods_bool(
+                    number
+                        .attribute((N, "forced-exponent-sign"))
+                        .unwrap_or("true"),
+                )?,
+            })
+        } else {
+            None
         };
-        Some(Self {
+        let pattern = Self {
             integer,
             decimals,
+            minimum_decimals: minimum,
             grouping,
             percent,
-        })
+            exponent,
+        };
+        pattern.is_valid().then_some(pattern)
     }
 }
+
+fn ods_bool(value: &str) -> Option<bool> {
+    match value {
+        "true" | "1" => Some(true),
+        "false" | "0" => Some(false),
+        _ => None,
+    }
+}
+
+fn ods_pattern(code: &str) -> Option<NumberPattern> {
+    let code = code.trim();
+    let mantissa = code.trim_end_matches('%').split(['E', 'e']).next()?;
+    if mantissa.ends_with('.') {
+        return None;
+    }
+    NumberPattern::parse(code)
+}
+
 pub(super) fn supported(code: &str) -> bool {
     code.trim().is_empty()
         || code.trim().eq_ignore_ascii_case("general")
-        || Number::parse(code).is_some()
+        || ods_pattern(code).is_some()
 }
 pub(super) fn presentation(code: &str, raw: &str) -> Option<(bool, String)> {
-    let number = Number::parse(code)?;
+    let number = ods_pattern(code)?;
     let value = raw.parse::<f64>().ok().filter(|v| v.is_finite())?;
-    Some((
-        number.percent,
-        crate::display::number_pattern(value, &number.code())?,
-    ))
+    Some((number.percent, number.render(value)))
 }
 pub(super) fn patch_native(bytes: &[u8], styles: &[CellStyle]) -> Result<Vec<u8>, Error> {
-    let mut formats = BTreeMap::<Number, String>::new();
+    let mut formats = BTreeMap::<NumberPattern, String>::new();
     let mut references = BTreeMap::new();
     for (i, style) in styles.iter().enumerate() {
-        let Some(number) = Number::parse(&style.number_format) else {
+        let Some(number) = ods_pattern(&style.number_format) else {
             if supported(&style.number_format) {
                 continue;
             } else {
@@ -219,8 +220,7 @@ pub(super) fn patch_native(bytes: &[u8], styles: &[CellStyle]) -> Result<Vec<u8>
         else {
             continue;
         };
-        let text = crate::display::number_pattern(value, &number.code())
-            .ok_or(Error::Invalid("Cannot render ODS number format"))?;
+        let text = number.render(value);
         let changed = dynamic_arrays::xml_nodes::edit(
             &content,
             node,
@@ -256,7 +256,7 @@ pub(super) fn patch_native(bytes: &[u8], styles: &[CellStyle]) -> Result<Vec<u8>
         .ok_or(Error::Invalid("missing ODS automatic styles"))?;
     let definitions = formats
         .iter()
-        .map(|(number, name)| number.xml(name))
+        .map(|(number, name)| number.ods_xml(name))
         .collect::<String>();
     if changed.len().saturating_add(definitions.len()) > LIMIT {
         return Err(Error::Limit);
@@ -279,7 +279,7 @@ pub(super) fn imported(bytes: &[u8]) -> Result<BTreeMap<String, String>, Error> 
         };
         let doc = xml(&text)?;
         for node in doc.descendants() {
-            if let Some(number) = Number::read(node) {
+            if let Some(number) = NumberPattern::read_ods(node) {
                 if let Some(name) = node.attribute((S, "name")) {
                     numbers.insert(name.to_owned(), number.code());
                 }
@@ -361,6 +361,12 @@ mod tests {
             ("0.00%", "0.123456789", "12.35%"),
             ("0%", "0.25", "25%"),
             ("0.000", "=1/3", "0.333"),
+            ("0.##", "123.0001", "123"),
+            ("#,##0.0##", "12345.0001", "12,345.0"),
+            ("0.##%", "0.1234", "12.34%"),
+            ("0.00E+00", "999.999", "1.00E+03"),
+            ("0.0#E-000", "=1/8000", "1.25E-004"),
+            ("0.##E-00", "-42", "-4.2E01"),
         ];
         let mut b = Workbook::new(20, 4).unwrap();
         for (r, (code, input, _)) in cases.iter().enumerate() {
@@ -414,7 +420,7 @@ mod tests {
         let nums = doc
             .descendants()
             .filter(|n| {
-                Number::read(*n).is_some()
+                NumberPattern::read_ods(*n).is_some()
                     && n.attribute((S, "name"))
                         .is_some_and(|v| v.starts_with("off42number"))
             })
@@ -565,7 +571,7 @@ mod tests {
         assert_eq!(opened.style(0, 0).unwrap().number_format, "0.00");
         assert_eq!(opened.display_cells()[&(0, 0)], "12.30");
         let baseline = b.project_bytes().unwrap();
-        for code in ["0.00E+00", "[Red]0.00", "0.##", "$0.00", "yyyy-mm-dd"] {
+        for code in ["00.00E+00", "[Red]0.00", "0.#0", "$0.00", "yyyy-mm-dd"] {
             let mut b = Workbook::from_project_bytes(&baseline).unwrap();
             let mut style = b.style(0, 0).unwrap().clone();
             style.number_format = code.into();

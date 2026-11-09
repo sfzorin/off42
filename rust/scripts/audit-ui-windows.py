@@ -1194,10 +1194,20 @@ def audit_sheet_tabs(process,main,binary,output,results):
 
 def audit_ods_number_formats(process,main,binary,output,results):
     import xml.etree.ElementTree as ET
-    seed=output/'numbers-source.csv';seed.write_text('0.123456789,1.23456789,42\n=1/3,12345.6789,7\n',encoding='utf-8');original=seed.read_bytes();open_fixture(process,main,seed)
+    seed=output/'numbers-source.csv';seed.write_text('0.123456789,1.23456789,42\n=1/3,12345.6789,7\n999.999,12.30001,0.000125\n',encoding='utf-8');original=seed.read_bytes();open_fixture(process,main,seed)
     def saved(name,kind='XLS42 workbook',extension='xls42'):
         path=output/('numbers-'+name+'.'+extension);save_as(main);choose_file(process,path,format_name=kind);output_ready(process,main,path,b'{'if extension=='xls42'else b'PK');return json.loads(path.read_text(encoding='utf-8'))if extension=='xls42'else path
-    cases=[(0,0,'0.00%','12.35%',0.123456789),(1,0,'0.000','0.333',1/3),(0,1,'0.00','1.23',1.23456789),(1,1,'#,##0.00','12,345.68',12345.6789),(0,2,'000000','000042',42),(1,2,'00','07',7)]
+    cases = [
+        (0, 0, '0.00%', '12.35%', 0.123456789),
+        (1, 0, '0.000', '0.333', 1 / 3),
+        (0, 1, '0.00', '1.23', 1.23456789),
+        (1, 1, '#,##0.00', '12,345.68', 12345.6789),
+        (0, 2, '000000', '000042', 42),
+        (1, 2, '00', '07', 7),
+        (2, 0, '0.00E+00', '1.00E+03', 999.999),
+        (2, 1, '0.0##', '12.3', 12.30001),
+        (2, 2, '0.0#E-000', '1.25E-004', 0.000125),
+    ]
     for i,(row,col,code,_,_)in enumerate(cases):
         fill_prompt(process,main,25,'Range (1-based)',[str(row+1),str(col+1),str(row+1),str(col+1)])
         if i==len(cases)-1:before=saved('before-last-format')
@@ -1212,6 +1222,15 @@ def audit_ods_number_formats(process,main,binary,output,results):
     for row,col,code,display,value in cases:
         cell=cells[(row,col)];assert cell.findtext('p:p',namespaces=ns)==display,(row,col,ET.tostring(cell));assert float(cell.attrib['{'+ns['o']+'}value'])==value
         style=styles[cell.attrib['{'+ns['t']+'}style-name']];fmt=formats[style.attrib['{'+ns['s']+'}data-style-name']];assert fmt.tag=='{'+ns['n']+'}'+('percentage-style'if code.endswith('%')else'number-style');assert cell.attrib['{'+ns['o']+'}value-type']==('percentage'if code.endswith('%')else'float')
+        if 'E' in code:
+            scientific = fmt.find('n:scientific-number', ns)
+            assert scientific is not None
+            assert scientific.get('{' + ns['n'] + '}forced-exponent-sign') == str('E+' in code).lower()
+            assert int(scientific.get('{' + ns['n'] + '}min-exponent-digits')) == len(code.split('E')[1]) - 1
+        elif '#' in code.split('.')[-1]:
+            decimal = fmt.find('n:number', ns)
+            assert decimal.get('{' + ns['n'] + '}min-decimal-places') == '1'
+            assert decimal.get('{' + ns['n'] + '}decimal-places') == '3'
     replace_editor_text(u.GetDlgItem(main,101),'REOPEN-STALE');open_fixture(process,main,native);restored=saved('reopened');assert restored['sheets']==changed['sheets']and restored['styles']==changed['styles']
     independent=output/'numbers-independent.ods'
     with zipfile.ZipFile(native)as archive,zipfile.ZipFile(independent,'w')as out:
@@ -1232,7 +1251,7 @@ def audit_ods_number_formats(process,main,binary,output,results):
     command(main,5);redo=saved('external-redo','OpenDocument spreadsheet','ods');assert inspect(redo)[0][(0,0)].findtext('p:p',namespaces=ns)=='98.77%'
     replace_editor_text(u.GetDlgItem(main,101),'STALE');open_fixture(process,main,edited);wait_for(lambda:text(u.GetDlgItem(main,101))=='0.987654321','independent formatted ODS edited value reopens',process)
     assert independent.read_bytes()==source_bytes and seed.read_bytes()==original
-    results['checks'].append('normal Number Format controls for fixed decimals, grouped numbers, percentages and zero padding; complete style/value/selection Undo/Redo; standard ODS number-style links, formatted text caches and exact unrounded numeric attributes independently checked; native and snapshot-free foreign reopen, percentage and scalar-formula cache edits, unknown part preserved, byte-exact external Undo and unchanged sources')
+    results['checks'].append('normal Number Format controls for fixed and optional decimals, grouped numbers, percentages, zero padding and scientific notation; complete style/value/selection Undo/Redo; standard ODS number-style links, formatted text caches and exact unrounded numeric attributes independently checked; native and snapshot-free foreign reopen, percentage and scalar-formula cache edits, unknown part preserved, byte-exact external Undo and unchanged sources')
 
 
 def audit_advanced_sort(process,main,binary,output,results):

@@ -246,6 +246,19 @@ mod tests {
         assert!(number_pattern(1.0, &format!("0.{}", "0".repeat(128))).is_none());
     }
     #[test]
+    fn text_formula_uses_the_same_optional_decimals_and_scientific_rounding_as_cells() {
+        let mut book = Workbook::new(2, 4).unwrap();
+        for (column, formula, expected) in [
+            (0, "=TEXT(0.1234,\"0.0##%\")", "12.34%"),
+            (1, "=TEXT(999.999,\"0.00E+00\")", "1.00E+03"),
+            (2, "=TEXT(1E-323,\"0.00E-00\")", "9.88E-324"),
+            (3, "=TEXT(-0.0001,\"0.##\")", "0"),
+        ] {
+            book.set_cell(0, column, formula.into()).unwrap();
+            assert_eq!(book.display_grid()[0][column], expected);
+        }
+    }
+    #[test]
     fn display_and_clipboard_round_without_changing_calculations_or_office_values() {
         let mut b = Workbook::new(8, 12).unwrap();
         for (r, c, f) in [
@@ -354,45 +367,154 @@ mod tests {
     }
 }
 
-/// Bounded fixed numeric patterns shared by cell display and TEXT. Other custom formats remain explicit gaps.
-pub(super) fn number_pattern(value: f64, code: &str) -> Option<String> {
-    let (pattern, percent) = code.strip_suffix('%').map_or((code, false), |p| (p, true));
-    let (integer, fraction) = pattern.split_once('.').unwrap_or((pattern, ""));
-    let grouping = integer.starts_with("#,##");
-    let integer = integer.strip_prefix("#,##").unwrap_or(integer);
-    if integer.is_empty()
-        || integer.len() > 255
-        || !integer.bytes().all(|c| c == b'0')
-        || fraction.len() > 127
-        || !fraction.bytes().all(|c| c == b'0')
-    {
-        return None;
-    }
-    let scaled = if percent { value * 100.0 } else { value };
-    if !scaled.is_finite() {
-        return Some("#NUM!".into());
-    }
-    let rendered = format!("{:.*}", fraction.len(), scaled.abs());
-    let (whole, frac) = rendered.split_once('.').unwrap_or((&rendered, ""));
-    let mut whole = "0".repeat(integer.len().saturating_sub(whole.len())) + whole;
-    if grouping {
-        let mut i = whole.len();
-        while i > 3 {
-            i -= 3;
-            whole.insert(i, ',');
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(super) struct Exponent {
+    pub digits: usize,
+    pub show_plus: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(super) struct NumberPattern {
+    pub integer: usize,
+    pub decimals: usize,
+    pub minimum_decimals: usize,
+    pub grouping: bool,
+    pub percent: bool,
+    pub exponent: Option<Exponent>,
+}
+
+impl NumberPattern {
+    pub fn parse(code: &str) -> Option<Self> {
+        let (pattern, percent) = code.strip_suffix('%').map_or((code, false), |p| (p, true));
+        let (pattern, exponent) = match pattern.split_once(['E', 'e']) {
+            Some((mantissa, suffix)) => {
+                let (show_plus, zeros) = match suffix.as_bytes().first()? {
+                    b'+' => (true, &suffix[1..]),
+                    b'-' => (false, &suffix[1..]),
+                    _ => return None,
+                };
+                if zeros.is_empty() || !zeros.bytes().all(|c| c == b'0') {
+                    return None;
+                }
+                (
+                    mantissa,
+                    Some(Exponent {
+                        digits: zeros.len(),
+                        show_plus,
+                    }),
+                )
+            }
+            None => (pattern, None),
+        };
+        let (integer, fraction) = pattern.split_once('.').unwrap_or((pattern, ""));
+        let (grouping, integer) = integer
+            .strip_prefix("#,##")
+            .map_or((false, integer), |digits| (true, digits));
+        let mandatory = fraction.trim_end_matches('#');
+        if !integer.bytes().all(|c| c == b'0') || !mandatory.bytes().all(|c| c == b'0') {
+            return None;
         }
+        let parsed = Self {
+            integer: integer.len(),
+            decimals: fraction.len(),
+            minimum_decimals: mandatory.len(),
+            grouping,
+            percent,
+            exponent,
+        };
+        parsed.is_valid().then_some(parsed)
     }
-    let sign = if scaled < 0.0 && rendered.parse::<f64>().ok() != Some(0.0) {
-        "-"
-    } else {
-        ""
-    };
-    Some(format!(
-        "{sign}{whole}{}{}{}",
-        if frac.is_empty() { "" } else { "." },
-        frac,
-        if percent { "%" } else { "" }
-    ))
+
+    pub fn is_valid(self) -> bool {
+        (1..=255).contains(&self.integer)
+            && self.minimum_decimals <= self.decimals
+            && self.decimals <= 127
+            && self.exponent.is_none_or(|exp| {
+                self.integer == 1
+                    && !self.grouping
+                    && !self.percent
+                    && (1..=12).contains(&exp.digits)
+            })
+    }
+
+    pub fn code(self) -> String {
+        let mut code = if self.grouping {
+            "#,##".to_owned()
+        } else {
+            String::new()
+        };
+        code.push_str(&"0".repeat(self.integer));
+        if self.decimals > 0 {
+            code.push('.');
+            code.push_str(&"0".repeat(self.minimum_decimals));
+            code.push_str(&"#".repeat(self.decimals - self.minimum_decimals));
+        }
+        if let Some(exponent) = self.exponent {
+            code.push_str(if exponent.show_plus { "E+" } else { "E-" });
+            code.push_str(&"0".repeat(exponent.digits));
+        }
+        if self.percent {
+            code.push('%');
+        }
+        code
+    }
+
+    pub fn render(self, value: f64) -> String {
+        let scaled = if self.percent { value * 100.0 } else { value };
+        if !scaled.is_finite() {
+            return "#NUM!".into();
+        }
+        let (rendered, suffix) = if let Some(exponent) = self.exponent {
+            let scientific = format!("{:.*E}", self.decimals, scaled.abs());
+            let (mantissa, power) = scientific.split_once('E').expect("scientific formatting");
+            let power = power.parse::<i32>().expect("finite f64 exponent");
+            let sign = if power < 0 {
+                "-"
+            } else if exponent.show_plus {
+                "+"
+            } else {
+                ""
+            };
+            let magnitude = power.unsigned_abs();
+            let width = exponent.digits;
+            (mantissa.to_owned(), format!("E{sign}{magnitude:0width$}"))
+        } else {
+            (
+                format!("{:.*}", self.decimals, scaled.abs()),
+                if self.percent {
+                    "%".into()
+                } else {
+                    String::new()
+                },
+            )
+        };
+        let (whole, fraction) = rendered.split_once('.').unwrap_or((&rendered, ""));
+        let length = fraction
+            .trim_end_matches('0')
+            .len()
+            .max(self.minimum_decimals);
+        let fraction = &fraction[..length];
+        let mut whole = "0".repeat(self.integer.saturating_sub(whole.len())) + whole;
+        if self.grouping {
+            let mut i = whole.len();
+            while i > 3 {
+                i -= 3;
+                whole.insert(i, ',');
+            }
+        }
+        let sign = if scaled < 0.0 && rendered.bytes().any(|digit| matches!(digit, b'1'..=b'9')) {
+            "-"
+        } else {
+            ""
+        };
+        let point = if fraction.is_empty() { "" } else { "." };
+        format!("{sign}{whole}{point}{fraction}{suffix}")
+    }
+}
+
+/// Bounded numeric patterns shared by cell display, Office output and TEXT.
+pub(super) fn number_pattern(value: f64, code: &str) -> Option<String> {
+    Some(NumberPattern::parse(code)?.render(value))
 }
 #[cfg(test)]
 mod filter_tests {
