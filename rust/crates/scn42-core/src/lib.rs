@@ -1,5 +1,8 @@
 //! Image-page workflow with project/PDF export and optional external Tesseract OCR.
-use lopdf::{dictionary, Document, Object, Stream};
+mod pdf_export;
+pub use pdf_export::{PdfExportOptions, PdfRaster};
+#[cfg(test)]
+use lopdf::Document;
 use std::sync::Arc;
 use std::{io::Read, path::Path};
 use suite42_core::write_new;
@@ -1049,88 +1052,7 @@ impl ScanDocument {
         }
         Ok(words)
     }
-    pub fn export_pdf(&self, path: &Path) -> Result<(), String> {
-        self.export_pdf_compressed(path, false)
-    }
-    pub fn export_pdf_compressed(&self, path: &Path, compressed: bool) -> Result<(), String> {
-        if self.pages().is_empty() {
-            return Err("cannot export an empty scan".into());
-        }
-        let mut doc = Document::with_version("1.5");
-        let text: String = self
-            .pages()
-            .iter()
-            .flat_map(|p| p.words.iter())
-            .map(|w| w.text.as_str())
-            .collect();
-        // Image-only scans need no font; OCR text gets a glyph subset.
-        let embedded = if text.is_empty() {
-            None
-        } else {
-            Some(suite42_pdf_text::PdfFont::embed_invisible_subset(&mut doc, &text)?)
-        };
-        let pages_id = doc.new_object_id();
-        let mut kids = Vec::new();
-        for page in self.pages() {
-            let mut rgb = Vec::with_capacity(page.pixels.len() / 4 * 3);
-            for p in page.pixels.as_chunks::<4>().0 {
-                let a = p[3] as u32;
-                for &c in &p[..3] {
-                    rgb.push(((c as u32 * a + 255 * (255 - a) + 127) / 255) as u8)
-                }
-            }
-            let image=doc.add_object(Stream::new(dictionary!{"Type"=>"XObject","Subtype"=>"Image","Width"=>page.width as i64,"Height"=>page.height as i64,"ColorSpace"=>"DeviceRGB","BitsPerComponent"=>8},rgb));
-            let w = page.width as f32 * 72.0 / page.dpi_x as f32;
-            let h = page.height as f32 * 72.0 / page.dpi_y as f32;
-            let mut commands = format!("q {w} 0 0 {h} 0 0 cm /Im0 Do Q\n");
-            let font = embedded.as_ref().filter(|_| !page.words.is_empty());
-            if let Some(font) = font {
-                let chars = &font.chars;
-                for word in page.words.iter() {
-                    let x = word.x as f32 * 72.0 / page.dpi_x as f32;
-                    let y = (page.height - word.y - word.height) as f32 * 72.0 / page.dpi_y as f32;
-                    let size = word.height as f32 * 72.0 / page.dpi_y as f32;
-                    let hex: String = word
-                        .text
-                        .chars()
-                        .map(|c| format!("{:04X}", chars[&c].0))
-                        .collect();
-                    let advance: u64 = word.text.chars().map(|c| u64::from(chars[&c].2)).sum();
-                    let target = word.width as f32 * 72.0 / page.dpi_x as f32;
-                    let scale = if advance == 0 {
-                        100.0
-                    } else {
-                        target * 100000.0 / (advance as f32 * size)
-                    };
-                    commands.push_str(&format!(
-                        "BT /F1 {size} Tf {scale} Tz 3 Tr 1 0 0 1 {x} {y} Tm <{hex}> Tj ET\n"
-                    ));
-                }
-            }
-            let content = doc.add_object(Stream::new(dictionary! {}, commands.into_bytes()));
-            let mut resources = dictionary! {"XObject"=>dictionary!{"Im0"=>image}};
-            if let Some(font) = font {
-                resources.set("Font", dictionary! {"F1"=>font.id});
-            }
-            let id=doc.add_object(dictionary!{"Type"=>"Page","Parent"=>pages_id,"MediaBox"=>vec![0.into(),0.into(),w.into(),h.into()],"Resources"=>resources,"Contents"=>content});
-            kids.push(Object::Reference(id));
-        }
-        doc.objects.insert(
-            pages_id,
-            Object::Dictionary(
-                dictionary! {"Type"=>"Pages","Count"=>kids.len() as i64,"Kids"=>kids},
-            ),
-        );
-        let catalog = doc.add_object(dictionary! {"Type"=>"Catalog","Pages"=>pages_id});
-        doc.trailer.set("Root", catalog);
-        if compressed {
-            doc.compress();
-        }
-        let mut bytes = Vec::new();
-        doc.save_to(&mut bytes).map_err(|e| e.to_string())?;
-        write_new(path, &bytes).map_err(|e| e.to_string())?;
-        Ok(())
-    }
+
 }
 #[cfg(test)]
 mod tests {

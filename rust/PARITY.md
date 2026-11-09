@@ -18,7 +18,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, remaining virtual-area range tools, legacy arrays, full floating-object editing, advanced filtering, locale-aware sort collation/preferences, validation controls, outlines/subtotals, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, windowed/fullscreen show navigation, hidden slides, loop/blank controls, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, presenter/rehearsal view, ink/laser/overview and export workflows |
 | IMG42 | Image decoding, transforms, adjustments, freehand and edge-refined selections, recognized text selection/copy, metadata and batch output | Full markup selection/editing, subject-mask guidance for Smart Lasso, full Live Text interaction, background removal, viewing panels and additional supported system codecs |
-| SCN42 | WIA acquisition and verified virtual rescan, image/PDF import, page processing, OCR and searchable output | Scan areas, device/preset controls, scan history, full export settings and physical-device checks |
+| SCN42 | WIA acquisition and verified virtual rescan, image/PDF import, page processing, OCR, optional searchable layer, PDF quality presets and per-page PDF output | Scan areas, device/preset controls, scan history, archival/other export formats, naming/preview settings and physical-device checks |
 
 ## Recorded checks
 
@@ -859,3 +859,12 @@ after image selection; image unit regressions are now included in quick CI.
   complete delete/history tests pass, with over 94% mask IoU on the defined rectangle fixture.
   Workspace 573/0/1 and Windows GNU checks pass. The normal Windows drag, cancel, alpha export,
   history and reopen audit awaits a compatible build. Foreground model guidance remains open.
+- Run 42573274769 (650a61f) passed all 37 native groups and MSVC 585/0/1. PPT42 windowed and
+  full-screen presentation, black/white pixels, hidden-slide history and standard Office metadata,
+  numeric/Home/End navigation, persisted include-hidden/loop and restoration of editing controls pass.
+- SCN42 normal PDF export now offers lossless or 300/200/150 DPI JPEG presets and an independent
+  searchable-text switch. Physical dimensions and OCR placement retain source DPI; exact black/white
+  pages stay lossless at 1 bit. Per-page export stages independently searchable files and publishes
+  numbered paths without clobber. Portable tests cover geometry, fonts, image streams, collision
+  handling, project immutability and full output order. Workspace 575/0/1 and GNU all targets pass.
+  The native PDFium geometry, text, collision and history check awaits a compatible build.

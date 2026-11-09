@@ -540,6 +540,44 @@ def pdf_text(dll_path, path, by_page=False):
         pdf.FPDF_DestroyLibrary()
 
 
+def pdf_image_layout(dll_path, path):
+    pdf = c.WinDLL(str(dll_path))
+    pdf.FPDF_LoadDocument.argtypes, pdf.FPDF_LoadDocument.restype = [c.c_char_p, c.c_char_p], c.c_void_p
+    pdf.FPDF_GetPageCount.argtypes = [c.c_void_p]
+    pdf.FPDF_LoadPage.argtypes, pdf.FPDF_LoadPage.restype = [c.c_void_p, c.c_int], c.c_void_p
+    pdf.FPDF_CloseDocument.argtypes = [c.c_void_p]
+    pdf.FPDF_ClosePage.argtypes = [c.c_void_p]
+    pdf.FPDF_GetPageWidthF.argtypes, pdf.FPDF_GetPageWidthF.restype = [c.c_void_p], c.c_float
+    pdf.FPDF_GetPageHeightF.argtypes, pdf.FPDF_GetPageHeightF.restype = [c.c_void_p], c.c_float
+    pdf.FPDFPage_CountObjects.argtypes = [c.c_void_p]
+    pdf.FPDFPage_GetObject.argtypes, pdf.FPDFPage_GetObject.restype = [c.c_void_p, c.c_int], c.c_void_p
+    pdf.FPDFPageObj_GetType.argtypes = [c.c_void_p]
+    pdf.FPDFImageObj_GetImagePixelSize.argtypes = [c.c_void_p, c.POINTER(c.c_uint), c.POINTER(c.c_uint)]
+    pdf.FPDF_InitLibrary()
+    document = pdf.FPDF_LoadDocument(str(path).encode("utf-8"), None)
+    assert document
+    layout = []
+    try:
+        for index in range(pdf.FPDF_GetPageCount(document)):
+            page = pdf.FPDF_LoadPage(document, index)
+            assert page
+            try:
+                images = []
+                for i in range(pdf.FPDFPage_CountObjects(page)):
+                    obj = pdf.FPDFPage_GetObject(page, i)
+                    if pdf.FPDFPageObj_GetType(obj) == 3:
+                        width, height = c.c_uint(), c.c_uint()
+                        assert pdf.FPDFImageObj_GetImagePixelSize(obj, c.byref(width), c.byref(height))
+                        images.append((width.value, height.value))
+                layout.append(((pdf.FPDF_GetPageWidthF(page), pdf.FPDF_GetPageHeightF(page)), images))
+            finally:
+                pdf.FPDF_ClosePage(page)
+        return layout
+    finally:
+        pdf.FPDF_CloseDocument(document)
+        pdf.FPDF_DestroyLibrary()
+
+
 def audit_table_labels(process, main, binary, output, results):
     source = output / "table-label-source.rtf"
     body = br"{\rtf1\ansi\deff0{\fonttbl{\f0 Arial;}}"
@@ -2405,8 +2443,59 @@ def audit_bundled_ocr(process,main,binary,output,results):
         project=output/'ocr-scan.scn42';save_as(main);choose_file(process,project);output_ready(process,main,project,b'SCN42')
         command(main,1);choose_file(process,project);wait_for(lambda:project.name in text(main)and u.IsWindowEnabled(main),'OCR scan reopened',process)
         reopened=save('reopened');assert pdf_text(dll,reopened,by_page=True)==pages
+        audit_scan_pdf_options(process, main, output, results, dll, project, pages)
     assert fixture.read_bytes()==original
     results['checks'].append('bundled static OCR recognizes real image pixels offline through native settings; selected page only, independent PDFium text/exact pixels, one-step Undo/Redo and saved reopen'+('; PDF crop/rotation retained, own layer replaced without duplicate text, settings and worker Cancel leave no OCR'if is_pdf else '; project retains recognized text'))
+
+
+def audit_scan_pdf_options(process, main, output, results, dll, project, original_text):
+    original = project.read_bytes()
+    listing = u.GetDlgItem(main, 100)
+    u.SendMessageW(listing, 0x186, 1, 0)
+    command(main, 100 | (1 << 16))
+    fill_prompt(process, main, 26, "Physical page resolution (default 150 DPI)", ["600", "300"])
+
+    def saved(name):
+        path = output / f"scan-pdf-options-{name}.pdf"
+        command(main, 21)
+        choose_file(process, path)
+        output_ready(process, main, path, b"%PDF-")
+        return path
+
+    lossless = saved("lossless")
+    baseline = pdf_image_layout(dll, lossless)
+    assert baseline[1][1] == [(1200, 320)]
+    assert pdf_text(dll, lossless, by_page=True) == original_text
+    fill_prompt(process, main, 36, "Export quality and compression", ["90", "1", "Balanced (200 dpi)", "No"])
+    compact = saved("image-only")
+    actual = pdf_image_layout(dll, compact)
+    assert [page[0] for page in actual] == [page[0] for page in baseline]
+    assert actual[1][1] == [(400, 213)], actual
+    assert pdf_text(dll, compact, by_page=True) == ["", ""]
+    assert b"/DCTDecode" in compact.read_bytes()
+    fill_prompt(process, main, 36, "Export quality and compression", ["90", "1", "Balanced (200 dpi)", "Yes"])
+    prefix = output / "scan-pages.pdf"
+    command(main, 40)
+    choose_file(process, prefix)
+    targets = [output / f"scan-pages-{index:03}.pdf" for index in (1, 2)]
+    for index, path in enumerate(targets):
+        output_ready(process, main, path, b"%PDF-")
+        assert pdf_image_layout(dll, path) == [actual[index]]
+        assert pdf_text(dll, path, by_page=True) == [original_text[index]]
+    published = [path.read_bytes() for path in targets]
+    assert not prefix.exists()
+    command(main, 40)
+    choose_file(process, prefix)
+    warning = wait_for(lambda: next((h for h in windows(process.pid) if classname(h) == "#32770"
+        and "PDF export destination exists" in " ".join(text(child) for child in windows_for_dialog(h))), None),
+        "split PDF destination collision rejected", process)
+    click(warning, 1)
+    wait_for(lambda: not u.IsWindowVisible(warning) and u.IsWindowEnabled(main), "collision dialog closed", process)
+    assert [path.read_bytes() for path in targets] == published
+    command(main, 4)
+    wait_for(lambda: u.IsWindowEnabled(main) and " * - " not in text(main), "export left only the DPI edit in history", process)
+    assert project.read_bytes() == original
+    results["checks"].append("SCN42 PDF preset, physical page dimensions with independently checked raster DPI, searchable toggle, separate searchable page files, no clobber, and export leaves project history untouched")
 
 
 def audit_smart_lasso(process, main, output, results):

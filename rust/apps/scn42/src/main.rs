@@ -4,8 +4,15 @@ mod ocr_settings;
 mod pdf_import;
 mod wia;
 mod windows_ocr;
-use scn42_core::ScanDocument;
+use scn42_core::{PdfExportOptions, PdfRaster, ScanDocument};
 use std::path::Path;
+const PDF_RASTERS: [(&str, PdfRaster); 4] = [
+    ("Best quality (lossless)", PdfRaster::Lossless),
+    ("High (300 dpi)", PdfRaster::Jpeg { dpi: 300, quality: 82 }),
+    ("Balanced (200 dpi)", PdfRaster::Jpeg { dpi: 200, quality: 68 }),
+    ("Smallest (150 dpi)", PdfRaster::Jpeg { dpi: 150, quality: 50 }),
+];
+const EXPORT_PDF_PAGES: u16 = 40;
 struct Scn {
     pending: Option<(u64, scn42_core::SaveState)>,
     next_save: u64,
@@ -25,7 +32,7 @@ struct Scn {
     pdf_last: u32,
     pdf_dpi: u32,
     jpeg_quality: u8,
-    compress_pdf: bool,
+    pdf_export: PdfExportOptions,
     tesseract_path: String,
     ocr_language: String,
     language_discovery: Option<std::sync::mpsc::Receiver<Result<String, String>>>,
@@ -311,6 +318,14 @@ impl win42::App for Scn {
                 pattern: "*.jpg;*.jpeg",
             },
             win42::FileAction {
+                id: EXPORT_PDF_PAGES,
+                title: "Export one PDF per page…",
+                save: true,
+                extension: "pdf",
+                format: "PDF filename prefix",
+                pattern: "*.pdf",
+            },
+            win42::FileAction {
                 id: 21,
                 title: "&Export PDF...",
                 save: true,
@@ -406,7 +421,12 @@ impl win42::App for Scn {
                     .map_err(|e| e.to_string())?;
                 file.write_all(&bytes).map_err(|e| e.to_string())
             }
-            21 => self.doc.export_pdf_compressed(p, self.compress_pdf),
+            21 => self.doc.export_pdf_with_options(p, self.pdf_export),
+            EXPORT_PDF_PAGES => {
+                let count = self.doc.export_pdf_pages(p, self.pdf_export)?;
+                self.scan_status = format!("Exported {count} PDF files");
+                Ok(())
+            }
             22 => {
                 use std::io::Write;
                 let text = self.doc.recognized_text();
@@ -455,8 +475,12 @@ impl win42::App for Scn {
                     ("JPEG quality (1–100)", self.jpeg_quality.to_string()),
                     (
                         "Compress PDF streams (1 yes, 0 no)",
-                        (self.compress_pdf as u8).to_string(),
+                        (self.pdf_export.compress_streams as u8).to_string(),
                     ),
+                    ("PDF image quality", PDF_RASTERS.iter()
+                        .find(|(_, raster)| *raster == self.pdf_export.raster)
+                        .map_or(PDF_RASTERS[0].0, |(label, _)| *label).into()),
+                    ("Searchable text (OCR)", if self.pdf_export.searchable { "Yes" } else { "No" }.into()),
                 ],
             });
         }
@@ -556,20 +580,34 @@ impl win42::App for Scn {
             ],
         })
     }
+    fn input_choices(&self, id: u16) -> Vec<(usize, Vec<String>)> {
+        if id != 36 {
+            return Vec::new();
+        }
+        vec![
+            (2, PDF_RASTERS.iter().map(|(title, _)| (*title).into()).collect()),
+            (3, vec!["Yes".into(), "No".into()]),
+        ]
+    }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
         if id == 36 {
-            let nums: Vec<u32> = values
-                .iter()
-                .map(|v| v.parse::<u32>().map_err(|_| "Enter integers"))
-                .collect::<Result<_, _>>()?;
-            if let [q, c] = nums.as_slice() {
-                if (1..=100).contains(q) && *c <= 1 {
-                    self.jpeg_quality = *q as u8;
-                    self.compress_pdf = *c == 1;
-                    return Ok(());
-                }
+            let [jpeg, compress, preset, searchable] = values else {
+                return Err("Invalid export settings".into());
+            };
+            let jpeg = jpeg.parse::<u8>().ok().filter(|quality| (1..=100).contains(quality))
+                .ok_or("Invalid JPEG quality")?;
+            let raster = PDF_RASTERS.iter().find(|(label, _)| *label == preset)
+                .ok_or("Choose a PDF image quality")?.1;
+            if !matches!(compress.as_str(), "0" | "1") || !matches!(searchable.as_str(), "Yes" | "No") {
+                return Err("Invalid export settings".into());
             }
-            return Err("Invalid export settings".into());
+            self.jpeg_quality = jpeg;
+            self.pdf_export = PdfExportOptions {
+                raster,
+                searchable: searchable == "Yes",
+                compress_streams: compress == "1",
+            };
+            return Ok(());
         }
         if id == 34 {
             let nums: Vec<u32> = values
@@ -809,7 +847,7 @@ impl win42::App for Scn {
     fn enabled(&self, id: u16) -> bool {
         let n = self.doc.pages().len();
         match id {
-            10 | 11 | 14 | 15 | 16 | 17 | 18 | 21 | 22 => n > 0,
+            10 | 11 | 14 | 15 | 16 | 17 | 18 | 21 | 22 | EXPORT_PDF_PAGES => n > 0,
             19 => self.scan.is_none(),
             39=>n>0&&self.scan.is_none()&&self.ocr.is_none()&&self.pdf_import.is_none(),
             23 | 37 => n > 0 && self.ocr.is_none(),
@@ -968,7 +1006,7 @@ fn main() {
         pdf_last: 0,
         pdf_dpi: 150,
         jpeg_quality: 90,
-        compress_pdf: true,
+        pdf_export: PdfExportOptions::default(),
         tesseract_path: settings.executable,
         ocr_language: settings.language,
         language_discovery: None,
@@ -999,7 +1037,7 @@ mod tests {
                 pdf_last: 0,
                 pdf_dpi: 150,
                 jpeg_quality: 90,
-                compress_pdf: true,
+                pdf_export: PdfExportOptions::default(),
                 tesseract_path: "tesseract".into(),
                 ocr_language: "eng".into(),
                 language_discovery: None,
@@ -1056,7 +1094,7 @@ mod tests {
             pdf_last: 0,
             pdf_dpi: 150,
             jpeg_quality: 90,
-            compress_pdf: true,
+            pdf_export: PdfExportOptions::default(),
             tesseract_path: "tesseract".into(),
             ocr_language: "eng".into(),
             language_discovery: None,
@@ -1114,7 +1152,7 @@ mod tests {
             pdf_last: 0,
             pdf_dpi: 150,
             jpeg_quality: 90,
-            compress_pdf: true,
+            pdf_export: PdfExportOptions::default(),
             tesseract_path: "tesseract".into(),
             ocr_language: "eng".into(),
             language_discovery: None,
@@ -1159,7 +1197,7 @@ mod tests {
             pdf_last: 0,
             pdf_dpi: 150,
             jpeg_quality: 90,
-            compress_pdf: true,
+            pdf_export: PdfExportOptions::default(),
             tesseract_path: "tesseract".into(),
             ocr_language: "eng".into(),
             language_discovery: None,
@@ -1192,7 +1230,7 @@ mod tests {
             pdf_last: 0,
             pdf_dpi: 150,
             jpeg_quality: 90,
-            compress_pdf: true,
+            pdf_export: PdfExportOptions::default(),
             tesseract_path: "tesseract".into(),
             ocr_language: "eng".into(),
             language_discovery: None,
@@ -1227,7 +1265,7 @@ mod tests {
             pdf_last: 0,
             pdf_dpi: 150,
             jpeg_quality: 90,
-            compress_pdf: true,
+            pdf_export: PdfExportOptions::default(),
             tesseract_path: "tesseract".into(),
             ocr_language: "eng".into(),
             language_discovery: None,
@@ -1273,7 +1311,7 @@ mod rescan_tests {
             pdf_last: 0,
             pdf_dpi: 150,
             jpeg_quality: 90,
-            compress_pdf: true,
+            pdf_export: PdfExportOptions::default(),
             tesseract_path: String::new(),
             ocr_language: "eng".into(),
             language_discovery: None,

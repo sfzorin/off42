@@ -991,4 +991,13 @@ End move to the first or last shown slide. Type a slide number and press Enter t
 blank the display and hold slide timing. Navigation reveals the slide before advancing. Q or Esc
 ends the show. Hide Slide is undoable and saved in native projects, PPTX and ODP. Slide Show Settings
 stores whether to loop and include hidden slides. Presenter view, rehearsal and ink/laser tools
-remain open. The expanded native check is pending.
+remain open. The expanded native check passes in run 42573274769.
+
+
+### Scan PDF exports (development branch)
+
+SCN42 Export Quality Settings offers lossless PDF output and 300, 200 or 150 DPI presets. Color and
+grayscale images use JPEG for those presets while exact black/white scans stay lossless. The PDF
+keeps the source physical page dimensions. Searchable Text controls whether recognized words are
+written to the export. Export One PDF per Page uses the chosen filename as a prefix and appends
+`-001.pdf`, `-002.pdf`, and so on. Existing destination files cause the operation to stop.
