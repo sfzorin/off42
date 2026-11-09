@@ -1333,6 +1333,10 @@ impl win42::App for Ppt {
     fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
         let slide = &self.deck.slides()[self.deck.current()];
         match id {
+            74 => Some(win42::InputRequest {
+                title: "Speaker Notes",
+                fields: vec![("Notes", win42::to_native_text(&slide.notes))],
+            }),
             72 => {
                 let settings = ShowSettings::load();
                 let yes_no = |value| if value { "Yes".into() } else { "No".into() };
@@ -1469,8 +1473,15 @@ impl win42::App for Ppt {
             Vec::new()
         }
     }
+    fn multiline_input(&self, id: u16) -> bool {
+        id == 74
+    }
+    fn toolbar_command_visible(&self, id: u16) -> bool {
+        id != 74
+    }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
         match id {
+            74 if values.len() == 1 && self.enabled(id) => self.deck.set_notes(&values[0]),
             72 if values.len() == 2 && values.iter().all(|value| matches!(value.as_str(), "No" | "Yes")) => {
                 ShowSettings { looped: values[0] == "Yes", show_hidden: values[1] == "Yes" }.save()
             }
@@ -2028,6 +2039,7 @@ impl win42::App for Ppt {
             (71, "Present in Window"),
             (72, "Slide Show Settings…"),
             (73, "Hide Slide"),
+            (74, "Edit Speaker Notes…"),
             (66, "Slide Timing and Transition…"),
             (42, "Text Font…"),
             (43, "Align Text Left"),
@@ -2388,6 +2400,11 @@ impl win42::App for Ppt {
             73 => self.odp_source.as_ref().is_none_or(|source| {
                 source.can_edit_visibility(self.deck.slides()[i].source_identity())
             }),
+            74 => {
+                let slide = self.deck.slides()[i].source_identity();
+                self.pptx_source.as_ref().is_none_or(|source| source.can_edit_notes(slide))
+                    && self.odp_source.as_ref().is_none_or(|source| source.can_edit_notes(slide))
+            }
             10 => self.deck.can_add(),
             11 => n > 1,
             12 => i > 0,

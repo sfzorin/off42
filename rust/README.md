@@ -993,6 +993,12 @@ ends the show. Hide Slide is undoable and saved in native projects, PPTX and ODP
 stores whether to loop and include hidden slides. Presenter view, rehearsal and ink/laser tools
 remain open. The expanded native check passes in run 42573274769.
 
+**Edit Speaker Notes** opens a multiline editor for the selected slide. An accepted change is one
+Undo step. Notes stay with the slide when it moves or is duplicated and are saved in native
+projects, PPTX and ODP. Standard plain-text notes in imported presentations can be edited.
+Compatible PPTX packages reuse their notes master or acquire one with the first note. Original
+complex notes parts are preserved. Presenter display and notes-page printing remain open.
+
 
 ### Scan PDF exports (development branch)
 

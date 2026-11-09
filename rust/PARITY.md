@@ -16,7 +16,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction, bounded offline OCR, detached CMS verification, certificate-signed copies and byte-preserving signature-field views | Richer forms, visible and additional signatures, timestamp/revocation validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured Find/Replace with case, whole words, regex captures and next/previous, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, broader regex syntax and cross-paragraph rich replacement, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
 | XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, remaining virtual-area range tools, legacy arrays, full floating-object editing, advanced filtering, locale-aware sort collation/preferences, validation controls, outlines/subtotals, split panes, per-cell/password protection and fuller format fidelity |
-| PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, windowed/fullscreen show navigation, hidden slides, loop/blank controls, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, presenter/rehearsal view, ink/laser/overview and export workflows |
+| PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, speaker-notes editing with PPTX/ODP persistence, basic transitions, windowed/fullscreen show navigation, hidden slides, loop/blank controls, PPTX/ODP and printing | Rich notes and notes-page output, custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, presenter/rehearsal view, ink/laser/overview and export workflows |
 | IMG42 | Image decoding, transforms, adjustments, freehand and edge-refined selections, recognized text selection/copy, metadata and batch output | Full markup selection/editing, subject-mask guidance for Smart Lasso, full Live Text interaction, background removal, viewing panels and additional supported system codecs |
 | SCN42 | WIA acquisition and verified virtual rescan, image/PDF import, page processing, OCR, optional searchable layer, PDF quality presets and per-page PDF output | Scan areas, device/preset controls, scan history, archival/other export formats, naming/preview settings and physical-device checks |
 
@@ -893,3 +893,14 @@ after image selection; image unit regressions are now included in quick CI.
   history and the source are preserved. Workspace 579/0/1 and GNU all targets pass. A Windows
   cryptographic regression creates and removes its own disposable RSA key container. Its native
   execution and the Windows certificate picker still need verification.
+- Run 42687296150 (7be1176) passed 37 native groups and MSVC 591/0/1. PDF42 normal Open retained
+  signed bytes, disabled document editing and ordinary Save, verified the signed snapshot and
+  produced a byte-identical copy through the signed-copy dialog.
+- Run 42688479175 (97d3e85) passed 37 native groups and MSVC 593/0/1. The Windows-only PDF test
+  signed a prepared copy with CryptoAPI using a disposable key container and detected a change to
+  the signed bytes. The certificate chooser with a personal or hardware certificate remains untested.
+- PPT42 adds a native multiline speaker-notes editor with one-step Undo. Standard notes round
+  trip in the native project, PPTX and ODP. Safe external overlays patch note text, preserve
+  unrelated parts and add notes to compatible PPTX files with or without an existing master.
+  Workspace 581/0/1 and Windows GNU all targets pass. The multiline prompt, Cancel, history, actual saves and independent ZIP
+  checks await a native run.

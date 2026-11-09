@@ -1,5 +1,6 @@
 //! PPTX package overlay. Unowned package parts and XML elements remain intact.
 use super::*;
+mod notes;
 use std::{
     collections::{HashMap, HashSet},
     io::{Cursor, Read, Write},
@@ -29,6 +30,8 @@ struct SlideSource {
     has_notes: bool,
     notes_path: Option<String>,
     notes_cloneable: bool,
+    notes: String,
+    notes_editable: bool,
     background: [u8; 3],
     decorations: Vec<SlideObject>,
     objects: Vec<ObjectSource>,
@@ -42,8 +45,19 @@ pub struct Source {
     width: f64,
     height: f64,
     can_delete: bool,
+    notes_master: Option<notes::Master>,
 }
 impl Source {
+    pub fn can_edit_notes(&self, slide: u64) -> bool {
+        let Some(record) = self.slides.iter().find(|record| record.slide_id == slide) else {
+            return self.notes_master.is_some();
+        };
+        if !record.has_notes {
+            return self.notes_master.is_some();
+        }
+        record.notes_editable
+            && self.slides.iter().filter(|other| other.notes_path == record.notes_path).count() == 1
+    }
     pub fn can_edit_timing(&self, slide: u64) -> bool {
         self.slides
             .iter()
@@ -586,6 +600,7 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
     }
     let mut deck = Presentation::new();
     let mut slides = Vec::new();
+    let mut notes_theme = None;
     for (index, (path, rel_id, presentation_entry)) in paths.into_iter().enumerate() {
         if index > 0 {
             deck.add()?;
@@ -604,7 +619,7 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
         let relbytes = read(&mut z, &relpath).ok();
         let mut slide_targets = HashMap::new();
         let mut layout_target = None;
-        let mut has_notes = false;
+        let mut note_links = 0;
         let mut notes_path = None;
         if let Some(ref relbytes) = relbytes {
             let relationships = xml(relbytes)?;
@@ -617,8 +632,10 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
                     layout_target = attr(r, "Target").map(str::to_owned);
                 }
                 if kind.ends_with("/notesSlide") {
-                    has_notes = true;
-                    notes_path = attr(r, "Target").and_then(|v| target(&path, v));
+                    note_links += 1;
+                    if r.attribute("TargetMode").is_none_or(|mode| mode == "Internal") {
+                        notes_path = attr(r, "Target").and_then(|v| target(&path, v));
+                    }
                 }
                 if let (Some(id), Some(value)) = (attr(r, "Id"), attr(r, "Target")) {
                     if let Some(target) = target(&path, value) {
@@ -626,6 +643,10 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
                     }
                 }
             }
+        }
+        let has_notes = note_links > 0;
+        if note_links != 1 {
+            notes_path = None;
         }
         let layout_path = layout_target.as_deref().and_then(|v| target(&path, v));
         let layout_bytes = layout_path.as_deref().and_then(|p| read(&mut z, p).ok());
@@ -662,6 +683,9 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
         });
         let theme_bytes = theme_path.as_deref().and_then(|p| read(&mut z, p).ok());
         let theme_doc = theme_bytes.as_ref().and_then(|b| xml(b).ok());
+        if notes_theme.is_none() && theme_doc.is_some() {
+            notes_theme = theme_path;
+        }
         let mut palette = HashMap::new();
         if let Some(theme) = theme_doc.as_ref() {
             if let Some(scheme) = local(theme.root_element(), "clrScheme") {
@@ -1012,6 +1036,10 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
         } else {
             !has_notes
         };
+        let (notes, notes_editable) = notes_path.as_deref()
+            .and_then(|name| read(&mut z, name).ok())
+            .and_then(|bytes| notes::read(&bytes).ok())
+            .unwrap_or_default();
         slides.push(SlideSource {
             slide_id: deck.slides()[index].id,
             path,
@@ -1021,6 +1049,8 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
             has_notes,
             notes_path,
             notes_cloneable,
+            notes,
+            notes_editable,
             background,
             decorations,
             objects,
@@ -1028,6 +1058,13 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
             hidden,
             timing_editable: parsed_timing.is_some(),
         });
+    }
+    for (index, slide) in slides.iter_mut().enumerate().filter(|(_, slide)| !slide.notes.is_empty()) {
+        deck.select(index)?;
+        if deck.set_notes(&slide.notes).is_err() {
+            slide.notes.clear();
+            slide.notes_editable = false;
+        }
     }
     deck.select(0)?;
     let state = deck.history.snapshot();
@@ -1047,6 +1084,7 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
             })
         })
         .unwrap_or(false);
+    let notes_master = notes::Master::plan(&mut z, p.root_element(), rel.root_element(), notes_theme);
     Ok((
         deck,
         Source {
@@ -1055,6 +1093,7 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
             width,
             height,
             can_delete,
+            notes_master,
         },
     ))
 }
@@ -1838,6 +1877,15 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
             append_element_content(&mut current, &added_fragment)?;
             updated.replace_range(range, &current);
         }
+        let updated_notes = if record.has_notes && slide.notes != record.notes {
+            if !source.can_edit_notes(record.slide_id) {
+                return Err("This PPTX speaker-notes part cannot be safely edited".into());
+            }
+            let path = record.notes_path.as_deref().ok_or("PPTX notes part missing")?;
+            Some(notes::patch(&read(&mut input, path)?, &slide.notes)?)
+        } else {
+            None
+        };
         if cloned {
             let (dir, file) = record.path.rsplit_once('/').ok_or("Invalid slide path")?;
             let source_relpath = format!("{dir}/_rels/{file}.rels");
@@ -1859,7 +1907,10 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                 let new_note_rels = format!("ppt/notesSlides/_rels/suite42_{}.xml.rels", slide.id);
                 let (note_dir, note_file) = note.rsplit_once('/').ok_or("Invalid notes path")?;
                 let note_rels = format!("{note_dir}/_rels/{note_file}.rels");
-                let note_xml = read(&mut input, note)?;
+                let note_xml = match updated_notes {
+                    Some(bytes) => bytes,
+                    None => read(&mut input, note)?,
+                };
                 let note_rel_xml = read(&mut input, &note_rels)?;
                 rels = retarget_relationship(
                     &rels,
@@ -1878,7 +1929,50 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
             added_files.push((output_relpath, rels));
             added_files.push((output_path, updated.into_bytes()));
         } else {
+            if let Some(notes) = updated_notes {
+                replacements.insert(record.notes_path.clone().ok_or("PPTX notes part missing")?, notes);
+            }
             replacements.insert(record.path.clone(), updated.into_bytes());
+        }
+    }
+    let new_notes = deck.slides().iter().filter(|slide| {
+        !slide.notes.is_empty() && !source.slides.iter().any(|record| {
+            record.slide_id == slide.source_identity() && record.has_notes
+        })
+    }).collect::<Vec<_>>();
+    if !new_notes.is_empty() {
+        let master = source.notes_master.as_ref().ok_or("Cannot add notes to this PPTX notes master")?;
+        let presentation_path = "ppt/presentation.xml";
+        let rels_path = notes::PRESENTATION_RELS;
+        let presentation = replacements.remove(presentation_path).map_or_else(|| read(&mut input, presentation_path), Ok)?;
+        let rels = replacements.remove(rels_path).map_or_else(|| read(&mut input, rels_path), Ok)?;
+        let updated = master.add_to_presentation(&presentation, &rels, &mut added_files, &mut slide_overrides)?;
+        let (presentation, rels) = updated.unwrap_or((presentation, rels));
+        replacements.insert(presentation_path.into(), presentation);
+        replacements.insert(rels_path.into(), rels);
+        for slide in new_notes {
+            let path = new_slide_entries.get(&slide.id).map(|entry| entry.0.as_str())
+                .or_else(|| source.slides.iter().find(|record| record.slide_id == slide.id).map(|record| record.path.as_str()))
+                .ok_or("PPTX slide path missing")?;
+            let (dir, file) = path.rsplit_once('/').ok_or("Invalid PPTX slide path")?;
+            let relpath = format!("{dir}/_rels/{file}.rels");
+            let existing = input.by_name(&relpath).is_ok();
+            let rels = if let Some(index) = added_files.iter().position(|(name, _)| name == &relpath) {
+                Some(added_files.swap_remove(index).1)
+            } else if let Some(bytes) = replacements.remove(&relpath) {
+                Some(bytes)
+            } else if existing {
+                Some(read(&mut input, &relpath)?)
+            } else {
+                None
+            };
+            let note_path = notes::unused_part(&input, "notesSlides", &format!("off42_{}", slide.id));
+            let updated = master.add_to_slide(note_path, path, &slide.notes, rels.as_deref(), &mut added_files, &mut slide_overrides)?;
+            if existing {
+                replacements.insert(relpath, updated);
+            } else {
+                added_files.push((relpath, updated));
+            }
         }
     }
     if !image_extensions.is_empty() || !slide_overrides.is_empty() {
@@ -2389,6 +2483,15 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
     let mut slide_ids = String::new();
     let mut pres_rels=format!("<Relationship Id=\"master\" Type=\"{rns}/slideMaster\" Target=\"slideMasters/slideMaster1.xml\"/>");
     let group="<p:nvGrpSpPr><p:cNvPr id=\"1\" name=\"\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>";
+    let notes_master = if deck.slides().iter().any(|slide| !slide.notes.is_empty()) {
+        pres_rels.push_str(&format!("<Relationship Id=\"notesMaster\" Type=\"{rns}/notesMaster\" Target=\"notesMasters/notesMaster1.xml\"/>"));
+        overrides.push_str("<Override PartName=\"/ppt/notesMasters/notesMaster1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml\"/>");
+        parts.push(("ppt/notesMasters/notesMaster1.xml".into(), notes::master()));
+        parts.push(("ppt/notesMasters/_rels/notesMaster1.xml.rels".into(), notes::master_relationships()));
+        "<p:notesMasterIdLst><p:notesMasterId r:id=\"notesMaster\"/></p:notesMasterIdLst>"
+    } else {
+        ""
+    };
     for (i, slide) in deck.slides().iter().enumerate() {
         let n = i + 1;
         slide_ids.push_str(&format!("<p:sldId id=\"{}\" r:id=\"slide{n}\"/>", 255 + n));
@@ -2537,6 +2640,12 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
             let xml=format!("<p:grpSp><p:nvGrpSpPr><p:cNvPr id=\"{id}\" name=\"Group {id}\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"9144000\" cy=\"5143500\"/><a:chOff x=\"0\" y=\"0\"/><a:chExt cx=\"9144000\" cy=\"5143500\"/></a:xfrm></p:grpSpPr>{children}</p:grpSp>");
             shapes = shapes.replace(&format!("<!--suite42-group-{group_id}-->"), &xml);
         }
+        if !slide.notes.is_empty() {
+            rels.push_str(&format!("<Relationship Id=\"notes\" Type=\"{rns}/notesSlide\" Target=\"../notesSlides/notesSlide{n}.xml\"/>"));
+            overrides.push_str(&format!("<Override PartName=\"/ppt/notesSlides/notesSlide{n}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml\"/>"));
+            parts.push((format!("ppt/notesSlides/notesSlide{n}.xml"), notes::slide(&slide.notes)));
+            parts.push((format!("ppt/notesSlides/_rels/notesSlide{n}.xml.rels"), notes::relationships(n)));
+        }
         let transition = timing_xml(slide.timing);
         let visibility = visibility_attr(slide.hidden);
         parts.push((format!("ppt/slides/slide{n}.xml"),format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><p:sld xmlns:p=\"{pns}\" xmlns:a=\"{ans}\" xmlns:r=\"{rns}\"{visibility}><p:cSld><p:spTree>{group}{shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>{transition}</p:sld>").into_bytes()));
@@ -2545,7 +2654,7 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
             format!("<Relationships xmlns=\"{pkg}\">{rels}</Relationships>").into_bytes(),
         ));
     }
-    parts.push(("ppt/presentation.xml".into(),format!("<p:presentation xmlns:p=\"{pns}\" xmlns:r=\"{rns}\"><p:sldMasterIdLst><p:sldMasterId id=\"2147483648\" r:id=\"master\"/></p:sldMasterIdLst><p:sldIdLst>{slide_ids}</p:sldIdLst><p:sldSz cx=\"9144000\" cy=\"5143500\"/><p:notesSz cx=\"6858000\" cy=\"9144000\"/></p:presentation>").into_bytes()));
+    parts.push(("ppt/presentation.xml".into(),format!("<p:presentation xmlns:p=\"{pns}\" xmlns:r=\"{rns}\"><p:sldMasterIdLst><p:sldMasterId id=\"2147483648\" r:id=\"master\"/></p:sldMasterIdLst>{notes_master}<p:sldIdLst>{slide_ids}</p:sldIdLst><p:sldSz cx=\"9144000\" cy=\"5143500\"/><p:notesSz cx=\"6858000\" cy=\"9144000\"/></p:presentation>").into_bytes()));
     parts.push((
         "ppt/_rels/presentation.xml.rels".into(),
         format!("<Relationships xmlns=\"{pkg}\">{pres_rels}</Relationships>").into_bytes(),

@@ -43,9 +43,100 @@ pub struct Slide {
     pub timing: SlideTiming,
     #[serde(default, skip_serializing_if = "is_visible")]
     pub hidden: bool,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub notes: String,
 }
 fn is_visible(hidden: &bool) -> bool {
     !hidden
+}
+fn valid_notes(notes: &str) -> bool {
+    notes.len() <= MAX_TEXT && notes.chars().all(|ch| {
+        matches!(ch, '\t' | '\n') || (ch >= ' ' && !matches!(ch, '\u{fffe}' | '\u{ffff}'))
+    })
+}
+
+#[cfg(test)]
+mod speaker_notes_tests {
+    use super::*;
+    use std::io::{Cursor, Read};
+    use zip::ZipArchive;
+
+    fn entry(bytes: &[u8], path: &str) -> Vec<u8> {
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut contents = Vec::new();
+        archive.by_name(path).unwrap().read_to_end(&mut contents).unwrap();
+        contents
+    }
+
+    #[test]
+    fn notes_follow_slide_identity_and_roundtrip_project_and_standard_office_parts() {
+        let first = "  Образец 42\n\nX < 9\tkeep  space";
+        let second = "Slide two";
+        let mut deck = Presentation::new();
+        deck.set_notes(first).unwrap();
+        deck.add().unwrap();
+        deck.set_notes(second).unwrap();
+        let (project, _) = deck.save_snapshot().unwrap();
+        let source: Deck = serde_json::from_slice(&project).unwrap();
+        assert_eq!(source.slides[0].notes, first);
+        assert_eq!(source.slides[1].notes, second);
+
+        let pptx = pptx::export_new(&deck).unwrap();
+        let odf = odp::export(&deck).unwrap();
+        let (mut opened_pptx, pptx_source) = pptx::import(&pptx).unwrap();
+        let (mut opened_odf, odf_source) = odp::import_with_source(&odf).unwrap();
+        for opened in [&mut opened_pptx, &mut opened_odf] {
+            assert_eq!(opened.slides()[0].notes, first);
+            assert_eq!(opened.slides()[1].notes, second);
+            assert!(opened.slides()[0].objects.is_empty());
+            opened.select(1).unwrap();
+            opened.set_notes("Revised\r\nline").unwrap();
+            assert_eq!(opened.slides()[1].notes, "Revised\nline");
+            assert!(opened.undo());
+            assert_eq!(opened.slides()[1].notes, second);
+            assert!(opened.redo());
+        }
+        assert!(pptx_source.can_edit_notes(opened_pptx.slides()[1].id));
+        assert!(odf_source.can_edit_notes(opened_odf.slides()[1].id));
+        let updated = pptx::export(&opened_pptx, &pptx_source).unwrap();
+        assert_eq!(
+            entry(&updated, "ppt/notesSlides/notesSlide1.xml"),
+            entry(&pptx, "ppt/notesSlides/notesSlide1.xml"),
+        );
+        assert_eq!(
+            entry(&updated, "ppt/notesSlides/_rels/notesSlide2.xml.rels"),
+            entry(&pptx, "ppt/notesSlides/_rels/notesSlide2.xml.rels"),
+        );
+        assert_eq!(pptx::import(&updated).unwrap().0.slides()[1].notes, "Revised\nline");
+        let updated_odf = odp::export_overlay(&opened_odf, &odf_source).unwrap();
+        assert_eq!(entry(&updated_odf, "styles.xml"), entry(&odf, "styles.xml"));
+        let reopened = odp::import(&updated_odf).unwrap();
+        assert_eq!(reopened.slides()[0].notes, first);
+        assert_eq!(reopened.slides()[1].notes, "Revised\nline");
+    }
+
+    #[test]
+    fn notes_can_be_added_to_imported_slides_with_and_without_a_master() {
+        let original = pptx::export_new(&Presentation::new()).unwrap();
+        let (mut deck, source) = pptx::import(&original).unwrap();
+        assert!(source.can_edit_notes(deck.slides()[0].id));
+        deck.set_notes("First note in this file").unwrap();
+        deck.add().unwrap();
+        let once = pptx::export(&deck, &source).unwrap();
+        assert_eq!(entry(&once, "ppt/slides/slide1.xml"), entry(&original, "ppt/slides/slide1.xml"));
+        assert_eq!(entry(&once, "ppt/theme/theme1.xml"), entry(&original, "ppt/theme/theme1.xml"));
+        let (mut deck, source) = pptx::import(&once).unwrap();
+        assert_eq!(deck.slides()[0].notes, "First note in this file");
+        assert!(source.can_edit_notes(deck.slides()[1].id));
+        deck.select(1).unwrap();
+        deck.set_notes("Use the same master").unwrap();
+        let twice = pptx::export(&deck, &source).unwrap();
+        assert_eq!(entry(&once, "ppt/presentation.xml"), entry(&twice, "ppt/presentation.xml"));
+        assert_eq!(entry(&once, "ppt/notesSlides/off42_1.xml"), entry(&twice, "ppt/notesSlides/off42_1.xml"));
+        let reopened = pptx::import(&twice).unwrap().0;
+        assert_eq!(reopened.slides()[0].notes, "First note in this file");
+        assert_eq!(reopened.slides()[1].notes, "Use the same master");
+    }
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Transition {
@@ -190,6 +281,7 @@ impl Slide {
             next_object_id: 1,
             timing: SlideTiming::default(),
             hidden: false,
+            notes: String::new(),
         }
     }
     fn edited(&self, title: &str, body: &str) -> Self {
@@ -206,6 +298,7 @@ impl Slide {
             next_object_id: self.next_object_id,
             timing: self.timing,
             hidden: self.hidden,
+            notes: self.notes.clone(),
         }
     }
 }
@@ -229,6 +322,7 @@ impl Deck {
                     && ids.insert(s.id)
                     && s.title.len() <= MAX_TEXT
                     && s.body.len() <= MAX_TEXT
+                    && valid_notes(&s.notes)
                     && s.title_text.policy_consistent()
                     && s.body_text.policy_consistent()
                     && s.title_text.raw() == s.title
@@ -393,6 +487,23 @@ impl Presentation {
         self.history.apply(state);
         Ok(())
     }
+    pub fn set_notes(&mut self, notes: &str) -> Result<(), String> {
+        if notes.len() > MAX_TEXT * 2 {
+            return Err("Speaker notes exceed the size limit".into());
+        }
+        let notes = notes.replace("\r\n", "\n").replace('\r', "\n");
+        if !valid_notes(&notes) {
+            return Err("Invalid or oversized speaker notes".into());
+        }
+        let current = self.current();
+        let mut state = self.history.snapshot();
+        state.deck.slides[current].notes = notes;
+        if !state.deck.valid() {
+            return Err("Presentation exceeds size limit".into());
+        }
+        self.history.apply(state);
+        Ok(())
+    }
     /// Import raw text and establish line-ending policy for the selected slide.
     pub fn edit_raw(&mut self, title: String, body: String) -> Result<(), String> {
         let mut state = self.history.current().clone();
@@ -402,11 +513,13 @@ impl Presentation {
         let next_object_id = state.deck.slides[index].next_object_id;
         let timing = state.deck.slides[index].timing;
         let hidden = state.deck.slides[index].hidden;
+        let notes = state.deck.slides[index].notes.clone();
         state.deck.slides[index] = Slide::new(id, title, body);
         state.deck.slides[index].objects = objects;
         state.deck.slides[index].next_object_id = next_object_id;
         state.deck.slides[index].timing = timing;
         state.deck.slides[index].hidden = hidden;
+        state.deck.slides[index].notes = notes;
         if !state.deck.valid() {
             return Err("invalid slide text or deck exceeds size limit".into());
         }

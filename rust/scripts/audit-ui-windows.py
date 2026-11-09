@@ -1727,6 +1727,114 @@ def audit_ppt_show(process, main, output, results):
     results["checks"].append("PPT42 normal Hide Slide and complete history, native PPTX/ODP visibility metadata, windowed and fullscreen pixels, black/white screens, navigation and skipping, persisted include-hidden and loop, restored editor window")
 
 
+def audit_ppt_notes(process, main, output, results):
+    import xml.etree.ElementTree as ET
+
+    def text_value(raw):
+        return {"raw": raw, "crlf": False}
+
+    first = "First slide\nprivate cue"
+    second = "  Заметки 42\n\nX < 9\tkeep  space"
+    source = output / "ppt-notes-source.json"
+    slides = [{"id": index, "title_text": text_value(f"Slide {index}"),
+               "body_text": text_value(""), "notes": notes}
+              for index, notes in enumerate([first, "Original cue"], 1)]
+    source.write_text(json.dumps({"version": 2, "next_id": 3, "slides": slides}), encoding="utf-8")
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+
+    def select_second():
+        listing = u.GetDlgItem(main, 100)
+        u.SendMessageW(listing, 0x186, 1, 0)
+        command(main, 100 | (1 << 16))
+
+    def notes_prompt(expected):
+        command(main, 74)
+        dialog = modal(process, title="Speaker Notes", native_class="Suite42InputDialog")
+        edit = u.GetDlgItem(dialog, 100)
+        assert classname(edit).lower() == "edit" and u.GetWindowLongW(edit, -16) & 4
+        assert text(edit) == expected.replace("\n", "\r\n")
+        return dialog, edit
+
+    def saved(name, extension, kind):
+        path = output / f"ppt-notes-{name}.{extension}"
+        save_as(main)
+        choose_file(process, path, format_name=kind)
+        output_ready(process, main, path, b"{" if extension == "json" else b"PK")
+        return path
+
+    def project_notes(name):
+        project = saved(name, "json", "off42 slides JSON")
+        return [slide.get("notes", "") for slide in json.loads(project.read_text(encoding="utf-8"))["slides"]]
+
+    select_second()
+    dialog, edit = notes_prompt("Original cue")
+    set_text(edit, "discard this draft")
+    click(dialog, 2)
+    wait_for(lambda: not u.IsWindow(dialog), "speaker notes cancelled", process)
+    assert text(main).startswith(source.name + " - ")
+    fill_prompt(process, main, 74, "Speaker Notes", [second.replace("\n", "\r\n")])
+    command(main, 4)
+    assert project_notes("undo") == [first, "Original cue"]
+    command(main, 5)
+    assert project_notes("redo") == [first, second]
+    pptx = saved("edited", "pptx", "PowerPoint presentation")
+    odp = saved("edited", "odp", "OpenDocument presentation")
+    ppt_ns = {"p": "http://schemas.openxmlformats.org/presentationml/2006/main",
+              "a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
+    with zipfile.ZipFile(pptx) as package:
+        first_part = package.read("ppt/notesSlides/notesSlide1.xml")
+        second_links = package.read("ppt/notesSlides/_rels/notesSlide2.xml.rels")
+        notes = ET.fromstring(package.read("ppt/notesSlides/notesSlide2.xml"))
+        assert [node.text for node in notes.findall(".//a:t", ppt_ns)] == ["  Заметки 42", "X < 9\tkeep  space"]
+        assert "ppt/notesMasters/notesMaster1.xml" in package.namelist()
+    odf_ns = {"p": "urn:oasis:names:tc:opendocument:xmlns:presentation:1.0",
+              "t": "urn:oasis:names:tc:opendocument:xmlns:text:1.0"}
+    with zipfile.ZipFile(odp) as package:
+        notes = ET.fromstring(package.read("content.xml")).findall(".//p:notes", odf_ns)
+        assert len(notes) == 2 and len(notes[1].findall(".//t:p", odf_ns)) == 3
+    open_fixture(process, main, source)
+    open_fixture(process, main, odp)
+    select_second()
+    dialog, _ = notes_prompt(second)
+    click(dialog, 2)
+    wait_for(lambda: not u.IsWindow(dialog), "reopened ODP notes checked", process)
+    open_fixture(process, main, pptx)
+    select_second()
+    dialog, edit = notes_prompt(second)
+    set_text(edit, "Office source\r\nrevised")
+    click(dialog, 1)
+    wait_for(lambda: not u.IsWindow(dialog), "imported PPTX notes edited", process)
+    updated = saved("overlay", "pptx", "PowerPoint presentation")
+    with zipfile.ZipFile(updated) as package:
+        assert package.read("ppt/notesSlides/notesSlide1.xml") == first_part
+        assert package.read("ppt/notesSlides/_rels/notesSlide2.xml.rels") == second_links
+    open_fixture(process, main, source)
+    open_fixture(process, main, updated)
+    select_second()
+    dialog, _ = notes_prompt("Office source\nrevised")
+    click(dialog, 2)
+    wait_for(lambda: not u.IsWindow(dialog), "reopened PPTX notes checked", process)
+    without_notes = output / "ppt-show-hidden.pptx"
+    original_pptx = without_notes.read_bytes()
+    open_fixture(process, main, without_notes)
+    fill_prompt(process, main, 74, "Speaker Notes", ["First note in this presentation"])
+    with_notes = saved("first-note", "pptx", "PowerPoint presentation")
+    with zipfile.ZipFile(without_notes) as before, zipfile.ZipFile(with_notes) as after:
+        assert before.read("ppt/slides/slide1.xml") == after.read("ppt/slides/slide1.xml")
+        assert before.read("ppt/theme/theme1.xml") == after.read("ppt/theme/theme1.xml")
+        assert not any(name.startswith("ppt/notesMasters/") for name in before.namelist())
+        assert "ppt/notesMasters/off42NotesMaster.xml" in after.namelist()
+    open_fixture(process, main, without_notes)
+    open_fixture(process, main, with_notes)
+    dialog, _ = notes_prompt("First note in this presentation")
+    click(dialog, 2)
+    wait_for(lambda: not u.IsWindow(dialog), "new PPTX notes part reopened", process)
+    assert without_notes.read_bytes() == original_pptx
+    assert source.read_bytes() == original
+    results["checks"].append("PPT42 multiline notes edit and cancel, per-slide identity, Undo/Redo, standard PPTX/ODP parts and reopen, imported PPTX note edit and first note/master creation preserving unrelated package bytes")
+
+
 def audit_preset_shapes(process,main,output,results):
     import xml.etree.ElementTree as ET
     command(main,68)
@@ -3126,6 +3234,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             if preset_shapes and binary.stem.lower() == "ppt42":
                 audit_preset_shapes(process,main,output,results)
                 audit_ppt_show(process,main,output,results)
+                audit_ppt_notes(process,main,output,results)
             return results
         if binary.stem.lower() == "pdf42" and not startup:
             source = output / "input.pdf"

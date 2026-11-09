@@ -171,6 +171,9 @@ dated binary/test/installation evidence with each audit; native action tests and
   restore model and selection together. A command that commits a pending draft and changes an object can form one
   native undo group; regressions must check the complete before/after state of that group. Notes editors clear their
   local Undo when the slide/content changes; Revert clears local notes/outline histories so they cannot edit stale content.
+- On Windows, accepting the modal speaker-notes editor adds one slide-scoped history entry. Office overlays patch
+  supported note text and preserve other shapes and parts. Adding a PPTX note reuses a compatible notes master or
+  adds a standard master using the slide theme. Unsupported layouts retain their original package data.
 - Character/paragraph commands visit visible text containers in nested groups and table cells. Vertical alignment
   targets the edited table cell when one is active, otherwise all selected text containers. Empty-paragraph properties
   are data and must survive commit. The inspector reports effective styles from the same text-container traversal.

@@ -1,6 +1,7 @@
 //! OpenDocument Presentation package adapter for the supported slide object subset.
 use super::*;
 mod visibility;
+mod notes;
 use std::io::{Cursor, Read, Write};
 use std::{
     collections::{HashMap, HashSet},
@@ -23,6 +24,8 @@ struct PageSource {
     timing_editable: bool,
     hidden: bool,
     visibility_editable: bool,
+    notes: String,
+    notes_editable: bool,
 }
 pub struct Source {
     bytes: Vec<u8>,
@@ -38,6 +41,9 @@ impl Source {
     }
     pub fn can_edit_visibility(&self, slide: u64) -> bool {
         self.pages.iter().find(|p| p.slide_id == slide).is_none_or(|p| p.visibility_editable)
+    }
+    pub fn can_edit_notes(&self, slide: u64) -> bool {
+        self.pages.iter().find(|page| page.slide_id == slide).is_none_or(|page| page.notes_editable)
     }
     pub fn can_edit_rich(&self, slide: u64, object: u64) -> bool {
         self.pages
@@ -584,6 +590,7 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
         deck.set_timing(timing)?;
         let (hidden, visibility_editable) = visibility::read(*page, common.as_ref());
         deck.set_hidden(hidden)?;
+        let (notes, notes_editable) = notes::read(*page);
         let style_safe = attr(*page, "style-name").is_none_or(|name| {
             tree.descendants()
                 .find(|n| {
@@ -907,7 +914,16 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
             timing_editable: parsed_timing.is_some() && style_safe,
             hidden,
             visibility_editable,
+            notes,
+            notes_editable,
         });
+    }
+    for (index, page) in source_pages.iter_mut().enumerate().filter(|(_, page)| !page.notes.is_empty()) {
+        deck.select(index)?;
+        if deck.set_notes(&page.notes).is_err() {
+            page.notes.clear();
+            page.notes_editable = false;
+        }
     }
     deck.select(0)?;
     let state = deck.history.snapshot();
@@ -1058,6 +1074,7 @@ pub fn export(deck: &Presentation) -> Result<Vec<u8>, String> {
                 pages.push_str(&format!("<draw:frame svg:x=\"35pt\" svg:y=\"{}pt\" svg:width=\"650pt\" svg:height=\"50pt\"><draw:text-box>{}</draw:text-box></draw:frame>",30+j*55,text(value)));
             }
         }
+        pages.push_str(&notes::generate(&slide.notes));
         pages.push_str("</draw:page>");
     }
     let ns="xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\" xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\" xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\" xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:svg=\"urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"";
@@ -1561,6 +1578,7 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
                 .unwrap_or_default();
             let timing_name = timing_name(original, slide.id)?;
             extra_styles.push_str(&timing_style(&timing_name, slide.timing, slide.hidden)?);
+            added.push_str(&notes::generate(&slide.notes));
             rendered_pages.push(format!("<draw:page xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\" draw:name=\"Suite42 {}\" draw:style-name=\"{timing_name}\"{master}>{added}</draw:page>",slide.id));
             continue;
         };
@@ -1835,6 +1853,12 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
                     }
                 }
             }
+        }
+        if slide.notes != page.notes {
+            if !page.notes_editable {
+                return Err("This ODP speaker-notes layout cannot be safely edited".into());
+            }
+            added.push_str(&notes::patch(page_node, &slide.notes, original, &mut patches)?);
         }
         patches.sort_by_key(|(r, _)| std::cmp::Reverse(r.start));
         let mut content = original[page_node.range()].to_owned();
