@@ -18,7 +18,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, remaining virtual-area range tools, legacy arrays, full floating-object editing, advanced filtering, locale-aware sort collation/preferences, validation controls, outlines/subtotals, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, speaker-notes editing with PPTX/ODP persistence, basic transitions, windowed/fullscreen show navigation, hidden slides, loop/blank controls, single-window presenter rehearsal, RTF/Markdown outline exports, PPTX/ODP and printing | Rich notes and notes-page output, custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, dual-display presenter view, ink/laser/overview and PDF/image/movie exports |
 | IMG42 | Image decoding, transforms, adjustments, freehand and edge-refined selections, recognized text selection/copy, metadata and batch output | Full markup selection/editing, subject-mask guidance for Smart Lasso, full Live Text interaction, background removal, viewing panels and additional supported system codecs |
-| SCN42 | WIA acquisition and verified virtual rescan, image/PDF import, page processing, OCR, optional searchable layer, PDF quality presets and per-page PDF output | Scan areas, device/preset controls, scan history, archival/other export formats, naming/preview settings and physical-device checks |
+| SCN42 | WIA acquisition and verified virtual rescan, image/PDF import, page processing, OCR, optional searchable layer, PDF quality presets and per-page PDF output, local export history with reopen and removal | Scan areas, device/preset controls, history thumbnails, archival/other export formats, naming/preview settings and physical-device checks |
 
 ## Recorded checks
 
@@ -931,3 +931,7 @@ after image selection; image unit regressions are now included in quick CI.
   verify literal formula-like strings, rejection, blank, and Undo/Redo. Native popup interaction,
   standard XLSX list metadata and reopen await a compatible build. General external validation import
   and ODS validation output remain open.
+- SCN42 now tracks PDF, per-page PDF, TIFF, PNG and JPEG output metadata in a local export history.
+  Entries keep paths, timestamps, page counts and sizes. A separate lock serializes history edits
+  across windows. Reopen starts a new window and removing or clearing history leaves all files in
+  place. Portable history regression passes. Native export, reopening and history controls await CI.

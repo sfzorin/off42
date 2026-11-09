@@ -61,6 +61,14 @@ impl ScanDocument {
         path: &Path,
         options: PdfExportOptions,
     ) -> Result<usize, String> {
+        self.export_pdf_page_files(path, options).map(|files| files.len())
+    }
+
+    pub fn export_pdf_page_files(
+        &self,
+        path: &Path,
+        options: PdfExportOptions,
+    ) -> Result<Vec<std::path::PathBuf>, String> {
         if self.pages().is_empty() {
             return Err("cannot export an empty scan".into());
         }
@@ -113,7 +121,7 @@ impl ScanDocument {
                 );
                 published.push((path, identity));
             }
-            Ok(published.len())
+            Ok(())
         })();
         if let Err(error) = result {
             let mut issues = Vec::new();
@@ -133,7 +141,7 @@ impl ScanDocument {
                 issues.join(", ")
             ));
         }
-        result
+        Ok(published.into_iter().map(|(path, _)| path).collect())
     }
 }
 

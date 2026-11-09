@@ -355,10 +355,10 @@ def finish_prompt(process, title, values):
     click(dialog, 1)
 
 
-def audit_marks(process, main, binary, output, results):
+def audit_marks(process, main, binary, output, results, local_app_data):
     source = output / f"audit-mark-{uuid.uuid4().hex}.png"
     write_png(source, 2, 2, bytes([255,255,255,255, 0,0,0,255, 0,0,255,255, 255,255,255,255]))
-    library = Path(os.environ["LOCALAPPDATA"]) / "off42" / "Signatures and Stamps" / ("Mark - " + source.stem + ".png")
+    library = Path(local_app_data) / "off42" / "Signatures and Stamps" / ("Mark - " + source.stem + ".png")
     try:
         command(main, 65516)
         choose_file(process, source)
@@ -2922,6 +2922,55 @@ def audit_scan_pdf_options(process, main, output, results, dll, project, origina
     wait_for(lambda: u.IsWindowEnabled(main) and " * - " not in text(main), "export left only the DPI edit in history", process)
     assert project.read_bytes() == original
     results["checks"].append("SCN42 PDF preset, physical page dimensions with independently checked raster DPI, searchable toggle, separate searchable page files, no clobber, and export leaves project history untouched")
+    audit_scan_history(process, main, output, results, lossless, targets)
+
+
+def audit_scan_history(process, main, output, results, lossless, targets):
+    history_file = output / "scan-audit-settings" / "off42" / "Scan History.json"
+    keep = {path: path.read_bytes() for path in [lossless, *targets]}
+
+    def entries():
+        return {Path(entry["path"]).name: entry for entry in json.loads(history_file.read_text(encoding="utf-8"))}
+
+    records = entries()
+    for path, pages in [(lossless, 2), *((path, 1) for path in targets)]:
+        entry = records[path.name]
+        assert entry["pages"] == pages and entry["bytes"] == len(keep[path])
+    assert "scan-pages.pdf" not in records
+    original_caption = text(main)
+    command(main, 41)
+    dialog = modal(process, title="Scan History", native_class="Suite42InputDialog")
+    assert targets[0].name in text(u.GetDlgItem(dialog, 100))
+    assert text(u.GetDlgItem(dialog, 101)) == "Open in New Window"
+    click(dialog, 1)
+    pid = wait_for(lambda: next(iter(child_processes(process.pid, "SCN42.exe")), None), "history opens a new SCN42 process", process)
+    child = OwnedChildProcess(pid)
+    try:
+        window = modal(child, native_class="Suite42Native")
+        wait_for(lambda: any("1 pages | PDF pages imported" in text(h) for h in windows(child.pid, window)),
+                 "single page reopened from scan history", child)
+        assert text(main) == original_caption and u.IsWindowEnabled(main)
+    finally:
+        if child.poll() is None:
+            child.terminate()
+            child.wait(timeout=5)
+        child.close_handle()
+    command(main, 41)
+    dialog = modal(process, title="Scan History", native_class="Suite42InputDialog")
+    set_text(u.GetDlgItem(dialog, 101), "Remove from History")
+    click(dialog, 1)
+    wait_for(lambda: u.IsWindowEnabled(main) and targets[0].name not in entries(), "one history entry removed", process)
+    command(main, 42)
+    confirm = modal(process, title="Clear Scan History", native_class="#32770")
+    click(confirm, 7)
+    wait_for(lambda: u.IsWindowEnabled(main) and not u.IsWindow(confirm), "clear history declined", process)
+    assert targets[1].name in entries()
+    command(main, 42)
+    confirm = modal(process, title="Clear Scan History", native_class="#32770")
+    click(confirm, 6)
+    wait_for(lambda: u.IsWindowEnabled(main) and not entries(), "history cleared", process)
+    assert all(path.read_bytes() == payload for path, payload in keep.items())
+    results["checks"].append("SCN42 history records actual PDF outputs and page counts, reopens one in an independent window, removes one and clears all records without touching any exported bytes")
 
 
 def audit_smart_lasso(process, main, output, results):
@@ -3380,6 +3429,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
     environment = os.environ.copy()
     environment["OFF42_UI_TRACE_FILE"] = str(output / (binary.stem + "-commands.log"))
     environment["OFF42_AUDIT_OUTPUT"]=str(output)
+    if binary.stem.lower() == "scn42" and ocr:
+        environment["LOCALAPPDATA"] = str(output / "scan-audit-settings")
     process = subprocess.Popen([str(binary)] + ([str(startup)] if startup else []), env=environment)
     results = {"app": binary.name, "sha256": hashlib.sha256(binary.read_bytes()).hexdigest(), "checks": []}
     try:
@@ -3419,7 +3470,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             wait_for(lambda: u.SendMessageW(edit, 1024 + 121, 0, 0) & 0x0800, "spelling enabled", process)
             results["checks"].append("native inline proofing flags follow the menu toggle")
         if extended and binary.stem.lower() in {"img42", "scn42"}:
-            audit_marks(process, main, binary, output, results)
+            audit_marks(process, main, binary, output, results, environment["LOCALAPPDATA"])
             if host_commands:
                 audit_crop_command(process, main, binary, output, results)
         if binary.stem.lower() not in {"doc42", "pdf42", "xls42"}:

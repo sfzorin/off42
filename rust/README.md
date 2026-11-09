@@ -1020,6 +1020,11 @@ keeps the source physical page dimensions. Searchable Text controls whether reco
 written to the export. Export One PDF per Page uses the chosen filename as a prefix and appends
 `-001.pdf`, `-002.pdf`, and so on. Existing destination files cause the operation to stop.
 
+**View → Scan History** lists up to 200 recent PDF, TIFF, PNG and JPEG exports with their dates,
+page counts and sizes. Each file can be opened in a new SCN42 window or removed from history.
+**View → Clear Scan History** clears the records and preserves the exported files. The history
+uses local file metadata and paths. Thumbnail previews are still open.
+
 
 ### Signature verification and read-only viewing (development branch)
 

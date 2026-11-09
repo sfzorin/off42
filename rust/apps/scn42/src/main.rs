@@ -1,4 +1,5 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
+mod history;
 mod ocr_batch;
 mod ocr_settings;
 mod pdf_import;
@@ -13,8 +14,12 @@ const PDF_RASTERS: [(&str, PdfRaster); 4] = [
     ("Smallest (150 dpi)", PdfRaster::Jpeg { dpi: 150, quality: 50 }),
 ];
 const EXPORT_PDF_PAGES: u16 = 40;
+const SCAN_HISTORY: u16 = 41;
+const CLEAR_SCAN_HISTORY: u16 = 42;
+const HISTORY_ACTIONS: [&str; 2] = ["Open in New Window", "Remove from History"];
 struct Scn {
     pending: Option<(u64, scn42_core::SaveState)>,
+    pending_history_open: Option<std::path::PathBuf>,
     next_save: u64,
     doc: ScanDocument,
     index: usize,
@@ -46,6 +51,11 @@ struct Scn {
     )>,
 }
 impl Scn {
+    fn remember_exports(&mut self, exports: &[(&Path, usize)]) {
+        if let Err(error) = history::record(exports) {
+            self.scan_status = format!("Saved scan. Could not update scan history: {error}");
+        }
+    }
     fn invalidate_ocr(&self) {
         if let Some((_, cancel, _, _)) = &self.ocr {
             cancel.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -53,6 +63,32 @@ impl Scn {
     }
 }
 impl win42::App for Scn {
+    fn take_pending_new_window(&mut self) -> Option<std::path::PathBuf> {
+        self.pending_history_open.take()
+    }
+    fn view_actions(&self) -> &'static [(u16, &'static str)] {
+        &[(SCAN_HISTORY, "Scan History…"), (CLEAR_SCAN_HISTORY, "Clear Scan History…")]
+    }
+    fn dialog_request(&self, id: u16) -> Option<win42::DialogRequest> {
+        match id {
+            SCAN_HISTORY if history::load().is_empty() => Some(win42::DialogRequest::Information {
+                title: "Scan History",
+                text: win42::localization::text("Saved scans appear here."),
+            }),
+            CLEAR_SCAN_HISTORY => Some(win42::DialogRequest::Confirmation {
+                title: "Clear Scan History",
+                text: win42::localization::text("Clear the scan history? Exported files will be kept."),
+            }),
+            _ => None,
+        }
+    }
+    fn dialog_result(&mut self, id: u16, result: win42::DialogResult) -> Result<(), String> {
+        match (id, result) {
+            (CLEAR_SCAN_HISTORY, win42::DialogResult::Confirmed(true)) => history::clear(),
+            (CLEAR_SCAN_HISTORY, win42::DialogResult::Confirmed(false)) => Ok(()),
+            _ => Err("Unknown scan history action".into()),
+        }
+    }
     fn supports_marks(&self) -> bool {
         true
     }
@@ -413,18 +449,19 @@ impl win42::App for Scn {
                         .map_err(|e| e.to_string())?
                         .0
                 };
-                use std::io::Write;
-                let mut file = std::fs::OpenOptions::new()
-                    .write(true)
-                    .create_new(true)
-                    .open(p)
-                    .map_err(|e| e.to_string())?;
-                file.write_all(&bytes).map_err(|e| e.to_string())
+                suite42_core::write_new(p, &bytes).map_err(|error| error.to_string())?;
+                self.remember_exports(&[(p, pages.len())]);
+                Ok(())
             }
-            21 => self.doc.export_pdf_with_options(p, self.pdf_export),
+            21 => {
+                self.doc.export_pdf_with_options(p, self.pdf_export)?;
+                self.remember_exports(&[(p, self.doc.pages().len())]);
+                Ok(())
+            }
             EXPORT_PDF_PAGES => {
-                let count = self.doc.export_pdf_pages(p, self.pdf_export)?;
-                self.scan_status = format!("Exported {count} PDF files");
+                let files = self.doc.export_pdf_page_files(p, self.pdf_export)?;
+                self.scan_status = format!("Exported {} PDF files", files.len());
+                self.remember_exports(&files.iter().map(|file| (file.as_path(), 1)).collect::<Vec<_>>());
                 Ok(())
             }
             22 => {
@@ -468,6 +505,13 @@ impl win42::App for Scn {
         ]
     }
     fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+        if id == SCAN_HISTORY {
+            let entries = history::load();
+            return Some(win42::InputRequest {
+                title: "Scan History",
+                fields: vec![("Saved scan", entries.first()?.label(0)), ("Action", HISTORY_ACTIONS[0].into())],
+            });
+        }
         if id == 36 {
             return Some(win42::InputRequest {
                 title: "Export quality and compression",
@@ -581,6 +625,14 @@ impl win42::App for Scn {
         })
     }
     fn input_choices(&self, id: u16) -> Vec<(usize, Vec<String>)> {
+        if id == SCAN_HISTORY {
+            let entries = history::load();
+            if entries.is_empty() {
+                return Vec::new();
+            }
+            return vec![(0, entries.iter().enumerate().map(|(index, entry)| entry.label(index)).collect()),
+                        (1, HISTORY_ACTIONS.map(str::to_owned).to_vec())];
+        }
         if id != 36 {
             return Vec::new();
         }
@@ -590,6 +642,20 @@ impl win42::App for Scn {
         ]
     }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
+        if id == SCAN_HISTORY {
+            let [selected, action] = values else { return Ok(()) };
+            let entry = history::load().into_iter().enumerate().find(|(index, entry)| entry.label(*index) == *selected)
+                .map(|(_, entry)| entry).ok_or("Scan history changed. Open the list again.")?;
+            return match action.as_str() {
+                "Open in New Window" if entry.path.is_file() && self.opens_as_import(&entry.path) => {
+                    self.pending_history_open = Some(entry.path);
+                    Ok(())
+                }
+                "Open in New Window" => Err("The exported scan is unavailable".into()),
+                "Remove from History" => history::remove(&entry.path),
+                _ => Err("Choose a scan history action".into()),
+            };
+        }
         if id == 36 {
             let [jpeg, compress, preset, searchable] = values else {
                 return Err("Invalid export settings".into());
@@ -993,6 +1059,7 @@ fn main() {
     let settings = ocr_settings::load();
     win42::run(Box::new(Scn {
         pending: None,
+        pending_history_open: None,
         next_save: 0,
         doc: ScanDocument::new(),
         index: 0,
@@ -1024,6 +1091,7 @@ mod tests {
         for reopen in [false, true] {
             let mut app = Scn {
                 pending: None,
+                pending_history_open: None,
                 next_save: 0,
                 doc: ScanDocument::new(),
                 index: 0,
@@ -1081,6 +1149,7 @@ mod tests {
     fn deleted_page_cancels_running_batch_and_discards_all_results() {
         let mut app = Scn {
             pending: None,
+            pending_history_open: None,
             next_save: 0,
             doc: ScanDocument::new(),
             index: 0,
@@ -1139,6 +1208,7 @@ mod tests {
         std::fs::create_dir(&dir).unwrap();
         let mut app = Scn {
             pending: None,
+            pending_history_open: None,
             next_save: 0,
             doc: ScanDocument::new(),
             index: 0,
@@ -1184,6 +1254,7 @@ mod tests {
     fn stale_acquisition_does_not_mutate_new_project() {
         let mut a = Scn {
             pending: None,
+            pending_history_open: None,
             next_save: 0,
             doc: ScanDocument::new(),
             index: 0,
@@ -1217,6 +1288,7 @@ mod tests {
     fn stale_pdf_import_cannot_modify_new_project() {
         let mut app = Scn {
             pending: None,
+            pending_history_open: None,
             next_save: 0,
             doc: ScanDocument::new(),
             index: 0,
@@ -1252,6 +1324,7 @@ mod tests {
     fn boundary_commands_match_actions() {
         let mut a = Scn {
             pending: None,
+            pending_history_open: None,
             next_save: 0,
             doc: ScanDocument::new(),
             index: 0,
@@ -1298,6 +1371,7 @@ mod rescan_tests {
     fn app() -> Scn {
         let mut app = Scn {
             pending: None,
+            pending_history_open: None,
             next_save: 0,
             doc: ScanDocument::new(),
             index: 1,
