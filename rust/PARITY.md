@@ -962,8 +962,15 @@ after image selection; image unit regressions are now included in quick CI.
   tolerance. The edit preserves foreground pixels of the same color when they are disconnected
   from the background. Results for different pixel snapshots are discarded. Local alpha/history
   tests pass. A native PNG/Undo/Redo check awaits CI. Vision-style subject segmentation remains open.
+- Run 42698294259 (354eaaa) passed all 37 native groups and MSVC 604/0/1. IMG42 verified native
+  settings and Cancel, exact output alpha, disconnected foreground, complete history and PNG reopen.
+  The SCN42 concurrent history test also passed on Windows.
 - PDF42 supports a visible approval signature anchored to the current page's displayed lower right.
   Its appearance, certificate subject, reason and Windows UTC time are serialized before CMS.
   Poppler renders the appearance upright on cropped pages at all four rotations. The portable
   AcroForm/metadata/byte-range test passes. A Windows crypto test alters the visible appearance
   to check that it invalidates CMS. The actual personal-store picker with a real certificate remains open.
+- Run 42699782931 (41be316) passed all 37 native groups and MSVC 604/0/1. The disposable Windows
+  signing key generated valid CMS for a visible approval signature. Changing the appearance stream
+  caused cryptographic verification to fail. The native certificate settings and Cancel preserved
+  the original unsigned document. Physical certificate selection remains unverified.
