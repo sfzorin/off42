@@ -1048,6 +1048,10 @@ written to the export. Export One PDF per Page uses the chosen filename as a pre
 **File → Export Pages as Images** writes all pages as separate PNG or JPEG images. It uses the
 chosen path for one page and appends page numbers to the prefix for multiple pages. The batch
 keeps each page's pixel dimensions and physical resolution and stages all files before publication.
+**Export Name Template** supplies editable filenames in the save dialog. Tokens include
+`YYYY-MM-DD`, `HH-mm-ss`, `{n}` or `###` for the counter, and `{title}` for the first recognized
+line. The title is used only when requested in the template. The local counter advances after a
+successful export, once per batch. Cancelling leaves it unchanged.
 
 **View → Scan History** lists up to 200 recent PDF, TIFF, PNG and JPEG exports with their dates,
 page counts and sizes. Each file can be opened in a new SCN42 window or removed from history.

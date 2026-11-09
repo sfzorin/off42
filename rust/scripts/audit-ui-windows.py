@@ -200,7 +200,7 @@ def open_fixture(process,main,path):
         wait_for(lambda: not u.IsWindowVisible(dialog) and opened(), "previous audit fixture discarded", process)
 
 
-def choose_file(process, path, format_name=None, keep_preview=False, open_preview=True):
+def choose_file(process, path, format_name=None, keep_preview=False, open_preview=True, expected_name=None):
     preview=[None]
     def filename_control():
         for dialog in windows(process.pid):
@@ -242,6 +242,12 @@ def choose_file(process, path, format_name=None, keep_preview=False, open_previe
             u.SendMessageW(parent, WM_COMMAND, identifier | (notification << 16), selector)
         assert u.SendMessageW(selector, 0x147, 0, 0) == index, (text(selector), index)
         dialog, control = wait_for(filename_control, "filename field after format selection", process)
+    if expected_name is not None:
+        initial = text(control)
+        assert expected_name.fullmatch(initial), (expected_name.pattern, initial)
+    if path is None:
+        click(dialog, 2)
+        return dialog
     set_text(control, str(path))
     click(dialog, 1)
     if preview[0]is not None and not keep_preview:
@@ -3126,6 +3132,38 @@ def audit_scan_pdf_options(process, main, output, results, dll, project, origina
     assert project.read_bytes() == original
     results["checks"].append("SCN42 PDF preset, physical page dimensions with independently checked raster DPI, searchable toggle, separate searchable page files, no clobber, and export leaves project history untouched")
     audit_scan_history(process, main, output, results, lossless, targets)
+    audit_scan_export_naming(process, main, output, results)
+
+
+def audit_scan_export_naming(process, main, output, results):
+    settings = output / "scan-audit-settings" / "off42" / "Scan Export Naming.json"
+    fill_prompt(process, main, 44, "File Name", ["Batch YYYY-MM-DD {n} {title}"])
+    original = json.loads(settings.read_text(encoding="utf-8"))
+    assert original["template"] == "Batch YYYY-MM-DD {n} {title}"
+    caption = text(main)
+    listing = u.GetDlgItem(main, 100)
+    u.SendMessageW(listing, 0x186, 1, 0)
+    command(main, 100 | (1 << 16))
+
+    def pattern(number):
+        return re.compile(rf"Batch \d{{4}}-\d{{2}}-\d{{2}} {number:03} [^<>:\"/\\|?*]+")
+
+    command(main, 31)
+    picker = choose_file(process, None, expected_name=pattern(original["next"]))
+    wait_for(lambda: not u.IsWindow(picker) and u.IsWindowEnabled(main), "scan export name picker cancelled", process)
+    assert json.loads(settings.read_text(encoding="utf-8")) == original
+    command(main, 31)
+    target = output / "scan-naming-overridden.png"
+    choose_file(process, target, expected_name=pattern(original["next"]))
+    output_ready(process, main, target, b"\x89PNG\r\n\x1a\n")
+    assert json.loads(settings.read_text(encoding="utf-8")) == {
+        "template": original["template"], "next": original["next"] + 1,
+    }
+    command(main, 31)
+    picker = choose_file(process, None, expected_name=pattern(original["next"] + 1))
+    wait_for(lambda: not u.IsWindow(picker) and u.IsWindowEnabled(main), "next filename suggestion cancelled", process)
+    assert text(main) == caption
+    results["checks"].append("SCN42 local filename template expands date, counter and OCR line in the normal Save picker, accepts manual override, advances only after successful export and preserves the project")
 
 
 def audit_scan_image_batch(process, main, output, results, baseline):

@@ -371,7 +371,7 @@ unsafe fn dialog(
     format: &str,
     pattern: &str,
 ) -> Option<PathBuf> {
-    file_dialog(hwnd, save, ext, format, pattern, None)
+    file_dialog(hwnd, save, ext, format, pattern, None, None)
 }
 unsafe fn file_dialog(
     hwnd: HWND,
@@ -380,8 +380,15 @@ unsafe fn file_dialog(
     format: &str,
     pattern: &str,
     private_title: Option<&str>,
+    suggested_name: Option<&str>,
 ) -> Option<PathBuf> {
     let mut buf = vec![0u16; 32768];
+    if let Some(name) = suggested_name.filter(|_| save) {
+        let name = wide(&format!("{name}.{ext}"));
+        if name.len() <= buf.len() {
+            buf[..name.len()].copy_from_slice(&name);
+        }
+    }
     let filter: Vec<u16> = format!("{format}\0{pattern}\0\0").encode_utf16().collect();
     let extw = wide(ext);
     let mut f: OPENFILENAMEW = zeroed();
@@ -2022,6 +2029,7 @@ unsafe fn mark_command(hwnd: HWND, id: u16) -> Result<(), String> {
             "PNG or JPEG image",
             "*.png;*.jpg;*.jpeg",
             Some("Import Your Signature or Stamp"),
+            None,
         ) {
             let request = crate::InputRequest {
                 title: "Import Signature or Stamp",
@@ -2803,7 +2811,12 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 } else {
                     a
                 };
-                if let Some(p) = dialog(hwnd, a.save, a.extension, a.format, a.pattern) {
+                let suggestion = STATE.with(|s| {
+                    s.borrow().as_ref().unwrap().app.suggested_export_name(id)
+                });
+                if let Some(p) = file_dialog(
+                    hwnd, a.save, a.extension, a.format, a.pattern, None, suggestion.as_deref(),
+                ) {
                     let problem = if !a.save {
                         None
                     } else if p
@@ -2930,7 +2943,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                     crate::DialogRequest::CombineFiles{input,output}=>{
                         match pick_multiple_files(hwnd,input){
                             Ok(Some(inputs))if !inputs.is_empty()=>{
-                                if let Some(path)=file_dialog(hwnd,true,output.extension,output.format,output.pattern,Some(output.title)){
+                                if let Some(path)=file_dialog(hwnd,true,output.extension,output.format,output.pattern,Some(output.title),None){
                                     if path.exists(){msg(hwnd,"This file already exists; choose a new output file",MB_OK|MB_ICONWARNING);None}
                                     else if path.extension().and_then(|e|e.to_str()).is_none_or(|e|!e.eq_ignore_ascii_case(output.extension)){msg(hwnd,&format!("Choose a file name ending in .{}",output.extension),MB_OK|MB_ICONWARNING);None}
                                     else{Some(crate::DialogResult::Files{inputs,output:path})}

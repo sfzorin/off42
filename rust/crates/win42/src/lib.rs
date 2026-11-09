@@ -337,6 +337,10 @@ pub trait App {
     fn file_input_request(&self, _id: u16) -> Option<InputRequest> {
         None
     }
+    /// Optional filename stem for an export picker. The user can edit it.
+    fn suggested_export_name(&self, _id: u16) -> Option<String> {
+        None
+    }
     /// Resolve the export filter after collecting settings and before showing
     /// the picker. This does not mutate the document or start an operation.
     fn configured_file_action(&self, id: u16, _values: &[String]) -> Result<FileAction, String> {

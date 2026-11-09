@@ -278,6 +278,9 @@ These are source contracts; each audit records the exact tested binary, exercise
   removal deletes its entry/thumbnail, not the saved document.
 - Windows batch PNG and JPEG export preserves each page's dimensions and DPI. It stages every file
   before publication and refuses destination conflicts. History records the actual files after success.
+- Windows SCN42 filename templates prefill the editable native save field. OCR appears in that field
+  only when the template asks for the first line. Preferences store the template and next number
+  under a file lock, and only a completed export advances the number.
 - Signature/stamp placement belongs to one page identity. Return or Print into Page commits the mark into both the
   displayed pixels and the geometry-corrected base with multiply blending; Escape, changing the shown page or its
   pixel revision, and closing the window cancel unfinished placement. Existing OCR text/geometry is preserved because

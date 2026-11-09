@@ -19,7 +19,7 @@ The parity scope excludes grammar checking. Spelling remains in scope.
 | XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, inline and same-sheet range list validation, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, remaining virtual-area range tools, legacy arrays, full floating-object editing, advanced filtering, locale-aware sort collation/preferences, advanced validation rules including named and cross-sheet sources and ODS persistence, outlines/subtotals, split panes and per-cell/password protection |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, speaker-notes editing with PPTX/ODP persistence, basic transitions, windowed/fullscreen show navigation, hidden slides, loop/blank controls, single-window presenter rehearsal, RTF/Markdown outline, PNG/JPEG slide exports, slide/notes/handout PDF and print layouts, PPTX/ODP | Rich notes, vector slide PDF, custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, dual-display presenter view, ink/laser/overview and movie export |
 | IMG42 | Image decoding, transforms, adjustments, freehand and edge-refined selections, edge-connected uniform-background removal, recognized text selection/copy, metadata and batch output | Full markup selection/editing, subject-mask guidance for Smart Lasso and background removal, full Live Text interaction, viewing panels and additional supported system codecs |
-| SCN42 | WIA acquisition and verified virtual rescan, image/PDF import, page processing, OCR, optional searchable layer, PDF quality presets, per-page PDF output, batch PNG/JPEG, local export history with reopen and removal | Scan areas, device/preset controls, history thumbnails, archival PDF and HEIC export, naming/preview settings and physical-device checks |
+| SCN42 | WIA acquisition and verified virtual rescan, image/PDF import, page processing, OCR, optional searchable layer, PDF quality presets, per-page PDF output, batch PNG/JPEG, export filename templates, local export history with reopen and removal | Scan areas, device/preset controls, history thumbnails, archival PDF and HEIC export, estimated output size and post-export opening options, physical-device checks |
 
 ## Recorded checks
 
@@ -981,3 +981,6 @@ after image selection; image unit regressions are now included in quick CI.
 - Run 42718161163 (f85bc10) passed MSVC 604/0/1 and 36 of 37 UI groups. The PPT42 audit verified
   slide-size pages, hidden-slide scope and independent PDFium colors. The notes scenario stopped
   before export because the fixture lacked a required body field. The fixture now supplies all fields.
+- Run 42719070290 (e066191) passed MSVC 606/0/1. It verified the normal XLS42 list dialog, choosing a
+  calculated numeric value, the standard absolute source formula, and dropdown reopen in an
+  independent XLSX. The run still used the earlier PPT42 notes fixture.

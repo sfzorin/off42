@@ -1,4 +1,5 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
+mod export_naming;
 mod history;
 mod ocr_batch;
 mod ocr_settings;
@@ -17,6 +18,7 @@ const EXPORT_PDF_PAGES: u16 = 40;
 const SCAN_HISTORY: u16 = 41;
 const CLEAR_SCAN_HISTORY: u16 = 42;
 const EXPORT_PAGE_IMAGES: u16 = 43;
+const EXPORT_NAMING: u16 = 44;
 const HISTORY_ACTIONS: [&str; 2] = ["Open in New Window", "Remove from History"];
 const IMAGE_FORMATS: [&str; 2] = ["PNG", "JPEG"];
 
@@ -71,6 +73,9 @@ struct Scn {
 }
 impl Scn {
     fn remember_exports(&mut self, exports: &[(&Path, usize)]) {
+        if let Err(error) = export_naming::advance() {
+            self.scan_status = format!("Saved scan. Could not update the export counter: {error}");
+        }
         if let Err(error) = history::record(exports) {
             self.scan_status = format!("Saved scan. Could not update scan history: {error}");
         }
@@ -404,6 +409,14 @@ impl win42::App for Scn {
             fields: vec![("Format", IMAGE_FORMATS[0].into())],
         })
     }
+    fn suggested_export_name(&self, id: u16) -> Option<String> {
+        let index = match id {
+            31 | 32 => self.index,
+            21 | 30 | EXPORT_PDF_PAGES | EXPORT_PAGE_IMAGES => 0,
+            _ => return None,
+        };
+        Some(export_naming::load().suggest(self.doc.pages().get(index)))
+    }
     fn configured_file_action(&self, id: u16, values: &[String]) -> Result<win42::FileAction, String> {
         let action = self.file_actions().iter().find(|action| action.id == id)
             .copied().ok_or("Unsupported file action")?;
@@ -567,9 +580,16 @@ impl win42::App for Scn {
             (34, "PDF import settings..."),
             (35, "Cancel PDF import"),
             (36, "Export quality settings..."),
+            (EXPORT_NAMING, "Export Name Template…"),
         ]
     }
     fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+        if id == EXPORT_NAMING {
+            return Some(win42::InputRequest {
+                title: "File Name",
+                fields: vec![("Template (YYYY-MM-DD, HH-mm, {n}, {title})", export_naming::load().template)],
+            });
+        }
         if id == SCAN_HISTORY {
             let entries = history::load();
             return Some(win42::InputRequest {
@@ -710,6 +730,10 @@ impl win42::App for Scn {
         ]
     }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
+        if id == EXPORT_NAMING {
+            let [template] = values else { return Err("Enter a filename template".into()) };
+            return export_naming::set_template(template);
+        }
         if id == SCAN_HISTORY {
             let [selected, action] = values else { return Ok(()) };
             let entry = history::load().into_iter().enumerate().find(|(index, entry)| entry.label(*index) == *selected)
