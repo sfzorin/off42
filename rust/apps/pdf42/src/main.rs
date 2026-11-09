@@ -14,6 +14,7 @@ use std::path::Path;
 const VERIFY_SIGNATURES: u16 = 125;
 const VERIFY_VIEW_SIGNATURES: u16 = 126;
 const COPY_SIGNED_PDF: u16 = 127;
+const SIGN_PDF_COPY: u16 = 128;
 #[cfg(windows)]
 mod pdfium_edit;
 #[cfg(windows)]
@@ -123,6 +124,9 @@ struct Pdf {
     ocr_report:Option<win42::ReportRequest>,
     #[cfg(windows)]
     signature_worker: Option<signatures::Worker>,
+    #[cfg(windows)]
+    signing_worker: Option<signatures::SignWorker>,
+    native_window: usize,
     signature_report: Option<win42::ReportRequest>,
     #[cfg(windows)]
     ocr_worker:Option<ocr::Worker>,
@@ -750,6 +754,15 @@ impl win42::App for Pdf {
                     Ok(report) => self.signature_report = Some(report),
                     Err(error) => self.operation_error = Some(error),
                 }
+                changed = true;
+            }
+            if let Some(result) = self.signing_worker.as_ref().and_then(signatures::SignWorker::poll) {
+                self.signing_worker = None;
+                self.operation_error = Some(match result {
+                    Ok(Some(path)) => format!("Signed PDF copy saved to {}", path.display()),
+                    Ok(None) => "PDF signing canceled".into(),
+                    Err(error) => error,
+                });
                 changed = true;
             }
             if let Some(worker) = &mut self.comparison_worker {
@@ -2249,6 +2262,14 @@ impl win42::App for Pdf {
                 pattern: "*.pdf",
             },
             win42::FileAction {
+                id: SIGN_PDF_COPY,
+                title: "Sign PDF Copy with Certificate…",
+                save: true,
+                extension: "pdf",
+                format: "PDF document",
+                pattern: "*.pdf",
+            },
+            win42::FileAction {
                 id: 97,
                 title: "Compare With…",
                 save: false,
@@ -2339,6 +2360,20 @@ impl win42::App for Pdf {
         ]
     }
     fn file_action(&mut self, id: u16, path: &Path) -> Result<(), String> {
+        if id == SIGN_PDF_COPY {
+            #[cfg(windows)]
+            {
+                if !self.enabled(id) {
+                    return Err("Certificate signing is unavailable for this PDF".into());
+                }
+                let draft = self.doc.as_ref().ok_or("Open a PDF first")?.prepare_signature()?;
+                self.operation_error = None;
+                self.signing_worker = Some(signatures::SignWorker::start(draft, path.to_path_buf(), self.native_window));
+                return Ok(());
+            }
+            #[cfg(not(windows))]
+            return Err("Certificate signing requires Windows".into());
+        }
         if id == COPY_SIGNED_PDF {
             let source = self.doc.as_ref().and_then(PdfDocument::signature_source)
                 .ok_or("Open a PDF containing signature fields first")?;
@@ -2781,6 +2816,10 @@ impl win42::App for Pdf {
         if self.signature_worker.is_some() {
             return "Verifying PDF signatures".into();
         }
+        #[cfg(windows)]
+        if self.signing_worker.is_some() {
+            return "Signing a PDF copy".into();
+        }
         if let Some(error) = &self.operation_error {
             return error.clone();
         }
@@ -2860,6 +2899,17 @@ impl win42::App for Pdf {
     }
     fn enabled(&self, id: u16) -> bool {
         let signed_view = || self.doc.as_ref().is_some_and(|doc| doc.signature_source().is_some());
+        if id == SIGN_PDF_COPY {
+            #[cfg(windows)]
+            return self.doc.is_some()
+                && !signed_view()
+                && !self.protected_readonly
+                && !self.protected_session
+                && !self.encrypted_session
+                && self.signing_worker.is_none();
+            #[cfg(not(windows))]
+            return false;
+        }
         if id == COPY_SIGNED_PDF {
             return signed_view();
         }
@@ -3128,6 +3178,9 @@ impl win42::App for Pdf {
     }
     fn text_readonly(&self) -> bool {
         true
+    }
+    fn set_native_window(&mut self, window: usize) {
+        self.native_window = window;
     }
     fn toolbar_command_visible(&self,id:u16)->bool{!matches!(id,117|118|VERIFY_VIEW_SIGNATURES)}
     fn action(&mut self, id: u16) -> Result<(), String> {

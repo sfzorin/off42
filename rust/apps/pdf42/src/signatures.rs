@@ -5,7 +5,7 @@ use std::{collections::HashSet, ops::Range};
 #[cfg(windows)]
 mod windows;
 #[cfg(windows)]
-pub use windows::Worker;
+pub use windows::{SignWorker, Worker};
 
 const MAX_FILE: usize = 256 * 1024 * 1024;
 const MAX_FIELDS: usize = 20_000;

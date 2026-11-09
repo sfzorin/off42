@@ -6,6 +6,8 @@ pub mod merge;
 pub use comparison_marks::ComparisonMark;
 mod page_export;
 mod page_labels;
+mod signing;
+pub use signing::SignatureDraft;
 pub use page_labels::PageLabelStyle;
 pub use page_export::PageExtraction;
 use lopdf::{Document, LoadOptions, Object, ObjectId};
