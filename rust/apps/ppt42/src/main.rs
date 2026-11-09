@@ -8,6 +8,7 @@ mod slide_images;
 mod slide_pdf;
 mod show_settings;
 mod show_markup;
+mod show_overview;
 use show_settings::ShowSettings;
 const EXPORT_PDF: u16 = 78;
 const PRINT_LAYOUT: u16 = 79;
@@ -152,6 +153,7 @@ struct Show {
     digits: String,
     settings: ShowSettings,
     markup: show_markup::Markup,
+    overview: Option<show_overview::Overview>,
 }
 impl Show {
     fn new(now: std::time::Instant, windowed: bool) -> Self {
@@ -167,6 +169,7 @@ impl Show {
             digits: String::new(),
             settings: ShowSettings::default(),
             markup: show_markup::Markup::default(),
+            overview: None,
         }
     }
 
@@ -377,7 +380,7 @@ impl Ppt {
         let Some(show) = &mut self.show else {
             return false;
         };
-        if show.paused.is_some() || show.blank.is_some() {
+        if show.paused.is_some() || show.blank.is_some() || show.overview.is_some() {
             return false;
         }
         let timing = self.deck.slides()[self.deck.current()].timing;
@@ -404,10 +407,23 @@ impl Ppt {
         now: std::time::Instant,
     ) -> Result<(), String> {
         use win42::CanvasEvent::*;
+        if let Some(overview) = self.show.as_mut().and_then(|show| show.overview.take()) {
+            return self.overview_event(overview, event, now);
+        }
         let Some(show) = self.show.as_mut() else {
             return Ok(());
         };
         let settings = show.settings;
+        if matches!(event, Key { code: 71, modifiers: 0 }) && show.blank.is_none() {
+            let indices = self.shown_slides(settings).collect();
+            if let Some(mut overview) = show_overview::Overview::new(indices, self.deck.current(), now) {
+                self.load_overview(&mut overview)?;
+                let show = self.show.as_mut().ok_or("Presentation already ended")?;
+                show.markup.moved_slide();
+                show.overview = Some(overview);
+            }
+            return Ok(());
+        }
         if show.markup.handle(event, self.deck.current(), show.blank.is_some()) {
             return Ok(());
         }
@@ -471,6 +487,47 @@ impl Ppt {
                     self.show_move(index, now)?;
                 }
             }
+            _ => {}
+        }
+        Ok(())
+    }
+    fn load_overview(&self, overview: &mut show_overview::Overview) -> Result<(), String> {
+        overview.load(|index| {
+            let _scene = self.scene_for(index, false).ok_or("Could not render slide thumbnail")?;
+            let size = show_overview::THUMBNAIL;
+            #[cfg(windows)]
+            {
+                let rgb = win42::render_scene_rgb(_scene, (720.0, 405.0), size)?;
+                Ok(rgb.chunks_exact(3).flat_map(|pixel| [pixel[0], pixel[1], pixel[2], 255]).collect())
+            }
+            #[cfg(not(windows))]
+            Ok(vec![255; (size.0 * size.1 * 4) as usize])
+        })
+    }
+    fn overview_event(
+        &mut self, mut overview: show_overview::Overview, event: win42::CanvasEvent,
+        now: std::time::Instant,
+    ) -> Result<(), String> {
+        use show_overview::Outcome;
+        let page = overview.page();
+        let outcome = overview.handle(event);
+        let loaded = if matches!(outcome, Outcome::Stay) && page != overview.page() {
+            self.load_overview(&mut overview)
+        } else {
+            Ok(())
+        };
+        let show = self.show.as_mut().ok_or("Presentation already ended")?;
+        if matches!(outcome, Outcome::Stay) && loaded.is_ok() {
+            show.overview = Some(overview);
+            return Ok(());
+        }
+        if show.paused.is_none() {
+            show.since += now.saturating_duration_since(overview.opened);
+        }
+        loaded?;
+        match outcome {
+            Outcome::Jump(index) => self.show_move(index, now)?,
+            Outcome::End => self.stop_show(),
             _ => {}
         }
         Ok(())
@@ -1946,6 +2003,9 @@ impl win42::App for Ppt {
         }
     }
     fn canvas_scene(&self) -> Option<win42::CanvasScene> {
+        if let Some(overview) = self.show.as_ref().and_then(|show| show.overview.as_ref()) {
+            return Some(overview.scene());
+        }
         if self.show.as_ref().is_some_and(|show| show.blank.is_some()) {
             return Some(win42::CanvasScene::default());
         }
@@ -2000,10 +2060,10 @@ impl win42::App for Ppt {
         Some(current)
     }
     fn canvas_tracks_hover(&self) -> bool {
-        self.show.as_ref().is_some_and(|show| show.blank.is_none() && show.markup.track_hover())
+        self.show.as_ref().is_some_and(|show| show.blank.is_none() && show.overview.is_none() && show.markup.track_hover())
     }
     fn canvas_cursor_hidden(&self) -> bool {
-        self.show.as_ref().is_some_and(|show| show.blank.is_none() && show.markup.hide_cursor())
+        self.show.as_ref().is_some_and(|show| show.blank.is_none() && show.overview.is_none() && show.markup.hide_cursor())
     }
     fn poll_background(&mut self) -> bool {
         self.show_tick(std::time::Instant::now())
@@ -2013,7 +2073,7 @@ impl win42::App for Ppt {
             && self
                 .show
                 .as_ref()
-                .is_some_and(|s| s.previous.is_some() && s.paused.is_none() && s.blank.is_none())
+                .is_some_and(|s| s.previous.is_some() && s.paused.is_none() && s.blank.is_none() && s.overview.is_none())
         {
             16
         } else {

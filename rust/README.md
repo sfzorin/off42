@@ -1023,8 +1023,10 @@ current slide and next preview alongside scrollable notes, an elapsed timer and 
 controls. The editor window returns when the show ends. During a show, L activates the laser
 pointer, P activates the pen, E erases the current slide's ink and C toggles the cursor. The
 first Esc leaves the active tool. Pause or Shift+P pauses and resumes automatic timing. Ink
-belongs to the current show and is never written to the presentation. Dual-display presenter
-view and slide overview remain open. The windowed/full-screen audit passes in run 42573274769.
+belongs to the current show. G opens the slide overview. Click a thumbnail or use the arrows,
+Page Up, Page Down and Enter to choose a slide. Esc returns to the show, and automatic timing
+waits while the overview is open. Dual-display presenter view remains open. The earlier
+windowed/full-screen audit passes in run 42573274769.
 
 **Edit Speaker Notes** opens a multiline editor for the selected slide. An accepted change is one
 Undo step. Notes stay with the slide when it moves or is duplicated and are saved in native

@@ -187,6 +187,9 @@ dated binary/test/installation evidence with each audit; native action tests and
 - Windows laser and pen overlays belong to the active slide show. A captured stroke stays on its slide
   until erased or the show ends. Pointer leave clears the laser, and canvas-only cursor hiding never
   changes the system cursor visibility counter. Saving, exporting and editing use the unmarked scene.
+- The Windows show overview renders at most twelve thumbnails for the current page and uses the
+  active show order. Keyboard and pointer selection jump by slide identity. Closing the overview
+  resumes the existing timing budget. Choosing another slide starts that slide's timing.
 - Windows slide image exports render the presentation scene in a bounded, opaque offscreen buffer. Batch output
   preserves original slide numbering and stages every file before publication. A destination conflict leaves
   existing files intact and rollback removes only outputs whose identities still match the published files.

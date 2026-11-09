@@ -44,14 +44,22 @@ impl Markup {
                 code: 76,
                 modifiers: 0,
             } => {
-                self.tool = Tool::Laser;
+                self.tool = if self.tool == Tool::Laser {
+                    Tool::Cursor
+                } else {
+                    Tool::Laser
+                };
                 self.moved_slide();
             }
             Key {
                 code: 80,
                 modifiers: 0,
             } => {
-                self.tool = Tool::Pen;
+                self.tool = if self.tool == Tool::Pen {
+                    Tool::Cursor
+                } else {
+                    Tool::Pen
+                };
                 self.moved_slide();
             }
             Key {

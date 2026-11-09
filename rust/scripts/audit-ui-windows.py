@@ -1966,6 +1966,45 @@ def audit_ppt_show(process, main, output, results):
     wait_for(lambda: not ink_visible(), "erase clears the current slide ink", process)
     key(27)
     assert playing()
+
+    def overview_point(x, y):
+        scale = min(canvas_rect.right / 720, canvas_rect.bottom / 405)
+        return (round((canvas_rect.right - 720 * scale) / 2 + x * scale),
+                round((canvas_rect.bottom - 405 * scale) / 2 + y * scale))
+
+    def overview_pixel(x, y, color):
+        px, py = overview_point(x, y)
+        u.RedrawWindow(canvas, None, None, 0x101)
+        dc = u.GetDC(canvas)
+        try:
+            return gdi.GetPixel(dc, px, py) == (color[0] | color[1] << 8 | color[2] << 16)
+        finally:
+            u.ReleaseDC(canvas, dc)
+
+    def overview_ready():
+        return (overview_pixel(99, 91, colors[0]) and overview_pixel(273, 91, colors[2])
+                and overview_pixel(447, 91, [28, 30, 36]))
+
+    key(ord("G"))
+    wait_for(overview_ready, "overview shows visible slide thumbnails in order", process)
+    capture_window(main, output / "PPT42-slide-overview.bmp")
+    key(27)
+    expect(colors[0], "Escape closes the overview without leaving the slide show")
+    key(ord("G"))
+    wait_for(overview_ready, "overview reopens", process)
+    key(39)
+    key(13)
+    expect(colors[2], "overview keyboard chooses a slide")
+    key(36)
+    expect(colors[0], "return to the first slide")
+    key(ord("G"))
+    wait_for(overview_ready, "overview opens before pointer selection", process)
+    x, y = overview_point(273, 91)
+    assert u.PostMessageW(canvas, 0x201, 1, x | (y << 16))
+    assert u.PostMessageW(canvas, 0x202, 0, x | (y << 16))
+    expect(colors[2], "overview pointer chooses a slide")
+    key(36)
+    expect(colors[0], "return before black and white blanking checks")
     key(66)
     expect([0, 0, 0], "black screen covers slide and surrounding area", uniform=True)
     key(39)
@@ -2010,6 +2049,7 @@ def audit_ppt_show(process, main, output, results):
     assert source.read_bytes() == original
     results["checks"].append("PPT42 normal Hide Slide and complete history, native PPTX/ODP visibility metadata, windowed and fullscreen pixels, black/white screens, navigation and skipping, persisted include-hidden and loop, restored editor window")
     results["checks"].append("PPT42 presentation laser follows native hover and clears on leave; pen draws without advancing, stays with its slide, returns on revisit and erases without changing the presentation")
+    results["checks"].append("PPT42 slide overview renders real thumbnails in visible order and supports Escape, keyboard and pointer navigation in the native canvas")
 
 
 def audit_ppt_notes(process, main, output, results):
