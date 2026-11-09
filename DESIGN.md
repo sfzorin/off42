@@ -186,6 +186,8 @@ dated binary/test/installation evidence with each audit; native action tests and
 - Windows slide PDF export uses the original slide dimensions and the same offscreen renderer. A4 notes pages
   use GDI for glyph measurement and raster rendering with a Unicode text layer. Long notes continue on pages
   without a slide thumbnail. The exporter preserves source bytes and publishes only a complete new PDF.
+- Windows handouts use the same A4 grid for PDF export and printing. Notes and handouts go through the
+  shared native printer path with fit to paper and a page range. Normal slide printing retains its scene path.
 - Character/paragraph commands visit visible text containers in nested groups and table cells. Vertical alignment
   targets the edited table cell when one is active, otherwise all selected text containers. Empty-paragraph properties
   are data and must survive commit. The inspector reports effective styles from the same text-container traversal.

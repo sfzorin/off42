@@ -1,5 +1,6 @@
+use crate::{Ppt, SlideLayout, SlideOutput};
 use lopdf::{dictionary, Dictionary, Document, Object, ObjectId, Stream};
-use std::{fmt::Write, path::Path};
+use std::fmt::Write;
 use suite42_pdf_text::PdfFont;
 use unicode_segmentation::UnicodeSegmentation;
 use win42::{CanvasScene, SceneFont, SceneItem, SceneTextMeasurer, TextAlign};
@@ -14,12 +15,7 @@ const NOTE_SIZE: f64 = 12.0;
 const MAX_PAGES: usize = 1_000;
 const MAX_IMAGE_BYTES: usize = 120 * 1024 * 1024;
 
-pub(super) fn export(
-    app: &crate::Ppt,
-    path: &Path,
-    notes: bool,
-    hidden: bool,
-) -> Result<(), String> {
+pub(super) fn build(app: &Ppt, options: SlideOutput) -> Result<Vec<u8>, String> {
     let slide_size = app.slide_size_points().ok_or("Unknown slide dimensions")?;
     if ![slide_size.0, slide_size.1]
         .into_iter()
@@ -32,7 +28,7 @@ pub(super) fn export(
         .slides()
         .iter()
         .enumerate()
-        .filter(|(_, slide)| hidden || !slide.hidden)
+        .filter(|(_, slide)| options.hidden || !slide.hidden)
         .collect();
     if slides.is_empty() {
         return Err("There are no slides to export".into());
@@ -42,6 +38,14 @@ pub(super) fn export(
     let parent = doc.new_object_id();
     let mut kids = Vec::new();
     let mut image_bytes = 0;
+    if let SlideLayout::Handouts(count) = options.layout {
+        let indices = slides.iter().map(|(index, _)| *index).collect::<Vec<_>>();
+        add_handouts(
+            app, slide_size, &indices, count, &mut doc, parent, &mut kids,
+        )?;
+        return finish_document(doc, parent, kids);
+    }
+    let notes = options.layout == SlideLayout::Notes;
     let font = SceneFont {
         family: "Arial".into(),
         points: NOTE_SIZE,
@@ -143,6 +147,14 @@ pub(super) fn export(
         }
     }
 
+    finish_document(doc, parent, kids)
+}
+
+fn finish_document(
+    mut doc: Document,
+    parent: ObjectId,
+    kids: Vec<Object>,
+) -> Result<Vec<u8>, String> {
     doc.objects.insert(
         parent,
         Object::Dictionary(dictionary! {"Type"=>"Pages", "Count"=>kids.len() as i64, "Kids"=>kids}),
@@ -154,7 +166,65 @@ pub(super) fn export(
     doc.compress();
     let mut bytes = Vec::new();
     doc.save_to(&mut bytes).map_err(|error| error.to_string())?;
-    suite42_core::write_new(path, &bytes).map_err(|error| error.to_string())
+    Ok(bytes)
+}
+
+fn add_handouts(
+    app: &Ppt,
+    slide_size: (f64, f64),
+    indices: &[usize],
+    count: usize,
+    doc: &mut Document,
+    parent: ObjectId,
+    kids: &mut Vec<Object>,
+) -> Result<(), String> {
+    let columns: usize = match count {
+        1 | 2 => 1,
+        3 | 4 | 6 => 2,
+        9 => 3,
+        _ => return Err("Invalid handout count".into()),
+    };
+    let rows = count.div_ceil(columns);
+    let margin = 40.0;
+    let gap = 24.0;
+    let cell_width = (A4.0 - 2.0 * margin - (columns - 1) as f64 * gap) / columns as f64;
+    let cell_height = (A4.1 - 2.0 * margin - (rows - 1) as f64 * gap) / rows as f64;
+    let scale = (cell_width / slide_size.0).min(cell_height / slide_size.1);
+    let width = slide_size.0 * scale;
+    let height = slide_size.1 * scale;
+    let mut image_bytes = 0;
+    for page in indices.chunks(count) {
+        let mut images = Dictionary::new();
+        let mut content = String::new();
+        for (slot, index) in page.iter().copied().enumerate() {
+            let scene = app
+                .scene_for(index, false)
+                .ok_or("Could not render slide")?;
+            let image = add_image(doc, &mut image_bytes, slide_image(scene, (width, height))?)?;
+            let name = format!("Slide{slot}");
+            let x =
+                margin + (slot % columns) as f64 * (cell_width + gap) + (cell_width - width) / 2.0;
+            let y = A4.1
+                - margin
+                - (slot / columns) as f64 * (cell_height + gap)
+                - (cell_height + height) / 2.0;
+            place_image(&mut content, &name, x, y, (width, height));
+            let _ = writeln!(
+                content,
+                "q 0.6 G 0.5 w {x:.4} {y:.4} {width:.4} {height:.4} re S Q"
+            );
+            images.set(name, image);
+        }
+        add_page(
+            doc,
+            parent,
+            kids,
+            A4,
+            dictionary! {"XObject"=>images},
+            content,
+        )?;
+    }
+    Ok(())
 }
 
 fn slide_image(scene: CanvasScene, size: (f64, f64)) -> Result<Stream, String> {

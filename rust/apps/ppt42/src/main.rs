@@ -9,7 +9,62 @@ mod slide_pdf;
 mod show_settings;
 use show_settings::ShowSettings;
 const EXPORT_PDF: u16 = 78;
-const PDF_LAYOUTS: [&str; 2] = ["Slides", "Notes Pages"];
+const PRINT_LAYOUT: u16 = 79;
+const PDF_LAYOUTS: [&str; 3] = ["Slides", "Notes Pages", "Handouts"];
+const HANDOUT_COUNTS: [&str; 6] = ["1", "2", "3", "4", "6", "9"];
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SlideLayout {
+    Slides,
+    Notes,
+    Handouts(usize),
+}
+
+#[derive(Clone, Copy)]
+struct SlideOutput {
+    layout: SlideLayout,
+    hidden: bool,
+}
+
+impl Default for SlideOutput {
+    fn default() -> Self {
+        Self { layout: SlideLayout::Slides, hidden: false }
+    }
+}
+
+impl SlideOutput {
+    fn from_choices(values: &[String]) -> Result<Self, String> {
+        let [layout, hidden, count] = values else {
+            return Err("Invalid presentation layout".into());
+        };
+        if !matches!(hidden.as_str(), "No" | "Yes") || !HANDOUT_COUNTS.contains(&count.as_str()) {
+            return Err("Invalid presentation layout".into());
+        }
+        let layout = match layout.as_str() {
+            "Slides" => SlideLayout::Slides,
+            "Notes Pages" => SlideLayout::Notes,
+            "Handouts" => SlideLayout::Handouts(count.parse().map_err(|_| "Invalid handout count")?),
+            _ => return Err("Invalid presentation layout".into()),
+        };
+        Ok(Self { layout, hidden: hidden == "Yes" })
+    }
+
+    fn request(self, title: &'static str) -> win42::InputRequest {
+        let (layout, count) = match self.layout {
+            SlideLayout::Slides => (PDF_LAYOUTS[0], 6),
+            SlideLayout::Notes => (PDF_LAYOUTS[1], 6),
+            SlideLayout::Handouts(count) => (PDF_LAYOUTS[2], count),
+        };
+        win42::InputRequest {
+            title,
+            fields: vec![
+                ("Layout", layout.into()),
+                ("Include hidden slides", if self.hidden { "Yes" } else { "No" }.into()),
+                ("Handouts:", count.to_string()),
+            ],
+        }
+    }
+}
 fn decode_image(bytes: &[u8]) -> Result<image::DynamicImage, String> {
     let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes))
         .with_guessed_format()
@@ -78,6 +133,7 @@ struct Ppt {
     rubber_band: Option<(win42::Point, win42::Point, bool)>,
     presenting: bool,
     show: Option<Show>,
+    print_layout: SlideOutput,
     rich_edit_object: Option<u64>,
     rich_draft: Option<ppt42_core::SlideObject>,
     pending_word:Option<(ppt42_core::SlideObject,ppt42_core::SlideObject)>,
@@ -283,6 +339,7 @@ impl Ppt {
             drag: None,
             presenting: false,
             show: None,
+            print_layout: SlideOutput::default(),
             rich_edit_object: None,
             rich_draft: None,
             pending_word:None,
@@ -1092,6 +1149,11 @@ impl win42::App for Ppt {
         if id != 40 {
             return None;
         }
+        #[cfg(windows)]
+        if self.print_layout.layout != SlideLayout::Slides {
+            let bytes = slide_pdf::build(self, self.print_layout).ok()?;
+            return Some(win42::PrintJob::FitPdf(bytes.into()));
+        }
         let (width, height) = self.slide_size_points()?;
         if !width.is_finite()
             || !height.is_finite()
@@ -1115,6 +1177,9 @@ impl win42::App for Ppt {
         let sy = sx;
         let mut pages = Vec::new();
         for index in 0..self.deck.slides().len() {
+            if self.deck.slides()[index].hidden && !self.print_layout.hidden {
+                continue;
+            }
             let mut scene = self.scene_for(index, false)?;
             fn scale_items(items: &mut [win42::SceneItem], sx: f64, sy: f64) -> Option<()> {
                 for item in items {
@@ -1328,10 +1393,7 @@ impl win42::App for Ppt {
                 fields: vec![("Format", "PNG".into()), ("Width in pixels", "1920".into()),
                     ("Include hidden slides", "No".into())],
             }),
-            EXPORT_PDF => Some(win42::InputRequest {
-                title: "Export as PDF",
-                fields: vec![("Layout", PDF_LAYOUTS[0].into()), ("Include hidden slides", "No".into())],
-            }),
+            EXPORT_PDF => Some(SlideOutput::default().request("Export as PDF")),
             _ => None,
         }
     }
@@ -1350,17 +1412,13 @@ impl win42::App for Ppt {
         if id == EXPORT_PDF {
             #[cfg(windows)]
             {
-                let [layout, hidden] = values else {
-                    return Err("Invalid slide PDF options".into());
-                };
-                if !PDF_LAYOUTS.contains(&layout.as_str()) || !matches!(hidden.as_str(), "No" | "Yes") {
-                    return Err("Invalid slide PDF options".into());
-                }
+                let layout = SlideOutput::from_choices(values)?;
                 if !path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case("pdf")) {
                     return Err("The slide PDF filename must end in .pdf".into());
                 }
                 self.finish_rich(true)?;
-                return slide_pdf::export(self, path, layout == PDF_LAYOUTS[1], hidden == "Yes");
+                let bytes = slide_pdf::build(self, layout)?;
+                return suite42_core::write_new(path, &bytes).map_err(|error| error.to_string());
             }
             #[cfg(not(windows))]
             return Err("Slide PDF rendering requires Windows".into());
@@ -1403,6 +1461,12 @@ impl win42::App for Ppt {
         Ok(())
     }
     fn dialog_request(&self, id: u16) -> Option<win42::DialogRequest> {
+        if id == 40 {
+            return Some(win42::DialogRequest::Information {
+                title: "Print",
+                text: "Could not prepare the presentation for printing with the current layout.".into(),
+            });
+        }
         let object = self.selected_object.and_then(|id| {
             self.deck.slides()[self.deck.current()]
                 .objects
@@ -1454,6 +1518,7 @@ impl win42::App for Ppt {
     fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
         let slide = &self.deck.slides()[self.deck.current()];
         match id {
+            PRINT_LAYOUT => Some(self.print_layout.request("Print Layout")),
             74 => Some(win42::InputRequest {
                 title: "Speaker Notes",
                 fields: vec![("Notes", win42::to_native_text(&slide.notes))],
@@ -1585,8 +1650,10 @@ impl win42::App for Ppt {
         } else if id == slide_images::COMMAND {
             vec![(0, slide_images::FORMATS.map(str::to_owned).to_vec()),
                  (1, slide_images::WIDTHS.map(str::to_owned).to_vec()), (2, vec!["No".into(), "Yes".into()])]
-        } else if id == EXPORT_PDF {
-            vec![(0, PDF_LAYOUTS.map(str::to_owned).to_vec()), (1, vec!["No".into(), "Yes".into()])]
+        } else if matches!(id, EXPORT_PDF | PRINT_LAYOUT) {
+            vec![(0, PDF_LAYOUTS.map(str::to_owned).to_vec()),
+                 (1, vec!["No".into(), "Yes".into()]),
+                 (2, HANDOUT_COUNTS.map(str::to_owned).to_vec())]
         } else if id == 72 {
             vec![(0, vec!["No".into(), "Yes".into()]), (1, vec!["No".into(), "Yes".into()])]
         } else if matches!(id, 68 | 69) {
@@ -1605,10 +1672,14 @@ impl win42::App for Ppt {
         id == 74
     }
     fn toolbar_command_visible(&self, id: u16) -> bool {
-        !matches!(id, 74 | 75)
+        !matches!(id, 74 | 75 | PRINT_LAYOUT)
     }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
         match id {
+            PRINT_LAYOUT => {
+                self.print_layout = SlideOutput::from_choices(values)?;
+                Ok(())
+            }
             74 if values.len() == 1 && self.enabled(id) => self.deck.set_notes(&values[0]),
             72 if values.len() == 2 && values.iter().all(|value| matches!(value.as_str(), "No" | "Yes")) => {
                 ShowSettings { looped: values[0] == "Yes", show_hidden: values[1] == "Yes" }.save()
@@ -2161,7 +2232,8 @@ impl win42::App for Ppt {
             (31, "Line Color…"),
             (33, "Insert Table…"),
             (34, "Edit Table Cell…"),
-            (40, "Print Slides…"),
+            (40, "Print…"),
+            (PRINT_LAYOUT, "Print Layout…"),
             (41, "Start Slide Show"),
             (67, "Start Slide Show from Beginning"),
             (71, "Present in Window"),
@@ -2522,10 +2594,8 @@ impl win42::App for Ppt {
                     )
                 })
             }
-            40 => self
-                .odp_source
-                .as_ref()
-                .is_none_or(|s| s.size_points().is_some()),
+            40 => self.slide_size_points().is_some()
+                && (self.print_layout.hidden || self.deck.slides().iter().any(|slide| !slide.hidden)),
             73 => self.odp_source.as_ref().is_none_or(|source| {
                 source.can_edit_visibility(self.deck.slides()[i].source_identity())
             }),

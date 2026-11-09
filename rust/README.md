@@ -1029,10 +1029,12 @@ uses the native title and body or recognizes title placeholders in imported PPTX
 The chosen name becomes a prefix. Each output includes its original slide number, and hidden
 slides are optional. The exporter stages the complete batch and refuses existing destinations.
 
-**File → Export as PDF** writes slide-size pages or A4 speaker-note pages with slide thumbnails
-and continuation pages. Hidden slides are optional and omitted by default. Slides use the same
-Windows raster rendering as image export at up to 144 DPI. Speaker notes add a searchable Unicode
-text layer. The export preserves the presentation and refuses existing destinations.
+**File → Export as PDF** writes slide-size pages, A4 speaker-note pages with slide thumbnails and
+continuation pages, or A4 handouts with 1, 2, 3, 4, 6 or 9 slides per page. Hidden slides are optional
+and omitted by default. Slides use the same Windows raster rendering as image export at up to
+144 DPI. Speaker notes add a searchable Unicode text layer. The export preserves the presentation
+and refuses existing destinations. **Print Layout** selects slides, notes or handouts for the
+native Print dialog. The A4 notes and handouts fit to the chosen printer's paper.
 
 
 ### Scan PDF exports (development branch)

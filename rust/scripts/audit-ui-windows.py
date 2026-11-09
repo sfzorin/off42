@@ -2146,12 +2146,12 @@ def audit_ppt_slide_images(process, main, output, results):
     results["checks"].append("PPT42 exports numbered PNG and JPEG through normal settings, actual PNG pixels, selected dimensions and hidden-slide scope, no clobber and unchanged presentation")
 
 
-def audit_ppt_pdf(process, main, binary, output, results):
+def audit_ppt_pdf(process, main, binary, output, results, native_print):
     dll = binary.parent / "pdfium.dll"
 
-    def export(name, layout, include_hidden):
+    def export(name, layout, include_hidden, handouts="6"):
         path = output / name
-        fill_prompt(process, main, 78, "Export as PDF", [layout, include_hidden])
+        fill_prompt(process, main, 78, "Export as PDF", [layout, include_hidden, handouts])
         choose_file(process, path)
         output_ready(process, main, path, b"%PDF")
         return path
@@ -2168,16 +2168,29 @@ def audit_ppt_pdf(process, main, binary, output, results):
             assert (width, height) == (720, 405), (width, height)
             center = (width * (height // 2) + width // 2) * 4
             assert all(abs(a - b) <= 4 for a, b in zip(pixels[center:center + 3], reversed(color)))
+    handout = export("ppt-handout.pdf", "Handouts", "Yes", "2")
+    assert len(pdf_text(dll, handout, by_page=True)) == 2
+    for index, points in enumerate((
+        [(224, (200, 20, 20)), (617, (20, 160, 20))],
+        [(224, (20, 20, 200)), (617, (255, 255, 255))],
+    )):
+        width, height, pixels = pdf_pixels(dll, handout, index)
+        assert (width, height) == (595, 842)
+        for y, color in points:
+            offset = (y * width + width // 2) * 4
+            assert all(abs(a - b) <= 4 for a, b in zip(pixels[offset:offset + 3], reversed(color)))
     assert (text(main), slides.read_bytes()) == before
 
     project = output / "ppt-long-notes.json"
     long_notes = ["Проверить питание и разъёмы"] + [f"NOTE-CUE-{i:03}" for i in range(1, 81)]
     long_word = "SUPPLYTRACE" * 22
+    def slide(id, title, notes, hidden=False):
+        return {"id": id, "title_text": {"raw": title, "crlf": False},
+                "body_text": {"raw": "", "crlf": False}, "notes": notes, "hidden": hidden}
     project.write_text(json.dumps({"version": 2, "next_id": 4, "slides": [
-        {"id": 1, "title_text": {"raw": "Visible slide", "crlf": False},
-         "notes": "\n".join(long_notes + [long_word, "END-CUE"])},
-        {"id": 2, "hidden": True, "notes": "HIDDEN-CUE"},
-        {"id": 3, "notes": "LAST-CUE"},
+        slide(1, "Visible slide", "\n".join(long_notes + [long_word, "END-CUE"])),
+        slide(2, "Hidden slide", "HIDDEN-CUE", hidden=True),
+        slide(3, "Last slide", "LAST-CUE"),
     ]}), encoding="utf-8")
     open_fixture(process, main, project)
     before = text(main), project.read_bytes()
@@ -2195,7 +2208,17 @@ def audit_ppt_pdf(process, main, binary, output, results):
                   for x in range(54, 230))
         assert sum(value < 100 for value in region) > 20, "Notes must visibly render"
     assert (text(main), project.read_bytes()) == before
-    results["checks"].append("PPT42 Slides/Notes Pages PDF chooser, original slide page size, hidden slide scope and rendered colors, A4 note pages with Unicode, whole long notes, visible text and unchanged source")
+    if native_print:
+        fill_prompt(process, main, 79, "Print Layout", ["Notes Pages", "No", "6"])
+        printed = print_to_virtual_pdf(process, main, lambda: command(main, 40),
+                                      output / "ppt-notes-printed-page-two.pdf", output)
+        assert len(pdf_text(dll, printed, by_page=True)) == 1
+        width, height, pixels = pdf_pixels(dll, printed)
+        assert sum(pixels[i] < 100 for i in range(0, len(pixels), 4)) > 100
+        fill_prompt(process, main, 79, "Print Layout", ["Slides", "No", "6"])
+        assert (text(main), project.read_bytes()) == before
+        results["checks"].append("PPT42 Notes Pages layout reaches the native printer and prints a selected continuation page without changing the presentation")
+    results["checks"].append("PPT42 Slides/Notes Pages/Handouts PDF chooser, original slide page size, hidden slide scope and rendered colors, two slides per A4 handout, searchable Unicode notes with visible pagination and unchanged source")
 
 
 def audit_preset_shapes(process,main,output,results):
@@ -3757,7 +3780,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
                 audit_ppt_rehearsal(process,main,output,results)
                 audit_ppt_outline_export(process,main,output,results)
                 audit_ppt_slide_images(process,main,output,results)
-                audit_ppt_pdf(process,main,binary,output,results)
+                audit_ppt_pdf(process,main,binary,output,results,native_print)
             return results
         if binary.stem.lower() == "pdf42" and not startup:
             source = output / "input.pdf"
