@@ -1079,7 +1079,7 @@ def audit_doc_navigator(process, main, output, results):
     state["blocks"][0]["Paragraph"]["style"]["outline_level"] = 0
     state["blocks"][2]["Image"]["alt"] = "Board photograph"
     state["blocks"][3]["Paragraph"]["style"]["outline_level"] = 1
-    state["blocks"][3]["Paragraph"]["runs"][0]["link"] = "https://example.com/"
+    state["blocks"][4]["Paragraph"]["runs"][0]["link"] = "https://example.com/"
     position = {"paragraph": 6, "offset": 0}
     state["bookmarks"] = [{"id": 8, "name": "BoardTarget", "start": position, "end": position}]
     state["next_id"] = 9
@@ -1122,6 +1122,7 @@ def audit_doc_navigator(process, main, output, results):
     picture = jump("Board photograph", lambda selected: selected[1] == selected[0] + 1 and selected[0] > table[0])
     heading = jump("  After", lambda selected: selected[1] == selected[0] + 5 and selected[0] > picture[1])
     assert copied_selection(edit) == "After"
+    jump("Tail", lambda selected: selected[1] == selected[0] + 4 and selected[0] > heading[1])
     assert jump("BoardTarget", lambda selected: selected == (heading[0], heading[0])) == (heading[0], heading[0])
     assert " * - " not in text(main) and u.GetMenuState(u.GetMenu(main), 4, 0) & 3
     jump("  After", lambda selected: selected == heading)

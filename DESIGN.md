@@ -134,8 +134,9 @@ These contracts describe the current source. README lists scenario boundaries; e
 binary, failures/skips, installation and publication state. Native UI assertions complement saved-file inspection.
 
 Windows DOC42 Navigator projects stable model positions into the actual Rich Edit UTF-16 buffer.
-It checks text and image-marker order before moving the selection, including across tables and
-pictures. The live sidebar reloads independently from the editor and adds no history entries.
+It checks text, exact hyperlink instructions and image-marker order before moving the selection,
+including across tables and pictures. The live sidebar reloads independently from the editor
+and adds no history entries.
 
 ## XLS42 editing and output contracts
 

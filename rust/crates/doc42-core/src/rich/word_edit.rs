@@ -61,10 +61,31 @@ fn projection_mismatch() -> Error {
     Error::Invalid("native text projection no longer matches the document".into())
 }
 
+type NativeSpan = std::ops::Range<usize>;
+
+fn linked_projection(paragraph: &Paragraph) -> (Vec<u16>, Vec<NativeSpan>) {
+    let mut units = Vec::new();
+    let mut hidden = Vec::new();
+    for run in paragraph.runs.iter().filter(|run| !run.text.is_empty()) {
+        if let Some(link) = &run.link {
+            // Friendly-name links embed this exact instruction as hidden text.
+            let start = units.len();
+            units.extend(format!("HYPERLINK \"{link}\"").encode_utf16());
+            hidden.push(start..units.len());
+        }
+        units.extend(
+            run.text
+                .encode_utf16()
+                .map(|unit| if unit == 10 { 11 } else { unit }),
+        );
+    }
+    (units, hidden)
+}
+
 fn walk_projection(
     state: &State,
     native: &[u16],
-    mut visit: impl FnMut(Piece<'_>, std::ops::Range<usize>, &str) -> Result<(), Error>,
+    mut visit: impl FnMut(Piece<'_>, NativeSpan, &str, &[NativeSpan]) -> Result<(), Error>,
 ) -> Result<(), Error> {
     if native.len() > 1_000_000 {
         return Err(Error::Limit);
@@ -74,11 +95,11 @@ fn walk_projection(
         native: &[u16],
         at: usize,
         images: &mut std::collections::VecDeque<u64>,
-        visit: &mut impl FnMut(Piece<'_>, std::ops::Range<usize>, &str) -> Result<(), Error>,
+        visit: &mut impl FnMut(Piece<'_>, NativeSpan, &str, &[NativeSpan]) -> Result<(), Error>,
     ) -> Result<(), Error> {
         if native.get(at) == Some(&0xFFFC) {
             let image = images.pop_front().ok_or_else(projection_mismatch)?;
-            visit(Piece::Image(image), at..at + 1, "")
+            visit(Piece::Image(image), at..at + 1, "", &[])
         } else if native.get(at).copied().is_some_and(structural) {
             Ok(())
         } else {
@@ -103,24 +124,36 @@ fn walk_projection(
             .encode_utf16()
             .map(|c| if c == 10 { 11 } else { c })
             .collect();
-        loop {
+        let linked = paragraph
+            .runs
+            .iter()
+            .any(|run| run.link.is_some())
+            .then(|| linked_projection(paragraph));
+        let check_cost = projected.len() + linked.as_ref().map_or(0, |(units, _)| units.len());
+        let (length, hidden) = loop {
             work = work
-                .checked_add(projected.len())
+                .checked_add(check_cost)
                 .filter(|n| *n <= 32_000_000)
                 .ok_or(Error::Limit)?;
+            if let Some((units, hidden)) = &linked {
+                if native.get(cursor..cursor.saturating_add(units.len())) == Some(units.as_slice())
+                {
+                    break (units.len(), hidden.as_slice());
+                }
+            }
             if native.get(cursor..cursor.saturating_add(projected.len()))
                 == Some(projected.as_slice())
             {
-                break;
+                break (projected.len(), &[][..]);
             }
             gap(native, cursor, &mut images, &mut visit)?;
             cursor += 1;
-        }
+        };
         if !images.is_empty() {
             return Err(projection_mismatch());
         }
-        let end = cursor + projected.len();
-        visit(Piece::Paragraph(paragraph), cursor..end, &text)?;
+        let end = cursor + length;
+        visit(Piece::Paragraph(paragraph), cursor..end, &text, hidden)?;
         cursor = end;
     }
     for at in cursor..native.len() {
@@ -136,9 +169,9 @@ fn locate(
     state: &State,
     native: &[u16],
     range: (usize, usize),
-) -> Result<(u64, std::ops::Range<usize>), Error> {
+) -> Result<(u64, NativeSpan), Error> {
     let mut target = None;
-    walk_projection(state, native, |piece, projected, text| {
+    walk_projection(state, native, |piece, projected, text, hidden| {
         let Piece::Paragraph(paragraph) = piece else {
             return Ok(());
         };
@@ -146,8 +179,21 @@ fn locate(
             if target.is_some() {
                 return Err(projection_mismatch());
             }
-            let start = byte_at(text, range.0 - projected.start).ok_or_else(projection_mismatch)?;
-            let end = byte_at(text, range.1 - projected.start).ok_or_else(projection_mismatch)?;
+            let start = range.0 - projected.start;
+            let end = range.1 - projected.start;
+            if hidden
+                .iter()
+                .any(|span| span.start < end && span.end > start)
+            {
+                return Err(projection_mismatch());
+            }
+            let ignored = hidden
+                .iter()
+                .filter(|span| span.end <= start)
+                .map(NativeSpan::len)
+                .sum::<usize>();
+            let start = byte_at(text, start - ignored).ok_or_else(projection_mismatch)?;
+            let end = byte_at(text, end - ignored).ok_or_else(projection_mismatch)?;
             target = Some((paragraph.id, start..end));
         }
         Ok(())
@@ -164,16 +210,22 @@ impl RichDocument {
         end: &Position,
     ) -> Result<(usize, usize), Error> {
         let mut bounds = [None, None];
-        walk_projection(self.state(), native, |piece, projected, text| {
+        walk_projection(self.state(), native, |piece, projected, text, hidden| {
             let Piece::Paragraph(paragraph) = piece else {
                 return Ok(());
             };
-            for (offset, position) in bounds.iter_mut().zip([start, end]) {
+            for (index, (offset, position)) in bounds.iter_mut().zip([start, end]).enumerate() {
                 if position.paragraph == paragraph.id {
                     let prefix = text
                         .get(..position.offset)
                         .ok_or_else(projection_mismatch)?;
-                    *offset = Some(projected.start + prefix.encode_utf16().count());
+                    let mut raw = prefix.encode_utf16().count();
+                    for span in hidden {
+                        if span.start < raw || (span.start == raw && (index == 0 || start == end)) {
+                            raw += span.len();
+                        }
+                    }
+                    *offset = Some(projected.start + raw);
                 }
             }
             Ok(())
@@ -188,7 +240,7 @@ impl RichDocument {
 
     pub fn native_image_range(&self, native: &[u16], id: u64) -> Result<(usize, usize), Error> {
         let mut range = None;
-        walk_projection(self.state(), native, |piece, projected, _| {
+        walk_projection(self.state(), native, |piece, projected, _, _| {
             if matches!(piece, Piece::Image(image) if image == id) {
                 range = Some((projected.start, projected.end));
             }
@@ -459,5 +511,40 @@ mod tests {
         changed[image.0] = 32;
         assert!(doc.native_text_range(&changed, &start, &end).is_err());
         assert!(doc.native_image_range(&changed, 5).is_err());
+    }
+
+    #[test]
+    fn navigator_and_spelling_map_visible_text_after_verified_hidden_link_instructions() {
+        let (doc, native) = fixture();
+        let prefix: Vec<_> = "HYPERLINK \"https://example.com\"".encode_utf16().collect();
+        let mut raw = prefix.clone();
+        raw.extend(native);
+        let start = Position {
+            paragraph: 1,
+            offset: 0,
+        };
+        let end = Position {
+            paragraph: 1,
+            offset: "😀 speling world".len(),
+        };
+        let selected = doc.native_text_range(&raw, &start, &end).unwrap();
+        assert_eq!(selected, (prefix.len(), prefix.len() + 16));
+        assert_eq!(
+            String::from_utf16(&raw[selected.0..selected.1]).unwrap(),
+            "😀 speling world"
+        );
+        assert!(doc
+            .prepare_word_edit(
+                &raw,
+                (prefix.len() + 3, prefix.len() + 10),
+                "speling",
+                "spelling"
+            )
+            .is_ok());
+        assert!(doc
+            .prepare_word_edit(&raw, (0, 9), "HYPERLINK", "LINK")
+            .is_err());
+        raw[11] = b'X' as u16;
+        assert!(doc.native_text_range(&raw, &start, &end).is_err());
     }
 }

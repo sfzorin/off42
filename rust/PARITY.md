@@ -991,3 +991,7 @@ after image selection; image unit regressions are now included in quick CI.
   geometry, hidden slide scope, A4 handouts, searchable Cyrillic notes and long-note pagination, and
   printed a selected continuation page through the native virtual PDF printer. Independent Poppler
   review confirmed the rendered handout and notes.
+- Run 42722053383 (a651ca0) reached DOC42 Navigator and exposed hidden Rich Edit instructions in
+  the raw buffer for friendly-name links. The projection mapper now checks the exact saved target
+  and maps visible text around it. A portable regression verifies range selection, spelling edits
+  and refusal of a changed target. The native DOC42 scenario retains a real hyperlink.
