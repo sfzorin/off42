@@ -143,6 +143,9 @@ binary, failures/skips, installation and publication state. Native UI assertions
   writes crossing protection, worksheet bounds, the 100,000-cell operation limit or part of a legacy array before
   changing cells or undo history. A complete array replacement removes its metadata in the same undo transaction;
   format-only paste can change a subset without changing array formulas. Large sparse clears visit stored cells.
+- Windows list validation resolves fixed same-sheet ranges from the current calculated values. The grid commits
+  the selected typed value and runs validation before publishing the edit. Native XLSX uses absolute addresses.
+  Imported stop-style rules retain their original XML through value edits.
 - Format Cells represents mixed border selections explicitly. Opening and accepting the dialog without changing a
   border preserves every edge, including imported line styles. None, Outline and All are explicit actions over the
   complete selection; Outline clears inner lines. Changing a border style/colour changes existing lines without

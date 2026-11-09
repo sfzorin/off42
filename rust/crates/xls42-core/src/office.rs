@@ -640,6 +640,15 @@ impl Workbook {
                             Error::Invalid("XLSX validation list exceeds Excel limits")
                         })?
                     }
+                    ValidationKind::ListRange { source } => {
+                        let mut address = String::new();
+                        write_a1_endpoint(&mut address, source.top + 1, source.left + 1, true, true);
+                        if source.top != source.bottom || source.left != source.right {
+                            address.push(':');
+                            write_a1_endpoint(&mut address, source.bottom + 1, source.right + 1, true, true);
+                        }
+                        XValidation::new().allow_list_formula(rust_xlsxwriter::Formula::new(address))
+                    }
                 }
                 .ignore_blank(rule.allow_blank);
                 let r = rule.range;

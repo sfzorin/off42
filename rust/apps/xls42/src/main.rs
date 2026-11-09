@@ -25,11 +25,6 @@ struct Xls {
     selected_picture: Option<u64>,
 }
 impl Xls {
-    fn validation_values(&self) -> Option<(&[String], bool)> {
-        let rule = self.book.validation_at(self.row, self.col)?;
-        let ValidationKind::List { values } = &rule.kind else { return None };
-        Some((values, rule.allow_blank && !values.iter().any(String::is_empty)))
-    }
     fn normalize_focus(&mut self) {
         let view = self.book.sheet_view();
         if view.hidden_rows.contains(&self.row) {
@@ -457,10 +452,9 @@ impl win42::App for Xls {
         }
         match id {
             VALIDATION_CHOICE if self.enabled(id) => {
-                let (values, blank) = self.validation_values()?;
-                let mut values = values.to_vec();
-                if blank {
-                    values.push(String::new());
+                let values = self.book.list_choice_values(self.row, self.col).ok()?;
+                if values.is_empty() {
+                    return None;
                 }
                 let current = self.book.cell(self.row, self.col).unwrap_or_default();
                 let checked = values.iter().position(|value| value == current);
@@ -620,6 +614,7 @@ impl win42::App for Xls {
                 vec![
                     ("Allowed values separated by semicolons", String::new()),
                     ("Allow blank (yes/no)", "yes".into()),
+                    ("Source range:", String::new()),
                 ],
             ),
             67 => ("Move sheet", vec![("New position (1-based)", "1".into())]),
@@ -1053,11 +1048,18 @@ impl win42::App for Xls {
                 self.edit_range(rule.range,|book|book.add_validation(rule))?;
             }
             42 => {
-                let values = v[0].split(';').map(str::to_owned).collect();
+                let kind = if v[2].trim().is_empty() {
+                    ValidationKind::List { values: v[0].split(';').map(str::to_owned).collect() }
+                } else {
+                    if !v[0].is_empty() {
+                        return Err("Enter allowed values or a source range".into());
+                    }
+                    ValidationKind::list_range(&v[2]).map_err(|error| error.to_string())?
+                };
                 let rule = DataValidation {
                     range: self.active_range(),
                     allow_blank: v[1].eq_ignore_ascii_case("yes"),
-                    kind: ValidationKind::List { values },
+                    kind,
                 };
                 self.edit_range(rule.range,|book|book.add_validation(rule))?;
             }
@@ -1526,7 +1528,7 @@ impl win42::App for Xls {
             VALIDATION_CHOICE => {
                 !self.book.is_read_only() && !self.book.is_protected() && self.preview.is_none()
                     && self.selected_picture.is_none() && !self.solver.running() && !self.goal_seek.running()
-                    && self.validation_values().is_some()
+                    && self.book.validation_at(self.row, self.col).is_some_and(|rule| rule.kind.is_list())
                     && !self.book.merges().iter().any(|m| {
                         (m.top..=m.bottom).contains(&self.row) && (m.left..=m.right).contains(&self.col)
                             && (self.row, self.col) != (m.top, m.left)
@@ -1560,6 +1562,10 @@ impl win42::App for Xls {
             return Err("Command unavailable".into());
         }
         match id {
+            VALIDATION_CHOICE => {
+                self.book.list_choice_values(self.row, self.col).map_err(|error| error.to_string())?;
+                return Err("The source range has no allowed values".into());
+            }
             goal_seek::CANCEL=>self.goal_seek.cancel(),
             solver::CANCEL=>self.solver.cancel(),
             78 => {

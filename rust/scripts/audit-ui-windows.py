@@ -1413,7 +1413,7 @@ def audit_validation_choices(process, main, output, results):
     original = source.read_bytes()
     open_fixture(process, main, source)
     grid, edit = u.GetDlgItem(main, 102), u.GetDlgItem(main, 101)
-    fill_prompt(process, main, 42, "List validation", ["=40+2;007;Yes;R&D", "yes"])
+    fill_prompt(process, main, 42, "List validation", ["=40+2;007;Yes;R&D", "yes", ""])
 
     def popup():
         return next((h for h in windows(process.pid) if classname(h) == "#32768"), None)
@@ -1422,16 +1422,16 @@ def audit_validation_choices(process, main, output, results):
         u.keybd_event(code, 0, 0, 0)
         u.keybd_event(code, 0, 2, 0)
 
-    def pick(index, expected):
+    def pick(index, expected, choices=5):
         menu = wait_for(popup, "native list-validation popup", process)
         if index is None:
             key(27)
         else:
             rect = w.RECT()
             assert u.GetWindowRect(menu, c.byref(rect))
-            assert rect.bottom - rect.top >= 50
+            assert rect.bottom - rect.top >= 10 * choices
             x = (rect.left + rect.right) // 2
-            y = rect.top + (2 * index + 1) * (rect.bottom - rect.top) // 10
+            y = rect.top + (2 * index + 1) * (rect.bottom - rect.top) // (2 * choices)
             assert u.SetCursorPos(x, y)
             u.mouse_event(2, 0, 0, 0, 0)
             u.mouse_event(4, 0, 0, 0, 0)
@@ -1482,19 +1482,23 @@ def audit_validation_choices(process, main, output, results):
     pick(1, "007")
     reopened, reopened_rule = content("reopened")
     assert reopened == {"type": "Text", "value": {"raw": "007", "crlf": False}} and reopened_rule == rule
-    foreign = output / "validation-external.xlsx"
-    with zipfile.ZipFile(xlsx) as package, zipfile.ZipFile(foreign, "w", zipfile.ZIP_DEFLATED) as stripped:
-        for name in package.namelist():
-            if name == "xls42/project.json":
-                continue
-            payload = package.read(name)
-            if name == "[Content_Types].xml":
-                types = ET.fromstring(payload)
-                for node in list(types):
-                    if node.get("PartName") == "/xls42/project.json":
-                        types.remove(node)
-                payload = ET.tostring(types, encoding="utf-8")
-            stripped.writestr(name, payload)
+    def independent(source, name):
+        target = output / name
+        with zipfile.ZipFile(source) as package, zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as stripped:
+            for name in package.namelist():
+                if name == "xls42/project.json":
+                    continue
+                payload = package.read(name)
+                if name == "[Content_Types].xml":
+                    types = ET.fromstring(payload)
+                    for node in list(types):
+                        if node.get("PartName") == "/xls42/project.json":
+                            types.remove(node)
+                    payload = ET.tostring(types, encoding="utf-8")
+                stripped.writestr(name, payload)
+        return target
+
+    foreign = independent(xlsx, "validation-external.xlsx")
     foreign_original = foreign.read_bytes()
     open_fixture(process, main, foreign)
     wait_for(lambda: text(edit) == "=40+2", "external XLSX source opened", process)
@@ -1509,6 +1513,37 @@ def audit_validation_choices(process, main, output, results):
     assert foreign.read_bytes() == foreign_original
     assert source.read_bytes() == original
     results["checks"].append("XLS42 list validation uses an active-cell arrow and Alt+Down native popup, Cancel, typed literal and leading zeros, Undo/Redo, standard XLSX list metadata and normal reopen with or without an off42 project part")
+
+    source = output / "validation-range-source.csv"
+    source.write_text("Keep,Board A\n,=40+2\n", encoding="utf-8")
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+    fill_prompt(process, main, 42, "List validation", ["", "no", "B1:B2"])
+    u.SetForegroundWindow(main)
+    u.SendMessageW(grid, 0x104, 40, 1 << 29)
+    pick(1, "42", choices=2)
+    chosen, rule = content("range-chosen")
+    assert chosen["type"] == "Number" and chosen["value"]["raw"] == "42"
+    assert rule[0]["kind"] == {"ListRange": {"source": {"top": 0, "left": 1, "bottom": 1, "right": 1}}}
+    xlsx = saved("range-exported", "xlsx", "Excel workbook")
+    with zipfile.ZipFile(xlsx) as package:
+        sheet = ET.fromstring(package.read("xl/worksheets/sheet1.xml"))
+        assert sheet.find(".//s:dataValidation/s:formula1", ns).text == "$B$1:$B$2"
+        cell = sheet.find(".//s:c[@r='A1']", ns)
+        assert cell.get("t") in {None, "n"} and cell.find("s:v", ns).text == "42"
+    foreign = independent(xlsx, "validation-range-external.xlsx")
+    foreign_original = foreign.read_bytes()
+    open_fixture(process, main, foreign)
+    u.SetForegroundWindow(main)
+    u.SendMessageW(grid, 0x104, 40, 1 << 29)
+    pick(0, "Board A", choices=2)
+    external_saved = saved("range-external-edited", "xlsx", "Excel workbook")
+    with zipfile.ZipFile(foreign) as before, zipfile.ZipFile(external_saved) as after:
+        before_sheet = ET.fromstring(before.read("xl/worksheets/sheet1.xml"))
+        after_sheet = ET.fromstring(after.read("xl/worksheets/sheet1.xml"))
+        assert ET.tostring(before_sheet.find("s:dataValidations", ns)) == ET.tostring(after_sheet.find("s:dataValidations", ns))
+    assert foreign.read_bytes() == foreign_original and source.read_bytes() == original
+    results["checks"].append("XLS42 creates a same-sheet range validation in the normal dialog, chooses a calculated numeric value, writes a standard absolute source formula and reopens its dropdown without an off42 project part")
 
 
 def audit_grid_expansion(process,main,binary,output,results):

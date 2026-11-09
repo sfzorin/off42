@@ -996,6 +996,14 @@ sort, horizontal formula shifts with independent XLSX caches, full-sheet XFD-dat
 pass, including strengthened same-file discard/reopen and XLSX/ODS outputs.
 
 
+### Spreadsheet list validation (development branch)
+
+The **List validation** dialog accepts semicolon-separated literal choices or a one-dimensional
+source range on the same sheet. Range choices update from cell values and formula results. The
+active-cell menu copies the selected value and its type. Use the cell arrow or Alt+Down to open it.
+XLSX writes absolute source references and reads compatible visible, stop-style rules from independent
+workbooks. Relative, named and cross-sheet references and ODS validation are still open.
+
 ### Presentation controls (development branch)
 
 PPT42 can present full-screen or in the editor window with its editing controls hidden. Home and
