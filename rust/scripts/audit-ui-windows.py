@@ -1708,6 +1708,16 @@ def audit_ppt_show(process, main, output, results):
     assert u.PostMessageW(main, 0x10, 0, 0)
     wait_for(lambda: bool(u.GetMenu(main)) and u.IsWindowVisible(listing), "window close exits show", process)
     assert placement() == prior and u.SendMessageW(listing, 0x188, 0, 0) == 2
+    command(main, 71)
+    wait_for(playing, "windowed show started from final slide", process)
+    canvas = current_canvas()
+    rect = w.RECT()
+    u.GetClientRect(canvas, c.byref(rect))
+    center = rect.right // 2 | (rect.bottom // 2) << 16
+    assert u.PostMessageW(canvas, 0x201, 1, center)
+    assert u.PostMessageW(canvas, 0x202, 0, center)
+    wait_for(lambda: bool(u.GetMenu(main)) and u.IsWindowVisible(listing), "clicking final slide restores editor", process)
+    assert placement() == prior
     fill_prompt(process, main, 72, "Slide Show Settings", ["Yes", "Yes"])
     open_fixture(process, main, odp)
     command(main, 67)
@@ -1833,6 +1843,74 @@ def audit_ppt_notes(process, main, output, results):
     assert without_notes.read_bytes() == original_pptx
     assert source.read_bytes() == original
     results["checks"].append("PPT42 multiline notes edit and cancel, per-slide identity, Undo/Redo, standard PPTX/ODP parts and reopen, imported PPTX note edit and first note/master creation preserving unrelated package bytes")
+
+
+def audit_ppt_rehearsal(process, main, output, results):
+    source = output / "ppt-notes-first-note.pptx"
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+    gdi = c.WinDLL("gdi32", use_last_error=True)
+    gdi.GetPixel.argtypes, gdi.GetPixel.restype = [w.HDC, c.c_int, c.c_int], w.DWORD
+    u.GetDC.argtypes, u.GetDC.restype = [w.HWND], w.HDC
+    u.ReleaseDC.argtypes = [w.HWND, w.HDC]
+    u.GetClientRect.argtypes = [w.HWND, c.POINTER(w.RECT)]
+    u.RedrawWindow.argtypes = [w.HWND, c.c_void_p, c.c_void_p, w.UINT]
+
+    def control(identifier):
+        return u.GetDlgItem(main, identifier)
+
+    def playing():
+        return not u.GetMenu(main) and u.IsWindowVisible(control(65484))
+
+    def canvas():
+        return next((h for h in windows(process.pid, main) if classname(h) == "Suite42Canvas"), None)
+
+    def expect(hwnd, color, description):
+        value = color[0] | color[1] << 8 | color[2] << 16
+
+        def current():
+            rect = w.RECT()
+            u.GetClientRect(hwnd, c.byref(rect))
+            u.RedrawWindow(hwnd, None, None, 0x101)
+            dc = u.GetDC(hwnd)
+            try:
+                return gdi.GetPixel(dc, rect.right // 2, rect.bottom // 2) == value
+            finally:
+                u.ReleaseDC(hwnd, dc)
+
+        wait_for(current, description, process)
+
+    command(main, 75)
+    wait_for(playing, "rehearsal controls visible", process)
+    notes, header, preview = control(65484), control(65480), control(65482)
+    assert u.GetWindowLongW(notes, -16) & 0x804 == 0x804
+    assert text(notes) == "First note in this presentation"
+    initial = text(header)
+    assert initial.endswith("Slide 1 of 2")
+    wait_for(lambda: text(header) != initial, "rehearsal clock advancing", process)
+    expect(canvas(), [200, 20, 20], "current slide pixels in Presenter View")
+    expect(preview, [20, 20, 200], "next slide skips hidden slide")
+    click(main, 65487)
+    expect(canvas(), [0, 0, 0], "presenter current slide blanked")
+    expect(preview, [20, 20, 200], "next preview unaffected by blanking")
+    assert text(notes) == "First note in this presentation"
+    click(main, 65486)
+    expect(canvas(), [200, 20, 20], "first navigation reveals current slide")
+    click(main, 65486)
+    wait_for(lambda: text(header).endswith("Slide 2 of 2") and text(notes) == "No notes",
+             "next shows new slide and clears previous notes", process)
+    expect(canvas(), [20, 20, 200], "final current slide pixels")
+    expect(preview, [0, 0, 0], "no preview after final slide")
+    click(main, 65485)
+    wait_for(lambda: text(notes) == "First note in this presentation", "previous restores notes", process)
+    assert u.PostMessageW(notes, 0x100, 27, 0)
+    wait_for(lambda: u.GetMenu(main) and not u.IsWindow(notes), "Escape restores editor and removes rehearsal controls", process)
+    assert text(main).startswith(source.name + " - ") and source.read_bytes() == original
+    command(main, 75)
+    wait_for(playing, "rehearsal can restart", process)
+    click(main, 65488)
+    wait_for(lambda: u.GetMenu(main) and not playing(), "End Show button restores editor", process)
+    results["checks"].append("PPT42 rehearsal current/next pixels, hidden-slide order, scrollable read-only notes, elapsed timer, Previous/Next/Black/End controls, Escape and unchanged saved input")
 
 
 def audit_preset_shapes(process,main,output,results):
@@ -3235,6 +3313,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
                 audit_preset_shapes(process,main,output,results)
                 audit_ppt_show(process,main,output,results)
                 audit_ppt_notes(process,main,output,results)
+                audit_ppt_rehearsal(process,main,output,results)
             return results
         if binary.stem.lower() == "pdf42" and not startup:
             source = output / "input.pdf"

@@ -174,6 +174,9 @@ dated binary/test/installation evidence with each audit; native action tests and
 - On Windows, accepting the modal speaker-notes editor adds one slide-scoped history entry. Office overlays patch
   supported note text and preserve other shapes and parts. Adding a PPTX note reuses a compatible notes master or
   adds a standard master using the slide theme. Unsupported layouts retain their original package data.
+- Windows rehearsal reuses the normal slide-show order, transitions and navigation. The host lays out the current
+  canvas alongside an independent next-slide preview and a read-only, scrollable notes control. Blanking affects
+  the current canvas alone. Ending rehearsal destroys its controls and restores the editor window.
 - Character/paragraph commands visit visible text containers in nested groups and table cells. Vertical alignment
   targets the edited table cell when one is active, otherwise all selected text containers. Empty-paragraph properties
   are data and must survive commit. The inspector reports effective styles from the same text-container traversal.

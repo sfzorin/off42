@@ -990,14 +990,16 @@ PPT42 can present full-screen or in the editor window with its editing controls 
 End move to the first or last shown slide. Type a slide number and press Enter to jump. B and W
 blank the display and hold slide timing. Navigation reveals the slide before advancing. Q or Esc
 ends the show. Hide Slide is undoable and saved in native projects, PPTX and ODP. Slide Show Settings
-stores whether to loop and include hidden slides. Presenter view, rehearsal and ink/laser tools
-remain open. The expanded native check passes in run 42573274769.
+stores whether to loop and include hidden slides. **Rehearse with Presenter View** shows the
+current slide and next preview alongside scrollable notes, an elapsed timer and presentation
+controls. The editor window returns when the show ends. Dual-display presenter view and
+ink/laser tools remain open. The windowed/full-screen audit passes in run 42573274769.
 
 **Edit Speaker Notes** opens a multiline editor for the selected slide. An accepted change is one
 Undo step. Notes stay with the slide when it moves or is duplicated and are saved in native
 projects, PPTX and ODP. Standard plain-text notes in imported presentations can be edited.
 Compatible PPTX packages reuse their notes master or acquire one with the first note. Original
-complex notes parts are preserved. Presenter display and notes-page printing remain open.
+complex notes parts are preserved. Notes-page printing remains open.
 
 
 ### Scan PDF exports (development branch)

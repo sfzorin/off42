@@ -26,6 +26,8 @@ use windows_sys::Win32::{
         WindowsAndMessaging::*,
     },
 };
+#[path = "presenter.rs"]
+mod presenter;
 const OPEN: u16 = 1;
 const SAVE: u16 = 2;
 // Host-only IDs stay outside the applications’ 10+ command range.
@@ -105,6 +107,7 @@ struct State {
     ruler_vertical: HWND,
     ruler_format: Option<(crate::PrintGeometry, u16, i32, i32, i32)>,
     presentation_placement: Option<(isize, WINDOWPLACEMENT)>,
+    presenter: Option<presenter::Controls>,
 }
 impl State {
     fn dirty(&self) -> bool {
@@ -1071,10 +1074,14 @@ unsafe fn layout(hwnd: HWND) {
             ShowWindow(ruler_vertical, SW_HIDE);
         }
         ShowWindow(canvas, SW_SHOW);
+        if presenter::layout(hwnd, canvas, r) {
+            return;
+        }
         MoveWindow(canvas, 0, 0, r.right.max(0), r.bottom.max(0), 1);
         SetFocus(canvas);
         return;
     }
+    presenter::hide();
     ShowWindow(status, if panels.status{SW_SHOW}else{SW_HIDE});
     let dpi = GetDpiForWindow(hwnd) as i32;
     let sh = if panels.status{24 * dpi / 96}else{0};
@@ -3213,6 +3220,7 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
             if changed {
                 refresh();
             }
+            presenter::sync();
             let interval = STATE.with(|s| {
                 s.borrow()
                     .as_ref()
@@ -3259,6 +3267,9 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
         }
         WM_COMMAND => {
             let id = (w & 0xffff) as usize;
+            if presenter::command(id as u16, (w >> 16) as u16) {
+                return 0;
+            }
             if id != EDIT && !REFRESHING.with(|r| r.get()) {
                 let table = STATE.with(|s| {
                     s.borrow()
@@ -3275,6 +3286,7 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
             flush_deferred_commands();
             0
         }
+        WM_DRAWITEM if l != 0 && presenter::draw(&*(l as *const DRAWITEMSTRUCT)) => 1,
         WM_NOTIFY => {
             if !REFRESHING.with(|x| x.get()) && !l.eq(&0) {
                 let header = &*(l as *const NMHDR);
@@ -3908,6 +3920,7 @@ pub fn run(app: Box<dyn App>) {
                 ruler_vertical: null_mut(),
                 ruler_format: None,
                 presentation_placement: None,
+                presenter: None,
             })
         });
         let h = CreateWindowExW(
@@ -4216,8 +4229,20 @@ pub fn run(app: Box<dyn App>) {
             let presenting = STATE.with(|slot| {
                 slot.borrow().as_ref().is_some_and(|s| s.presentation_placement.is_some())
             });
+            let rehearsal_canvas = STATE.with(|slot| {
+                let slot = slot.borrow();
+                let state = slot.as_ref()?;
+                state.presenter.as_ref().map(|_| state.canvas)
+            });
+            if let Some(canvas) = rehearsal_canvas {
+                if m.message == WM_KEYDOWN && m.wParam == 27 && m.hwnd != canvas {
+                    SendMessageW(canvas, WM_KEYDOWN, m.wParam, m.lParam);
+                    continue;
+                }
+            }
             let accelerator = if presenting { 0 } else { TranslateAcceleratorW(h, a, &m) };
-            let dialog = if !presenting && accelerator == 0 {
+            let presenter_tab = rehearsal_canvas.is_some() && m.message == WM_KEYDOWN && m.wParam == 9;
+            let dialog = if (!presenting || presenter_tab) && accelerator == 0 {
                 IsDialogMessageW(h, &m)
             } else {
                 0
@@ -4382,7 +4407,7 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                 if let Err(e) = result {
                     msg(h, &e, MB_OK | MB_ICONERROR);
                 }
-                if m == WM_LBUTTONDBLCLK
+                if (m == WM_LBUTTONUP && presentation.is_some()) || (m == WM_LBUTTONDBLCLK
                     && STATE.with(|s| {
                         s.borrow()
                             .as_ref()
@@ -4390,7 +4415,7 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                             .app
                             .inline_rich_rect()
                             .is_some()
-                    })
+                    }))
                 {
                     refresh();
                 } else {

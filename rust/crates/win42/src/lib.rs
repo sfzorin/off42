@@ -252,6 +252,12 @@ pub trait App {
     fn presentation_white_background(&self) -> bool {
         false
     }
+    fn presenter_view(&self) -> Option<PresenterView<'_>> {
+        None
+    }
+    fn presenter_preview(&self, _index: usize) -> Option<CanvasScene> {
+        None
+    }
     fn end_presentation(&mut self) {}
     /// Consumed only after an explicit application command.
     fn take_external_url(&mut self) -> Option<String> {
@@ -1166,6 +1172,14 @@ pub enum PrintJob {
 pub struct CanvasScene {
     pub viewport: Viewport,
     pub items: Vec<SceneItem>,
+}
+
+pub struct PresenterView<'a> {
+    pub position: usize,
+    pub total: usize,
+    pub elapsed_seconds: u64,
+    pub notes: &'a str,
+    pub next: Option<usize>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

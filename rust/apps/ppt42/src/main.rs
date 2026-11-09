@@ -78,11 +78,13 @@ struct Ppt {
     rich_selection: (usize, usize),
 }
 struct Show {
+    started: std::time::Instant,
     since: std::time::Instant,
     previous: Option<usize>,
     paused: Option<std::time::Instant>,
     transition_ms: u32,
     windowed: bool,
+    rehearsal: bool,
     blank: Option<(bool, std::time::Instant)>,
     digits: String,
     settings: ShowSettings,
@@ -90,11 +92,13 @@ struct Show {
 impl Show {
     fn new(now: std::time::Instant, windowed: bool) -> Self {
         Self {
+            started: now,
             since: now,
             previous: None,
             paused: None,
             transition_ms: 0,
             windowed,
+            rehearsal: false,
             blank: None,
             digits: String::new(),
             settings: ShowSettings::default(),
@@ -124,12 +128,16 @@ impl Ppt {
         })
     }
 
+    fn next_shown_slide(&self, settings: ShowSettings) -> Option<usize> {
+        let current = self.deck.current();
+        self.shown_slides(settings).find(|&index| index > current).or_else(|| {
+            if settings.looped { self.shown_slides(settings).next() } else { None }
+        })
+    }
+
     fn advance_show(&mut self, now: std::time::Instant, settings: ShowSettings) -> Result<(), String> {
         let current = self.deck.current();
-        let next = self.shown_slides(settings).find(|&index| index > current).or_else(|| {
-            if settings.looped { self.shown_slides(settings).next() } else { None }
-        });
-        match next {
+        match self.next_shown_slide(settings) {
             Some(index) if index == current => {
                 if let Some(show) = self.show.as_mut() {
                     show.since = now;
@@ -1050,6 +1058,20 @@ impl win42::App for Ppt {
     fn presentation_white_background(&self) -> bool {
         self.show.as_ref().and_then(|show| show.blank).is_some_and(|(white, _)| white)
     }
+    fn presenter_view(&self) -> Option<win42::PresenterView<'_>> {
+        let show = self.show.as_ref().filter(|show| show.rehearsal)?;
+        let current = self.deck.current();
+        Some(win42::PresenterView {
+            position: self.shown_slides(show.settings).take_while(|&index| index <= current).count(),
+            total: self.shown_slides(show.settings).count(),
+            elapsed_seconds: show.started.elapsed().as_secs(),
+            notes: &self.deck.slides()[current].notes,
+            next: self.next_shown_slide(show.settings),
+        })
+    }
+    fn presenter_preview(&self, index: usize) -> Option<win42::CanvasScene> {
+        self.scene_for(index, false)
+    }
     fn end_presentation(&mut self) {
         self.stop_show();
     }
@@ -1477,7 +1499,7 @@ impl win42::App for Ppt {
         id == 74
     }
     fn toolbar_command_visible(&self, id: u16) -> bool {
-        id != 74
+        !matches!(id, 74 | 75)
     }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
         match id {
@@ -2040,6 +2062,7 @@ impl win42::App for Ppt {
             (72, "Slide Show Settings…"),
             (73, "Hide Slide"),
             (74, "Edit Speaker Notes…"),
+            (75, "Rehearse with Presenter View"),
             (66, "Slide Timing and Transition…"),
             (42, "Text Font…"),
             (43, "Align Text Left"),
@@ -2508,7 +2531,7 @@ impl win42::App for Ppt {
             63 => self.deck.group_objects(&self.selection()),
             64 => self.deck.ungroup_objects(&self.selection()),
             73 => self.deck.set_hidden(!self.deck.slides()[i].hidden),
-            41 | 67 | 71 => {
+            41 | 67 | 71 | 75 => {
                 let settings = ShowSettings::load();
                 let first = if id == 67 { 0 } else { i };
                 let start = self.shown_slides(settings).find(|&index| index >= first)
@@ -2517,7 +2540,8 @@ impl win42::App for Ppt {
                 self.finish_rich(true)?;
                 self.deck.select(start)?;
                 self.presenting = true;
-                let mut show = Show::new(std::time::Instant::now(), id == 71);
+                let mut show = Show::new(std::time::Instant::now(), matches!(id, 71 | 75));
+                show.rehearsal = id == 75;
                 show.settings = settings;
                 self.show = Some(show);
                 self.selected_object = None;
