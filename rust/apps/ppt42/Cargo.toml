@@ -6,4 +6,5 @@ edition = "2021"
 win42 = { path = "../../crates/win42" }
 ppt42-core = { path = "../../crates/ppt42-core" }
 doc42-core = { path = "../../crates/doc42-core" }
+suite42-core = { path = "../../crates/suite42-core" }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }

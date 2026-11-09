@@ -1547,6 +1547,145 @@ def audit_engineering_formulas(process, main, binary, output, results, include_e
         results["checks"].append("native XLSX math/text functions, numeric/error/text cache types, explicit numeric separators, Unicode and blank range slots survive discard/reopen")
 
 
+def audit_ppt_show(process, main, output, results):
+    import xml.etree.ElementTree as ET
+
+    def text_value(raw):
+        return {"raw": raw, "crlf": False}
+
+    colors = ([200, 20, 20], [20, 160, 20], [20, 20, 200])
+    slides = []
+    for index, color in enumerate(colors):
+        slides.append({
+            "id": index + 1, "title_text": text_value(f"Slide {index + 1}"),
+            "body_text": text_value(""), "next_object_id": 2,
+            "objects": [{"id": 1, "kind": "Rectangle", "x": 200, "y": 100, "width": 320,
+                         "height": 205, "fill": color, "stroke": color, "text": ""}],
+        })
+    source = output / "ppt-show-source.json"
+    source.write_text(json.dumps({"version": 2, "next_id": 4, "slides": slides}), encoding="utf-8")
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+
+    def saved(name, extension, kind):
+        path = output / f"ppt-show-{name}.{extension}"
+        save_as(main)
+        choose_file(process, path, format_name=kind)
+        output_ready(process, main, path, b"{" if extension == "json" else b"PK")
+        return path
+
+    listing = u.GetDlgItem(main, 100)
+    u.SendMessageW(listing, 0x186, 1, 0)
+    command(main, 100 | (1 << 16))
+    wait_for(lambda: u.SendMessageW(listing, 0x188, 0, 0) == 1, "second slide selected", process)
+    before = saved("before", "json", "off42 slides JSON")
+    command(main, 73)
+    hidden = saved("hidden", "json", "off42 slides JSON")
+    assert json.loads(hidden.read_text(encoding="utf-8"))["slides"][1]["hidden"]
+    command(main, 4)
+    undo = saved("undo", "json", "off42 slides JSON")
+    assert undo.read_bytes() == before.read_bytes()
+    command(main, 5)
+    redo = saved("redo", "json", "off42 slides JSON")
+    assert redo.read_bytes() == hidden.read_bytes()
+    pptx = saved("hidden", "pptx", "PowerPoint presentation")
+    odp = saved("hidden", "odp", "OpenDocument presentation")
+    with zipfile.ZipFile(pptx) as package:
+        assert ET.fromstring(package.read("ppt/slides/slide2.xml")).get("show") == "0"
+        assert ET.fromstring(package.read("ppt/slides/slide1.xml")).get("show") is None
+    with zipfile.ZipFile(odp) as package:
+        content = ET.fromstring(package.read("content.xml"))
+        ns = {"s": "urn:oasis:names:tc:opendocument:xmlns:style:1.0",
+              "d": "urn:oasis:names:tc:opendocument:xmlns:drawing:1.0",
+              "p": "urn:oasis:names:tc:opendocument:xmlns:presentation:1.0"}
+        pages = content.findall(".//d:page", ns)
+        styles = {style.get("{" + ns["s"] + "}name"): style for style in content.findall(".//s:style", ns)}
+        second = styles[pages[1].get("{" + ns["d"] + "}style-name")]
+        assert second.find("s:drawing-page-properties", ns).get("{" + ns["p"] + "}visibility") == "hidden"
+    open_fixture(process, main, pptx)
+    fill_prompt(process, main, 72, "Slide Show Settings", ["No", "No"])
+    gdi = c.WinDLL("gdi32", use_last_error=True)
+    gdi.GetPixel.argtypes, gdi.GetPixel.restype = [w.HDC, c.c_int, c.c_int], w.DWORD
+    u.GetDC.argtypes, u.GetDC.restype = [w.HWND], w.HDC
+    u.ReleaseDC.argtypes = [w.HWND, w.HDC]
+    u.GetWindowRect.argtypes = [w.HWND, c.POINTER(w.RECT)]
+    u.GetClientRect.argtypes = [w.HWND, c.POINTER(w.RECT)]
+    u.RedrawWindow.argtypes = [w.HWND, c.c_void_p, c.c_void_p, w.UINT]
+
+    def placement():
+        rect = w.RECT()
+        assert u.GetWindowRect(main, c.byref(rect))
+        return rect.left, rect.top, rect.right, rect.bottom
+
+    def playing():
+        return not u.GetMenu(main) and not u.IsWindowVisible(listing)
+
+    def current_canvas():
+        return next((h for h in windows(process.pid, main)
+                     if classname(h) == "Suite42Canvas" and u.IsWindowVisible(h)), None)
+
+    def expect(color, description, uniform=False):
+        value = color[0] | color[1] << 8 | color[2] << 16
+        def actual():
+            canvas = current_canvas()
+            if not canvas:
+                return False
+            rect = w.RECT()
+            u.GetClientRect(canvas, c.byref(rect))
+            u.RedrawWindow(canvas, None, None, 0x101)
+            dc = u.GetDC(canvas)
+            try:
+                points = [(rect.right // 2, rect.bottom // 2)]
+                if uniform:
+                    points.extend([(5, 5), (rect.right - 6, rect.bottom - 6)])
+                return all(gdi.GetPixel(dc, x, y) == value for x, y in points)
+            finally:
+                u.ReleaseDC(canvas, dc)
+        wait_for(actual, description, process)
+
+    def key(value):
+        assert u.PostMessageW(current_canvas(), 0x100, value, 0)
+
+    prior = placement()
+    command(main, 71)
+    wait_for(playing, "PPT42 playing in its window", process)
+    assert placement() == prior and not u.GetWindowLongW(main, -16) & 0x80000000
+    expect(colors[0], "first slide rendered")
+    key(66)
+    expect([0, 0, 0], "black screen covers slide and surrounding area", uniform=True)
+    key(39)
+    expect(colors[0], "first navigation reveals without moving")
+    key(ord("2"))
+    key(13)
+    expect(colors[2], "numeric jump skips the hidden slide")
+    key(87)
+    expect([255, 255, 255], "white screen covers slide and surrounding area", uniform=True)
+    key(36)
+    expect(colors[0], "Home returns to the first visible slide")
+    key(35)
+    expect(colors[2], "End goes to the final visible slide")
+    assert u.PostMessageW(main, 0x10, 0, 0)
+    wait_for(lambda: bool(u.GetMenu(main)) and u.IsWindowVisible(listing), "window close exits show", process)
+    assert placement() == prior and u.SendMessageW(listing, 0x188, 0, 0) == 2
+    fill_prompt(process, main, 72, "Slide Show Settings", ["Yes", "Yes"])
+    open_fixture(process, main, odp)
+    command(main, 67)
+    wait_for(playing, "fullscreen slide show started", process)
+    assert u.GetWindowLongW(main, -16) & 0x80000000
+    expect(colors[0], "fullscreen first slide")
+    key(39)
+    expect(colors[1], "preference includes hidden slide after reopening")
+    key(35)
+    expect(colors[2], "fullscreen last slide")
+    key(39)
+    expect(colors[0], "loop returns to the beginning")
+    key(ord("Q"))
+    wait_for(lambda: bool(u.GetMenu(main)) and u.IsWindowVisible(listing), "fullscreen exit restores editor", process)
+    fill_prompt(process, main, 72, "Slide Show Settings", ["No", "No"])
+    assert source.read_bytes() == original
+    results["checks"].append("PPT42 normal Hide Slide and complete history, native PPTX/ODP visibility metadata, windowed and fullscreen pixels, black/white screens, navigation and skipping, persisted include-hidden and loop, restored editor window")
+
+
 def audit_preset_shapes(process,main,output,results):
     import xml.etree.ElementTree as ET
     command(main,68)
@@ -2698,6 +2837,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
                 audit_technical_objects(process, main, binary, output, results)
             if preset_shapes and binary.stem.lower() == "ppt42":
                 audit_preset_shapes(process,main,output,results)
+                audit_ppt_show(process,main,output,results)
             return results
         if binary.stem.lower() == "pdf42" and not startup:
             source = output / "input.pdf"

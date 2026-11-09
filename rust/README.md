@@ -296,7 +296,7 @@ history step. Regular expressions accept capture references such as `$1` in repl
 replacement preserves table/image geometry, run formatting, hyperlinks and remapped annotation
 anchors. Rich replacements are scoped to body and table paragraphs. Matches that would alter note
 markers, revision/field anchors or imported cached TOC entries are guarded. Regex lookaround and
-pattern backreferences are still outside the supported subset. Native options await a compatible build.
+pattern backreferences are still outside the supported subset. The native Windows test verifies the options, structured selection, history and reopen.
 
 ODT import also retains surrounding body bookmarks when a paragraph contains an inline footnote/endnote. Portable
 regressions reopen project, DOCX and ODT output and verify bookmark destinations plus tables, pictures, comments and
@@ -982,3 +982,13 @@ Undo/Redo audit is added; actual Windows verification awaits a compatible build.
 Run 42529958919 (c512753) passes all 37 UI groups and MSVC 571/0/1. Advanced multi-key/custom/natural
 sort, horizontal formula shifts with independent XLSX caches, full-sheet XFD-data sort and complete history
 pass, including strengthened same-file discard/reopen and XLSX/ODS outputs.
+
+
+### Presentation controls (development branch)
+
+PPT42 can present full-screen or in the editor window with its editing controls hidden. Home and
+End move to the first or last shown slide. Type a slide number and press Enter to jump. B and W
+blank the display and hold slide timing. Navigation reveals the slide before advancing. Q or Esc
+ends the show. Hide Slide is undoable and saved in native projects, PPTX and ODP. Slide Show Settings
+stores whether to loop and include hidden slides. Presenter view, rehearsal and ink/laser tools
+remain open. The expanded native check is pending.

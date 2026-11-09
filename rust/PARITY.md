@@ -16,7 +16,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction and bounded offline OCR | Richer forms, certificate signing and validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured Find/Replace with case, whole words, regex captures and next/previous, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, broader regex syntax and cross-paragraph rich replacement, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
 | XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, remaining virtual-area range tools, legacy arrays, full floating-object editing, advanced filtering, locale-aware sort collation/preferences, validation controls, outlines/subtotals, split panes, per-cell/password protection and fuller format fidelity |
-| PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, show tools and export workflows |
+| PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, windowed/fullscreen show navigation, hidden slides, loop/blank controls, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, presenter/rehearsal view, ink/laser/overview and export workflows |
 | IMG42 | Image decoding, transforms, adjustments, selections, recognized text selection/copy, metadata and batch output | Full markup selection/editing, smart lasso, full Live Text interaction, background removal, viewing panels and additional supported system codecs |
 | SCN42 | WIA acquisition and verified virtual rescan, image/PDF import, page processing, OCR and searchable output | Scan areas, device/preset controls, scan history, full export settings and physical-device checks |
 
@@ -843,3 +843,13 @@ after image selection; image unit regressions are now included in quick CI.
   Regex lookaround and pattern backreferences, cross-paragraph rich replacement and a persistent search
   panel remain open. Portable navigation, captures and Office/annotation regressions pass. A native
   navigation, selection/whole-word replacement, history and file reopen audit has been added.
+- Run 42571980050 (6e53bd2) passed all 37 native UI groups and MSVC 582/0/1. DOC42 real Rich
+  Edit case/whole-word and regex captures work across Unicode, tables and an image, with selected/all
+  replacement, formatting, complete history and reopen. XLS42 optional decimals and scientific
+  notation passed the normal Number Format UI and independent ODS XML/value/history checks.
+- PPT42 adds windowed show, Home/End and slide-number navigation, black/white screens with paused
+  timing, hidden-slide skipping and persisted loop/include-hidden preferences. Hide Slide is one
+  history entry and round trips standard PPTX/ODP visibility. The ODP overlay clones a selected
+  page's shared style and preserves the original style and opaque package entries. Workspace
+  572/0/1 and GNU all targets pass. Native pixels, navigation, show settings, Office metadata and
+  window restoration are pending on a compatible build.

@@ -15,6 +15,14 @@ const MAX_TEXT: usize = 32_768;
 const MAX_FILE: u64 = 512 * 1024;
 const MAX_MEDIA_FILE: u64 = 64 * 1024 * 1024;
 const HISTORY_LIMIT: usize = 10;
+
+fn xml_name_end(node: roxmltree::Node<'_, '_>, source: &str) -> Result<usize, String> {
+    let start = node.range().start + 1;
+    source[start..node.range().end]
+        .find(|ch: char| ch.is_ascii_whitespace() || matches!(ch, '/' | '>'))
+        .map(|offset| start + offset)
+        .ok_or_else(|| "Invalid XML element name".into())
+}
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Slide {
@@ -33,6 +41,11 @@ pub struct Slide {
     next_object_id: u64,
     #[serde(default)]
     pub timing: SlideTiming,
+    #[serde(default, skip_serializing_if = "is_visible")]
+    pub hidden: bool,
+}
+fn is_visible(hidden: &bool) -> bool {
+    !hidden
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Transition {
@@ -176,6 +189,7 @@ impl Slide {
             objects: Vec::new(),
             next_object_id: 1,
             timing: SlideTiming::default(),
+            hidden: false,
         }
     }
     fn edited(&self, title: &str, body: &str) -> Self {
@@ -191,6 +205,7 @@ impl Slide {
             objects: self.objects.clone(),
             next_object_id: self.next_object_id,
             timing: self.timing,
+            hidden: self.hidden,
         }
     }
 }
@@ -365,6 +380,19 @@ impl Presentation {
         self.history.apply(state);
         Ok(())
     }
+    pub fn set_hidden(&mut self, hidden: bool) -> Result<(), String> {
+        let current = self.current();
+        if self.slides()[current].hidden == hidden {
+            return Ok(());
+        }
+        let mut state = self.history.snapshot();
+        state.deck.slides[current].hidden = hidden;
+        if !state.deck.valid() {
+            return Err("Presentation exceeds size limit".into());
+        }
+        self.history.apply(state);
+        Ok(())
+    }
     /// Import raw text and establish line-ending policy for the selected slide.
     pub fn edit_raw(&mut self, title: String, body: String) -> Result<(), String> {
         let mut state = self.history.current().clone();
@@ -373,10 +401,12 @@ impl Presentation {
         let objects = state.deck.slides[index].objects.clone();
         let next_object_id = state.deck.slides[index].next_object_id;
         let timing = state.deck.slides[index].timing;
+        let hidden = state.deck.slides[index].hidden;
         state.deck.slides[index] = Slide::new(id, title, body);
         state.deck.slides[index].objects = objects;
         state.deck.slides[index].next_object_id = next_object_id;
         state.deck.slides[index].timing = timing;
+        state.deck.slides[index].hidden = hidden;
         if !state.deck.valid() {
             return Err("invalid slide text or deck exceeds size limit".into());
         }

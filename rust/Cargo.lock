@@ -1626,6 +1626,7 @@ dependencies = [
  "doc42-core",
  "image",
  "ppt42-core",
+ "suite42-core",
  "win42",
 ]
 

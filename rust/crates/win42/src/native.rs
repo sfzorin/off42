@@ -104,7 +104,7 @@ struct State {
     ruler_horizontal: HWND,
     ruler_vertical: HWND,
     ruler_format: Option<(crate::PrintGeometry, u16, i32, i32, i32)>,
-    fullscreen: Option<(isize, WINDOWPLACEMENT)>,
+    presentation_placement: Option<(isize, WINDOWPLACEMENT)>,
 }
 impl State {
     fn dirty(&self) -> bool {
@@ -922,10 +922,14 @@ unsafe fn refresh() {
     flush_deferred_commands();
 }
 unsafe fn sync_presentation(hwnd: HWND) {
-    let (presenting, active) = STATE.with(|s| {
+    let (presenting, fullscreen, active) = STATE.with(|s| {
         let s = s.borrow();
         let s = s.as_ref().unwrap();
-        (s.app.presentation_size().is_some(), s.fullscreen.is_some())
+        (
+            s.app.presentation_size().is_some(),
+            s.app.presentation_fullscreen(),
+            s.presentation_placement.is_some(),
+        )
     });
     if presenting && !active {
         let mut placement: WINDOWPLACEMENT = zeroed();
@@ -933,30 +937,42 @@ unsafe fn sync_presentation(hwnd: HWND) {
         if GetWindowPlacement(hwnd, &mut placement) == 0 {
             return;
         }
-        let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        let mut info: MONITORINFO = zeroed();
-        info.cbSize = size_of::<MONITORINFO>() as u32;
-        if GetMonitorInfoW(monitor, &mut info) == 0 {
-            return;
-        }
+        let bounds = if fullscreen {
+            let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+            let mut info: MONITORINFO = zeroed();
+            info.cbSize = size_of::<MONITORINFO>() as u32;
+            if GetMonitorInfoW(monitor, &mut info) == 0 {
+                return;
+            }
+            Some(info.rcMonitor)
+        } else {
+            None
+        };
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-        STATE.with(|s| s.borrow_mut().as_mut().unwrap().fullscreen = Some((style, placement)));
+        STATE.with(|s| s.borrow_mut().as_mut().unwrap().presentation_placement = Some((style, placement)));
         SetMenu(hwnd, null_mut());
-        SetWindowLongPtrW(hwnd, GWL_STYLE, (WS_POPUP | WS_VISIBLE) as isize);
-        SetWindowPos(
-            hwnd,
-            HWND_TOP,
-            info.rcMonitor.left,
-            info.rcMonitor.top,
-            info.rcMonitor.right - info.rcMonitor.left,
-            info.rcMonitor.bottom - info.rcMonitor.top,
-            SWP_FRAMECHANGED | SWP_SHOWWINDOW,
-        );
+        if let Some(bounds) = bounds {
+            SetWindowLongPtrW(hwnd, GWL_STYLE, (WS_POPUP | WS_VISIBLE) as isize);
+            SetWindowPos(
+                hwnd,
+                HWND_TOP,
+                bounds.left,
+                bounds.top,
+                bounds.right - bounds.left,
+                bounds.bottom - bounds.top,
+                SWP_FRAMECHANGED | SWP_SHOWWINDOW,
+            );
+        } else {
+            SetWindowPos(
+                hwnd, null_mut(), 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+            );
+        }
     } else if !presenting && active {
         let (style, placement, menu) = STATE.with(|s| {
             let mut s = s.borrow_mut();
             let s = s.as_mut().unwrap();
-            let (style, placement) = s.fullscreen.take().unwrap();
+            let (style, placement) = s.presentation_placement.take().unwrap();
             (style, placement, s.menu)
         });
         SetWindowLongPtrW(hwnd, GWL_STYLE, style);
@@ -1441,7 +1457,7 @@ unsafe fn remember_window_layout(hwnd: HWND) {
         let state = state.as_ref().unwrap();
         (
             state.app.name(),
-            state.fullscreen.as_ref().map(|(_, placement)| *placement),
+            state.presentation_placement.as_ref().map(|(_, placement)| *placement),
         )
     });
     let mut placement = fullscreen.unwrap_or(WINDOWPLACEMENT {
@@ -2504,7 +2520,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
     }
     if matches!(id,TOGGLE_SIDEBAR|TOGGLE_TOOLBAR|TOGGLE_STATUS|TOGGLE_RULERS){
         STATE.with(|slot|{
-            let mut slot=slot.borrow_mut();let s=slot.as_mut().unwrap();if s.fullscreen.is_some(){return}
+            let mut slot=slot.borrow_mut();let s=slot.as_mut().unwrap();if s.presentation_placement.is_some(){return}
             match id{
                 TOGGLE_SIDEBAR if s.app.list_visible()=>s.panels.sidebar=!s.panels.sidebar,
                 TOGGLE_TOOLBAR=>s.panels.toolbar=!s.panels.toolbar,
@@ -3590,6 +3606,19 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
             0
         }
         WM_CLOSE => {
+            let showing = STATE.with(|slot| {
+                let mut slot = slot.borrow_mut();
+                let Some(state) = slot.as_mut() else { return false };
+                if state.app.presentation_size().is_none() {
+                    return false;
+                }
+                state.app.end_presentation();
+                true
+            });
+            if showing {
+                refresh();
+                return 0;
+            }
             let table = STATE.with(|s| {
                 s.borrow()
                     .as_ref()
@@ -3878,7 +3907,7 @@ pub fn run(app: Box<dyn App>) {
                 ruler_horizontal: null_mut(),
                 ruler_vertical: null_mut(),
                 ruler_format: None,
-                fullscreen: None,
+                presentation_placement: None,
             })
         });
         let h = CreateWindowExW(
@@ -4184,8 +4213,11 @@ pub fn run(app: Box<dyn App>) {
                 refresh();
                 continue;
             }
-            let accelerator = TranslateAcceleratorW(h, a, &m);
-            let dialog = if accelerator == 0 {
+            let presenting = STATE.with(|slot| {
+                slot.borrow().as_ref().is_some_and(|s| s.presentation_placement.is_some())
+            });
+            let accelerator = if presenting { 0 } else { TranslateAcceleratorW(h, a, &m) };
+            let dialog = if !presenting && accelerator == 0 {
                 IsDialogMessageW(h, &m)
             } else {
                 0
@@ -4414,8 +4446,7 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
     let dc = BeginPaint(h, &mut ps);
     let mut rect: RECT = zeroed();
     GetClientRect(h, &mut rect);
-    FillRect(dc, &rect, (COLOR_WINDOW + 1) as HBRUSH);
-    let (image, zoom, scene, presentation) = STATE.with(|s| {
+    let (image, zoom, scene, presentation, white_background) = STATE.with(|s| {
         let s = s.borrow();
         let s = s.as_ref().unwrap();
         (
@@ -4423,8 +4454,15 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
             s.app.image_zoom(),
             s.app.canvas_scene(),
             s.app.presentation_size(),
+            s.app.presentation_white_background(),
         )
     });
+    if presentation.is_some() {
+        let brush = if white_background { WHITE_BRUSH } else { BLACK_BRUSH };
+        FillRect(dc, &rect, GetStockObject(brush) as HBRUSH);
+    } else {
+        FillRect(dc, &rect, (COLOR_WINDOW + 1) as HBRUSH);
+    }
     if let Some(scene) = scene {
         draw_scene(dc, &scene_for_canvas(h, scene, presentation));
     }

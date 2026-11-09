@@ -2,6 +2,8 @@
 use ppt42_core::Presentation;
 use std::path::Path;
 mod rich;
+mod show_settings;
+use show_settings::ShowSettings;
 fn decode_image(bytes: &[u8]) -> Result<image::DynamicImage, String> {
     let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes))
         .with_guessed_format()
@@ -80,6 +82,35 @@ struct Show {
     previous: Option<usize>,
     paused: Option<std::time::Instant>,
     transition_ms: u32,
+    windowed: bool,
+    blank: Option<(bool, std::time::Instant)>,
+    digits: String,
+    settings: ShowSettings,
+}
+impl Show {
+    fn new(now: std::time::Instant, windowed: bool) -> Self {
+        Self {
+            since: now,
+            previous: None,
+            paused: None,
+            transition_ms: 0,
+            windowed,
+            blank: None,
+            digits: String::new(),
+            settings: ShowSettings::default(),
+        }
+    }
+
+    fn reveal(&mut self, now: std::time::Instant) -> bool {
+        if let Some((_, started)) = self.blank.take() {
+            if self.paused.is_none() {
+                self.since += now.saturating_duration_since(started);
+            }
+            true
+        } else {
+            false
+        }
+    }
 }
 enum Drag {
     Move(win42::Point, Vec<ppt42_core::SlideObject>),
@@ -87,6 +118,34 @@ enum Drag {
     ShapeHandle(usize, ppt42_core::SlideObject),
 }
 impl Ppt {
+    fn shown_slides(&self, settings: ShowSettings) -> impl DoubleEndedIterator<Item = usize> + '_ {
+        self.deck.slides().iter().enumerate().filter_map(move |(index, slide)| {
+            (settings.show_hidden || !slide.hidden).then_some(index)
+        })
+    }
+
+    fn advance_show(&mut self, now: std::time::Instant, settings: ShowSettings) -> Result<(), String> {
+        let current = self.deck.current();
+        let next = self.shown_slides(settings).find(|&index| index > current).or_else(|| {
+            if settings.looped { self.shown_slides(settings).next() } else { None }
+        });
+        match next {
+            Some(index) if index == current => {
+                if let Some(show) = self.show.as_mut() {
+                    show.since = now;
+                }
+            }
+            Some(index) => self.show_move(index, now)?,
+            None => self.stop_show(),
+        }
+        Ok(())
+    }
+
+    fn stop_show(&mut self) {
+        self.presenting = false;
+        self.show = None;
+    }
+
     fn rich_object(&self) -> Result<ppt42_core::SlideObject, String> {
         if let Some(object) = &self.rich_draft {
             return Ok(object.clone());
@@ -220,22 +279,19 @@ impl Ppt {
 impl Ppt {
     fn show_move(&mut self, index: usize, now: std::time::Instant) -> Result<(), String> {
         let old = self.deck.current();
+        let show = self.show.get_or_insert_with(|| Show::new(now, false));
+        show.reveal(now);
+        show.digits.clear();
         if index == old {
             return Ok(());
         }
-        let paused = self.show.as_ref().is_some_and(|show| show.paused.is_some());
+        let paused = show.paused.is_some();
         self.deck.select(index)?;
         let timing = self.deck.slides()[index].timing;
-        self.show = Some(Show {
-            since: now,
-            previous: (!paused && timing.transition != ppt42_core::Transition::Cut).then_some(old),
-            paused: paused.then_some(now),
-            transition_ms: if !paused && timing.transition != ppt42_core::Transition::Cut {
-                timing.duration_ms
-            } else {
-                0
-            },
-        });
+        show.since = now;
+        show.previous = (!paused && timing.transition != ppt42_core::Transition::Cut).then_some(old);
+        show.paused = paused.then_some(now);
+        show.transition_ms = show.previous.map_or(0, |_| timing.duration_ms);
         Ok(())
     }
     fn show_tick(&mut self, now: std::time::Instant) -> bool {
@@ -246,7 +302,7 @@ impl Ppt {
         let Some(show) = &mut self.show else {
             return false;
         };
-        if show.paused.is_some() {
+        if show.paused.is_some() || show.blank.is_some() {
             return false;
         }
         let timing = self.deck.slides()[self.deck.current()].timing;
@@ -261,11 +317,9 @@ impl Ppt {
             .advance_ms
             .is_some_and(|ms| elapsed >= u128::from(ms) + u128::from(show.transition_ms))
         {
-            let next = self.deck.current() + 1;
-            if next < self.deck.slides().len() {
-                let _ = self.show_move(next, now);
-                return true;
-            }
+            let settings = show.settings;
+            let _ = self.advance_show(now, settings);
+            return true;
         }
         false
     }
@@ -275,36 +329,67 @@ impl Ppt {
         now: std::time::Instant,
     ) -> Result<(), String> {
         use win42::CanvasEvent::*;
+        let Some(show) = self.show.as_mut() else {
+            return Ok(());
+        };
+        let settings = show.settings;
         match event {
-            Key { code: 27, .. } => {
-                self.presenting = false;
-                self.show = None;
+            Key { code: 27, .. } if !show.digits.is_empty() => show.digits.clear(),
+            Key { code: 27 | 81, .. } => self.stop_show(),
+            Key { code: code @ (48..=57 | 96..=105), .. } => {
+                if show.digits.len() < 3 {
+                    let digit = if code >= 96 { code - 96 } else { code - 48 };
+                    show.digits.push(char::from(b'0' + digit as u8));
+                }
             }
-            Key { code: 80, .. } => {
-                if let Some(show) = self.show.as_mut() {
-                    if let Some(paused) = show.paused.take() {
-                        show.since += now.saturating_duration_since(paused);
-                    } else {
-                        show.paused = Some(now);
+            Key { code: 8, .. } if !show.digits.is_empty() => {
+                show.digits.pop();
+            }
+            Key { code: 66 | 87 | 188 | 190, .. } => {
+                if !show.reveal(now) {
+                    let white = matches!(event, Key { code: 87 | 188, .. });
+                    show.blank = Some((white, now));
+                }
+            }
+            Key { code: 80, .. } if show.blank.is_none() => {
+                if let Some(paused) = show.paused.take() {
+                    show.since += now.saturating_duration_since(paused);
+                } else {
+                    show.paused = Some(now);
+                }
+            }
+            Key { code: 13, .. } if !show.digits.is_empty() => {
+                let number = std::mem::take(&mut show.digits).parse::<usize>().ok();
+                if let Some(index) = number.and_then(|n| n.checked_sub(1)) {
+                    let next = self.shown_slides(settings).find(|&candidate| candidate >= index);
+                    if let Some(next) = next {
+                        self.show_move(next, now)?;
                     }
                 }
             }
-            Key {
-                code: 39 | 40 | 32 | 34,
-                ..
-            }
-            | PointerUp(_) => {
-                let i = self.deck.current();
-                if i + 1 < self.deck.slides().len() {
-                    self.show_move(i + 1, now)?;
+            Key { code: 35 | 36, .. } => {
+                let target = if matches!(event, Key { code: 36, .. }) {
+                    self.shown_slides(settings).next()
+                } else {
+                    self.shown_slides(settings).next_back()
+                };
+                if let Some(index) = target {
+                    self.show_move(index, now)?;
                 }
             }
-            Key {
-                code: 37 | 38 | 33, ..
-            } => {
-                let i = self.deck.current();
-                if i > 0 {
-                    self.show_move(i - 1, now)?;
+            Key { code: 13 | 39 | 40 | 32 | 34 | 78, .. } | PointerUp(_) => {
+                if !show.reveal(now) {
+                    self.advance_show(now, settings)?;
+                }
+            }
+            Key { code: 8 | 37 | 38 | 33, .. } => {
+                if show.reveal(now) {
+                    return Ok(());
+                }
+                let current = self.deck.current();
+                let previous = self.shown_slides(settings).rfind(|&index| index < current);
+                if let Some(index) = previous {
+                    self.show_move(index, now)?;
                 }
             }
             _ => {}
@@ -959,6 +1044,15 @@ impl win42::App for Ppt {
     fn presentation_size(&self) -> Option<(f64, f64)> {
         self.presenting.then_some((720.0, 405.0))
     }
+    fn presentation_fullscreen(&self) -> bool {
+        self.show.as_ref().is_none_or(|show| !show.windowed)
+    }
+    fn presentation_white_background(&self) -> bool {
+        self.show.as_ref().and_then(|show| show.blank).is_some_and(|(white, _)| white)
+    }
+    fn end_presentation(&mut self) {
+        self.stop_show();
+    }
     fn print_job(&self, id: u16) -> Option<win42::PrintJob> {
         if id != 40 {
             return None;
@@ -1239,6 +1333,17 @@ impl win42::App for Ppt {
     fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
         let slide = &self.deck.slides()[self.deck.current()];
         match id {
+            72 => {
+                let settings = ShowSettings::load();
+                let yes_no = |value| if value { "Yes".into() } else { "No".into() };
+                Some(win42::InputRequest {
+                    title: "Slide Show Settings",
+                    fields: vec![
+                        ("Loop", yes_no(settings.looped)),
+                        ("Show hidden slides", yes_no(settings.show_hidden)),
+                    ],
+                })
+            }
             68 | 69 => Some(win42::InputRequest {
                 title: if id == 68 {
                     "Insert shape"
@@ -1350,7 +1455,9 @@ impl win42::App for Ppt {
         }
     }
     fn input_choices(&self, id: u16) -> Vec<(usize, Vec<String>)> {
-        if matches!(id, 68 | 69) {
+        if id == 72 {
+            vec![(0, vec!["No".into(), "Yes".into()]), (1, vec!["No".into(), "Yes".into()])]
+        } else if matches!(id, 68 | 69) {
             vec![(
                 0,
                 ppt42_core::geometry::catalog()
@@ -1364,6 +1471,9 @@ impl win42::App for Ppt {
     }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
         match id {
+            72 if values.len() == 2 && values.iter().all(|value| matches!(value.as_str(), "No" | "Yes")) => {
+                ShowSettings { looped: values[0] == "Yes", show_hidden: values[1] == "Yes" }.save()
+            }
             68 | 69 if values.len() == 1 => {
                 let name = &ppt42_core::geometry::catalog()
                     .iter()
@@ -1618,6 +1728,9 @@ impl win42::App for Ppt {
         }
     }
     fn canvas_scene(&self) -> Option<win42::CanvasScene> {
+        if self.show.as_ref().is_some_and(|show| show.blank.is_some()) {
+            return Some(win42::CanvasScene::default());
+        }
         let mut current = self.scene_for(self.deck.current(), !self.presenting)?;
         if let Some(show) = self.show.as_ref().filter(|_| self.presenting) {
             if let Some(previous) = show.previous {
@@ -1675,7 +1788,7 @@ impl win42::App for Ppt {
             && self
                 .show
                 .as_ref()
-                .is_some_and(|s| s.previous.is_some() && s.paused.is_none())
+                .is_some_and(|s| s.previous.is_some() && s.paused.is_none() && s.blank.is_none())
         {
             16
         } else {
@@ -1912,6 +2025,9 @@ impl win42::App for Ppt {
             (40, "Print Slides…"),
             (41, "Start Slide Show"),
             (67, "Start Slide Show from Beginning"),
+            (71, "Present in Window"),
+            (72, "Slide Show Settings…"),
+            (73, "Hide Slide"),
             (66, "Slide Timing and Transition…"),
             (42, "Text Font…"),
             (43, "Align Text Left"),
@@ -1943,7 +2059,10 @@ impl win42::App for Ppt {
             .slides()
             .iter()
             .enumerate()
-            .map(|(i, s)| format!("{}: {}", i + 1, s.title))
+            .map(|(i, s)| {
+                let hidden = if s.hidden { " ⊘" } else { "" };
+                format!("{}{hidden}: {}", i + 1, s.title)
+            })
             .collect()
     }
     fn text(&self) -> String {
@@ -2003,6 +2122,12 @@ impl win42::App for Ppt {
     }
     fn selected(&self) -> usize {
         self.deck.current()
+    }
+    fn command_state(&self, id: u16) -> win42::CommandState {
+        win42::CommandState {
+            enabled: self.enabled(id),
+            checked: id == 73 && self.deck.slides()[self.deck.current()].hidden,
+        }
     }
     fn open(&mut self, p: &Path) -> Result<(), String> {
         if p.extension()
@@ -2081,7 +2206,7 @@ impl win42::App for Ppt {
         self.rubber_band = None;
     }
     fn enabled(&self, id: u16) -> bool {
-        if self.rich_edit_object.is_some() && id >= 10 && !matches!(id,40|42..=45|58..=62) {
+        if self.rich_edit_object.is_some() && id >= 10 && !matches!(id,40..=45|58..=62|67|71) {
             return false;
         }
         if self.pptx_source.is_some() && matches!(id, 24 | 28 | 29) {
@@ -2260,6 +2385,9 @@ impl win42::App for Ppt {
                 .odp_source
                 .as_ref()
                 .is_none_or(|s| s.size_points().is_some()),
+            73 => self.odp_source.as_ref().is_none_or(|source| {
+                source.can_edit_visibility(self.deck.slides()[i].source_identity())
+            }),
             10 => self.deck.can_add(),
             11 => n > 1,
             12 => i > 0,
@@ -2362,17 +2490,19 @@ impl win42::App for Ppt {
             62 => self.format_rich_paragraph(id),
             63 => self.deck.group_objects(&self.selection()),
             64 => self.deck.ungroup_objects(&self.selection()),
-            41 | 67 => {
-                if id == 67 {
-                    self.deck.select(0)?;
-                }
+            73 => self.deck.set_hidden(!self.deck.slides()[i].hidden),
+            41 | 67 | 71 => {
+                let settings = ShowSettings::load();
+                let first = if id == 67 { 0 } else { i };
+                let start = self.shown_slides(settings).find(|&index| index >= first)
+                    .or_else(|| self.shown_slides(settings).next())
+                    .ok_or("All slides are hidden")?;
+                self.finish_rich(true)?;
+                self.deck.select(start)?;
                 self.presenting = true;
-                self.show = Some(Show {
-                    since: std::time::Instant::now(),
-                    previous: None,
-                    paused: None,
-                    transition_ms: 0,
-                });
+                let mut show = Show::new(std::time::Instant::now(), id == 71);
+                show.settings = settings;
+                self.show = Some(show);
                 self.selected_object = None;
                 self.selected_objects.clear();
                 self.rubber_band = None;
@@ -2467,6 +2597,49 @@ mod tests {
     use win42::App;
 
     #[test]
+    fn show_visibility_jump_blank_and_loop_keep_navigation_out_of_history() {
+        use std::time::{Duration, Instant};
+        let mut app = Ppt::new(Presentation::new());
+        app.deck.set_timing(ppt42_core::SlideTiming {
+            advance_ms: Some(200),
+            ..Default::default()
+        }).unwrap();
+        app.deck.add().unwrap();
+        app.deck.set_hidden(true).unwrap();
+        app.deck.add().unwrap();
+        app.deck.select(0).unwrap();
+        let (_, saved) = app.deck.save_snapshot().unwrap();
+        app.deck.mark_saved_snapshot(saved);
+        let now = Instant::now();
+        app.presenting = true;
+        app.show = Some(Show::new(now, true));
+        app.show.as_mut().unwrap().settings.looped = true;
+        let key = |code| win42::CanvasEvent::Key { code, modifiers: 0 };
+        app.show_event(key(66), now + Duration::from_millis(100)).unwrap();
+        assert!(app.canvas_scene().unwrap().items.is_empty());
+        assert!(!app.presentation_white_background());
+        assert!(!app.show_tick(now + Duration::from_secs(2)));
+        let reveal = now + Duration::from_secs(3);
+        app.show_event(key(39), reveal).unwrap();
+        assert_eq!(app.deck.current(), 0);
+        assert!(!app.show_tick(reveal + Duration::from_millis(99)));
+        assert!(app.show_tick(reveal + Duration::from_millis(100)));
+        assert_eq!(app.deck.current(), 2);
+        app.show_event(key(39), reveal).unwrap();
+        assert_eq!(app.deck.current(), 0);
+        app.show_event(key(b'2'.into()), reveal).unwrap();
+        app.show_event(key(13), reveal).unwrap();
+        assert_eq!(app.deck.current(), 2);
+        app.show_event(key(36), reveal).unwrap();
+        assert_eq!(app.deck.current(), 0);
+        app.show_event(key(87), reveal).unwrap();
+        assert!(app.presentation_white_background());
+        app.show_event(key(81), reveal).unwrap();
+        assert!(app.presentation_size().is_none());
+        assert!(!app.deck.is_dirty());
+    }
+
+    #[test]
     fn paused_manual_navigation_waits_for_explicit_resume() {
         use std::time::{Duration, Instant};
         let mut app = Ppt::new(Presentation::new());
@@ -2485,12 +2658,7 @@ mod tests {
         app.deck.select(0).unwrap();
         let start = Instant::now();
         app.presenting = true;
-        app.show = Some(Show {
-            since: start,
-            previous: None,
-            paused: None,
-            transition_ms: 0,
-        });
+        app.show = Some(Show::new(start, false));
         let key = |code| win42::CanvasEvent::Key { code, modifiers: 0 };
         app.show_event(key(80), start + Duration::from_millis(50))
             .unwrap();
@@ -2539,12 +2707,7 @@ mod tests {
         app.deck.select(0).unwrap();
         let start = Instant::now();
         app.presenting = true;
-        app.show = Some(Show {
-            since: start,
-            previous: None,
-            paused: None,
-            transition_ms: 0,
-        });
+        app.show = Some(Show::new(start, false));
         assert!(!app.show_tick(start + Duration::from_millis(199)));
         assert!(app.show_tick(start + Duration::from_millis(200)));
         assert_eq!(app.deck.current(), 1);

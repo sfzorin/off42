@@ -238,10 +238,17 @@ pub trait App {
     fn finish_inline_rich(&mut self, _commit: bool) -> Result<(), String> {
         Ok(())
     }
-    /// Logical scene dimensions while presenting fullscreen, or None in editing mode.
+    /// Logical scene dimensions while presenting, or None in editing mode.
     fn presentation_size(&self) -> Option<(f64, f64)> {
         None
     }
+    fn presentation_fullscreen(&self) -> bool {
+        true
+    }
+    fn presentation_white_background(&self) -> bool {
+        false
+    }
+    fn end_presentation(&mut self) {}
     /// Consumed only after an explicit application command.
     fn take_external_url(&mut self) -> Option<String> {
         None

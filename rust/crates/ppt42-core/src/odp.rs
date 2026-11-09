@@ -1,5 +1,6 @@
 //! OpenDocument Presentation package adapter for the supported slide object subset.
 use super::*;
+mod visibility;
 use std::io::{Cursor, Read, Write};
 use std::{
     collections::{HashMap, HashSet},
@@ -20,6 +21,8 @@ struct PageSource {
     objects: Vec<ObjectSource>,
     timing: SlideTiming,
     timing_editable: bool,
+    hidden: bool,
+    visibility_editable: bool,
 }
 pub struct Source {
     bytes: Vec<u8>,
@@ -32,6 +35,9 @@ impl Source {
             .iter()
             .find(|p| p.slide_id == slide)
             .is_none_or(|p| p.timing_editable)
+    }
+    pub fn can_edit_visibility(&self, slide: u64) -> bool {
+        self.pages.iter().find(|p| p.slide_id == slide).is_none_or(|p| p.visibility_editable)
     }
     pub fn can_edit_rich(&self, slide: u64, object: u64) -> bool {
         self.pages
@@ -198,7 +204,7 @@ fn parse_timing(
         duration_ms,
     })
 }
-fn timing_style(name: &str, timing: SlideTiming) -> Result<String, String> {
+fn timing_style(name: &str, timing: SlideTiming, hidden: bool) -> Result<String, String> {
     let speed = match timing.duration_ms {
         250 => "fast",
         500 => "medium",
@@ -223,7 +229,8 @@ fn timing_style(name: &str, timing: SlideTiming) -> Result<String, String> {
         Transition::PushLeft => " smil:type=\"pushWipe\" smil:subtype=\"fromRight\"",
         Transition::Fade => " smil:type=\"fade\" smil:subtype=\"crossfade\"",
     };
-    Ok(format!("<style:style xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:presentation=\"urn:oasis:names:tc:opendocument:xmlns:presentation:1.0\" xmlns:smil=\"urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0\" style:name=\"{name}\" style:family=\"drawing-page\"><style:drawing-page-properties presentation:transition-speed=\"{speed}\"{advance}{transition}/></style:style>"))
+    let visibility = if hidden { " presentation:visibility=\"hidden\"" } else { "" };
+    Ok(format!("<style:style xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:presentation=\"urn:oasis:names:tc:opendocument:xmlns:presentation:1.0\" xmlns:smil=\"urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0\" style:name=\"{name}\" style:family=\"drawing-page\"><style:drawing-page-properties presentation:transition-speed=\"{speed}\"{advance}{transition}{visibility}/></style:style>"))
 }
 fn timing_name(xml: &str, slide_id: u64) -> Result<String, String> {
     (0..10000)
@@ -549,6 +556,11 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
     let content = zip_read(&mut z, "content.xml")?;
     let xml = std::str::from_utf8(&content).map_err(|e| e.to_string())?;
     let tree = roxmltree::Document::parse(xml).map_err(|e| e.to_string())?;
+    let styles = zip_read(&mut z, "styles.xml").ok();
+    let common = styles
+        .as_deref()
+        .and_then(|bytes| std::str::from_utf8(bytes).ok())
+        .and_then(|text| roxmltree::Document::parse(text).ok());
     let pages = tree
         .descendants()
         .filter(|n| {
@@ -570,6 +582,8 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
         let parsed_timing = parse_timing(*page, &tree);
         let timing = parsed_timing.unwrap_or_default();
         deck.set_timing(timing)?;
+        let (hidden, visibility_editable) = visibility::read(*page, common.as_ref());
+        deck.set_hidden(hidden)?;
         let style_safe = attr(*page, "style-name").is_none_or(|name| {
             tree.descendants()
                 .find(|n| {
@@ -591,6 +605,7 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
                                         | "type"
                                         | "subtype"
                                         | "direction"
+                                        | "visibility"
                                 )
                             })
                     })
@@ -890,13 +905,15 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
             objects: source_objects,
             timing,
             timing_editable: parsed_timing.is_some() && style_safe,
+            hidden,
+            visibility_editable,
         });
     }
     deck.select(0)?;
     let state = deck.history.snapshot();
     deck.history = SnapshotHistory::new(state, HISTORY_LIMIT);
     let mut sizes = Vec::new();
-    for data in [Some(content.clone()), zip_read(&mut z, "styles.xml").ok()]
+    for data in [Some(content.clone()), styles]
         .into_iter()
         .flatten()
     {
@@ -943,7 +960,7 @@ pub fn export(deck: &Presentation) -> Result<Vec<u8>, String> {
     let mut media: Vec<(String, Vec<u8>, &str)> = Vec::new();
     for (si, slide) in deck.slides().iter().enumerate() {
         let timing_name = format!("suite42_page_{si}");
-        styles.push_str(&timing_style(&timing_name, slide.timing)?);
+        styles.push_str(&timing_style(&timing_name, slide.timing, slide.hidden)?);
         pages.push_str(&format!(
             "<draw:page draw:name=\"Slide {}\" draw:style-name=\"{}\" draw:master-page-name=\"Default\">",
             si + 1, timing_name
@@ -1543,7 +1560,7 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
                 .map(|v| format!(" draw:master-page-name=\"{}\"", esc(v)))
                 .unwrap_or_default();
             let timing_name = timing_name(original, slide.id)?;
-            extra_styles.push_str(&timing_style(&timing_name, slide.timing)?);
+            extra_styles.push_str(&timing_style(&timing_name, slide.timing, slide.hidden)?);
             rendered_pages.push(format!("<draw:page xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\" draw:name=\"Suite42 {}\" draw:style-name=\"{timing_name}\"{master}>{added}</draw:page>",slide.id));
             continue;
         };
@@ -1551,28 +1568,25 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
         let page_node = source_nodes[index];
         let base = page_node.range().start;
         let mut patches = Vec::new();
-        if slide.timing != page.timing {
-            if !page.timing_editable {
+        let timing_changed = slide.timing != page.timing;
+        let visibility_changed = slide.hidden != page.hidden;
+        if timing_changed || visibility_changed {
+            if timing_changed && !page.timing_editable {
                 return Err("This ODP page style cannot be safely edited".into());
             }
-            let timing_name = timing_name(original, slide.id)?;
-            extra_styles.push_str(&timing_style(&timing_name, slide.timing)?);
-            if attr(page_node, "style-name").is_some() {
-                patch_attr(page_node, "style-name", timing_name, original, &mut patches)?;
+            if visibility_changed && !page.visibility_editable {
+                return Err("This ODP slide visibility cannot be safely edited".into());
+            }
+            let name = timing_name(original, slide.id)?;
+            let style = if timing_changed {
+                timing_style(&name, slide.timing, slide.hidden)?
             } else {
-                let start = page_node.range().start;
-                let end = original[start..].find('>').ok_or("Invalid ODP page")? + start;
-                let at = if original.as_bytes().get(end.wrapping_sub(1)) == Some(&b'/') {
-                    end - 1
-                } else {
-                    end
-                };
-                let ns = match page_node.lookup_namespace_uri(Some("draw")) {
-                    Some("urn:oasis:names:tc:opendocument:xmlns:drawing:1.0") => "",
-                    None => " xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\"",
-                    Some(_) => return Err("ODP draw namespace is incompatible".into()),
-                };
-                patches.push((at..at, format!("{ns} draw:style-name=\"{timing_name}\"")));
+                visibility::override_style(page_node, &name, slide.hidden, original)?
+            };
+            extra_styles.push_str(&style);
+            visibility::set_reference(page_node, &name, original, &mut patches)?;
+            if visibility_changed && !slide.hidden {
+                visibility::remove_legacy_hidden(page_node, &mut patches);
             }
         }
         if slide.id != page.slide_id && attr(page_node, "name").is_some() {
@@ -1843,8 +1857,9 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
     if !extra_styles.is_empty() {
         let parsed = roxmltree::Document::parse(&content).map_err(|e| e.to_string())?;
         if let Some(styles) = parsed
-            .descendants()
-            .find(|n| n.is_element() && n.tag_name().name() == "automatic-styles")
+            .root_element()
+            .children()
+            .find(|n| n.has_tag_name(("urn:oasis:names:tc:opendocument:xmlns:office:1.0", "automatic-styles")))
         {
             let range = styles.range();
             drop(parsed);
@@ -1861,7 +1876,7 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
             drop(parsed);
             content.insert_str(
                 body,
-                &format!("<office:automatic-styles>{extra_styles}</office:automatic-styles>"),
+                &format!("<office:automatic-styles xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\">{extra_styles}</office:automatic-styles>"),
             );
         }
     }

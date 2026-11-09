@@ -33,6 +33,7 @@ struct SlideSource {
     decorations: Vec<SlideObject>,
     objects: Vec<ObjectSource>,
     timing: SlideTiming,
+    hidden: bool,
     timing_editable: bool,
 }
 pub struct Source {
@@ -207,6 +208,10 @@ fn parse_timing(root: roxmltree::Node<'_, '_>) -> Option<SlideTiming> {
         duration_ms,
     })
 }
+fn visibility_attr(hidden: bool) -> &'static str {
+    if hidden { " show=\"0\"" } else { "" }
+}
+
 fn timing_xml(t: SlideTiming) -> String {
     let advance = t
         .advance_ms
@@ -590,6 +595,8 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
         let parsed_timing = parse_timing(tree.root_element());
         let timing = parsed_timing.unwrap_or_default();
         deck.set_timing(timing)?;
+        let hidden = matches!(tree.root_element().attribute("show"), Some("0" | "false"));
+        deck.set_hidden(hidden)?;
         let mut objects = Vec::new();
         let mut group_ids: HashMap<usize, u64> = HashMap::new();
         let (directory, filename) = path.rsplit_once('/').ok_or("Invalid slide path")?;
@@ -1018,6 +1025,7 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
             decorations,
             objects,
             timing,
+            hidden,
             timing_editable: parsed_timing.is_some(),
         });
     }
@@ -1507,7 +1515,8 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                 appended_objects(slide, &slide.objects, 1, source.width, source.height)?;
             let group="<p:nvGrpSpPr><p:cNvPr id=\"1\" name=\"\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>";
             let transition = timing_xml(slide.timing);
-            let xml=format!("<p:sld xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><p:cSld><p:spTree>{group}{fragments}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>{transition}</p:sld>");
+            let visibility = visibility_attr(slide.hidden);
+            let xml=format!("<p:sld xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"{visibility}><p:cSld><p:spTree>{group}{fragments}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>{transition}</p:sld>");
             let rels=format!("<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"layout\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout\" Target=\"{}\"/>{relationships}</Relationships>",escape(layout));
             let (dir, file) = path.rsplit_once('/').ok_or("Invalid slide path")?;
             added_files.push((format!("{dir}/_rels/{file}.rels"), rels.into_bytes()));
@@ -1538,6 +1547,16 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
         let content = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
         let tree = xml(&bytes)?;
         let mut patches = Vec::new();
+        if slide.hidden != record.hidden {
+            let root = tree.root_element();
+            let value = if slide.hidden { "0" } else { "1" };
+            if let Some(attribute) = root.attribute_node("show") {
+                patches.push((attribute.range_value(), value.into()));
+            } else {
+                let at = super::xml_name_end(root, content)?;
+                patches.push((at..at, format!(" show=\"{value}\"")));
+            }
+        }
         if slide.timing != record.timing {
             if !record.timing_editable {
                 return Err("This PPTX transition cannot be safely edited".into());
@@ -1949,6 +1968,39 @@ fn retarget_relationship(bytes: &[u8], suffix: &str, value: &str) -> Result<Vec<
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn slide_visibility_roundtrips_and_only_updates_the_selected_part() {
+        use super::*;
+        let mut deck = Presentation::new();
+        deck.add().unwrap();
+        deck.set_hidden(true).unwrap();
+        let original = export_new(&deck).unwrap();
+        let (mut opened, source) = import(&original).unwrap();
+        assert_eq!(opened.slides().iter().map(|slide| slide.hidden).collect::<Vec<_>>(), [false, true]);
+        let first = "ppt/slides/slide1.xml";
+        let second = "ppt/slides/slide2.xml";
+        let mut package = ZipArchive::new(Cursor::new(original.as_slice())).unwrap();
+        let first_xml = read(&mut package, first).unwrap();
+        let second_xml = read(&mut package, second).unwrap();
+        opened.select(1).unwrap();
+        opened.set_hidden(false).unwrap();
+        let updated = export(&opened, &source).unwrap();
+        let mut package = ZipArchive::new(Cursor::new(updated.as_slice())).unwrap();
+        assert_eq!(read(&mut package, first).unwrap(), first_xml);
+        assert_eq!(
+            String::from_utf8(read(&mut package, second).unwrap()).unwrap(),
+            String::from_utf8(second_xml.clone()).unwrap().replace(" show=\"0\"", " show=\"1\""),
+        );
+        assert!(!import(&updated).unwrap().0.slides()[1].hidden);
+        assert!(opened.undo());
+        assert!(opened.slides()[1].hidden);
+        let undone = export(&opened, &source).unwrap();
+        let mut package = ZipArchive::new(Cursor::new(undone.as_slice())).unwrap();
+        assert_eq!(read(&mut package, second).unwrap(), second_xml);
+        assert!(opened.redo());
+        assert!(!opened.slides()[1].hidden);
+    }
+
     #[test]
     fn timing_roundtrip_and_source_overlay() {
         use super::*;
@@ -2486,7 +2538,8 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
             shapes = shapes.replace(&format!("<!--suite42-group-{group_id}-->"), &xml);
         }
         let transition = timing_xml(slide.timing);
-        parts.push((format!("ppt/slides/slide{n}.xml"),format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><p:sld xmlns:p=\"{pns}\" xmlns:a=\"{ans}\" xmlns:r=\"{rns}\"><p:cSld><p:spTree>{group}{shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>{transition}</p:sld>").into_bytes()));
+        let visibility = visibility_attr(slide.hidden);
+        parts.push((format!("ppt/slides/slide{n}.xml"),format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><p:sld xmlns:p=\"{pns}\" xmlns:a=\"{ans}\" xmlns:r=\"{rns}\"{visibility}><p:cSld><p:spTree>{group}{shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>{transition}</p:sld>").into_bytes()));
         parts.push((
             format!("ppt/slides/_rels/slide{n}.xml.rels"),
             format!("<Relationships xmlns=\"{pkg}\">{rels}</Relationships>").into_bytes(),
