@@ -7,8 +7,11 @@ mod merge;
 mod batch_headers;
 mod page_export;
 mod text_export;
+#[cfg(any(windows, test))]
+mod signatures;
 use pdf42_core::PdfDocument;
 use std::path::Path;
+const VERIFY_SIGNATURES: u16 = 125;
 #[cfg(windows)]
 mod pdfium_edit;
 #[cfg(windows)]
@@ -116,6 +119,9 @@ struct Pdf {
     ocr_language:String,
     ocr_dpi:u32,
     ocr_report:Option<win42::ReportRequest>,
+    #[cfg(windows)]
+    signature_worker: Option<signatures::Worker>,
+    signature_report: Option<win42::ReportRequest>,
     #[cfg(windows)]
     ocr_worker:Option<ocr::Worker>,
     #[cfg(windows)]
@@ -736,6 +742,14 @@ impl win42::App for Pdf {
         #[cfg(windows)]
         {
             let mut changed = page_changed|self.poll_ocr();
+            if let Some(result) = self.signature_worker.as_ref().and_then(signatures::Worker::poll) {
+                self.signature_worker = None;
+                match result {
+                    Ok(report) => self.signature_report = Some(report),
+                    Err(error) => self.operation_error = Some(error),
+                }
+                changed = true;
+            }
             if let Some(worker) = &mut self.comparison_worker {
                 let n = worker.progress.load(std::sync::atomic::Ordering::Relaxed);
                 if n != worker.shown {
@@ -1011,6 +1025,9 @@ impl win42::App for Pdf {
         Err("Unsupported PDF dialog".into())
     }
     fn take_pending_report(&mut self) -> Option<(u16, win42::ReportRequest)> {
+        if let Some(report) = self.signature_report.take() {
+            return Some((VERIFY_SIGNATURES, report));
+        }
         if let Some(report)=self.ocr_report.take(){return Some((116,report));}
         if let Some(report) = self.batch_report.take() {
             return Some((112, report));
@@ -1023,7 +1040,7 @@ impl win42::App for Pdf {
         None
     }
     fn report_event(&mut self, id: u16, event: win42::ReportEvent) -> Result<(), String> {
-        if matches!(id,112|116) {
+        if matches!(id,112|116|VERIFY_SIGNATURES) {
             return Ok(());
         }
         if id != 97 {
@@ -2214,6 +2231,14 @@ impl win42::App for Pdf {
     fn file_actions(&self) -> &'static [win42::FileAction] {
         &[
             win42::FileAction {
+                id: VERIFY_SIGNATURES,
+                title: "Verify PDF Signatures…",
+                save: false,
+                extension: "pdf",
+                format: "PDF document",
+                pattern: "*.pdf",
+            },
+            win42::FileAction {
                 id: 97,
                 title: "Compare With…",
                 save: false,
@@ -2304,6 +2329,19 @@ impl win42::App for Pdf {
         ]
     }
     fn file_action(&mut self, id: u16, path: &Path) -> Result<(), String> {
+        if id == VERIFY_SIGNATURES {
+            #[cfg(windows)]
+            {
+                if self.signature_worker.is_some() {
+                    return Err("PDF signature verification is already running".into());
+                }
+                self.operation_error = None;
+                self.signature_worker = Some(signatures::Worker::start(path.to_path_buf()));
+                return Ok(());
+            }
+            #[cfg(not(windows))]
+            return Err("PDF signature verification requires Windows".into());
+        }
         if id == 97 {
             #[cfg(windows)]
             {
@@ -2721,6 +2759,10 @@ impl win42::App for Pdf {
                 worker.total
             );
         }
+        #[cfg(windows)]
+        if self.signature_worker.is_some() {
+            return "Verifying PDF signatures".into();
+        }
         if let Some(error) = &self.operation_error {
             return error.clone();
         }
@@ -2796,6 +2838,12 @@ impl win42::App for Pdf {
         self.doc.as_ref().map_or(0, |d| d.current())
     }
     fn enabled(&self, id: u16) -> bool {
+        if id == VERIFY_SIGNATURES {
+            #[cfg(windows)]
+            return self.signature_worker.is_none() && self.signature_report.is_none();
+            #[cfg(not(windows))]
+            return false;
+        }
         if id==115{#[cfg(windows)]{return self.ocr_worker.is_some();}#[cfg(not(windows))]{return false;}}
         if id==116{#[cfg(windows)]{return self.ocr_languages.is_none();}#[cfg(not(windows))]{return false;}}
         if id == 113 {

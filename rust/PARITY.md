@@ -13,7 +13,7 @@ actual checks. A source build alone does not establish Windows runtime behavior.
 | Technical objects | Four barcode encoders, fourteen symbols, reusable PNG recipes, insertion/editing in PDF/DOC/XLS/PPT and document round trips | Full technical-object selection/placement controls and richer label artwork sources |
 | Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers, PDF page/region and DOC picture artwork | Vector fidelity for mixed DOC selections; precise picture/caret integration |
 | Printing | Verified File/Ctrl+P dialogs in all six apps; actual-size label and centered/shrink-only PDF paths, per-printer calibration and measurement sheet | Printer copies/calibration scenarios and physical driver checks |
-| PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction and bounded offline OCR | Richer forms, certificate signing and validation, remote signing and CryptoPro integration |
+| PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction and bounded offline OCR | Richer forms, certificate signing, signed-file editing safeguards, timestamp/revocation validation, remote signing and CryptoPro integration |
 | DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, structured Find/Replace with case, whole words, regex captures and next/previous, whole-body statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, navigator, broader regex syntax and cross-paragraph rich replacement, table/image caret mapping, selection/layout counts and dictionary word segmentation, picture geometry and rich page decorations |
 | XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, remaining virtual-area range tools, legacy arrays, full floating-object editing, advanced filtering, locale-aware sort collation/preferences, validation controls, outlines/subtotals, split panes, per-cell/password protection and fuller format fidelity |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, basic transitions, windowed/fullscreen show navigation, hidden slides, loop/blank controls, PPTX/ODP and printing | Custom geometry editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, presenter/rehearsal view, ink/laser/overview and export workflows |
@@ -868,3 +868,14 @@ after image selection; image unit regressions are now included in quick CI.
   numbered paths without clobber. Portable tests cover geometry, fonts, image streams, collision
   handling, project immutability and full output order. Workspace 575/0/1 and GNU all targets pass.
   The native PDFium geometry, text, collision and history check awaits a compatible build.
+- Run 42574725250 (c1802e5) passed all 37 native groups and MSVC 588/0/1. IMG42 Smart Lasso
+  passed the actual drag, Escape, alpha export, complementary deletion and exact history test.
+  SCN42 PDFium verified physical dimensions, raster DPI, searchable toggles, numbered page files,
+  destination collision refusal and unchanged project history. Earlier IMG run 42573969140 failed
+  mask overlap due to a stray move with no left button during capture. Captured canvas drags now
+  require the left-button flag, and the audit injects a stray move to verify it is ignored.
+- PDF42 Verify PDF Signatures checks detached CMS over the exact PDF byte ranges and distinguishes
+  full-file coverage from an earlier signed revision. It reports cryptographic integrity separately
+  from current-time Windows cached chain trust. Attached content, gaps outside the signature's
+  Contents value and unsupported formats are refused. Local workspace 577/0/1 and Windows GNU
+  compilation pass. Ephemeral self-signed, altered and extended files await Windows verification.

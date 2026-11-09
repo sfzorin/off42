@@ -1942,6 +1942,111 @@ def audit_pdf_header_fonts(process,main,binary,output,results,include_print=Fals
     results['checks'].append('five actual Windows header fonts and header color chosen in the normal dialog; embedded TrueType/ToUnicode and Cyrillic text, distinct independently rendered glyph pixels, selected page, full Undo/Redo and reopen retain exact appearance; virtual printing retains the colored header when enabled; source unchanged')
 
 
+def audit_pdf_signatures(process, main, output, results):
+    reserve = 16384
+    marker = b"[0 0000000000 0000000000 0000000000]"
+    content = b"BT /F1 12 Tf 20 40 Td (Audit document) Tj ET"
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R] /SigFlags 3 >> >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] /Annots [4 0 R] "
+        b"/Resources << /Font << /F1 7 0 R >> >> /Contents 6 0 R >>",
+        b"<< /Type /Annot /Subtype /Widget /Rect [0 0 0 0] /P 3 0 R /FT /Sig /T (Audit signature) /V 5 0 R >>",
+        b"<< /Type /Sig /Filter /Adobe.PPKLite /SubFilter /adbe.pkcs7.detached /ByteRange "
+        + marker + b" /Contents <" + b"0" * (reserve * 2) + b"> >>",
+        b"<< /Length " + str(len(content)).encode() + b" >>\nstream\n" + content + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    data = bytearray(b"%PDF-1.5\n")
+    offsets = [0]
+    for i, obj in enumerate(objects, 1):
+        offsets.append(len(data))
+        data.extend(f"{i} 0 obj\n".encode() + obj + b"\nendobj\n")
+    xref = len(data)
+    data.extend(f"xref\n0 {len(offsets)}\n0000000000 65535 f \n".encode())
+    for offset in offsets[1:]:
+        data.extend(f"{offset:010d} 00000 n \n".encode())
+    data.extend(f"trailer\n<< /Root 1 0 R /Size {len(offsets)} >>\nstartxref\n{xref}\n%%EOF\n".encode())
+    gap = data.index(b"/Contents <") + len(b"/Contents ")
+    end = gap + reserve * 2 + 2
+    index = data.index(marker)
+    data[index:index + len(marker)] = f"[0 {gap:010d} {end:010d} {len(data) - end:010d}]".encode()
+    ranges = output / "signature-audit-ranges.bin"
+    ranges.write_bytes(data[:gap] + data[end:])
+    detached = output / "signature-audit-detached.der"
+    attached = output / "signature-audit-attached.der"
+    sign = output / "signature-audit.ps1"
+    sign.write_text(r'''
+param([string]$Bytes, [string]$Detached, [string]$Attached)
+$ErrorActionPreference = "Stop"
+Add-Type -AssemblyName System.Security.Cryptography.Pkcs
+$key = [System.Security.Cryptography.RSA]::Create(2048)
+try {
+    $req = [System.Security.Cryptography.X509Certificates.CertificateRequest]::new(
+        "CN=off42 audit signer", $key, [System.Security.Cryptography.HashAlgorithmName]::SHA256,
+        [System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
+    $now = [DateTimeOffset]::UtcNow
+    $cert = $req.CreateSelfSigned($now.AddHours(-1), $now.AddHours(1))
+    try {
+        $content = [System.Security.Cryptography.Pkcs.ContentInfo]::new([IO.File]::ReadAllBytes($Bytes))
+        $signer = [System.Security.Cryptography.Pkcs.CmsSigner]::new($cert)
+        $signer.IncludeOption = [System.Security.Cryptography.X509Certificates.X509IncludeOption]::EndCertOnly
+        foreach ($isDetached in @($true, $false)) {
+            $message = [System.Security.Cryptography.Pkcs.SignedCms]::new($content, $isDetached)
+            $message.ComputeSignature($signer)
+            $destination = if ($isDetached) { $Detached } else { $Attached }
+            [IO.File]::WriteAllBytes($destination, $message.Encode())
+        }
+    } finally { $cert.Dispose() }
+} finally { $key.Dispose() }
+''', encoding="utf-8")
+    subprocess.run(["pwsh", "-NoProfile", "-NonInteractive", "-File", str(sign), str(ranges),
+                    str(detached), str(attached)], check=True, timeout=40, capture_output=True)
+
+    def fixture(name, der):
+        cms = der.read_bytes()
+        assert 0 < len(cms) <= reserve
+        signed = bytes(data[:gap + 1]) + cms.hex().encode().ljust(reserve * 2, b"0") + bytes(data[end - 1:])
+        assert len(signed) == len(data)
+        path = output / f"signature-audit-{name}.pdf"
+        path.write_bytes(signed)
+        return path
+
+    intact = fixture("intact", detached)
+    embedded = fixture("attached", attached)
+    changed = output / "signature-audit-changed.pdf"
+    changed.write_bytes(intact.read_bytes().replace(b"Audit document", b"Edit! document", 1))
+    extended = output / "signature-audit-extended.pdf"
+    extended.write_bytes(intact.read_bytes() + b"\n% unsigned bytes\n")
+    fixtures = {path: path.read_bytes() for path in (intact, changed, extended, embedded)}
+    original_caption = text(main)
+    for path, expected, coverage in [
+        (intact, "Signature intact. Certificate trust not established", "Entire file"),
+        (changed, "Signature verification failed", "Entire file"),
+        (extended, "Signature intact. Certificate trust not established", "Earlier revision"),
+        (embedded, "Invalid or non-detached CMS signature", ""),
+    ]:
+        command(main, 125)
+        choose_file(process, path)
+        report = modal(process, title="PDF Signature Verification", native_class="Off42ReportWindow")
+        table = u.GetDlgItem(report, 100)
+        assert u.SendMessageW(table, 0x1004, 0, 0) == 1
+        u.SendMessageW(table, 0x100, 0x24, 0)
+        u.SendMessageW(table, 0x101, 0x24, 0)
+        details = wait_for(lambda: value if expected in (value := text(u.GetDlgItem(report, 102))) else None,
+                           "signature verification report: " + expected, process)
+        assert coverage in details
+        if "intact" in expected:
+            assert "off42 audit signer" in details
+        if path == intact:
+            capture_window(report, output / "PDF42-signature-verification.bmp")
+        click(report, 2)
+        wait_for(lambda: not u.IsWindowVisible(report) and u.IsWindowEnabled(main), "signature report closed", process)
+    assert all(path.read_bytes() == original for path, original in fixtures.items())
+    assert text(main) == original_caption
+    results["checks"].append("native PDF signature verification with ephemeral self-signed CMS, detached byte-range integrity, untrusted chain and earlier revision coverage, altered bytes and embedded content refusal, no source edits")
+
+
 def audit_pdf_comparison(process,main,binary,output,results):
     source=output/"comparison-source.pdf";other=output/"comparison-other.pdf"
     minimal_pdf(source,["BOARD uses 10k resistor","REMOVE THIS"])
@@ -2529,6 +2634,7 @@ def audit_smart_lasso(process, main, output, results):
     send(0x201, 25, 25)
     send(0x200, 103, 25)
     send(0x200, 103, 103)
+    u.SendMessageW(canvas, 0x200, 0, point(49, 42))  # Stale move generated during pointer capture.
     send(0x200, 25, 103)
     u.RedrawWindow.argtypes = [w.HWND, c.c_void_p, c.c_void_p, w.UINT]
     u.RedrawWindow(canvas, None, None, 0x101)
@@ -3101,6 +3207,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             audit_pdf_header_fonts(process,main,binary,output,results,native_print)
         if pdf_comparison and binary.stem.lower()=="pdf42":
             audit_pdf_comparison(process,main,binary,output,results)
+            audit_pdf_signatures(process,main,output,results)
         if pdf_merge and binary.stem.lower()=="pdf42":
             audit_pdf_merge(process,main,binary,output,results)
         if pdf_batch_headers and binary.stem.lower()=="pdf42":

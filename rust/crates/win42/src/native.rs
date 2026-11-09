@@ -4247,10 +4247,10 @@ pub fn run(app: Box<dyn App>) {
 }
 
 unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT {
-    // Current tools update pointer state only during a captured gesture. Idle
-    // movement must not repaint or reset the caption: synthesized mouse moves
-    // can otherwise keep the queue busy ahead of low-priority background timers.
-    if m == WM_MOUSEMOVE && !DRAGGING.with(|dragging| dragging.get()) {
+    // SetCapture may deliver a move at the cursor's old position. Only moves
+    // that still carry MK_LBUTTON belong to the active pointer gesture.
+    const LEFT_BUTTON_DOWN: usize = 0x0001;
+    if m == WM_MOUSEMOVE && (w & LEFT_BUTTON_DOWN == 0 || !DRAGGING.with(|dragging| dragging.get())) {
         return 0;
     }
     if m == WM_CAPTURECHANGED || m == WM_CANCELMODE {
