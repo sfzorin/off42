@@ -19,6 +19,7 @@ struct ObjectSource {
     transform: [f64; 4],
     inherited_geometry: bool,
     rich_safe: bool,
+    outline_role: Option<OutlineRole>,
 }
 #[derive(Clone)]
 struct SlideSource {
@@ -48,6 +49,10 @@ pub struct Source {
     notes_master: Option<notes::Master>,
 }
 impl Source {
+    pub fn outline_role(&self, slide: u64, object: u64) -> Option<OutlineRole> {
+        self.slides.iter().find(|entry| entry.slide_id == slide)?
+            .objects.iter().find(|entry| entry.object_id == object)?.outline_role
+    }
     pub fn can_edit_notes(&self, slide: u64) -> bool {
         let Some(record) = self.slides.iter().find(|record| record.slide_id == slide) else {
             return self.notes_master.is_some();
@@ -763,6 +768,14 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
             } else {
                 None
             };
+            let outline_role = ph.map(|_| {
+                let kind = ph_type.or_else(|| inherited.and_then(|shape| local(shape, "ph")).and_then(|n| attr(n, "type")));
+                match kind {
+                    Some("title" | "ctrTitle") => OutlineRole::Title,
+                    Some("dt" | "ftr" | "hdr" | "sldNum") => OutlineRole::Footer,
+                    _ => OutlineRole::Body,
+                }
+            });
             let explicit = local(node, "xfrm");
             let Some(xfrm) = explicit
                 .or_else(|| inherited.and_then(|n| local(n, "xfrm")))
@@ -1007,6 +1020,7 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
                 transform,
                 inherited_geometry: explicit.is_none(),
                 rich_safe: node.tag_name().name() == "sp" && rich_edit_safe(node),
+                outline_role,
             });
         }
         let notes_cloneable = if let Some(ref note) = notes_path {

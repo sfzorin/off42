@@ -1913,6 +1913,38 @@ def audit_ppt_rehearsal(process, main, output, results):
     results["checks"].append("PPT42 rehearsal current/next pixels, hidden-slide order, scrollable read-only notes, elapsed timer, Previous/Next/Black/End controls, Escape and unchanged saved input")
 
 
+def audit_ppt_outline_export(process, main, output, results):
+    def text_value(raw):
+        return {"raw": raw, "crlf": False}
+
+    slides = [{"id": 1, "title_text": text_value("Питание & I/O"),
+               "body_text": text_value("Check [SDA]\nSee <ref>"), "notes": "Private *cue*\nSecond line"},
+              {"id": 2, "title_text": text_value("Hidden slide"),
+               "body_text": text_value("Second bullet"), "hidden": True}]
+    source = output / "ppt-outline-source.json"
+    source.write_text(json.dumps({"version": 2, "next_id": 3, "slides": slides}), encoding="utf-8")
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+    before = text(main)
+    fill_prompt(process, main, 76, "Export Outline", ["Markdown"])
+    markdown = output / "ppt-outline.md"
+    choose_file(process, markdown)
+    output_ready(process, main, markdown, b"## ")
+    content = markdown.read_text(encoding="utf-8")
+    assert content == ("## 1. Питание \\& I/O\n\n- Check \\[SDA\\]\n- See \\<ref\\>\n\n"
+                       "> Private \\*cue\\*\n> Second line\n\n## 2. Hidden slide\n\n- Second bullet\n\n")
+    fill_prompt(process, main, 76, "Export Outline", ["Rich Text (RTF)"])
+    rtf = output / "ppt-outline.rtf"
+    choose_file(process, rtf)
+    output_ready(process, main, rtf, b"{\\rtf")
+    rtf_text = rtf.read_text(encoding="ascii")
+    assert r"\u1055" in rtf_text and "Check [SDA]" in rtf_text
+    assert rtf_text.index("Check [SDA]") < rtf_text.index("Hidden slide")
+    assert "Second bullet" in rtf_text and "Private" not in rtf_text
+    assert text(main) == before and source.read_bytes() == original
+    results["checks"].append("PPT42 normal Outline export picker, UTF-8 Markdown escaping and notes, styled Unicode RTF, hidden slide order and unchanged source document")
+
+
 def audit_preset_shapes(process,main,output,results):
     import xml.etree.ElementTree as ET
     command(main,68)
@@ -3314,6 +3346,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
                 audit_ppt_show(process,main,output,results)
                 audit_ppt_notes(process,main,output,results)
                 audit_ppt_rehearsal(process,main,output,results)
+                audit_ppt_outline_export(process,main,output,results)
             return results
         if binary.stem.lower() == "pdf42" and not startup:
             source = output / "input.pdf"

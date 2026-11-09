@@ -16,6 +16,7 @@ struct ObjectSource {
     writable_cells: Vec<Vec<bool>>,
     text_editable: bool,
     rich_safe: bool,
+    outline_role: Option<OutlineRole>,
 }
 struct PageSource {
     slide_id: u64,
@@ -33,6 +34,10 @@ pub struct Source {
     size_points: Option<(f64, f64)>,
 }
 impl Source {
+    pub fn outline_role(&self, slide: u64, object: u64) -> Option<OutlineRole> {
+        self.pages.iter().find(|entry| entry.slide_id == slide)?
+            .objects.iter().find(|entry| entry.object_id == object)?.outline_role
+    }
     pub fn can_edit_timing(&self, slide: u64) -> bool {
         self.pages
             .iter()
@@ -905,6 +910,12 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
                 text_editable,
                 rich_safe: !matches!(object.kind, ObjectKind::Picture | ObjectKind::Table)
                     && rich_edit_safe(node, &tree),
+                outline_role: node.attribute(("urn:oasis:names:tc:opendocument:xmlns:presentation:1.0", "class"))
+                    .map(|kind| match kind {
+                        "title" => OutlineRole::Title,
+                        "date-time" | "footer" | "header" | "page-number" => OutlineRole::Footer,
+                        _ => OutlineRole::Body,
+                    }),
             });
         }
         source_pages.push(PageSource {

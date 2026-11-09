@@ -254,6 +254,12 @@ pub enum ObjectKind {
     Picture,
     Table,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OutlineRole {
+    Title,
+    Body,
+    Footer,
+}
 #[derive(Clone, Copy, Debug)]
 pub enum ObjectAlignment {
     Left,

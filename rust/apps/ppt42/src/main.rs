@@ -1,6 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 use ppt42_core::Presentation;
 use std::path::Path;
+mod outline;
 mod rich;
 mod show_settings;
 use show_settings::ShowSettings;
@@ -1288,7 +1289,40 @@ impl win42::App for Ppt {
             extension: "png",
             format: "Images",
             pattern: "*.png;*.jpg;*.jpeg",
+        }, win42::FileAction {
+            id: 76,
+            title: "Export Outline…",
+            save: true,
+            extension: "rtf",
+            format: "Rich Text Format",
+            pattern: "*.rtf",
         }]
+    }
+    fn file_input_request(&self, id: u16) -> Option<win42::InputRequest> {
+        (id == 76).then(|| win42::InputRequest {
+            title: "Export Outline",
+            fields: vec![("Format", outline::Output::CHOICES[0].into())],
+        })
+    }
+    fn configured_file_action(&self, id: u16, values: &[String]) -> Result<win42::FileAction, String> {
+        let action = self.file_actions().iter().find(|action| action.id == id).copied()
+            .ok_or("Unknown file action")?;
+        if id == 76 && matches!(outline::Output::from_choice(values)?, outline::Output::Markdown) {
+            return Ok(win42::FileAction { extension: "md", format: "Markdown", pattern: "*.md", ..action });
+        }
+        Ok(action)
+    }
+    fn file_action_with_input(&mut self, id: u16, path: &Path, values: &[String]) -> Result<(), String> {
+        if id != 76 {
+            return self.file_action(id, path);
+        }
+        let format = outline::Output::from_choice(values)?;
+        if !path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case(format.extension())) {
+            return Err("The outline filename does not match its format".into());
+        }
+        self.finish_rich(true)?;
+        let bytes = format.encode(self)?;
+        suite42_core::write_new(path, &bytes).map_err(|error| error.to_string())
     }
     fn file_action(&mut self, id: u16, path: &Path) -> Result<(), String> {
         if id != 32 {
@@ -1481,7 +1515,9 @@ impl win42::App for Ppt {
         }
     }
     fn input_choices(&self, id: u16) -> Vec<(usize, Vec<String>)> {
-        if id == 72 {
+        if id == 76 {
+            vec![(0, outline::Output::CHOICES.map(str::to_owned).to_vec())]
+        } else if id == 72 {
             vec![(0, vec!["No".into(), "Yes".into()]), (1, vec!["No".into(), "Yes".into()])]
         } else if matches!(id, 68 | 69) {
             vec![(

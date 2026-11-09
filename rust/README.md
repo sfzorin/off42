@@ -1001,6 +1001,10 @@ projects, PPTX and ODP. Standard plain-text notes in imported presentations can 
 Compatible PPTX packages reuse their notes master or acquire one with the first note. Original
 complex notes parts are preserved. Notes-page printing remains open.
 
+**File → Export Outline** writes ordered slide headings and text bullets in RTF or Markdown.
+Markdown also includes speaker notes as quotations. Hidden slides stay in deck order. The export
+uses the native title and body or recognizes title placeholders in imported PPTX and ODP files.
+
 
 ### Scan PDF exports (development branch)
 
