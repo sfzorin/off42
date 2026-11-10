@@ -1005,3 +1005,8 @@ after image selection; image unit regressions are now included in quick CI.
   bookmark in the same native buffer. The live-update step exposed heading level loss in a typing
   projection. The adapter now retains heading levels when Rich Edit omits them, with a regression.
   The other 36 native groups passed. MSVC passed 612/0/1.
+- Run 42725508358 (1501f36) passed all 37 native UI groups and MSVC 613/0/1. DOC42 verified live
+  heading updates, Undo and exact jumps through tables, images, links and bookmarks. XLS42 verified
+  standard XLSX range lists, PPT42 verified PDF, native notes printing and show tools, and SCN42
+  verified PNG/JPEG batches and filename templates. The DOC42 Navigator screenshot was inspected.
+  Local workspace tests passed 599/0/1 and Windows GNU compilation passed for all targets.
