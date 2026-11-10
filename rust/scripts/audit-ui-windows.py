@@ -1128,7 +1128,10 @@ def audit_doc_navigator(process, main, output, results):
     jump("  After", lambda selected: selected == heading)
     replacement = c.create_unicode_buffer("Updated heading")
     u.SendMessageW(edit, 0xC2, 1, c.cast(replacement, c.c_void_p).value)
-    wait_for(lambda: "  Updated heading" in labels(), "Navigator heading changes after editing", process)
+    try:
+        wait_for(lambda: "  Updated heading" in labels(), "Navigator heading changes after editing", process)
+    except AssertionError as error:
+        raise AssertionError(f"{error}\nNavigator rows: {labels()}") from error
     assert "  After" not in labels()
     capture_window(main, output / "DOC42-navigator.bmp")
     command(main, 4)
@@ -3579,6 +3582,7 @@ def audit_image_live_text(process,main,binary,output,results):
     wait_for(lambda:first.name in text(main)and' * - 'not in text(main)and u.IsWindowEnabled(main),'original image reopened for navigation',process)
     wait_for(lambda:'recognized words'in status(),'reopened image recognized',process,timeout=90)
     command(main,49);command(main,46)
+    wait_for(lambda:not(u.GetMenuState(u.GetMenu(main),44,0)&3),'selection active before Space navigation',process)
     # Space must leave a text selection and advance the actual displayed file.
     u.SendMessageW(canvas,0x100,32,0)
     wait_for(lambda:second.name in text(main)and'320 × 240 pixels'in status(),'Space navigates after Live Text',process)

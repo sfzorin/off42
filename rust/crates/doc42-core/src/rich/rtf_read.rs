@@ -1203,6 +1203,22 @@ mod tests {
         let after=document.state().clone();document.undo();assert_eq!(document.state(),&before);document.redo();assert_eq!(document.state(),&after);
     }
     #[test]
+    fn native_typing_without_outline_metadata_retains_heading_level() {
+        let mut document = RichDocument::decode(
+            br"{\rtf1\ansi\pard\outlinelevel1 Existing heading\par\pard Body\par}",
+            Format::Rtf,
+        ).unwrap();
+        let before = document.state().clone();
+        document.apply_rich_edit_projection(
+            br"{\rtf1\ansi\pard Updated heading\par\pard Body\par}", (4, 4),
+        ).unwrap();
+        assert!(matches!(&document.state().blocks[..], [Block::Paragraph(heading), Block::Paragraph(body)]
+            if heading.style.outline_level == Some(1) && heading.runs[0].text == "Updated heading"
+                && body.style.outline_level.is_none()));
+        assert!(document.undo());
+        assert_eq!(document.state(), &before);
+    }
+    #[test]
     fn native_projection_refuses_changed_picture_samples_and_nondefault_layout_properties(){
         let source=include_bytes!("../../fixtures/native-rich-edit-picture.doc42");
         let projection=include_bytes!("../../fixtures/native-rich-edit-picture.rtf");

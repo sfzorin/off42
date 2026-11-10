@@ -1526,6 +1526,8 @@ impl RichDocument {
                     {
                         p.style.source_style = previous.style.source_style.clone();
                         p.style.odt_extra = previous.style.odt_extra.clone();
+                        // Rich Edit may omit the outline level when streaming an edited paragraph.
+                        p.style.outline_level = p.style.outline_level.or(previous.style.outline_level);
                         restore_run_metadata(&previous.runs, &mut p.runs)?;
                         p.id = previous.id;
                     } else {
@@ -1572,6 +1574,7 @@ impl RichDocument {
                                     p.id = oldp.id;
                                     p.style.source_style = oldp.style.source_style.clone();
                                     p.style.odt_extra = oldp.style.odt_extra.clone();
+                                    p.style.outline_level = p.style.outline_level.or(oldp.style.outline_level);
                                     restore_run_metadata(&oldp.runs, &mut p.runs)?;
                                 } else {
                                     p.id = next_id;

@@ -995,3 +995,13 @@ after image selection; image unit regressions are now included in quick CI.
   the raw buffer for friendly-name links. The projection mapper now checks the exact saved target
   and maps visible text around it. A portable regression verifies range selection, spelling edits
   and refusal of a changed target. The native DOC42 scenario retains a real hyperlink.
+- Run 42722741291 (3722092) verified actual PPT42 laser/pen pixels, clearing, and slide-scoped ink.
+  SCN42 verified the filename picker, manual override, counter and Cancel after the test switched
+  to the native edit change path. MSVC passed 610/0/1. This run still used the older DOC mapping.
+  The IMG42 audit now waits for the posted Select All command to enable Copy before sending Space.
+- Run 42723307390 (e03c84a) verified the slide overview thumbnails, hidden-slide scope, Escape
+  and actual keyboard and mouse navigation. MSVC passed 611/0/1.
+- Run 42723841622 (ff11fc0) verified DOC42 Navigator selection of headings, table, image, link and
+  bookmark in the same native buffer. The live-update step exposed heading level loss in a typing
+  projection. The adapter now retains heading levels when Rich Edit omits them, with a regression.
+  The other 36 native groups passed. MSVC passed 612/0/1.
