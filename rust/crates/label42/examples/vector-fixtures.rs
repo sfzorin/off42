@@ -9,6 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all(&output)?;
     let mut elements = symbols()
         .iter()
+        .filter(|symbol| !symbol.raster)
         .map(|symbol| {
             (
                 symbol.id.to_owned(),

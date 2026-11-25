@@ -1948,7 +1948,14 @@ unsafe fn technical_command(hwnd: HWND, edit: bool) -> Result<(), String> {
     ) else {
         return Ok(());
     };
-    let raster = crate::TechnicalRaster::render(crate::production::technical_element(&values)?)?;
+    let element = crate::production::technical_element(&values)?;
+    // Conformity marks, trademarks and unverified artwork: show the conditions of use first (Cancel keeps the document).
+    if let Some(notice) = crate::production::mark_notice(&element) {
+        if msg(hwnd, &notice, MB_OKCANCEL | MB_ICONINFORMATION) != IDOK {
+            return Ok(());
+        }
+    }
+    let raster = crate::TechnicalRaster::render(element)?;
     STATE.with(|state| {
         state
             .borrow_mut()

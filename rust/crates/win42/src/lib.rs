@@ -48,17 +48,20 @@ pub struct TechnicalRaster {
     pub pixel_width: u32,
     pub pixel_height: u32,
     pub rgba: std::sync::Arc<[u8]>,
-    pub vector: label42::TechnicalVector,
+    /// Vector appearance; `None` for raster marks (OSHA GHS pictograms, ETL), which are placed as images.
+    pub vector: Option<label42::TechnicalVector>,
 }
 impl TechnicalRaster {
     pub fn render(element: TechnicalElement) -> Result<Self, String> {
-        let vector = element.vector()?;
+        let vector = if element.is_raster() { None } else { Some(element.vector()?) };
+        let (width_points, height_points) = match &vector {
+            Some(v) => (v.width_points, v.height_points),
+            None => element.size_points()?,
+        };
         let png = element.png()?;
         let decoded = image::load_from_memory(&png)
             .map_err(|e| e.to_string())?
             .into_rgba8();
-        let width_points = vector.width_points;
-        let height_points = vector.height_points;
         Ok(Self {
             element,
             png,

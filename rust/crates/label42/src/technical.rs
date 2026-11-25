@@ -8,38 +8,146 @@ use super::{Barcode, Format, PT_PER_MM};
 const PREFIX: &str = "Suite42.TechnicalElement.v1:";
 const FONT: &[u8] = include_bytes!("../../doc42-layout-probe/fixtures/NotoSans.ttf");
 
+/// A product mark from the shared catalogue (`resources/marks/marks.json`, imported from Lably into Kit42): conformity,
+/// electrical safety, environmental, hazard, handling and interface marks. Ids are file names, so recipes made on
+/// macOS and Windows resolve to the same artwork. Inserting a mark is artwork only: it certifies nothing.
 pub struct TechnicalSymbol {
     pub id: &'static str,
+    /// English name with its region, e.g. "CE — EU" (also accepted when typed into the format field).
     pub title: &'static str,
+    /// SVG source; raster marks (OSHA GHS pictograms, ETL) wrap their PNG in an `<image>`.
     pub svg: &'static str,
+    pub category: &'static str,
+    /// Drawn from pixels: PDF placement uses an image appearance instead of vector paths.
+    pub raster: bool,
+    /// Lably withheld this drawing (licensing or provenance doubts); insertable with a warning.
+    pub unverified: bool,
+    pub legal: &'static str,
+    pub needs_number: bool,
+    copy: std::collections::BTreeMap<String, MarkCopy>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+struct MarkCopy {
+    name: String,
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    warning: Option<String>,
+    #[serde(default)]
+    category: Option<String>,
+    #[serde(default)]
+    region: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct MarkEntry {
+    id: String,
+    file: String,
+    category: String,
+    legal: String,
+    #[serde(rename = "registrationNumber")]
+    registration_number: bool,
+    unverified: bool,
+    copy: std::collections::BTreeMap<String, MarkCopy>,
+}
+
+/// Category order used by pickers (same as macOS).
+pub const CATEGORIES: [&str; 8] = ["certification", "safety", "environmental", "hazardous", "handling", "wireless", "medical", "quality"];
+
+impl TechnicalSymbol {
+    fn copy(&self, language: &str) -> &MarkCopy {
+        self.copy.get(language).or_else(|| self.copy.get("en")).expect("every mark has English copy")
+    }
+    /// Name in the interface language (Lably copy exists for 11 languages; others use English), with its region.
+    pub fn name_in(&self, language: &str) -> String {
+        let c = self.copy(language);
+        if !self.regional() {
+            return c.name.clone();
+        }
+        match c.region.as_deref().filter(|r| !r.is_empty() && !c.name.contains(*r)) {
+            Some(region) => format!("{} — {region}", c.name),
+            None => c.name.clone(),
+        }
+    }
+    /// Marks for one market show their region ("CE — EU"); universal symbols do not.
+    fn regional(&self) -> bool {
+        self.copy.get("en").and_then(|c| c.region.as_deref()).is_some_and(|r| !r.is_empty() && r != "Universal")
+    }
+    pub fn category_in(&self, language: &str) -> String {
+        self.copy(language).category.clone().unwrap_or_else(|| self.category.to_owned())
+    }
+    /// What the mark is for.
+    pub fn purpose_in(&self, language: &str) -> String {
+        self.copy(language).description.clone().unwrap_or_default()
+    }
+    /// The mark's own condition of use (conformity assessment, licence, applicability), if any.
+    pub fn warning_in(&self, language: &str) -> Option<String> {
+        self.copy(language).warning.clone().filter(|w| !w.is_empty())
+    }
 }
 
 pub fn symbols() -> &'static [TechnicalSymbol] {
-    macro_rules! symbol {
-        ($id:literal, $title:literal) => {
-            TechnicalSymbol {
-                id: $id,
-                title: $title,
-                svg: include_str!(concat!("../resources/symbols/", $id, ".svg")),
-            }
+    static CATALOGUE: std::sync::LazyLock<Vec<TechnicalSymbol>> = std::sync::LazyLock::new(|| {
+        let entries: Vec<MarkEntry> =
+            serde_json::from_str(include_str!("../resources/marks/marks.json")).expect("bundled mark catalogue must be valid JSON");
+        entries
+            .into_iter()
+            .map(|e| {
+                let bytes = crate::marks_data::asset(&e.file).expect("every catalogue entry has bundled artwork");
+                let raster = e.file.ends_with(".png");
+                let svg: String = if raster {
+                    let (w, h) = png_size(bytes).expect("bundled raster marks are PNG");
+                    format!(
+                        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\"><image width=\"{w}\" height=\"{h}\" href=\"data:image/png;base64,{}\"/></svg>",
+                        STANDARD.encode(bytes)
+                    )
+                } else {
+                    nestable(&String::from_utf8(bytes.to_vec()).expect("bundled SVG marks are UTF-8"))
+                };
+                let english = e.copy.get("en").expect("every mark has English copy");
+                let title = match english.region.as_deref().filter(|r| !r.is_empty() && *r != "Universal" && !english.name.contains(*r)) {
+                    Some(region) => format!("{} — {region}", english.name),
+                    None => english.name.clone(),
+                };
+                TechnicalSymbol {
+                    id: Box::leak(e.id.into_boxed_str()),
+                    title: Box::leak(title.into_boxed_str()),
+                    svg: Box::leak(svg.into_boxed_str()),
+                    category: Box::leak(e.category.into_boxed_str()),
+                    raster,
+                    unverified: e.unverified,
+                    legal: Box::leak(e.legal.into_boxed_str()),
+                    needs_number: e.registration_number,
+                    copy: e.copy,
+                }
+            })
+            .collect()
+    });
+    &CATALOGUE
+}
+
+/// SVG text that can be nested inside another `<svg>`: XML declarations, DOCTYPEs and leading comments removed.
+fn nestable(svg: &str) -> String {
+    let mut rest = svg.trim_start_matches('\u{feff}').trim_start();
+    loop {
+        rest = if let Some(tail) = rest.strip_prefix("<?") {
+            tail.split_once("?>").map_or("", |(_, after)| after).trim_start()
+        } else if let Some(tail) = rest.strip_prefix("<!--") {
+            tail.split_once("-->").map_or("", |(_, after)| after).trim_start()
+        } else if let Some(tail) = rest.strip_prefix("<!DOCTYPE") {
+            tail.split_once('>').map_or("", |(_, after)| after).trim_start()
+        } else {
+            break;
         };
     }
-    &[
-        symbol!("protective-earth", "Protective earth"),
-        symbol!("functional-earth", "Functional earth"),
-        symbol!("chassis-ground", "Chassis ground"),
-        symbol!("equipotentiality", "Equipotential bonding"),
-        symbol!("dc", "Direct current"),
-        symbol!("ac", "Alternating current"),
-        symbol!("positive-polarity", "Centre-positive connector"),
-        symbol!("negative-polarity", "Centre-negative connector"),
-        symbol!("esd", "ESD-sensitive device"),
-        symbol!("fuse", "Fuse"),
-        symbol!("high-voltage", "High voltage"),
-        symbol!("warning", "Warning"),
-        symbol!("insulation-class", "Class II / double insulation"),
-        symbol!("fan-cooled", "Fan cooled"),
-    ]
+    rest.to_owned()
+}
+
+fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    (bytes.len() > 24 && bytes.starts_with(b"\x89PNG\r\n\x1a\n")).then(|| {
+        (u32::from_be_bytes(bytes[16..20].try_into().unwrap()), u32::from_be_bytes(bytes[20..24].try_into().unwrap()))
+    })
 }
 
 /// Uses the same encoded PNG Description as the macOS applications.
@@ -255,5 +363,54 @@ mod tests {
             Some(element)
         );
         assert!(TechnicalElement::from_description("untrusted image text").is_none());
+    }
+}
+
+#[cfg(test)]
+mod catalogue_tests {
+    use super::*;
+
+    fn element(id: &str) -> TechnicalElement {
+        TechnicalElement { symbol_id: Some(id.into()), code_type: Format::Qr, value: String::new(), width_mm: 25.0, caption: false }
+    }
+
+    #[test]
+    fn catalogue_has_the_97_lably_marks_and_keeps_the_earlier_ids() {
+        let all = symbols();
+        assert_eq!(all.len(), 97);
+        let ids: std::collections::BTreeSet<_> = all.iter().map(|s| s.id).collect();
+        assert_eq!(ids.len(), 97);
+        for id in ["protective-earth", "functional-earth", "chassis-ground", "equipotentiality", "dc", "ac", "positive-polarity",
+                   "negative-polarity", "esd", "fuse", "high-voltage", "warning", "insulation-class", "fan-cooled",
+                   "ce", "eac", "ukca", "iso-9001", "osha-ghs-02-flame", "weee", "etl"] {
+            assert!(ids.contains(id), "{id}");
+        }
+        assert!(all.iter().all(|s| CATEGORIES.contains(&s.category)));
+        assert_eq!(all.iter().filter(|s| s.raster).count(), 10);
+    }
+
+    #[test]
+    fn marks_carry_localized_names_and_conditions_of_use() {
+        let ce = symbols().iter().find(|s| s.id == "ce").unwrap();
+        assert_eq!(ce.title, "CE — EU");
+        assert!(ce.warning_in("en").is_some_and(|w| w.contains("conformity assessment")));
+        let eac = symbols().iter().find(|s| s.id == "eac").unwrap();
+        assert!(eac.purpose_in("ru").contains("ЕАЭС"));
+        assert_eq!(eac.name_in("ar"), eac.name_in("en"), "languages without Lably copy fall back to English");
+        assert!(symbols().iter().find(|s| s.id == "iso-9001").unwrap().unverified);
+        assert!(symbols().iter().find(|s| s.id == "bis").unwrap().needs_number);
+    }
+
+    #[test]
+    fn every_mark_renders_and_raster_marks_have_no_vector_form() {
+        for symbol in symbols() {
+            let e = element(symbol.id);
+            let png = e.png().unwrap_or_else(|err| panic!("{}: {err}", symbol.id));
+            assert!(png.len() > 100, "{}", symbol.id);
+            assert_eq!(TechnicalElement::from_png(&png), Some(e.clone()), "{} recipe round trip", symbol.id);
+            let (w, h) = e.size_points().unwrap();
+            assert!((w - 25.0 * PT_PER_MM).abs() < 1e-6 && h > 0.0, "{}", symbol.id);
+            assert_eq!(e.vector().is_err(), symbol.raster, "{}", symbol.id);
+        }
     }
 }
