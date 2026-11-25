@@ -2306,6 +2306,96 @@ def audit_ppt_slide_images(process, main, output, results):
     results["checks"].append("PPT42 exports numbered PNG and JPEG through normal settings, actual PNG pixels, selected dimensions and hidden-slide scope, no clobber and unchanged presentation")
 
 
+def audit_ppt_charts(process, main, output, results):
+    def text_value(raw):
+        return {"raw": raw, "crlf": False}
+
+    source = output / "ppt-chart-source.json"
+    source.write_text(json.dumps({"version": 2, "next_id": 2, "slides": [
+        {"id": 1, "title_text": text_value(""), "body_text": text_value("")}]}), encoding="utf-8")
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+
+    def saved(name, extension, kind):
+        path = output / f"ppt-chart-{name}.{extension}"
+        save_as(main)
+        choose_file(process, path, format_name=kind)
+        output_ready(process, main, path, b"{" if extension == "json" else b"PK")
+        return path
+
+    def project_chart(name):
+        project = json.loads(saved(name, "json", "off42 slides JSON").read_text(encoding="utf-8"))
+        return project["slides"][0]["objects"][0]["chart"]
+
+    def chart_prompt():
+        command(main, 81)
+        dialog = modal(process, title="Edit Chart", native_class="Suite42InputDialog")
+        values = [text(u.GetDlgItem(dialog, 100 + index)) for index in range(4)]
+        click(dialog, 2)
+        wait_for(lambda: not u.IsWindow(dialog), "chart editor cancelled", process)
+        return values
+
+    def palette_pixels(name):
+        path = output / f"ppt-chart-{name}.png"
+        fill_prompt(process, main, 77, "Export Slide Images", ["PNG", "1280", "No"])
+        choose_file(process, path)
+        output_ready(process, main, path, b"\x89PNG\r\n\x1a\n")
+        _, _, pixels = png_pixels(path)
+        counts = {}
+        for offset in range(0, len(pixels), 4):
+            color = tuple(pixels[offset:offset + 3])
+            if color in ((0x44, 0x72, 0xC4), (0xED, 0x7D, 0x31)):
+                counts[color] = counts.get(color, 0) + 1
+        return counts
+
+    grid = "\tNorth\tSouth\r\nQ1\t1\t2\r\nQ2\t3\t4"
+    fill_prompt(process, main, 80, "Insert Chart", ["Column", "Revenue", "Yes", grid])
+    counts = palette_pixels("column")
+    assert counts.get((0x44, 0x72, 0xC4), 0) > 500 and counts.get((0xED, 0x7D, 0x31), 0) > 500, counts
+    fill_prompt(process, main, 81, "Edit Chart", ["Pie", "Share", "No", "\tShare\r\nA\t1\r\nB\t3"])
+    assert chart_prompt() == ["Pie", "Share", "No", "\tShare\r\nA\t1\r\nB\t3"]
+    command(main, 4)
+    assert project_chart("undo")["kind"] == "Column"
+    command(main, 5)
+    chart = project_chart("redo")
+    assert chart["kind"] == "Pie" and chart["categories"] == ["A", "B"] and chart["legend"] is False
+    counts = palette_pixels("pie")
+    assert counts.get((0xED, 0x7D, 0x31), 0) > 2 * counts.get((0x44, 0x72, 0xC4), 0) > 0, counts
+    pptx = saved("edited", "pptx", "PowerPoint presentation")
+    odp = saved("edited", "odp", "OpenDocument presentation")
+    with zipfile.ZipFile(pptx) as package:
+        names = package.namelist()
+        parts = [name for name in names if name.startswith("ppt/charts/") and name.endswith(".xml") and "/_rels/" not in name]
+        assert len(parts) == 1 and b"<c:pieChart>" in package.read(parts[0])
+        books = [name for name in names if name.startswith("ppt/embeddings/") and name.endswith(".xlsx")]
+        assert len(books) == 1
+        assert b"drawingml.chart+xml" in package.read("[Content_Types].xml")
+    with zipfile.ZipFile(odp) as package:
+        objects = [name for name in package.namelist() if name.endswith("/content.xml") and name != "content.xml"]
+        assert len(objects) == 1 and b'chart:class="chart:circle"' in package.read(objects[0])
+        assert b"application/vnd.oasis.opendocument.chart" in package.read("META-INF/manifest.xml")
+    open_fixture(process, main, odp)
+    command(main, 46)
+    assert chart_prompt()[0] == "Pie"
+    open_fixture(process, main, pptx)
+    command(main, 46)
+    assert chart_prompt() == ["Pie", "Share", "No", "\tShare\r\nA\t1\r\nB\t3"]
+    fill_prompt(process, main, 81, "Edit Chart", ["Line", "Trend", "Yes", "\tShare\r\nA\t1\r\nB\t3\r\nC\t2"])
+    overlay = saved("overlay", "pptx", "PowerPoint presentation")
+    with zipfile.ZipFile(pptx) as before, zipfile.ZipFile(overlay) as after:
+        assert sorted(before.namelist()) == sorted(after.namelist())
+        assert b"<c:lineChart>" in after.read(parts[0])
+        import io
+        with zipfile.ZipFile(io.BytesIO(after.read(books[0]))) as book:
+            assert b">C</t>" in book.read("xl/worksheets/sheet1.xml")
+        assert before.read("ppt/slides/slide1.xml") == after.read("ppt/slides/slide1.xml")
+    open_fixture(process, main, overlay)
+    command(main, 46)
+    assert chart_prompt()[:2] == ["Line", "Trend"]
+    assert source.read_bytes() == original
+    results["checks"].append("PPT42 Insert/Edit Chart dialogs, drawn column and pie pixels, Undo/Redo, PPTX chart part and workbook, ODF chart object, reopen in both formats and in-place PPTX chart overlay")
+
+
 def audit_ppt_pdf(process, main, binary, output, results, native_print):
     dll = binary.parent / "pdfium.dll"
 
@@ -3973,6 +4063,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
                 audit_ppt_rehearsal(process,main,output,results)
                 audit_ppt_outline_export(process,main,output,results)
                 audit_ppt_slide_images(process,main,output,results)
+                audit_ppt_charts(process,main,output,results)
                 audit_ppt_pdf(process,main,binary,output,results,native_print)
             return results
         if binary.stem.lower() == "pdf42" and not startup:
