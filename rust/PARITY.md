@@ -15,7 +15,7 @@ The parity scope excludes grammar checking. Spelling remains in scope.
 | Label production | A4 custom grids, 559 stock templates, row mappings, copies, first slot, serial identifiers, PDF page/region and DOC picture artwork | Vector fidelity for mixed DOC selections; precise picture/caret integration |
 | Printing | Verified File/Ctrl+P dialogs in all six apps; actual-size label and centered/shrink-only PDF paths, per-printer calibration and measurement sheet | Printer copies/calibration scenarios and physical driver checks |
 | PDF42 | Reading, page edits/labels, selected-page extraction/split ZIP, four text-export formats, watermarks/numbering/header-footer tokens, word comparison, batch merge and batch Bates copies, bounded text edits, annotations, simple forms, links, outlines, attachments, password copies, raster redaction, bounded offline OCR, detached CMS verification, certificate-signed copies with optional visible appearance and byte-preserving signature-field views | Richer forms, custom signature appearance placement, additional signatures, timestamp/revocation validation, remote signing and CryptoPro integration |
-| DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, Navigator sidebar, structured Find/Replace with case, whole words, regex captures and next/previous, body/selection text and editor-line statistics and several format adapters | Complete page canvas, full sections/columns, fields, tracked changes, style management, Navigator hierarchy and chapter reordering, broader regex syntax and cross-paragraph rich replacement, table/image editing caret mapping, page counts and dictionary word segmentation, picture geometry and rich page decorations |
+| DOC42 | Rich text, tables, images, comments, notes, hyperlinks, bookmarks, TOC, Navigator sidebar, structured Find/Replace with case, whole words, regex captures and next/previous, body/selection text and editor-line statistics, page breaks on a desk with caret page and print-matched page count, tracked changes (record, markup, next/previous, accept/reject one or all, DOCX w:ins/w:del/w:trackRevisions round trip, accepted text in other formats) and several format adapters | Separate page sheets and book/multi-page views, full sections/columns, fields, tracked changes in tables and change cards, style management, Navigator hierarchy and chapter reordering, broader regex syntax and cross-paragraph rich replacement, table/image editing caret mapping, page counts and dictionary word segmentation, picture geometry and rich page decorations |
 | XLS42 | Grid editing, calculated arrays and external array cache fidelity, engineering/text/math/statistical/financial/calendar formulas, typed formatting, styles, charts, summaries, tables, filtering, inline and same-sheet range list validation, print layout and verified Goal Seek/constrained Solver | Full formula semantics/syntax and locale formats, remaining virtual-area range tools, legacy arrays, full floating-object editing, advanced filtering, locale-aware sort collation/preferences, advanced validation rules including named and cross-sheet sources and ODS persistence, outlines/subtotals, split panes and per-cell/password protection |
 | PPT42 | Native objects and text, 187 preset geometries with adjustment controls, grouping/transforms, speaker-notes editing with PPTX/ODP persistence, basic transitions, windowed/fullscreen show navigation, overview, laser and session ink, hidden slides, loop/blank controls, single-window presenter rehearsal, RTF/Markdown outline, PNG/JPEG slide exports, slide/notes/handout PDF and print layouts, PPTX/ODP | Vector slide PDF, custom slide geometry and shape editing, charts/SmartArt, master/layout editing, themes/templates, comments, media and animation playback, dual-display presenter view and movie export |
 | IMG42 | Image decoding, transforms, adjustments, freehand and edge-refined selections, edge-connected uniform-background removal, recognized text selection/copy, metadata and batch output | Full markup selection/editing, subject-mask guidance for Smart Lasso and background removal, full Live Text interaction, viewing panels and additional supported system codecs |
@@ -424,6 +424,22 @@ The parity scope excludes grammar checking. Spelling remains in scope.
 - The optimized b4e9675 development ZIP passes CRC and all seven PE identities match the runtime report
   (six apps plus PDFium.dll): 61,948,557 bytes, SHA-256
   `355e6655b311d609e894c99daadbaa453b9b54bcdbba8f420063065fbc7b2e5e`. It is not a public release.
+
+### DOC42 page canvas and tracked changes
+
+- The live Rich Edit is paginated with the shared print paginator (notes included) once edits settle. The editor
+  draws the desk, page edges and labelled page-break markers; the status bar shows the caret page and page count.
+  Pages are still one continuous Rich Edit surface rather than separate sheets.
+- Track Changes (Review menu, Ctrl+Shift+E) records typed text as insertions and deleted text as struck-through
+  deletions by the Windows user, merging consecutive edits. Next/Previous Change, Accept/Reject Change and
+  Accept/Reject All are undoable. Insertions are underlined in blue, deletions struck through in red; those
+  marker colours are display-only and never enter the document. DOCX reads and writes w:ins, w:del with
+  w:delText, deleted/inserted paragraph marks and w:trackRevisions; RTF, ODT, HTML, Markdown, text, printing
+  and PDF receive the text with all changes accepted. Recording is limited to body paragraphs; edits that touch
+  tables, pictures or sections ask to turn tracking off. Formatting changes are not tracked (as on macOS).
+- `rust/scripts/audit-doc42-windows.py` drives the packaged DOC42.exe: status page count, caret page, typing
+  that adds pages, Undo/Redo and a reopened project; tracking on, typed insertion, deleted selection kept
+  visible, Undo/Redo, DOCX output and reopen, Next/Accept/Reject All/Accept All and an accepted DOCX.
 
 ### Bundled PDF/scan OCR in progress
 

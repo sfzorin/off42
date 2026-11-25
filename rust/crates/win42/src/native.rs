@@ -2669,6 +2669,16 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 msg(hwnd, &e, MB_OK | MB_ICONERROR);
                 refresh();
             } else {
+                let reload = STATE.with(|s| s.borrow_mut().as_mut().unwrap().app.take_rich_reload());
+                if reload {
+                    let rtf = STATE.with(|s| s.borrow().as_ref().unwrap().app.rich_text());
+                    if let Some(rtf) = rtf {
+                        let previous = REFRESHING.with(|x| x.replace(true));
+                        let _ = crate::rich_edit::load(h, &rtf);
+                        REFRESHING.with(|x| x.set(previous));
+                        apply_requested_rich_selection();
+                    }
+                }
                 crate::rich_pages::invalidate();
                 schedule_rich_sidebar_refresh(hwnd);
                 update_caption();

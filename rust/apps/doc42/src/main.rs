@@ -22,6 +22,7 @@ struct Doc {
     snapshots: HashMap<u64, State>,
     navigator_open: bool,
     navigator_rows: std::cell::RefCell<Vec<navigator::Entry>>,
+    reload_editor: bool,
 }
 impl Doc {
     fn new() -> Self {
@@ -36,6 +37,7 @@ impl Doc {
             snapshots: HashMap::new(),
             navigator_open: false,
             navigator_rows: Default::default(),
+            reload_editor: false,
         }
     }
     fn format(id: &str) -> Result<Format, String> {
@@ -456,11 +458,44 @@ impl Doc {
             notes,
         })
     }
+    /// Target of a review command: the change at the caret for Accept/Reject,
+    /// otherwise the next or previous change in document order (wrapping).
+    fn revision_target(&self, id: u16) -> Option<(u64, bool, Option<(usize, usize)>)> {
+        let ranges = self.doc.revision_ranges();
+        let (from, to) = (self.selection.0.min(self.selection.1), self.selection.0.max(self.selection.1));
+        let start = |r: &(u64, bool, Option<(usize, usize)>)| r.2.map_or(usize::MAX, |n| n.0);
+        match id {
+            372 => ranges
+                .iter()
+                .rev()
+                .find(|r| start(r) < from)
+                .or(ranges.last())
+                .copied(),
+            371 => ranges
+                .iter()
+                .find(|r| start(r) > from || (start(r) == from && from == to && r.2.is_some_and(|n| n.1 > to)))
+                .or(ranges.first())
+                .copied(),
+            _ => ranges
+                .iter()
+                .find(|r| r.2.is_some_and(|(a, b)| a <= from && to <= b))
+                .or_else(|| ranges.iter().find(|r| start(r) >= from))
+                .or(ranges.first())
+                .copied(),
+        }
+    }
     fn visible_text(&self) -> String {
         self.doc.editor_text().unwrap_or_default()
     }
 }
 
+/// Author recorded on tracked changes: the signed-in Windows user.
+fn review_author() -> String {
+    ["USERNAME", "USER"]
+        .iter()
+        .find_map(|key| std::env::var(key).ok().filter(|v| !v.trim().is_empty()))
+        .unwrap_or_else(|| "DOC42".into())
+}
 fn statistics_text(stats: doc42_core::rich::TextStatistics) -> String {
     let label = win42::localization::text;
     format!(
@@ -874,7 +909,29 @@ impl App for Doc {
         self.doc.rich_edit_projection().ok()
     }
     fn edit_rich_text(&mut self, bytes: &[u8], selection: (usize, usize)) -> Result<(), String> {
-        if let Err(error)=self.doc.apply_rich_edit_projection(bytes, selection){
+        let removal = if win42::forward_delete_pressed() {
+            doc42_core::rich::Removal::Forward
+        } else {
+            doc42_core::rich::Removal::Backward
+        };
+        let result = self
+            .doc
+            .apply_rich_edit_projection_tracked(bytes, selection, &review_author(), removal);
+        if let Ok((_, true)) = result {
+            self.reload_editor = true;
+            let state = self.doc.state();
+            let at = state
+                .selection
+                .focus
+                .as_ref()
+                .and_then(|p| self.doc.native_offset(p));
+            if let Some(at) = at {
+                self.requested_selection = Some((at, at));
+                self.selection = (at, at);
+                return Ok(());
+            }
+        }
+        if let Err(error)=result{
             if let Some(directory)=std::env::var_os("OFF42_AUDIT_OUTPUT"){
                 let directory=std::path::PathBuf::from(directory);
                 let _=std::fs::write(directory.join("DOC42-rejected-projection.rtf"),bytes);
@@ -894,6 +951,9 @@ impl App for Doc {
     fn finish_rich_word(&mut self,commit:bool)->Result<(),String>{
         let edit=self.pending_word.take().ok_or("Word correction unavailable")?;
         if commit{self.doc.commit_word_edit(edit).map_err(|e|e.to_string())?;}Ok(())
+    }
+    fn take_rich_reload(&mut self) -> bool {
+        std::mem::take(&mut self.reload_editor)
     }
     fn take_requested_rich_selection(&mut self) -> Option<(usize, usize)> {
         self.requested_selection.take()
@@ -1072,9 +1132,35 @@ impl App for Doc {
             accelerator,
             group: "Format",
         })
+        .chain(
+            [
+                (370, "Track changes", Some("Ctrl+Shift+E")),
+                (371, "Next change", None),
+                (372, "Previous change", None),
+                (373, "Accept change", None),
+                (374, "Reject change", None),
+                (375, "Accept all changes", None),
+                (376, "Reject all changes", None),
+            ]
+            .into_iter()
+            .map(|(id, title, accelerator)| CommandSpec {
+                id,
+                title,
+                accelerator,
+                group: "Review",
+            }),
+        )
         .collect()
     }
     fn command_state(&self, id: u16) -> CommandState {
+        if (370..=376).contains(&id) {
+            let any = !self.doc.state().revisions.is_empty();
+            return CommandState {
+                enabled: id == 370
+                    || (any && (id >= 375 || self.revision_target(id).is_some())),
+                checked: id == 370 && self.doc.state().track_changes,
+            };
+        }
         if id == NAVIGATOR {
             return CommandState { enabled: true, checked: self.navigator_open };
         }
@@ -2336,8 +2422,16 @@ impl App for Doc {
             .sections
             .iter()
             .any(|s| !s.header.is_empty() || !s.footer.is_empty());
+        let review = match (self.doc.state().track_changes, self.doc.state().revisions.len()) {
+            (false, 0) => String::new(),
+            (on, count) => format!(
+                "{}{}",
+                if on { " · Track changes" } else { "" },
+                if count > 0 { format!(" · {count} changes") } else { String::new() }
+            ),
+        };
         format!(
-            "{} words · {}%{}{}{}",
+            "{} words · {}%{review}{}{}{}",
             self.doc.statistics().words,
             self.zoom_percent,
             if headers {
@@ -2486,6 +2580,40 @@ impl App for Doc {
     }
     fn action(&mut self, id: u16) -> Result<(), String> {
         match id {
+            370 => {
+                let on = !self.doc.state().track_changes;
+                self.doc.set_track_changes(on).map_err(|e| e.to_string())?;
+            }
+            371..=374 => {
+                let (revision, insertion, native) =
+                    self.revision_target(id).ok_or("No tracked change")?;
+                match id {
+                    371 | 372 => {
+                        let (start, end) = native.ok_or("This change is not in body text")?;
+                        self.selection = (start, end);
+                        self.requested_selection = Some((start, end));
+                    }
+                    _ => {
+                        if id == 373 {
+                            self.doc.accept_revision(revision)
+                        } else {
+                            self.doc.reject_revision(revision)
+                        }
+                        .map_err(|e| e.to_string())?;
+                        let removed = (id == 373) != insertion;
+                        if let Some((start, end)) = native {
+                            let at = if removed { start } else { end };
+                            self.selection = (at, at);
+                            self.requested_selection = Some((at, at));
+                        }
+                    }
+                }
+            }
+            375 | 376 => {
+                self.doc
+                    .resolve_all_revisions(id == 375)
+                    .map_err(|e| e.to_string())?;
+            }
             NAVIGATOR => {
                 self.navigator_open = !self.navigator_open;
             }

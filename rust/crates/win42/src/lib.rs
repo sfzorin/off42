@@ -109,6 +109,15 @@ pub enum LabelSource {
 }
 
 /// Portable contract between a document model and the native Windows host.
+/// True while the Delete key is held, so editors can tell forward from backward deletion.
+pub fn forward_delete_pressed() -> bool {
+    #[cfg(windows)]
+    unsafe {
+        windows_sys::Win32::UI::Input::KeyboardAndMouse::GetKeyState(0x2E) < 0
+    }
+    #[cfg(not(windows))]
+    false
+}
 pub trait App {
     /// Native top-level window handle, when a Windows host is available.
     fn set_native_window(&mut self, _window: usize) {}
@@ -582,6 +591,11 @@ pub trait App {
     }
     /// Commit only after the host loads and validates the prepared projection; false discards it.
     fn finish_rich_word(&mut self,_commit:bool)->Result<(),String>{Err("Word correction unavailable".into())}
+    /// True once after an edit whose recorded result differs from the editor text
+    /// (for example tracked deletions that stay visible); the host reloads it.
+    fn take_rich_reload(&mut self) -> bool {
+        false
+    }
     fn set_rich_selection(&mut self, _selection_utf16: (usize, usize)) {}
     /// Selection captured by the document history, restored after Undo or Redo.
     /// Select an app-requested rich-text range after a command refresh.

@@ -63,7 +63,7 @@ const REL: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relatio
 fn visible(n: roxmltree::Node<'_, '_>) -> usize {
     n.descendants()
         .filter_map(|c| {
-            if c.has_tag_name((W, "t")) {
+            if c.has_tag_name((W, "t")) || c.has_tag_name((W, "delText")) {
                 Some(c.text().unwrap_or("").len())
             } else if c.has_tag_name((W, "tab")) {
                 Some(1)
@@ -185,7 +185,10 @@ pub(super) fn normalize(
                     return Err(bad("duplicate bookmark end"));
                 }
                 ranges.push(child.range());
-            } else if child.has_tag_name((W, "r")) {
+            } else if child.has_tag_name((W, "r"))
+                || child.has_tag_name((W, "ins"))
+                || child.has_tag_name((W, "del"))
+            {
                 offset += visible(child);
             }
         }
