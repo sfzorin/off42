@@ -1233,6 +1233,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "marks42"
+version = "0.1.0"
+dependencies = [
+ "fontdb 0.23.0",
+ "image",
+ "rustybuzz 0.20.1",
+ "serde",
+ "serde_json",
+ "tiny-skia",
+ "ttf-parser 0.25.1",
+]
+
+[[package]]
 name = "markup5ever"
 version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
