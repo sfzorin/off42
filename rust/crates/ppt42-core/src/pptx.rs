@@ -578,6 +578,78 @@ fn decoration(
         chart: None,
     })
 }
+/// Shapes of a SmartArt drawing part (`dsp:drawing`), placed in the frame at `frame` (EMU origin and scale).
+fn smartart_shapes(
+    bytes: &[u8],
+    frame: [f64; 4],
+    width: f64,
+    height: f64,
+    palette: &HashMap<String, [u8; 3]>,
+    aliases: &HashMap<String, String>,
+) -> Vec<SlideObject> {
+    let Ok(doc) = xml(bytes) else { return Vec::new() };
+    fn child<'a, 'i>(n: roxmltree::Node<'a, 'i>, name: &str) -> Option<roxmltree::Node<'a, 'i>> {
+        n.children().find(|c| c.is_element() && c.tag_name().name() == name)
+    }
+    let mut out = Vec::new();
+    for sp in doc.descendants().filter(|n| n.is_element() && n.tag_name().name() == "sp").take(500) {
+        let Some(props) = child(sp, "spPr") else { continue };
+        let Some(xfrm) = child(props, "xfrm") else { continue };
+        if attr(xfrm, "rot").is_some_and(|v| v != "0") || attr(xfrm, "flipH").is_some_and(|v| v != "0") || attr(xfrm, "flipV").is_some_and(|v| v != "0") {
+            continue;
+        }
+        let (Some(off), Some(ext)) = (child(xfrm, "off"), child(xfrm, "ext")) else { continue };
+        let (Some(x), Some(y), Some(w), Some(h)) = (num(off, "x"), num(off, "y"), num(ext, "cx"), num(ext, "cy")) else { continue };
+        if w <= 0.0 || h <= 0.0 {
+            continue;
+        }
+        let preset = child(props, "prstGeom").and_then(|n| attr(n, "prst")).unwrap_or("rect");
+        let kind = match preset {
+            "rect" => ObjectKind::Rectangle,
+            "ellipse" => ObjectKind::Ellipse,
+            "line" => ObjectKind::Line,
+            name if crate::geometry::definition(name).is_some() => ObjectKind::Rectangle,
+            _ => continue,
+        };
+        let style = child(sp, "style");
+        let style_color = |name: &str| style.and_then(|s| child(s, name)).and_then(|n| resolved_color(n, palette, aliases));
+        let no_fill = child(props, "noFill").is_some();
+        let fill = child(props, "solidFill").and_then(|n| resolved_color(n, palette, aliases)).or_else(|| style_color("fillRef"));
+        let line = child(props, "ln");
+        let no_line = line.is_some_and(|l| child(l, "noFill").is_some());
+        let stroke = line.and_then(|l| child(l, "solidFill")).and_then(|n| resolved_color(n, palette, aliases)).or_else(|| style_color("lnRef"));
+        let mut text_style = TextStyle { align: TextAlign::Center, ..TextStyle::default() };
+        if let Some(color) = local(sp, "rPr").and_then(|r| child(r, "solidFill")).and_then(|n| resolved_color(n, palette, aliases)).or_else(|| style_color("fontRef")) {
+            text_style.color = color;
+        }
+        if let Some(points) = local(sp, "rPr").and_then(|r| attr(r, "sz")).and_then(|v| v.parse::<f64>().ok()).map(|v| v / 100.0).filter(|v| (1.0..=512.0).contains(v)) {
+            text_style.points = points;
+        }
+        let [fx, fy, sx, sy] = frame;
+        out.push(SlideObject {
+            id: 0,
+            group_id: None,
+            x: (fx + x * sx) / width * 720.0,
+            y: (fy + y * sy) / height * 405.0,
+            width: w * sx / width * 720.0,
+            height: h * sy / height * 405.0,
+            rotation_degrees: 0.0,
+            kind,
+            preset: if preset == "rect" || matches!(preset, "ellipse" | "line") { None } else { read_preset(sp).ok().flatten() },
+            fill: fill.unwrap_or([255, 255, 255]),
+            stroke: stroke.or(fill).unwrap_or([0, 0, 0]),
+            fill_visible: fill.is_some() && !no_fill,
+            stroke_visible: stroke.is_some() && !no_line,
+            text: content(sp),
+            text_style,
+            paragraphs: Vec::new(),
+            media: Vec::new(),
+            cells: Vec::new(),
+            chart: None,
+        });
+    }
+    out
+}
 /// Opens ordinary PPTX packages, retaining all original parts for lossless overlay.
 /// Objects outside the editable subset remain in the package, but may not appear on the canvas.
 pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
@@ -837,6 +909,30 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
                 ObjectKind::Picture
             } else if node.tag_name().name() == "graphicFrame" && local(node, "tbl").is_some() {
                 ObjectKind::Table
+            } else if node.tag_name().name() == "graphicFrame"
+                && local(node, "graphicData").and_then(|n| attr(n, "uri")) == Some("http://schemas.openxmlformats.org/drawingml/2006/diagram")
+            {
+                // SmartArt: show the cached shapes of its drawing part; the diagram parts stay untouched.
+                let drawing = local(node, "relIds")
+                    .and_then(|n| attr(n, "dm"))
+                    .and_then(|rid| slide_targets.get(rid))
+                    .and_then(|data| read(&mut z, data).ok())
+                    .and_then(|bytes| {
+                        let doc = xml(&bytes).ok()?;
+                        let id = local(doc.root_element(), "dataModelExt").and_then(|n| attr(n, "relId"))?.to_owned();
+                        slide_targets.get(&id).cloned()
+                    });
+                if let Some(bytes) = drawing.and_then(|path| read(&mut z, &path).ok()) {
+                    decorations.extend(smartart_shapes(
+                        &bytes,
+                        [x * transform[0] + transform[2], y * transform[1] + transform[3], transform[0], transform[1]],
+                        width,
+                        height,
+                        &palette,
+                        &aliases,
+                    ));
+                }
+                continue;
             } else if node.tag_name().name() == "graphicFrame" {
                 let Some(part) = local(node, "graphicData")
                     .filter(|n| attr(*n, "uri") == Some("http://schemas.openxmlformats.org/drawingml/2006/chart"))
@@ -3033,4 +3129,71 @@ fn geometry_xml(preset: Option<&crate::geometry::Preset>, fallback: &str) -> Str
         })
         .unwrap_or_default();
     format!("<a:prstGeom xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" prst=\"{name}\"><a:avLst>{adjustments}</a:avLst></a:prstGeom>")
+}
+#[cfg(test)]
+mod smartart_tests {
+    use super::*;
+
+    fn rewrite(bytes: &[u8], edit: impl Fn(&str, Vec<u8>) -> Vec<u8>, extra: &[(&str, &str)]) -> Vec<u8> {
+        let mut input = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut out = ZipWriter::new(Cursor::new(Vec::new()));
+        for i in 0..input.len() {
+            let mut file = input.by_index(i).unwrap();
+            let name = file.name().to_owned();
+            let mut data = Vec::new();
+            file.read_to_end(&mut data).unwrap();
+            out.start_file(name.clone(), SimpleFileOptions::default()).unwrap();
+            out.write_all(&edit(&name, data)).unwrap();
+        }
+        for (name, data) in extra {
+            out.start_file(*name, SimpleFileOptions::default()).unwrap();
+            out.write_all(data.as_bytes()).unwrap();
+        }
+        out.finish().unwrap().into_inner()
+    }
+
+    #[test]
+    fn smartart_drawing_shapes_are_shown_and_diagram_parts_survive_edits() {
+        let mut deck = Presentation::new();
+        deck.insert_object(ObjectKind::Rectangle, "Box".into()).unwrap();
+        let base = export_new(&deck).unwrap();
+        let frame = r#"<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="40" name="Diagram"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr><p:xfrm><a:off x="914400" y="914400"/><a:ext cx="3657600" cy="1828800"/></p:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/diagram"><dgm:relIds xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" r:dm="dm1" r:lo="lo1" r:qs="qs1" r:cs="cs1"/></a:graphicData></a:graphic></p:graphicFrame>"#;
+        let drawing = r#"<dsp:drawing xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><dsp:spTree><dsp:nvGrpSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvGrpSpPr/></dsp:nvGrpSpPr><dsp:grpSpPr/><dsp:sp modelId="{1}"><dsp:nvSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="1828800" cy="914400"/></a:xfrm><a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></dsp:spPr><dsp:style><a:lnRef idx="2"><a:scrgbClr r="0" g="0" b="0"/></a:lnRef><a:fillRef idx="1"><a:scrgbClr r="0" g="0" b="0"/></a:fillRef><a:effectRef idx="0"><a:scrgbClr r="0" g="0" b="0"/></a:effectRef><a:fontRef idx="minor"><a:schemeClr val="lt1"/></a:fontRef></dsp:style><dsp:txBody><a:bodyPr/><a:p><a:r><a:rPr sz="2000"/><a:t>Plan</a:t></a:r></a:p></dsp:txBody></dsp:sp><dsp:sp modelId="{2}"><dsp:nvSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr><a:xfrm><a:off x="1828800" y="914400"/><a:ext cx="1828800" cy="914400"/></a:xfrm><a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="70AD47"/></a:solidFill></dsp:spPr><dsp:txBody><a:bodyPr/><a:p><a:r><a:t>Do</a:t></a:r></a:p></dsp:txBody></dsp:sp></dsp:spTree></dsp:drawing>"#;
+        let data = r#"<dgm:dataModel xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><dgm:ptLst/><dgm:extLst><a:ext uri="http://schemas.microsoft.com/office/drawing/2008/diagram"><dsp:dataModelExt xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram" relId="dr1" minVer="http://schemas.openxmlformats.org/drawingml/2006/diagram"/></a:ext></dgm:extLst></dgm:dataModel>"#;
+        let package = rewrite(
+            &base,
+            |name, data| match name {
+                "ppt/slides/slide1.xml" => String::from_utf8(data).unwrap().replace("</p:spTree>", &format!("{frame}</p:spTree>")).into_bytes(),
+                "ppt/slides/_rels/slide1.xml.rels" => String::from_utf8(data).unwrap().replace("</Relationships>", "<Relationship Id=\"dm1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramData\" Target=\"../diagrams/data1.xml\"/><Relationship Id=\"dr1\" Type=\"http://schemas.microsoft.com/office/2007/relationships/diagramDrawing\" Target=\"../diagrams/drawing1.xml\"/></Relationships>").into_bytes(),
+                _ => data,
+            },
+            &[("ppt/diagrams/data1.xml", data), ("ppt/diagrams/drawing1.xml", drawing)],
+        );
+        let (mut opened, source) = import(&package).unwrap();
+        assert_eq!(opened.slides()[0].objects.len(), 1, "the diagram is not an editable object");
+        let shapes = source.decorations(opened.slides()[0].id);
+        assert_eq!(shapes.len(), 2);
+        let (box_, circle) = (&shapes[0], &shapes[1]);
+        assert_eq!((box_.x, box_.y, box_.width, box_.height), (72.0, 72.0, 144.0, 72.0));
+        assert_eq!(box_.fill, [0x44, 0x72, 0xC4]);
+        assert_eq!(box_.text, "Plan");
+        assert_eq!(box_.text_style.color, [255, 255, 255]);
+        assert_eq!(box_.text_style.points, 20.0);
+        assert_eq!(box_.preset.as_ref().map(|p| p.name.as_str()), Some("roundRect"));
+        assert_eq!((circle.kind.clone(), circle.x, circle.y, circle.fill), (ObjectKind::Ellipse, 216.0, 144.0, [0x70, 0xAD, 0x47]));
+        let mut object = opened.slides()[0].objects[0].clone();
+        object.x += 10.0;
+        opened.update_object(object).unwrap();
+        let saved = export(&opened, &source).unwrap();
+        let read_entry = |bytes: &[u8], name: &str| {
+            let mut z = ZipArchive::new(Cursor::new(bytes)).unwrap();
+            let mut out = Vec::new();
+            z.by_name(name).unwrap().read_to_end(&mut out).unwrap();
+            out
+        };
+        for part in ["ppt/diagrams/data1.xml", "ppt/diagrams/drawing1.xml", "ppt/slides/_rels/slide1.xml.rels"] {
+            assert_eq!(read_entry(&saved, part), read_entry(&package, part));
+        }
+        assert!(String::from_utf8(read_entry(&saved, "ppt/slides/slide1.xml")).unwrap().contains("r:dm=\"dm1\""));
+    }
 }

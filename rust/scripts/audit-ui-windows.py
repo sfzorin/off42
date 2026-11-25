@@ -2339,6 +2339,7 @@ def audit_ppt_charts(process, main, output, results):
         path = output / f"ppt-chart-{name}.png"
         fill_prompt(process, main, 77, "Export Slide Images", ["PNG", "1280", "No"])
         choose_file(process, path)
+        path = output / f"ppt-chart-{name}-001.png"
         output_ready(process, main, path, b"\x89PNG\r\n\x1a\n")
         _, _, pixels = png_pixels(path)
         counts = {}
@@ -2410,6 +2411,7 @@ def audit_ppt_theme(process, main, output, results):
         path = output / f"ppt-theme-{name}.png"
         fill_prompt(process, main, 77, "Export Slide Images", ["PNG", "1280", "No"])
         choose_file(process, path)
+        path = output / f"ppt-theme-{name}-001.png"
         output_ready(process, main, path, b"\x89PNG\r\n\x1a\n")
         width, height, pixels = png_pixels(path)
         offset = (width * (height * 3 // 4) + width // 2) * 4
@@ -2543,6 +2545,62 @@ def audit_ppt_animations(process, main, output, results):
     wait_for(lambda: u.GetMenu(main) and u.IsWindowVisible(listing), "show ended", process)
     assert source.read_bytes() == original
     results["checks"].append("PPT42 Object Animation dialog, Undo/Redo, PPTX p:timing and ODF anim:par output, reopened settings and click-step fade playback with back navigation in the slide show")
+
+
+def audit_ppt_smartart(process, main, output, results):
+    base = output / "ppt-anim-fade.pptx"
+    source = output / "ppt-smartart.pptx"
+    frame = ('<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="40" name="Diagram"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>'
+             '<p:xfrm><a:off x="0" y="0"/><a:ext cx="3657600" cy="1828800"/></p:xfrm><a:graphic>'
+             '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/diagram">'
+             '<dgm:relIds xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" r:dm="dm1" r:lo="lo1" r:qs="qs1" r:cs="cs1"/>'
+             '</a:graphicData></a:graphic></p:graphicFrame>')
+    drawing = ('<dsp:drawing xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+               '<dsp:spTree><dsp:nvGrpSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvGrpSpPr/></dsp:nvGrpSpPr><dsp:grpSpPr/>'
+               '<dsp:sp modelId="{1}"><dsp:nvSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr>'
+               '<a:xfrm><a:off x="0" y="0"/><a:ext cx="1828800" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+               '<a:solidFill><a:schemeClr val="accent1"/></a:solidFill></dsp:spPr><dsp:style><a:fontRef idx="minor"><a:schemeClr val="lt1"/></a:fontRef></dsp:style>'
+               '<dsp:txBody><a:bodyPr/><a:p><a:r><a:t>Plan</a:t></a:r></a:p></dsp:txBody></dsp:sp></dsp:spTree></dsp:drawing>')
+    data = ('<dgm:dataModel xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+            '<dgm:ptLst/><dgm:extLst><a:ext uri="http://schemas.microsoft.com/office/drawing/2008/diagram">'
+            '<dsp:dataModelExt xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram" relId="dr1"/></a:ext></dgm:extLst></dgm:dataModel>')
+    with zipfile.ZipFile(base) as before, zipfile.ZipFile(source, "w", zipfile.ZIP_DEFLATED) as after:
+        for name in before.namelist():
+            content = before.read(name)
+            if name == "ppt/slides/slide1.xml":
+                content = content.replace(b"</p:spTree>", frame.encode() + b"</p:spTree>")
+            elif name == "ppt/slides/_rels/slide1.xml.rels":
+                content = content.replace(b"</Relationships>", b'<Relationship Id="dm1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramData" Target="../diagrams/data1.xml"/><Relationship Id="dr1" Type="http://schemas.microsoft.com/office/2007/relationships/diagramDrawing" Target="../diagrams/drawing1.xml"/></Relationships>')
+            after.writestr(name, content)
+        after.writestr("ppt/diagrams/data1.xml", data)
+        after.writestr("ppt/diagrams/drawing1.xml", drawing)
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+    image = output / "ppt-smartart.png"
+    fill_prompt(process, main, 77, "Export Slide Images", ["PNG", "1280", "No"])
+    choose_file(process, image)
+    image = output / "ppt-smartart-001.png"
+    output_ready(process, main, image, b"\x89PNG\r\n\x1a\n")
+    width, _, pixels = png_pixels(image)
+    offset = (width * 18 + 36) * 4
+    assert tuple(pixels[offset:offset + 3]) == (0x44, 0x72, 0xC4), tuple(pixels[offset:offset + 3])
+    command(main, 46)
+    command(main, 26)
+    dialog = modal(process, title="Object geometry", native_class="Suite42InputDialog")
+    set_text(u.GetDlgItem(dialog, 100), "210")
+    click(dialog, 1)
+    wait_for(lambda: not u.IsWindow(dialog), "geometry applied", process)
+    saved = output / "ppt-smartart-saved.pptx"
+    save_as(main)
+    choose_file(process, saved, format_name="PowerPoint presentation")
+    output_ready(process, main, saved, b"PK")
+    with zipfile.ZipFile(source) as before, zipfile.ZipFile(saved) as after:
+        for name in ("ppt/diagrams/data1.xml", "ppt/diagrams/drawing1.xml", "ppt/slides/_rels/slide1.xml.rels"):
+            assert before.read(name) == after.read(name), name
+        assert b'r:dm="dm1"' in after.read("ppt/slides/slide1.xml")
+        assert before.read("ppt/slides/slide1.xml") != after.read("ppt/slides/slide1.xml")
+    assert source.read_bytes() == original
+    results["checks"].append("PPT42 draws SmartArt from its PPTX drawing part (exported pixels) and keeps the diagram parts byte-identical while other objects are edited and saved")
 
 
 def audit_ppt_pdf(process, main, binary, output, results, native_print):
@@ -4215,6 +4273,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
                 audit_ppt_charts(process,main,output,results)
                 audit_ppt_theme(process,main,output,results)
                 audit_ppt_animations(process,main,output,results)
+                audit_ppt_smartart(process,main,output,results)
                 audit_ppt_pdf(process,main,binary,output,results,native_print)
             return results
         if binary.stem.lower() == "pdf42" and not startup:
