@@ -17,6 +17,7 @@ struct ObjectSource {
     text_editable: bool,
     rich_safe: bool,
     outline_role: Option<OutlineRole>,
+    chart_part: Option<String>,
 }
 struct PageSource {
     slide_id: u64,
@@ -647,13 +648,28 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
                 continue;
             }
             let name = node.tag_name().name();
+            let mut chart_data = None;
             let preset = if name == "custom-shape" { match read_preset(node) { Ok(Some(p)) => Some(p), _ => continue } } else { None };
             let (kind, media, cells) = match name {
                 "rect" | "custom-shape" => (ObjectKind::Rectangle, Vec::new(), Vec::new()),
                 "ellipse" => (ObjectKind::Ellipse, Vec::new(), Vec::new()),
                 "line" => (ObjectKind::Line, Vec::new(), Vec::new()),
                 "frame" => {
-                    if let Some(image) = node
+                    if let Some(object) = node
+                        .children()
+                        .find(|n| n.is_element() && n.tag_name().name() == "object")
+                    {
+                        let Some(href) = attr(object, "href").map(|h| h.trim_start_matches("./").trim_end_matches('/'))
+                            .filter(|h| !h.is_empty() && !h.starts_with('/') && !h.contains(':') && !h.split('/').any(|s| s == ".."))
+                        else {
+                            continue;
+                        };
+                        let Some(parsed) = zip_read(&mut z, &format!("{href}/content.xml")).ok().and_then(|b| chart::from_odf(&b)) else {
+                            continue;
+                        };
+                        chart_data = Some((href.to_owned(), parsed));
+                        (ObjectKind::Chart, Vec::new(), Vec::new())
+                    } else if let Some(image) = node
                         .descendants()
                         .find(|n| n.is_element() && n.tag_name().name() == "image")
                     {
@@ -749,12 +765,16 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
             if width <= 0.0 || height <= 0.0 {
                 continue;
             }
-            let content = if matches!(kind, ObjectKind::Table | ObjectKind::Picture) {
+            let content = if matches!(kind, ObjectKind::Table | ObjectKind::Picture | ObjectKind::Chart) {
                 String::new()
             } else {
                 paragraphs(node)
             };
-            let id = deck.insert_content(kind, content, media, cells)?;
+            let chart_part = chart_data.as_ref().map(|c| c.0.clone());
+            let id = match chart_data {
+                Some((_, chart)) => deck.insert_chart(chart)?,
+                None => deck.insert_content(kind, content, media, cells)?,
+            };
             let mut object = deck.slides()[i]
                 .objects
                 .iter()
@@ -839,7 +859,7 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
                     }
                 }
             }
-            if !matches!(object.kind, ObjectKind::Picture | ObjectKind::Table) {
+            if !matches!(object.kind, ObjectKind::Picture | ObjectKind::Table | ObjectKind::Chart) {
                 object.paragraphs = rich_paragraphs(node, &tree, &object.text_style);
                 if !object.paragraphs.is_empty()
                     && object
@@ -908,8 +928,9 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
                 original: object.clone(),
                 writable_cells,
                 text_editable,
-                rich_safe: !matches!(object.kind, ObjectKind::Picture | ObjectKind::Table)
+                rich_safe: !matches!(object.kind, ObjectKind::Picture | ObjectKind::Table | ObjectKind::Chart)
                     && rich_edit_safe(node, &tree),
+                chart_part,
                 outline_role: node.attribute(("urn:oasis:names:tc:opendocument:xmlns:presentation:1.0", "class"))
                     .map(|kind| match kind {
                         "title" => OutlineRole::Title,
@@ -1044,6 +1065,9 @@ pub fn export(deck: &Presentation) -> Result<Vec<u8>, String> {
                     target.push_str(&format!("<draw:frame {geo}><draw:image xlink:href=\"{path}\" xlink:type=\"simple\" xlink:show=\"embed\" xlink:actuate=\"onLoad\"/></draw:frame>"));
                     media.push((path, o.media.clone(), mime));
                 }
+                ObjectKind::Chart => {
+                    target.push_str(&chart_frame(o, &geo, &format!("Object {si}_{oi}"), &mut media)?);
+                }
                 ObjectKind::Table => {
                     target.push_str(&format!(
                         "<draw:frame {geo}><table:table table:name=\"Table{si}_{oi}\">"
@@ -1115,7 +1139,7 @@ pub fn export(deck: &Presentation) -> Result<Vec<u8>, String> {
         z.start_file(path, deflated).map_err(|e| e.to_string())?;
         z.write_all(data).map_err(|e| e.to_string())?;
     }
-    for (path, data, _) in media {
+    for (path, data, _) in media.into_iter().filter(|m| !m.0.ends_with('/')) {
         z.start_file(path, deflated).map_err(|e| e.to_string())?;
         z.write_all(&data).map_err(|e| e.to_string())?;
     }
@@ -1559,6 +1583,7 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
     let mut rendered_pages = Vec::new();
     let mut extra_styles = String::new();
     let mut new_media = Vec::new();
+    let mut replaced_parts: HashMap<String, Vec<u8>> = HashMap::new();
     for slide in deck.slides() {
         let Some(index) = source
             .pages
@@ -1838,6 +1863,14 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
                     &mut patches,
                 )?;
             }
+            if object.chart != item.original.chart {
+                let chart = object.chart.as_ref().ok_or("ODP chart data missing")?;
+                if slide.id != page.slide_id {
+                    return Err("Edit the chart on the original slide before duplicating it".into());
+                }
+                let part = item.chart_part.as_deref().ok_or("ODP chart object missing")?;
+                replaced_parts.insert(format!("{part}/content.xml"), chart::to_odf(chart, object.width, object.height).into_bytes());
+            }
             if object.cells != item.original.cells {
                 let table = local_table(node).ok_or("ODP table missing")?;
                 let rows = table
@@ -1943,6 +1976,14 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
             output
                 .write_all(content.as_bytes())
                 .map_err(|e| e.to_string())?;
+        } else if let Some(bytes) = replaced_parts.remove(&name) {
+            output
+                .start_file(
+                    name,
+                    SimpleFileOptions::default().compression_method(CompressionMethod::Deflated),
+                )
+                .map_err(|e| e.to_string())?;
+            output.write_all(&bytes).map_err(|e| e.to_string())?;
         } else if name == "META-INF/manifest.xml" && manifest.is_some() {
             output
                 .start_file(
@@ -1957,7 +1998,7 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
             output.raw_copy_file(file).map_err(|e| e.to_string())?;
         }
     }
-    for (path, bytes, _) in new_media {
+    for (path, bytes, _) in new_media.into_iter().filter(|m| !m.0.ends_with('/')) {
         if input.by_name(&path).is_ok() {
             return Err("ODP media path collision".into());
         }
@@ -2087,6 +2128,18 @@ fn prune_removed_pages(
     Ok((prune, Some(manifest.into_bytes())))
 }
 
+/// A frame embedding a chart object and its package entries (directory entry first).
+fn chart_frame(
+    o: &SlideObject,
+    geo: &str,
+    path: &str,
+    media: &mut Vec<(String, Vec<u8>, &'static str)>,
+) -> Result<String, String> {
+    let chart = o.chart.as_ref().ok_or("Chart data missing")?;
+    media.push((format!("{path}/"), Vec::new(), chart::ODF_CHART_MIME));
+    media.push((format!("{path}/content.xml"), chart::to_odf(chart, o.width, o.height).into_bytes(), "text/xml"));
+    Ok(format!("<draw:frame {geo}><draw:object xlink:href=\"./{}\" xlink:type=\"simple\" xlink:show=\"embed\" xlink:actuate=\"onLoad\"/></draw:frame>", esc(path)))
+}
 fn appended_object(
     slide: u64,
     o: &SlideObject,
@@ -2142,6 +2195,7 @@ fn appended_object(
             media.push((path.clone(), o.media.clone(), mime));
             format!("<draw:frame {geo}><draw:image xlink:href=\"{path}\" xlink:type=\"simple\" xlink:show=\"embed\" xlink:actuate=\"onLoad\"/></draw:frame>")
         }
+        ObjectKind::Chart => chart_frame(o, &geo, &format!("Object {name}"), media)?,
         ObjectKind::Table => {
             let mut result = format!("<draw:frame {geo}><table:table table:name=\"{name}\">");
             for row in &o.cells {

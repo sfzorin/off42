@@ -1,6 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 use ppt42_core::Presentation;
 use std::path::Path;
+mod chart_ui;
 mod outline;
 mod rich;
 mod slide_images;
@@ -140,6 +141,7 @@ struct Ppt {
     rich_draft: Option<ppt42_core::SlideObject>,
     pending_word:Option<(ppt42_core::SlideObject,ppt42_core::SlideObject)>,
     rich_selection: (usize, usize),
+    pending_command: Option<u16>,
 }
 struct Show {
     started: std::time::Instant,
@@ -350,10 +352,15 @@ impl Ppt {
             rich_draft: None,
             pending_word:None,
             rich_selection: (0, 0),
+            pending_command: None,
         }
     }
 }
 impl Ppt {
+    fn selected_chart(&self) -> Option<&ppt42_core::chart::Chart> {
+        let id = self.selected_object?;
+        self.deck.slides()[self.deck.current()].objects.iter().find(|o| o.id == id)?.chart.as_ref()
+    }
     fn show_move(&mut self, index: usize, now: std::time::Instant) -> Result<(), String> {
         let old = self.deck.current();
         let show = self.show.get_or_insert_with(|| Show::new(now, false));
@@ -782,6 +789,23 @@ impl Ppt {
                 }
             } else {
                 match o.kind {
+                    ppt42_core::ObjectKind::Chart => {
+                        if let Some(chart) = &o.chart {
+                            items.extend(chart_ui::scene(chart, o.x, o.y, o.width, o.height));
+                        }
+                        if editable && show_selection && self.selection().contains(&o.id) {
+                            items.push(SceneItem::Path {
+                                points: vec![
+                                    Point { x: o.x, y: o.y },
+                                    Point { x: o.x + o.width, y: o.y },
+                                    Point { x: o.x + o.width, y: o.y + o.height },
+                                    Point { x: o.x, y: o.y + o.height },
+                                ],
+                                color: stroke,
+                                closed: true,
+                            });
+                        }
+                    }
                     ppt42_core::ObjectKind::Rectangle | ppt42_core::ObjectKind::Text => {
                         if o.fill_visible {
                             items.push(SceneItem::Rect {
@@ -1682,6 +1706,10 @@ impl win42::App for Ppt {
                         ("Rotation (degrees)", o.rotation_degrees.to_string()),
                     ],
                 }),
+            chart_ui::INSERT => Some(chart_ui::request(id, &ppt42_core::chart::Chart::sample())),
+            chart_ui::EDIT => self
+                .selected_chart()
+                .map(|chart| chart_ui::request(id, chart)),
             33 => Some(win42::InputRequest {
                 title: "Insert table",
                 fields: vec![("Rows", "3".into()), ("Columns", "3".into())],
@@ -1721,6 +1749,8 @@ impl win42::App for Ppt {
                  (2, HANDOUT_COUNTS.map(str::to_owned).to_vec())]
         } else if id == 72 {
             vec![(0, vec!["No".into(), "Yes".into()]), (1, vec!["No".into(), "Yes".into()])]
+        } else if matches!(id, chart_ui::INSERT | chart_ui::EDIT) {
+            chart_ui::choices()
         } else if matches!(id, 68 | 69) {
             vec![(
                 0,
@@ -1735,6 +1765,16 @@ impl win42::App for Ppt {
     }
     fn multiline_input(&self, id: u16) -> bool {
         id == 74
+    }
+    fn input_multiline_fields(&self, id: u16) -> Vec<usize> {
+        match id {
+            74 => vec![0],
+            chart_ui::INSERT | chart_ui::EDIT => vec![chart_ui::DATA_FIELD],
+            _ => Vec::new(),
+        }
+    }
+    fn take_pending_command(&mut self) -> Option<u16> {
+        self.pending_command.take()
     }
     fn toolbar_command_visible(&self, id: u16) -> bool {
         !matches!(id, 74 | 75 | PRINT_LAYOUT)
@@ -1895,6 +1935,17 @@ impl win42::App for Ppt {
                     .rem_euclid(360.0);
                 }
                 self.deck.update_objects(objects)
+            }
+            chart_ui::INSERT => {
+                let chart = chart_ui::parse(values, &ppt42_core::chart::Chart::sample())?;
+                self.selected_object = Some(self.deck.insert_chart(chart)?);
+                self.selected_objects.clear();
+                Ok(())
+            }
+            chart_ui::EDIT if self.enabled(id) => {
+                let id = self.selected_object.ok_or("Select a chart")?;
+                let chart = chart_ui::parse(values, self.selected_chart().ok_or("Select a chart")?)?;
+                self.deck.set_chart(id, chart)
             }
             33 if values.len() == 2 => {
                 let rows = values[0].parse().map_err(|_| "Invalid row count")?;
@@ -2089,7 +2140,9 @@ impl win42::App for Ppt {
             DoubleClick(p) => {
                 self.pointer_down(p, false);
                 self.drag = None;
-                if self.enabled(58) {
+                if self.selected_chart().is_some() {
+                    self.pending_command = Some(chart_ui::EDIT);
+                } else if self.enabled(58) {
                     self.action(58)?;
                 }
             }
@@ -2306,6 +2359,8 @@ impl win42::App for Ppt {
             (30, "Fill Color…"),
             (31, "Line Color…"),
             (33, "Insert Table…"),
+            (chart_ui::INSERT, "Insert Chart…"),
+            (chart_ui::EDIT, "Edit Chart…"),
             (34, "Edit Table Cell…"),
             (40, "Print…"),
             (PRINT_LAYOUT, "Print Layout…"),
@@ -2597,7 +2652,7 @@ impl win42::App for Ppt {
                             o.id == id
                                 && !matches!(
                                     o.kind,
-                                    ppt42_core::ObjectKind::Picture | ppt42_core::ObjectKind::Table
+                                    ppt42_core::ObjectKind::Picture | ppt42_core::ObjectKind::Table | ppt42_core::ObjectKind::Chart
                                 )
                                 && o.rotation_degrees.rem_euclid(360.0) == 0.0
                                 && rich::document(o).is_ok_and(|d| d.rich_edit_projection().is_ok())
@@ -2684,6 +2739,7 @@ impl win42::App for Ppt {
             12 => i > 0,
             13 => i + 1 < n,
             14 => self.deck.can_duplicate(),
+            25 if self.selected_chart().is_some() => false,
             25 if self.pptx_source.is_some() => self.selected_object.is_some_and(|id| {
                 self.pptx_source
                     .as_ref()
@@ -2714,6 +2770,7 @@ impl win42::App for Ppt {
                     .iter()
                     .any(|o| o.id == id && matches!(o.kind, ppt42_core::ObjectKind::Table))
             }),
+            chart_ui::EDIT => self.selected_chart().is_some(),
             _ => true,
         }
     }
@@ -3659,5 +3716,60 @@ mod word_edit_regression {
         let mut app=Ppt::new(Presentation::new());let id=app.deck.insert_object(ppt42_core::ObjectKind::Text,"😀 speling world".into()).unwrap();let mut object=app.deck.slides()[0].objects.iter().find(|o|o.id==id).unwrap().clone();object.text_style.points=16.3;object.text_style.family="Arial".into();object.text_style.bold=true;app.deck.update_object(object.clone()).unwrap();app.selected_object=Some(id);app.action(58).unwrap();let original=app.rich_object().unwrap();let native:Vec<_>="😀 speling world\r".encode_utf16().collect();
         app.prepare_rich_word(&native,(3,10),"spelling").unwrap();assert_eq!(app.rich_object().unwrap(),original);app.finish_rich_word(false).unwrap();assert_eq!(app.rich_object().unwrap(),original);
         app.prepare_rich_word(&native,(3,10),"spelling").unwrap();app.finish_rich_word(true).unwrap();let mut expected=original.clone();expected.text="😀 spelling world".into();assert_eq!(app.rich_object().unwrap(),expected);app.finish_inline_rich(true).unwrap();assert_eq!(app.deck.slides()[0].objects.iter().find(|o|o.id==id),Some(&expected));app.action(4).unwrap();assert_eq!(app.deck.slides()[0].objects.iter().find(|o|o.id==id),Some(&object));app.action(5).unwrap();assert_eq!(app.deck.slides()[0].objects.iter().find(|o|o.id==id),Some(&expected));
+    }
+}
+#[cfg(test)]
+mod chart_ui_tests {
+    use super::*;
+    use win42::App;
+    fn values(request: &win42::InputRequest) -> Vec<String> {
+        request.fields.iter().map(|f| f.1.clone()).collect()
+    }
+    #[test]
+    fn chart_dialogs_insert_edit_undo_draw_and_save() {
+        let mut app = Ppt::new(Presentation::new());
+        assert!(!app.enabled(chart_ui::EDIT));
+        assert_eq!(app.input_multiline_fields(chart_ui::INSERT), vec![chart_ui::DATA_FIELD]);
+        let mut form = values(&app.input_request(chart_ui::INSERT).unwrap());
+        assert_eq!(form[0], "Column");
+        assert!(app.input_choices(chart_ui::INSERT)[0].1.contains(&"Doughnut".to_owned()));
+        form[1] = "Revenue".into();
+        app.input_action(chart_ui::INSERT, &form).unwrap();
+        assert!(app.enabled(chart_ui::EDIT) && !app.enabled(25) && !app.enabled(58));
+        let scene = app.canvas_scene().unwrap();
+        assert!(scene.items.iter().any(|i| matches!(i, win42::SceneItem::TextBox { text, .. } if text == "Revenue")));
+        let mut edit = values(&app.input_request(chart_ui::EDIT).unwrap());
+        assert!(edit[3].contains("\r\nQ1\t4.3"));
+        edit[0] = "Pie".into();
+        edit[2] = "No".into();
+        edit[3] = "\tShare\r\nA\t1\r\nB\t3".into();
+        app.input_action(chart_ui::EDIT, &edit).unwrap();
+        let chart = app.selected_chart().unwrap().clone();
+        assert_eq!(chart.type_label(), "Pie");
+        assert_eq!(chart.categories, vec!["A", "B"]);
+        assert!(!chart.legend);
+        let wedges = app.canvas_scene().unwrap().items.iter().filter(|i| matches!(i, win42::SceneItem::VectorPath { .. })).count();
+        assert_eq!(wedges, 2);
+        edit[3] = "\tShare\r\nA\tx".into();
+        assert!(app.input_action(chart_ui::EDIT, &edit).is_err());
+        app.action(4).unwrap();
+        assert_eq!(app.selected_chart().unwrap().type_label(), "Column");
+        app.action(5).unwrap();
+        // Double-click opens the chart editor through the pending command.
+        let object = app.deck.slides()[0].objects[0].clone();
+        app.canvas_event(win42::CanvasEvent::DoubleClick(win42::Point { x: object.x + 5.0, y: object.y + 5.0 })).unwrap();
+        assert_eq!(app.take_pending_command(), Some(chart_ui::EDIT));
+        for format in ["pptx", "odp"] {
+            let (_, bytes) = app.save_snapshot(format).unwrap().unwrap();
+            let restored = if format == "pptx" {
+                ppt42_core::pptx::import(&bytes).unwrap().0
+            } else {
+                ppt42_core::odp::import(&bytes).unwrap()
+            };
+            let found = restored.slides()[0].objects[0].chart.clone().unwrap();
+            assert_eq!(found.categories, chart.categories);
+            assert_eq!(found.type_label(), "Pie");
+            assert_eq!(found.series[0].values, chart.series[0].values);
+        }
     }
 }

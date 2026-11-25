@@ -7,6 +7,7 @@ use std::{
     path::Path,
 };
 use suite42_core::{write_new, SnapshotHistory, TextValue};
+pub mod chart;
 pub mod geometry;
 pub mod odp;
 pub mod pptx;
@@ -193,6 +194,8 @@ pub struct SlideObject {
     pub media: Vec<u8>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cells: Vec<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chart: Option<chart::Chart>,
 }
 fn enabled() -> bool {
     true
@@ -253,6 +256,7 @@ pub enum ObjectKind {
     Text,
     Picture,
     Table,
+    Chart,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutlineRole {
@@ -380,6 +384,7 @@ impl Deck {
                                                 .join("\n")
                                                 == o.text))
                                     && o.media.len() <= 16 * 1024 * 1024
+                                    && o.chart.as_ref().map_or(!matches!(o.kind, ObjectKind::Chart), |c| matches!(o.kind, ObjectKind::Chart) && c.valid())
                                     && o.cells.len() <= 100
                                     && o.cells.iter().all(|r| {
                                         r.len() <= 100 && r.iter().all(|c| c.len() <= MAX_TEXT)
@@ -591,7 +596,26 @@ impl Presentation {
         cells: Vec<Vec<String>>,
         size: [f64; 2],
     ) -> Result<u64, String> {
-        self.insert_content_geometry(kind, text, media, cells, size, None)
+        self.insert_content_geometry(kind, text, media, cells, size, None, None)
+    }
+    /// Inserts a chart object; one Undo step.
+    pub fn insert_chart(&mut self, chart: chart::Chart) -> Result<u64, String> {
+        if !chart.valid() {
+            return Err("Invalid chart data".into());
+        }
+        self.insert_content_geometry(ObjectKind::Chart, String::new(), Vec::new(), Vec::new(), [360.0, 220.0], None, Some(chart))
+    }
+    /// Replaces the data and options of a chart object; one Undo step.
+    pub fn set_chart(&mut self, id: u64, chart: chart::Chart) -> Result<(), String> {
+        let mut object = self.slides()[self.current()].objects.iter().find(|o| o.id == id && o.chart.is_some()).ok_or("Select a chart")?.clone();
+        if !chart.valid() {
+            return Err("Invalid chart data".into());
+        }
+        if object.chart.as_ref() == Some(&chart) {
+            return Ok(());
+        }
+        object.chart = Some(chart);
+        self.update_object(object)
     }
     pub fn insert_preset(&mut self, preset: geometry::Preset) -> Result<u64, String> {
         if !preset.valid() {
@@ -604,6 +628,7 @@ impl Presentation {
             Vec::new(),
             [180.0, 90.0],
             Some(preset),
+            None,
         )
     }
     fn insert_content_geometry(
@@ -614,6 +639,7 @@ impl Presentation {
         cells: Vec<Vec<String>>,
         size: [f64; 2],
         preset: Option<geometry::Preset>,
+        chart: Option<chart::Chart>,
     ) -> Result<u64, String> {
         let mut state = self.history.current().clone();
         let slide = &mut state.deck.slides[self.current()];
@@ -638,6 +664,7 @@ impl Presentation {
             paragraphs: Vec::new(),
             media,
             cells,
+            chart,
         });
         if !state.deck.valid() {
             return Err("deck exceeds limits".into());

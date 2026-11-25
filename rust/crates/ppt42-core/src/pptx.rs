@@ -20,6 +20,7 @@ struct ObjectSource {
     inherited_geometry: bool,
     rich_safe: bool,
     outline_role: Option<OutlineRole>,
+    chart_part: Option<String>,
 }
 #[derive(Clone)]
 struct SlideSource {
@@ -568,6 +569,7 @@ fn decoration(
         paragraphs: Vec::new(),
         media: Vec::new(),
         cells: Vec::new(),
+        chart: None,
     })
 }
 /// Opens ordinary PPTX packages, retaining all original parts for lossless overlay.
@@ -823,12 +825,28 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
             let preset = local(node, "prstGeom")
                 .and_then(|n| attr(n, "prst"))
                 .unwrap_or("rect");
+            let mut chart_part = None;
+            let mut chart_data = None;
             let kind = if node.tag_name().name() == "pic" {
                 ObjectKind::Picture
             } else if node.tag_name().name() == "graphicFrame" && local(node, "tbl").is_some() {
                 ObjectKind::Table
             } else if node.tag_name().name() == "graphicFrame" {
-                continue;
+                let Some(part) = local(node, "graphicData")
+                    .filter(|n| attr(*n, "uri") == Some("http://schemas.openxmlformats.org/drawingml/2006/chart"))
+                    .and_then(|n| local(n, "chart"))
+                    .and_then(|n| attr(n, "id"))
+                    .and_then(|rid| slide_targets.get(rid))
+                    .cloned()
+                else {
+                    continue;
+                };
+                let Some(parsed) = read(&mut z, &part).ok().and_then(|bytes| crate::chart::from_drawingml(&bytes)) else {
+                    continue;
+                };
+                chart_part = Some(part);
+                chart_data = Some(parsed);
+                ObjectKind::Chart
             } else {
                 match preset {
                     "rect" => {
@@ -878,12 +896,15 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
             } else {
                 Vec::new()
             };
-            let text = if matches!(kind, ObjectKind::Picture | ObjectKind::Table) {
+            let text = if matches!(kind, ObjectKind::Picture | ObjectKind::Table | ObjectKind::Chart) {
                 String::new()
             } else {
                 content(node)
             };
-            let object_id = deck.insert_content(kind, text, media, cells)?;
+            let object_id = match chart_data {
+                Some(chart) => deck.insert_chart(chart)?,
+                None => deck.insert_content(kind, text, media, cells)?,
+            };
             let mut object = deck.slides()[index]
                 .objects
                 .iter()
@@ -1021,6 +1042,7 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
                 inherited_geometry: explicit.is_none(),
                 rich_safe: node.tag_name().name() == "sp" && rich_edit_safe(node),
                 outline_role,
+                chart_part,
             });
         }
         let notes_cloneable = if let Some(ref note) = notes_path {
@@ -1564,8 +1586,9 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                 .filter(|r| r.path.starts_with("ppt/slides/"))
                 .find_map(|r| r.layout_target.as_deref())
                 .ok_or("No PPTX slide layout")?;
-            let (fragments, relationships, media) =
+            let (fragments, relationships, media, chart_overrides) =
                 appended_objects(slide, &slide.objects, 1, source.width, source.height)?;
+            slide_overrides.push_str(&chart_overrides);
             let group="<p:nvGrpSpPr><p:cNvPr id=\"1\" name=\"\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>";
             let transition = timing_xml(slide.timing);
             let visibility = visibility_attr(slide.hidden);
@@ -1575,7 +1598,7 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
             added_files.push((format!("{dir}/_rels/{file}.rels"), rels.into_bytes()));
             added_files.push((path, xml.into_bytes()));
             for (path, bytes) in media {
-                image_extensions.insert(path.rsplit('.').next().unwrap_or("").to_owned());
+                register_extension(&path, &mut image_extensions);
                 added_files.push((path, bytes));
             }
             continue;
@@ -1639,8 +1662,9 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                 .filter_map(|n| attr(n, "id").and_then(|v| v.parse::<u64>().ok()))
                 .max()
                 .unwrap_or(1);
-            let (fragments, relationships, media) =
+            let (fragments, relationships, media, chart_overrides) =
                 appended_objects(slide, &extras, max_id, source.width, source.height)?;
+            slide_overrides.push_str(&chart_overrides);
             added_fragment = fragments;
             if !relationships.is_empty() {
                 let (dir, file) = record.path.rsplit_once('/').ok_or("Invalid slide path")?;
@@ -1652,7 +1676,7 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                 let mut rels=match read(&mut input,&relpath){Ok(bytes)=>String::from_utf8(bytes).map_err(|e|e.to_string())?,Err(_)=>"<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"></Relationships>".into()};
                 for object in extras
                     .iter()
-                    .filter(|o| matches!(o.kind, ObjectKind::Picture))
+                    .filter(|o| matches!(o.kind, ObjectKind::Picture | ObjectKind::Chart))
                 {
                     if rels.contains(&format!("suite42_{}_{}", slide.id, object.id)) {
                         return Err("PPTX relationship ID collision".into());
@@ -1666,8 +1690,7 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                 }
             }
             for (path, bytes) in media {
-                let ext = path.rsplit('.').next().unwrap_or("").to_owned();
-                image_extensions.insert(ext);
+                register_extension(&path, &mut image_extensions);
                 added_files.push((path, bytes));
             }
         }
@@ -1701,6 +1724,33 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                     return Err("Changing inherited transform and preset together is unsupported".into());
                 }
                 patches.push((geom.range(), geometry_xml(object.preset.as_ref(), "rect")));
+            }
+            if object.chart != item.original.chart {
+                let chart = object.chart.as_ref().ok_or("PPTX chart data missing")?;
+                if cloned {
+                    return Err("Edit the chart on the original slide before duplicating it".into());
+                }
+                let part = item.chart_part.as_deref().ok_or("PPTX chart part missing")?;
+                let (dir, file) = part.rsplit_once('/').ok_or("Invalid PPTX chart path")?;
+                let workbook = read(&mut input, &format!("{dir}/_rels/{file}.rels")).ok().and_then(|bytes| {
+                    let doc = xml(&bytes).ok()?;
+                    doc.descendants()
+                        .filter(|n| n.is_element() && n.tag_name().name() == "Relationship")
+                        .find(|n| {
+                            attr(*n, "Type").is_some_and(|t| t.ends_with("/package"))
+                                && n.attribute("TargetMode").is_none_or(|m| m == "Internal")
+                                && attr(*n, "Target").is_some_and(|t| t.ends_with(".xlsx"))
+                        })
+                        .and_then(|n| Some((attr(n, "Id")?.to_owned(), target(part, attr(n, "Target")?)?)))
+                });
+                let workbook = workbook.filter(|(_, path)| input.by_name(path).is_ok());
+                replacements.insert(
+                    part.to_owned(),
+                    crate::chart::to_drawingml(chart, workbook.as_ref().map(|w| w.0.as_str())).into_bytes(),
+                );
+                if let Some((_, path)) = workbook {
+                    replacements.insert(path, crate::chart::workbook(chart)?);
+                }
             }
             if object.cells != item.original.cells {
                 let table = local(node, "tbl").ok_or("PPTX table missing")?;
@@ -2004,10 +2054,10 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                     && n.tag_name().name() == "Default"
                     && attr(n, "Extension").is_some_and(|v| v.eq_ignore_ascii_case(&ext))
             }) {
-                let mime = if ext == "png" {
-                    "image/png"
-                } else {
-                    "image/jpeg"
+                let mime = match ext.as_str() {
+                    "png" => "image/png",
+                    "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    _ => "image/jpeg",
                 };
                 additions.push_str(&format!(
                     "<Default Extension=\"{ext}\" ContentType=\"{mime}\"/>"
@@ -2541,6 +2591,7 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
                     paragraphs: Vec::new(),
                     media: Vec::new(),
                     cells: Vec::new(),
+                    chart: None,
                 });
                 next = next.saturating_add(1);
             }
@@ -2646,6 +2697,14 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
                     }
                     target.push_str(&format!("<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id=\"{id}\" name=\"Table {id}\"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr><p:xfrm rot=\"{rot}\"><a:off x=\"{x}\" y=\"{y}\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></p:xfrm><a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/table\"><a:tbl><a:tblPr/><a:tblGrid>{grid}</a:tblGrid>{rows}</a:tbl></a:graphicData></a:graphic></p:graphicFrame>"));
                 }
+                ObjectKind::Chart => {
+                    let chart = o.chart.as_ref().ok_or("Chart data missing")?;
+                    let rid = format!("chart{id}");
+                    let name = format!("chart{n}_{id}");
+                    rels.push_str(&format!("<Relationship Id=\"{rid}\" Type=\"{rns}/chart\" Target=\"../charts/{name}.xml\"/>"));
+                    parts.extend(chart_parts(chart, &name, &mut overrides)?);
+                    target.push_str(&format!("<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id=\"{id}\" name=\"Chart {id}\"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr><p:xfrm rot=\"{rot}\"><a:off x=\"{x}\" y=\"{y}\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></p:xfrm><a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/chart\"><c:chart xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\" r:id=\"{rid}\"/></a:graphicData></a:graphic></p:graphicFrame>"));
+                }
             }
         }
         for (index, group_id) in group_order.iter().enumerate() {
@@ -2702,7 +2761,7 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
     let solid = "<a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill>";
     let theme=format!("<a:theme xmlns:a=\"{ans}\" name=\"Suite42\"><a:themeElements><a:clrScheme name=\"Suite42\">{colors}</a:clrScheme><a:fontScheme name=\"Suite42\"><a:majorFont><a:latin typeface=\"Arial\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/></a:majorFont><a:minorFont><a:latin typeface=\"Arial\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/></a:minorFont></a:fontScheme><a:fmtScheme name=\"Suite42\"><a:fillStyleLst>{}</a:fillStyleLst><a:lnStyleLst>{}</a:lnStyleLst><a:effectStyleLst>{}</a:effectStyleLst><a:bgFillStyleLst>{}</a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>",solid.repeat(3),format!("<a:ln>{solid}</a:ln>").repeat(3),"<a:effectStyle><a:effectLst/></a:effectStyle>".repeat(3),solid.repeat(3));
     parts.push(("ppt/theme/theme1.xml".into(), theme.into_bytes()));
-    let types=format!("<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"png\" ContentType=\"image/png\"/><Default Extension=\"jpg\" ContentType=\"image/jpeg\"/><Override PartName=\"/ppt/presentation.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml\"/><Override PartName=\"/ppt/slideMasters/slideMaster1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml\"/><Override PartName=\"/ppt/slideLayouts/slideLayout1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml\"/><Override PartName=\"/ppt/theme/theme1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.theme+xml\"/>{overrides}</Types>");
+    let types=format!("<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"png\" ContentType=\"image/png\"/><Default Extension=\"jpg\" ContentType=\"image/jpeg\"/><Default Extension=\"xlsx\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\"/><Override PartName=\"/ppt/presentation.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml\"/><Override PartName=\"/ppt/slideMasters/slideMaster1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml\"/><Override PartName=\"/ppt/slideLayouts/slideLayout1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml\"/><Override PartName=\"/ppt/theme/theme1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.theme+xml\"/>{overrides}</Types>");
     parts.push(("[Content_Types].xml".into(), types.into_bytes()));
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     let opt = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
@@ -2713,6 +2772,22 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
     Ok(zip.finish().map_err(|e| e.to_string())?.into_inner())
 }
 
+/// Chart part, its relationships and embedded workbook for a new chart named `name`.
+fn chart_parts(chart: &crate::chart::Chart, name: &str, overrides: &mut String) -> Result<Vec<(String, Vec<u8>)>, String> {
+    overrides.push_str(&format!("<Override PartName=\"/ppt/charts/{name}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.chart+xml\"/>"));
+    Ok(vec![
+        (format!("ppt/charts/{name}.xml"), crate::chart::to_drawingml(chart, Some("workbook")).into_bytes()),
+        (format!("ppt/charts/_rels/{name}.xml.rels"), format!("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"workbook\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/package\" Target=\"../embeddings/{name}.xlsx\"/></Relationships>").into_bytes()),
+        (format!("ppt/embeddings/{name}.xlsx"), crate::chart::workbook(chart)?),
+    ])
+}
+/// Records a generated part's extension when it needs a default content type.
+fn register_extension(path: &str, extensions: &mut HashSet<String>) {
+    let ext = path.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+    if !matches!(ext.as_str(), "xml" | "rels") {
+        extensions.insert(ext);
+    }
+}
 fn append_element_content(element: &mut String, addition: &str) -> Result<(), String> {
     if let Some(end) = element.rfind("</") {
         element.insert_str(end, addition);
@@ -2742,7 +2817,7 @@ fn appended_objects(
     max_id: u64,
     width: f64,
     height: f64,
-) -> Result<(String, String, Vec<(String, Vec<u8>)>), String> {
+) -> Result<(String, String, Vec<(String, Vec<u8>)>, String), String> {
     let mut temp_slide = slide.clone();
     temp_slide.objects = extras
         .iter()
@@ -2787,6 +2862,7 @@ fn appended_objects(
     let mut fragments = String::new();
     let mut relationships = String::new();
     let mut media = Vec::new();
+    let mut overrides = String::new();
     for (index, (node, object)) in nodes.iter().zip(extras).enumerate() {
         let old = index + 2;
         let new = max_id
@@ -2819,9 +2895,15 @@ fn appended_objects(
             relationships.push_str(&format!("<Relationship Id=\"{rid}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"../media/{file}\"/>"));
             media.push((format!("ppt/media/{file}"), object.media.clone()));
         }
+        if let Some(chart) = object.chart.as_ref().filter(|_| matches!(object.kind, ObjectKind::Chart)) {
+            let name = format!("suite42_{}_{}", slide.id, object.id);
+            fragment = fragment.replace(&format!("r:id=\"chart{old}\""), &format!("r:id=\"{name}\""));
+            relationships.push_str(&format!("<Relationship Id=\"{name}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart\" Target=\"../charts/{name}.xml\"/>"));
+            media.extend(chart_parts(chart, &name, &mut overrides)?);
+        }
         fragments.push_str(&fragment);
     }
-    Ok((fragments, relationships, media))
+    Ok((fragments, relationships, media, overrides))
 }
 
 fn read_preset(node: roxmltree::Node<'_, '_>) -> Result<Option<crate::geometry::Preset>, String> {
