@@ -37,7 +37,20 @@ impl TechnicalElement {
         doc.save_to(&mut bytes).map_err(|e| e.to_string())?;
         Ok(bytes)
     }
+    /// Physical size in points (also for raster marks, which have no vector form).
+    pub fn size_points(&self) -> Result<(f64, f64), String> {
+        let tree = usvg::Tree::from_str(&self.svg()?, &usvg::Options::default()).map_err(|e| e.to_string())?;
+        let width = self.width_mm * PT_PER_MM;
+        Ok((width, width * f64::from(tree.size().height()) / f64::from(tree.size().width())))
+    }
+    /// Whether the element is drawn from pixels (OSHA GHS pictograms, ETL): PDF uses an image appearance then.
+    pub fn is_raster(&self) -> bool {
+        self.symbol_id.as_deref().and_then(|id| crate::symbols().iter().find(|s| s.id == id)).is_some_and(|s| s.raster)
+    }
     pub fn vector(&self) -> Result<TechnicalVector, String> {
+        if self.is_raster() {
+            return Err("This mark is a raster image and has no vector form.".into());
+        }
         let mut options = usvg::Options::default();
         options.fontdb_mut().load_font_data(
             include_bytes!("../../doc42-layout-probe/fixtures/NotoSans.ttf").to_vec(),
@@ -266,6 +279,7 @@ mod tests {
     fn every_symbol_and_code_is_resource_free_vector_with_physical_geometry() {
         let mut elements = symbols()
             .iter()
+            .filter(|symbol| !symbol.raster)
             .map(|symbol| TechnicalElement {
                 symbol_id: Some(symbol.id.into()),
                 code_type: Format::Qr,
@@ -296,7 +310,8 @@ mod tests {
             assert!((vector.width_points - element.width_mm * 72.0 / 25.4).abs() < 1e-9);
             assert!(vector.height_points > 0.0);
             let commands = lopdf::content::Content::decode(&vector.content).unwrap();
-            assert!(commands.operations.iter().any(|op| op.operator == "f"));
+            // Painted with at least one fill or stroke (some marks are outline drawings).
+            assert!(commands.operations.iter().any(|op| matches!(op.operator.as_str(), "f" | "f*" | "S" | "B" | "B*")), "{:?} paints nothing", element.symbol_id);
             let mut depth = 0;
             for op in commands.operations {
                 assert!(

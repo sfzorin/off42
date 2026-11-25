@@ -48,6 +48,8 @@ const CREATE_LABEL_SHEET: u16 = crate::CREATE_LABEL_SHEET_COMMAND;
 const CREATE_BARCODE: u16 = 65517;
 const IMPORT_MARK: u16 = 65516;
 const INSERT_MARK: u16 = 65515;
+const CREATE_SIGNATURE: u16 = 65498;
+const CREATE_STAMP: u16 = 65497;
 const EXPORT_TECHNICAL: u16 = 65514;
 const CONFIGURE_CALIBRATION: u16 = 65513;
 const TOGGLE_CALIBRATION: u16 = 65512;
@@ -1948,7 +1950,14 @@ unsafe fn technical_command(hwnd: HWND, edit: bool) -> Result<(), String> {
     ) else {
         return Ok(());
     };
-    let raster = crate::TechnicalRaster::render(crate::production::technical_element(&values)?)?;
+    let element = crate::production::technical_element(&values)?;
+    // Conformity marks, trademarks and unverified artwork: show the conditions of use first (Cancel keeps the document).
+    if let Some(notice) = crate::production::mark_notice(&element) {
+        if msg(hwnd, &notice, MB_OKCANCEL | MB_ICONINFORMATION) != IDOK {
+            return Ok(());
+        }
+    }
+    let raster = crate::TechnicalRaster::render(element)?;
     STATE.with(|state| {
         state
             .borrow_mut()
@@ -1962,6 +1971,11 @@ unsafe fn technical_command(hwnd: HWND, edit: bool) -> Result<(), String> {
 }
 
 unsafe fn pick_library_image(hwnd: HWND, directory: &Path) -> Result<Option<PathBuf>, String> {
+    pick_image(hwnd, directory, "Insert Signature or Stamp from Library")
+}
+
+/// The native PNG picker opened on `directory` (Explorer shows the pictures as thumbnails).
+unsafe fn pick_image(hwnd: HWND, directory: &Path, title: &str) -> Result<Option<PathBuf>, String> {
     use windows::{
         core::{w, PCWSTR},
         Win32::{
@@ -1983,7 +1997,8 @@ unsafe fn pick_library_image(hwnd: HWND, directory: &Path) -> Result<Option<Path
         picker.SetOptions(
             picker.GetOptions()? | FOS_FORCEFILESYSTEM | FOS_NOCHANGEDIR | FOS_DONTADDTORECENT,
         )?;
-        picker.SetTitle(w!("Insert Signature or Stamp from Library"))?;
+        let title = crate::localization::text(title).encode_utf16().chain(Some(0)).collect::<Vec<_>>();
+        picker.SetTitle(PCWSTR(title.as_ptr()))?;
         picker.SetFileTypes(&[COMDLG_FILTERSPEC {
             pszName: w!("Library images"),
             pszSpec: w!("*.png"),
@@ -2006,6 +2021,48 @@ unsafe fn pick_library_image(hwnd: HWND, directory: &Path) -> Result<Option<Path
     })();
     CoUninitialize();
     result.map_err(|error| format!("Could not open the signature and stamp library: {error}"))
+}
+
+/// Create Signature… / Create Stamp…: settings, then generated variants chosen in the picker, kept in the library.
+unsafe fn generator_command(hwnd: HWND, id: u16) -> Result<(), String> {
+    use crate::generator;
+    let library = crate::marks::library_directory()?;
+    let scratch = library.parent().unwrap_or(&library).join("Generator");
+    let (stem, images) = if id == CREATE_SIGNATURE {
+        let request = crate::InputRequest {
+            title: "Create Signature",
+            fields: vec![
+                ("Name", String::new()),
+                ("Form:", "Any form".into()),
+                ("Pen:", "Ballpoint pen".into()),
+                ("Ink:", "Blue ink".into()),
+            ],
+        };
+        let choices = [(1, generator::form_titles()), (2, generator::pen_titles()), (3, generator::ink_titles())];
+        let Some(values) = crate::prompt::show_choices(hwnd, &request, false, false, &choices) else {
+            return Ok(());
+        };
+        let request = generator::SignatureRequest::parse(&values)?;
+        let images = request.variants(generator::VARIANTS, &mut marks42::SeededRandom::new(marks42::SeededRandom::fresh_seed()))?;
+        (request.name, images)
+    } else {
+        let Some((title, images)) = generator::stamp_variants(hwnd)? else {
+            return Ok(());
+        };
+        (title, images)
+    };
+    let variants = generator::write_variants(&scratch, &stem, &images)?;
+    let Some(chosen) = pick_image(hwnd, &scratch, if id == CREATE_SIGNATURE { "Choose a Signature" } else { "Choose a Stamp" })? else {
+        return Ok(());
+    };
+    let same = |a: &Path, b: &Path| matches!((a.canonicalize(), b.canonicalize()), (Ok(x), Ok(y)) if x == y);
+    if !variants.iter().any(|path| same(path, &chosen)) {
+        return Err("Choose one of the generated pictures.".into());
+    }
+    let kind = if id == CREATE_SIGNATURE { "Signature" } else { "Stamp" };
+    generator::keep_in_library(&chosen, &library, &format!("{} - {stem}", crate::localization::text(kind)))?;
+    msg(hwnd, "Saved to the shared signature and stamp library.", MB_OK | MB_ICONINFORMATION);
+    Ok(())
 }
 
 unsafe fn mark_command(hwnd: HWND, id: u16) -> Result<(), String> {
@@ -2809,6 +2866,8 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                     | CREATE_BARCODE
                     | IMPORT_MARK
                     | INSERT_MARK
+                    | CREATE_SIGNATURE
+                    | CREATE_STAMP
                     | EXPORT_TECHNICAL
                     | INSERT_TECHNICAL
                     | EDIT_TECHNICAL
@@ -2820,6 +2879,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                     INSERT_TECHNICAL | EDIT_TECHNICAL => {
                         technical_command(hwnd, id == EDIT_TECHNICAL)
                     }
+                    CREATE_SIGNATURE | CREATE_STAMP => generator_command(hwnd, id),
                     _ => mark_command(hwnd, id),
                 };
                 if let Err(error) = result {
@@ -3998,6 +4058,9 @@ pub fn run(app: Box<dyn App>) {
         }
         if app.supports_marks() {
             let menu = CreatePopupMenu();
+            item(menu, CREATE_SIGNATURE, "Create Signature…");
+            item(menu, CREATE_STAMP, "Create Stamp…");
+            AppendMenuW(menu, MF_SEPARATOR, 0, null());
             item(menu, IMPORT_MARK, "Import to Library…");
             item(menu, INSERT_MARK, "Insert from Library…");
             AppendMenuW(

@@ -267,184 +267,6 @@
   }
  },
  {
-  "id": "fcc-sdoc",
-  "file": "fcc-sdoc.svg",
-  "lablyID": "FCC",
-  "category": "certification",
-  "legal": "limited",
-  "registrationNumber": false,
-  "unverified": false,
-  "aspect": 1.322,
-  "copy": {
-   "en": {
-    "name": "FCC",
-    "description": "US radio-frequency equipment authorization mark; use only for equipment covered by a valid FCC authorization.",
-    "warning": "Verify the applicable requirement and label wording before use.",
-    "category": "Conformity",
-    "region": "USA"
-   },
-   "ru": {
-    "name": "FCC",
-    "description": "Знак разрешения FCC для радиооборудования США; применяйте только при наличии действующего разрешения на это оборудование.",
-    "warning": "Перед применением проверьте требование и текст маркировки.",
-    "category": "Соответствие",
-    "region": "США"
-   },
-   "tr": {
-    "name": "FCC",
-    "description": "ABD radyo frekansı ekipman yetkilendirme işaretidir; yalnızca cihaz için geçerli FCC yetkisi varsa kullanın.",
-    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
-    "category": "Uygunluk",
-    "region": "ABD"
-   },
-   "de": {
-    "name": "FCC",
-    "description": "US-Zulassungszeichen für Funkgeräte; nur bei gültiger FCC-Zulassung für das jeweilige Gerät verwenden.",
-    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
-    "category": "Konformität",
-    "region": "USA"
-   },
-   "fr": {
-    "name": "FCC",
-    "description": "Marque d’autorisation FCC pour les équipements radio aux États-Unis ; à utiliser seulement avec une autorisation valide.",
-    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
-    "category": "Conformité",
-    "region": "États-Unis"
-   },
-   "es": {
-    "name": "FCC",
-    "description": "Marca de autorización FCC para equipos de radiofrecuencia de EE. UU.; úsela solo con una autorización vigente.",
-    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
-    "category": "Conformidad",
-    "region": "Estados Unidos"
-   },
-   "it": {
-    "name": "FCC",
-    "description": "Marchio di autorizzazione FCC per apparecchi radio negli Stati Uniti; usare solo con autorizzazione valida.",
-    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
-    "category": "Conformità",
-    "region": "Stati Uniti"
-   },
-   "zh-Hans": {
-    "name": "FCC",
-    "description": "美国射频设备授权标志；仅用于具有有效 FCC 授权的设备。",
-    "warning": "使用前核实适用要求及标签措辞。",
-    "category": "符合性",
-    "region": "美国"
-   },
-   "zh-Hant": {
-    "name": "FCC",
-    "description": "美國射頻裝置授權標誌；僅用於具有有效 FCC 授權的裝置。",
-    "warning": "使用前核實適用要求及標籤措辭。",
-    "category": "符合性",
-    "region": "美國"
-   },
-   "ko": {
-    "name": "FCC",
-    "description": "미국 무선 주파수 장비 승인 표시입니다. 유효한 FCC 승인 대상 장비에만 사용하세요.",
-    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
-    "category": "적합성",
-    "region": "미국"
-   },
-   "ja": {
-    "name": "FCC",
-    "description": "米国の無線周波数機器の認可マークです。有効な FCC 認可を受けた機器のみに使用します。",
-    "warning": "使用前に適用要件とラベルの表記を確認してください。",
-    "category": "適合性",
-    "region": "米国"
-   }
-  }
- },
- {
-  "id": "fcc-id-label",
-  "file": "fcc-id-label.svg",
-  "lablyID": "FCC_ID",
-  "category": "certification",
-  "legal": "limited",
-  "registrationNumber": false,
-  "unverified": false,
-  "aspect": 1,
-  "copy": {
-   "en": {
-    "name": "FCC Part 15 statement",
-    "description": "Bundled artwork is a generic Part 15 statement label, not an FCC ID mark. Add the actual FCC ID only when applicable.",
-    "warning": "Verify the applicable requirement and label wording before use.",
-    "category": "Conformity",
-    "region": "USA"
-   },
-   "ru": {
-    "name": "Заявление FCC Part 15",
-    "description": "В макете приведено общее заявление Part 15, а не знак FCC ID. Добавьте фактический идентификатор FCC только при необходимости.",
-    "warning": "Перед применением проверьте требование и текст маркировки.",
-    "category": "Соответствие",
-    "region": "США"
-   },
-   "tr": {
-    "name": "FCC Part 15 beyanı",
-    "description": "Çizim genel Part 15 beyan etiketidir, FCC ID işareti değildir. Gerekiyorsa gerçek FCC ID eklenmelidir.",
-    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
-    "category": "Uygunluk",
-    "region": "ABD"
-   },
-   "de": {
-    "name": "FCC-Part-15-Erklärung",
-    "description": "Die Grafik zeigt eine allgemeine Part-15-Erklärung und kein FCC-ID-Zeichen. Eine tatsächliche FCC ID nur bei Bedarf ergänzen.",
-    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
-    "category": "Konformität",
-    "region": "USA"
-   },
-   "fr": {
-    "name": "Déclaration FCC Part 15",
-    "description": "Le dessin est une déclaration Part 15 générique, pas un marquage FCC ID. Ajouter le véritable identifiant uniquement si nécessaire.",
-    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
-    "category": "Conformité",
-    "region": "États-Unis"
-   },
-   "es": {
-    "name": "Declaración FCC Part 15",
-    "description": "El dibujo es una declaración genérica Part 15, no una marca FCC ID. Añada el identificador FCC real solo cuando corresponda.",
-    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
-    "category": "Conformidad",
-    "region": "Estados Unidos"
-   },
-   "it": {
-    "name": "Dichiarazione FCC Part 15",
-    "description": "Il disegno è una dichiarazione Part 15 generica, non un marchio FCC ID. Aggiungere il vero identificativo FCC solo quando necessario.",
-    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
-    "category": "Conformità",
-    "region": "Stati Uniti"
-   },
-   "zh-Hans": {
-    "name": "FCC Part 15 声明",
-    "description": "内置图形是通用 Part 15 声明，不是 FCC ID 标志。仅在适用时添加实际 FCC ID。",
-    "warning": "使用前核实适用要求及标签措辞。",
-    "category": "符合性",
-    "region": "美国"
-   },
-   "zh-Hant": {
-    "name": "FCC Part 15 宣告",
-    "description": "內建圖形是通用 Part 15 宣告，不是 FCC ID 標誌。僅在適用時新增實際 FCC ID。",
-    "warning": "使用前核實適用要求及標籤措辭。",
-    "category": "符合性",
-    "region": "美國"
-   },
-   "ko": {
-    "name": "FCC Part 15 문구",
-    "description": "기본 이미지는 일반 Part 15 문구이며 FCC ID 표시가 아닙니다. 해당하는 경우에만 실제 FCC ID를 추가하세요.",
-    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
-    "category": "적합성",
-    "region": "미국"
-   },
-   "ja": {
-    "name": "FCC Part 15 の声明",
-    "description": "内蔵画像は汎用の Part 15 声明で、FCC ID マークではありません。該当する場合のみ実際の FCC ID を追加します。",
-    "warning": "使用前に適用要件とラベルの表記を確認してください。",
-    "category": "適合性",
-    "region": "米国"
-   }
-  }
- },
- {
   "id": "ccc",
   "file": "ccc.svg",
   "lablyID": "CCC",
@@ -697,95 +519,6 @@
     "warning": "使用前に適用要件とラベルの表記を確認してください。",
     "category": "適合性",
     "region": "韓国"
-   }
-  }
- },
- {
-  "id": "rcm-official",
-  "file": "rcm-official.svg",
-  "lablyID": "RCM",
-  "category": "certification",
-  "legal": "limited",
-  "registrationNumber": false,
-  "unverified": false,
-  "aspect": 1.3544,
-  "copy": {
-   "en": {
-    "name": "Regulatory Compliance Mark (RCM)",
-    "description": "Official ACMA Regulatory Compliance Mark artwork. Apply it only where the applicable Australian or New Zealand requirements cover the product; the artwork alone does not establish compliance.",
-    "warning": "Verify the applicable requirement and label wording before use.",
-    "category": "Conformity",
-    "region": "Australia / New Zealand"
-   },
-   "ru": {
-    "name": "Regulatory Compliance Mark (RCM)",
-    "description": "Официальное изображение знака ACMA Regulatory Compliance Mark. Наносите его только если изделие подпадает под применимые требования Австралии или Новой Зеландии; само изображение не подтверждает соответствие.",
-    "warning": "Перед применением проверьте требование и текст маркировки.",
-    "category": "Соответствие",
-    "region": "Австралия / Новая Зеландия"
-   },
-   "tr": {
-    "name": "Regulatory Compliance Mark (RCM)",
-    "description": "Resmî ACMA Regulatory Compliance Mark görselidir. Yalnızca ürün ilgili Avustralya veya Yeni Zelanda gerekliliklerinin kapsamındaysa kullanın; görsel tek başına uygunluğu kanıtlamaz.",
-    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
-    "category": "Uygunluk",
-    "region": "Avustralya / Yeni Zelanda"
-   },
-   "de": {
-    "name": "Regulatory Compliance Mark (RCM)",
-    "description": "Offizielle Grafik der ACMA Regulatory Compliance Mark. Nur verwenden, wenn das Produkt unter die geltenden Anforderungen Australiens oder Neuseelands fällt; die Grafik allein belegt keine Konformität.",
-    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
-    "category": "Konformität",
-    "region": "Australien / Neuseeland"
-   },
-   "fr": {
-    "name": "Regulatory Compliance Mark (RCM)",
-    "description": "Visuel officiel de la Regulatory Compliance Mark de l’ACMA. À utiliser uniquement si le produit relève des exigences applicables en Australie ou en Nouvelle-Zélande ; le visuel seul ne prouve pas la conformité.",
-    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
-    "category": "Conformité",
-    "region": "Australie / Nouvelle-Zélande"
-   },
-   "es": {
-    "name": "Regulatory Compliance Mark (RCM)",
-    "description": "Gráfico oficial de la Regulatory Compliance Mark de ACMA. Úselo solo si el producto está sujeto a los requisitos aplicables de Australia o Nueva Zelanda; el gráfico por sí solo no demuestra conformidad.",
-    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
-    "category": "Conformidad",
-    "region": "Australia / Nueva Zelanda"
-   },
-   "it": {
-    "name": "Regulatory Compliance Mark (RCM)",
-    "description": "Grafica ufficiale della Regulatory Compliance Mark di ACMA. Usarla solo se il prodotto rientra nei requisiti applicabili in Australia o Nuova Zelanda; la grafica da sola non dimostra la conformità.",
-    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
-    "category": "Conformità",
-    "region": "Australia / Nuova Zelanda"
-   },
-   "zh-Hans": {
-    "name": "法规符合性标志（RCM）",
-    "description": "官方 ACMA RCM 图形。仅用于适用澳大利亚或新西兰法规的产品；图形本身不证明符合性。",
-    "warning": "使用前核实适用要求及标签措辞。",
-    "category": "符合性",
-    "region": "澳大利亚／新西兰"
-   },
-   "zh-Hant": {
-    "name": "法規符合性標誌（RCM）",
-    "description": "官方 ACMA RCM 圖形。僅用於適用澳大利亞或紐西蘭法規的產品；圖形本身不證明符合性。",
-    "warning": "使用前核實適用要求及標籤措辭。",
-    "category": "符合性",
-    "region": "澳大利亞／紐西蘭"
-   },
-   "ko": {
-    "name": "규제 적합성 표시(RCM)",
-    "description": "공식 ACMA RCM 이미지입니다. 해당 호주 또는 뉴질랜드 요건 대상 제품에만 적용하세요. 이미지 자체는 적합성의 증거가 아닙니다.",
-    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
-    "category": "적합성",
-    "region": "호주 / 뉴질랜드"
-   },
-   "ja": {
-    "name": "規制適合マーク（RCM）",
-    "description": "公式の ACMA RCM 図柄です。オーストラリアまたはニュージーランドの該当要件の対象製品のみに使用します。図柄だけでは適合を証明しません。",
-    "warning": "使用前に適用要件とラベルの表記を確認してください。",
-    "category": "適合性",
-    "region": "オーストラリア／ニュージーランド"
    }
   }
  },
@@ -1324,6 +1057,273 @@
   }
  },
  {
+  "id": "fcc-sdoc",
+  "file": "fcc-sdoc.svg",
+  "lablyID": "FCC",
+  "category": "certification",
+  "legal": "limited",
+  "registrationNumber": false,
+  "unverified": false,
+  "aspect": 1.322,
+  "copy": {
+   "en": {
+    "name": "FCC",
+    "description": "US radio-frequency equipment authorization mark; use only for equipment covered by a valid FCC authorization.",
+    "warning": "Verify the applicable requirement and label wording before use.",
+    "category": "Conformity",
+    "region": "USA"
+   },
+   "ru": {
+    "name": "FCC",
+    "description": "Знак разрешения FCC для радиооборудования США; применяйте только при наличии действующего разрешения на это оборудование.",
+    "warning": "Перед применением проверьте требование и текст маркировки.",
+    "category": "Соответствие",
+    "region": "США"
+   },
+   "tr": {
+    "name": "FCC",
+    "description": "ABD radyo frekansı ekipman yetkilendirme işaretidir; yalnızca cihaz için geçerli FCC yetkisi varsa kullanın.",
+    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
+    "category": "Uygunluk",
+    "region": "ABD"
+   },
+   "de": {
+    "name": "FCC",
+    "description": "US-Zulassungszeichen für Funkgeräte; nur bei gültiger FCC-Zulassung für das jeweilige Gerät verwenden.",
+    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
+    "category": "Konformität",
+    "region": "USA"
+   },
+   "fr": {
+    "name": "FCC",
+    "description": "Marque d’autorisation FCC pour les équipements radio aux États-Unis ; à utiliser seulement avec une autorisation valide.",
+    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
+    "category": "Conformité",
+    "region": "États-Unis"
+   },
+   "es": {
+    "name": "FCC",
+    "description": "Marca de autorización FCC para equipos de radiofrecuencia de EE. UU.; úsela solo con una autorización vigente.",
+    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
+    "category": "Conformidad",
+    "region": "Estados Unidos"
+   },
+   "it": {
+    "name": "FCC",
+    "description": "Marchio di autorizzazione FCC per apparecchi radio negli Stati Uniti; usare solo con autorizzazione valida.",
+    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
+    "category": "Conformità",
+    "region": "Stati Uniti"
+   },
+   "zh-Hans": {
+    "name": "FCC",
+    "description": "美国射频设备授权标志；仅用于具有有效 FCC 授权的设备。",
+    "warning": "使用前核实适用要求及标签措辞。",
+    "category": "符合性",
+    "region": "美国"
+   },
+   "zh-Hant": {
+    "name": "FCC",
+    "description": "美國射頻裝置授權標誌；僅用於具有有效 FCC 授權的裝置。",
+    "warning": "使用前核實適用要求及標籤措辭。",
+    "category": "符合性",
+    "region": "美國"
+   },
+   "ko": {
+    "name": "FCC",
+    "description": "미국 무선 주파수 장비 승인 표시입니다. 유효한 FCC 승인 대상 장비에만 사용하세요.",
+    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
+    "category": "적합성",
+    "region": "미국"
+   },
+   "ja": {
+    "name": "FCC",
+    "description": "米国の無線周波数機器の認可マークです。有効な FCC 認可を受けた機器のみに使用します。",
+    "warning": "使用前に適用要件とラベルの表記を確認してください。",
+    "category": "適合性",
+    "region": "米国"
+   }
+  }
+ },
+ {
+  "id": "fcc-id-label",
+  "file": "fcc-id-label.svg",
+  "lablyID": "FCC_ID",
+  "category": "certification",
+  "legal": "limited",
+  "registrationNumber": false,
+  "unverified": false,
+  "aspect": 1,
+  "copy": {
+   "en": {
+    "name": "FCC Part 15 statement",
+    "description": "Bundled artwork is a generic Part 15 statement label, not an FCC ID mark. Add the actual FCC ID only when applicable.",
+    "warning": "Verify the applicable requirement and label wording before use.",
+    "category": "Conformity",
+    "region": "USA"
+   },
+   "ru": {
+    "name": "Заявление FCC Part 15",
+    "description": "В макете приведено общее заявление Part 15, а не знак FCC ID. Добавьте фактический идентификатор FCC только при необходимости.",
+    "warning": "Перед применением проверьте требование и текст маркировки.",
+    "category": "Соответствие",
+    "region": "США"
+   },
+   "tr": {
+    "name": "FCC Part 15 beyanı",
+    "description": "Çizim genel Part 15 beyan etiketidir, FCC ID işareti değildir. Gerekiyorsa gerçek FCC ID eklenmelidir.",
+    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
+    "category": "Uygunluk",
+    "region": "ABD"
+   },
+   "de": {
+    "name": "FCC-Part-15-Erklärung",
+    "description": "Die Grafik zeigt eine allgemeine Part-15-Erklärung und kein FCC-ID-Zeichen. Eine tatsächliche FCC ID nur bei Bedarf ergänzen.",
+    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
+    "category": "Konformität",
+    "region": "USA"
+   },
+   "fr": {
+    "name": "Déclaration FCC Part 15",
+    "description": "Le dessin est une déclaration Part 15 générique, pas un marquage FCC ID. Ajouter le véritable identifiant uniquement si nécessaire.",
+    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
+    "category": "Conformité",
+    "region": "États-Unis"
+   },
+   "es": {
+    "name": "Declaración FCC Part 15",
+    "description": "El dibujo es una declaración genérica Part 15, no una marca FCC ID. Añada el identificador FCC real solo cuando corresponda.",
+    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
+    "category": "Conformidad",
+    "region": "Estados Unidos"
+   },
+   "it": {
+    "name": "Dichiarazione FCC Part 15",
+    "description": "Il disegno è una dichiarazione Part 15 generica, non un marchio FCC ID. Aggiungere il vero identificativo FCC solo quando necessario.",
+    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
+    "category": "Conformità",
+    "region": "Stati Uniti"
+   },
+   "zh-Hans": {
+    "name": "FCC Part 15 声明",
+    "description": "内置图形是通用 Part 15 声明，不是 FCC ID 标志。仅在适用时添加实际 FCC ID。",
+    "warning": "使用前核实适用要求及标签措辞。",
+    "category": "符合性",
+    "region": "美国"
+   },
+   "zh-Hant": {
+    "name": "FCC Part 15 宣告",
+    "description": "內建圖形是通用 Part 15 宣告，不是 FCC ID 標誌。僅在適用時新增實際 FCC ID。",
+    "warning": "使用前核實適用要求及標籤措辭。",
+    "category": "符合性",
+    "region": "美國"
+   },
+   "ko": {
+    "name": "FCC Part 15 문구",
+    "description": "기본 이미지는 일반 Part 15 문구이며 FCC ID 표시가 아닙니다. 해당하는 경우에만 실제 FCC ID를 추가하세요.",
+    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
+    "category": "적합성",
+    "region": "미국"
+   },
+   "ja": {
+    "name": "FCC Part 15 の声明",
+    "description": "内蔵画像は汎用の Part 15 声明で、FCC ID マークではありません。該当する場合のみ実際の FCC ID を追加します。",
+    "warning": "使用前に適用要件とラベルの表記を確認してください。",
+    "category": "適合性",
+    "region": "米国"
+   }
+  }
+ },
+ {
+  "id": "rcm-official",
+  "file": "rcm-official.svg",
+  "lablyID": "RCM",
+  "category": "certification",
+  "legal": "limited",
+  "registrationNumber": false,
+  "unverified": false,
+  "aspect": 1.3544,
+  "copy": {
+   "en": {
+    "name": "Regulatory Compliance Mark (RCM)",
+    "description": "Official ACMA Regulatory Compliance Mark artwork. Apply it only where the applicable Australian or New Zealand requirements cover the product; the artwork alone does not establish compliance.",
+    "warning": "Verify the applicable requirement and label wording before use.",
+    "category": "Conformity",
+    "region": "Australia / New Zealand"
+   },
+   "ru": {
+    "name": "Regulatory Compliance Mark (RCM)",
+    "description": "Официальное изображение знака ACMA Regulatory Compliance Mark. Наносите его только если изделие подпадает под применимые требования Австралии или Новой Зеландии; само изображение не подтверждает соответствие.",
+    "warning": "Перед применением проверьте требование и текст маркировки.",
+    "category": "Соответствие",
+    "region": "Австралия / Новая Зеландия"
+   },
+   "tr": {
+    "name": "Regulatory Compliance Mark (RCM)",
+    "description": "Resmî ACMA Regulatory Compliance Mark görselidir. Yalnızca ürün ilgili Avustralya veya Yeni Zelanda gerekliliklerinin kapsamındaysa kullanın; görsel tek başına uygunluğu kanıtlamaz.",
+    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
+    "category": "Uygunluk",
+    "region": "Avustralya / Yeni Zelanda"
+   },
+   "de": {
+    "name": "Regulatory Compliance Mark (RCM)",
+    "description": "Offizielle Grafik der ACMA Regulatory Compliance Mark. Nur verwenden, wenn das Produkt unter die geltenden Anforderungen Australiens oder Neuseelands fällt; die Grafik allein belegt keine Konformität.",
+    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
+    "category": "Konformität",
+    "region": "Australien / Neuseeland"
+   },
+   "fr": {
+    "name": "Regulatory Compliance Mark (RCM)",
+    "description": "Visuel officiel de la Regulatory Compliance Mark de l’ACMA. À utiliser uniquement si le produit relève des exigences applicables en Australie ou en Nouvelle-Zélande ; le visuel seul ne prouve pas la conformité.",
+    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
+    "category": "Conformité",
+    "region": "Australie / Nouvelle-Zélande"
+   },
+   "es": {
+    "name": "Regulatory Compliance Mark (RCM)",
+    "description": "Gráfico oficial de la Regulatory Compliance Mark de ACMA. Úselo solo si el producto está sujeto a los requisitos aplicables de Australia o Nueva Zelanda; el gráfico por sí solo no demuestra conformidad.",
+    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
+    "category": "Conformidad",
+    "region": "Australia / Nueva Zelanda"
+   },
+   "it": {
+    "name": "Regulatory Compliance Mark (RCM)",
+    "description": "Grafica ufficiale della Regulatory Compliance Mark di ACMA. Usarla solo se il prodotto rientra nei requisiti applicabili in Australia o Nuova Zelanda; la grafica da sola non dimostra la conformità.",
+    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
+    "category": "Conformità",
+    "region": "Australia / Nuova Zelanda"
+   },
+   "zh-Hans": {
+    "name": "法规符合性标志（RCM）",
+    "description": "官方 ACMA RCM 图形。仅用于适用澳大利亚或新西兰法规的产品；图形本身不证明符合性。",
+    "warning": "使用前核实适用要求及标签措辞。",
+    "category": "符合性",
+    "region": "澳大利亚／新西兰"
+   },
+   "zh-Hant": {
+    "name": "法規符合性標誌（RCM）",
+    "description": "官方 ACMA RCM 圖形。僅用於適用澳大利亞或紐西蘭法規的產品；圖形本身不證明符合性。",
+    "warning": "使用前核實適用要求及標籤措辭。",
+    "category": "符合性",
+    "region": "澳大利亞／紐西蘭"
+   },
+   "ko": {
+    "name": "규제 적합성 표시(RCM)",
+    "description": "공식 ACMA RCM 이미지입니다. 해당 호주 또는 뉴질랜드 요건 대상 제품에만 적용하세요. 이미지 자체는 적합성의 증거가 아닙니다.",
+    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
+    "category": "적합성",
+    "region": "호주 / 뉴질랜드"
+   },
+   "ja": {
+    "name": "規制適合マーク（RCM）",
+    "description": "公式の ACMA RCM 図柄です。オーストラリアまたはニュージーランドの該当要件の対象製品のみに使用します。図柄だけでは適合を証明しません。",
+    "warning": "使用前に適用要件とラベルの表記を確認してください。",
+    "category": "適合性",
+    "region": "オーストラリア／ニュージーランド"
+   }
+  }
+ },
+ {
   "id": "pse",
   "file": "pse.svg",
   "lablyID": "PSE",
@@ -1413,91 +1413,91 @@
   }
  },
  {
-  "id": "ul-listed",
-  "file": "ul-listed.svg",
-  "lablyID": "UL",
+  "id": "insulation-class",
+  "file": "insulation-class.svg",
+  "lablyID": "Class_II",
   "category": "safety",
-  "legal": "trademark",
+  "legal": "limited",
   "registrationNumber": false,
   "unverified": false,
   "aspect": 1,
   "copy": {
    "en": {
-    "name": "UL Listed",
-    "description": "UL Listed indicates a product evaluated to the scope shown in its UL certification record.",
-    "warning": "Use only with the current authorization of the mark owner.",
+    "name": "Class II / double insulation",
+    "description": "Double-square equipment symbol. Use only when product construction and applicable product standard support Class II classification.",
+    "warning": "Verify the applicable requirement and label wording before use.",
     "category": "Electrical safety",
-    "region": "USA"
+    "region": "Universal"
    },
    "ru": {
-    "name": "UL Listed",
-    "description": "UL Listed означает, что изделие оценено в пределах области, указанной в записи о сертификации UL.",
-    "warning": "Используйте только при действующем разрешении владельца знака.",
+    "name": "Класс II / двойная изоляция",
+    "description": "Знак двойного квадрата. Применяйте только если конструкция и стандарт на изделие подтверждают класс II.",
+    "warning": "Перед применением проверьте требование и текст маркировки.",
     "category": "Электробезопасность",
-    "region": "США"
+    "region": "Универсально"
    },
    "tr": {
-    "name": "UL Listed",
-    "description": "UL Listed, ürünün UL sertifika kaydında belirtilen kapsamda değerlendirildiğini gösterir.",
-    "warning": "Yalnızca işaret sahibinin geçerli izniyle kullanın.",
+    "name": "Sınıf II / çift yalıtım",
+    "description": "Çift kare ekipman simgesi; yalnızca ürün yapısı ve ilgili standart Sınıf II’yi destekliyorsa kullanın.",
+    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
     "category": "Elektrik güvenliği",
-    "region": "ABD"
+    "region": "Genel"
    },
    "de": {
-    "name": "UL Listed",
-    "description": "UL Listed zeigt eine Produktbewertung im Umfang des jeweiligen UL-Zertifizierungseintrags an.",
-    "warning": "Nur mit aktueller Genehmigung des Zeicheninhabers verwenden.",
+    "name": "Klasse II / Schutzisolierung",
+    "description": "Doppelquadrat-Symbol. Nur verwenden, wenn Produktaufbau und Produktnorm die Klasse II bestätigen.",
+    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
     "category": "Elektrische Sicherheit",
-    "region": "USA"
+    "region": "Allgemein"
    },
    "fr": {
-    "name": "UL Listed",
-    "description": "UL Listed indique une évaluation du produit dans le champ précisé par son dossier de certification UL.",
-    "warning": "Utilisez uniquement avec l’autorisation actuelle du propriétaire de la marque.",
+    "name": "Classe II / double isolation",
+    "description": "Symbole à double carré. À utiliser seulement si la construction et la norme produit confirment la classe II.",
+    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
     "category": "Sécurité électrique",
-    "region": "États-Unis"
+    "region": "Universel"
    },
    "es": {
-    "name": "UL Listed",
-    "description": "UL Listed indica que el producto se evaluó dentro del alcance de su registro de certificación UL.",
-    "warning": "Úsela solo con autorización vigente del titular de la marca.",
+    "name": "Clase II / doble aislamiento",
+    "description": "Símbolo de doble cuadrado. Úselo solo si la construcción y la norma del producto confirman la clase II.",
+    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
     "category": "Seguridad eléctrica",
-    "region": "Estados Unidos"
+    "region": "General"
    },
    "it": {
-    "name": "UL Listed",
-    "description": "UL Listed indica una valutazione del prodotto nell’ambito registrato nella relativa certificazione UL.",
-    "warning": "Usare solo con l’autorizzazione attuale del titolare del marchio.",
+    "name": "Classe II / doppio isolamento",
+    "description": "Simbolo del doppio quadrato. Usare solo se la costruzione e la norma del prodotto confermano la classe II.",
+    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
     "category": "Sicurezza elettrica",
-    "region": "Stati Uniti"
+    "region": "Universale"
    },
    "zh-Hans": {
-    "name": "UL Listed",
-    "description": "UL Listed 表示产品按其 UL 认证记录中规定的范围通过评估。",
-    "warning": "仅在标志权利人当前授权下使用。",
+    "name": "II 类／双重绝缘",
+    "description": "双正方形设备符号。仅当产品结构及适用标准支持 II 类分类时使用。",
+    "warning": "使用前核实适用要求及标签措辞。",
     "category": "电气安全",
-    "region": "美国"
+    "region": "通用"
    },
    "zh-Hant": {
-    "name": "UL Listed",
-    "description": "UL Listed 表示產品按其 UL 認證記錄中規定的範圍透過評估。",
-    "warning": "僅在標誌權利人當前授權下使用。",
+    "name": "II 類／雙重絕緣",
+    "description": "雙正方形裝置符號。僅當產品結構及適用標準支援 II 類分類時使用。",
+    "warning": "使用前核實適用要求及標籤措辭。",
     "category": "電氣安全",
-    "region": "美國"
+    "region": "通用"
    },
    "ko": {
-    "name": "UL Listed",
-    "description": "UL Listed는 UL 인증 기록에 명시된 범위로 제품을 평가했음을 나타냅니다.",
-    "warning": "표시 소유자의 현재 허가가 있는 경우에만 사용하세요.",
+    "name": "클래스 II / 이중 절연",
+    "description": "이중 사각형 기호입니다. 제품 구조와 적용 표준이 클래스 II 분류를 뒷받침하는 경우에만 사용하세요.",
+    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
     "category": "전기 안전",
-    "region": "미국"
+    "region": "공통"
    },
    "ja": {
-    "name": "UL Listed",
-    "description": "UL Listed は、UL 認証記録に記載された範囲で評価された製品を示します。",
-    "warning": "マークの権利者の現在の許可を得た場合のみ使用してください。",
+    "name": "クラス II／二重絶縁",
+    "description": "二重正方形の機器記号です。構造と適用規格がクラス II 分類を裏付ける場合のみ使用します。",
+    "warning": "使用前に適用要件とラベルの表記を確認してください。",
     "category": "電気安全",
-    "region": "米国"
+    "region": "共通"
    }
   }
  },
@@ -1947,98 +1947,9 @@
   }
  },
  {
-  "id": "insulation-class",
-  "file": "insulation-class.svg",
-  "lablyID": "Class_II",
-  "category": "safety",
-  "legal": "limited",
-  "registrationNumber": false,
-  "unverified": false,
-  "aspect": 1,
-  "copy": {
-   "en": {
-    "name": "Class II / double insulation",
-    "description": "Double-square equipment symbol. Use only when product construction and applicable product standard support Class II classification.",
-    "warning": "Verify the applicable requirement and label wording before use.",
-    "category": "Electrical safety",
-    "region": "Universal"
-   },
-   "ru": {
-    "name": "Класс II / двойная изоляция",
-    "description": "Знак двойного квадрата. Применяйте только если конструкция и стандарт на изделие подтверждают класс II.",
-    "warning": "Перед применением проверьте требование и текст маркировки.",
-    "category": "Электробезопасность",
-    "region": "Универсально"
-   },
-   "tr": {
-    "name": "Sınıf II / çift yalıtım",
-    "description": "Çift kare ekipman simgesi; yalnızca ürün yapısı ve ilgili standart Sınıf II’yi destekliyorsa kullanın.",
-    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
-    "category": "Elektrik güvenliği",
-    "region": "Genel"
-   },
-   "de": {
-    "name": "Klasse II / Schutzisolierung",
-    "description": "Doppelquadrat-Symbol. Nur verwenden, wenn Produktaufbau und Produktnorm die Klasse II bestätigen.",
-    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
-    "category": "Elektrische Sicherheit",
-    "region": "Allgemein"
-   },
-   "fr": {
-    "name": "Classe II / double isolation",
-    "description": "Symbole à double carré. À utiliser seulement si la construction et la norme produit confirment la classe II.",
-    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
-    "category": "Sécurité électrique",
-    "region": "Universel"
-   },
-   "es": {
-    "name": "Clase II / doble aislamiento",
-    "description": "Símbolo de doble cuadrado. Úselo solo si la construcción y la norma del producto confirman la clase II.",
-    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
-    "category": "Seguridad eléctrica",
-    "region": "General"
-   },
-   "it": {
-    "name": "Classe II / doppio isolamento",
-    "description": "Simbolo del doppio quadrato. Usare solo se la costruzione e la norma del prodotto confermano la classe II.",
-    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
-    "category": "Sicurezza elettrica",
-    "region": "Universale"
-   },
-   "zh-Hans": {
-    "name": "II 类／双重绝缘",
-    "description": "双正方形设备符号。仅当产品结构及适用标准支持 II 类分类时使用。",
-    "warning": "使用前核实适用要求及标签措辞。",
-    "category": "电气安全",
-    "region": "通用"
-   },
-   "zh-Hant": {
-    "name": "II 類／雙重絕緣",
-    "description": "雙正方形裝置符號。僅當產品結構及適用標準支援 II 類分類時使用。",
-    "warning": "使用前核實適用要求及標籤措辭。",
-    "category": "電氣安全",
-    "region": "通用"
-   },
-   "ko": {
-    "name": "클래스 II / 이중 절연",
-    "description": "이중 사각형 기호입니다. 제품 구조와 적용 표준이 클래스 II 분류를 뒷받침하는 경우에만 사용하세요.",
-    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
-    "category": "전기 안전",
-    "region": "공통"
-   },
-   "ja": {
-    "name": "クラス II／二重絶縁",
-    "description": "二重正方形の機器記号です。構造と適用規格がクラス II 分類を裏付ける場合のみ使用します。",
-    "warning": "使用前に適用要件とラベルの表記を確認してください。",
-    "category": "電気安全",
-    "region": "共通"
-   }
-  }
- },
- {
   "id": "protective-earth",
   "file": "protective-earth.svg",
-  "lablyID": "Earth_ground",
+  "lablyID": "Protective_Earth",
   "category": "safety",
   "legal": "free",
   "registrationNumber": false,
@@ -2046,7 +1957,7 @@
   "aspect": 1,
   "copy": {
    "en": {
-    "name": "Earth ground",
+    "name": "Protective earth",
     "description": "Protective-earth terminal symbol, IEC 60417-5019.",
     "category": "Electrical safety",
     "region": "Universal"
@@ -2088,25 +1999,25 @@
     "region": "Universale"
    },
    "zh-Hans": {
-    "name": "接地",
+    "name": "保护接地",
     "description": "保护接地端子符号，IEC 60417-5019。",
     "category": "电气安全",
     "region": "通用"
    },
    "zh-Hant": {
-    "name": "接地",
+    "name": "保護接地",
     "description": "保護接地端子符號，IEC 60417-5019。",
     "category": "電氣安全",
     "region": "通用"
    },
    "ko": {
-    "name": "접지",
+    "name": "보호 접지",
     "description": "보호 접지 단자 기호, IEC 60417-5019.",
     "category": "전기 안전",
     "region": "공통"
    },
    "ja": {
-    "name": "接地",
+    "name": "保護接地",
     "description": "保護接地端子の記号、IEC 60417-5019。",
     "category": "電気安全",
     "region": "共通"
@@ -2853,184 +2764,6 @@
    "ja": {
     "name": "入（電源）",
     "description": "IEC 60417-5007、入（電源）。",
-    "warning": "使用前に適用要件とラベルの表記を確認してください。",
-    "category": "電気安全",
-    "region": "共通"
-   }
-  }
- },
- {
-  "id": "mains-powered",
-  "file": "mains-powered.svg",
-  "lablyID": "Off_O",
-  "category": "safety",
-  "legal": "limited",
-  "registrationNumber": false,
-  "unverified": false,
-  "aspect": 1,
-  "copy": {
-   "en": {
-    "name": "OFF (power)",
-    "description": "IEC 60417-5008, OFF (power).",
-    "warning": "Verify the applicable requirement and label wording before use.",
-    "category": "Electrical safety",
-    "region": "Universal"
-   },
-   "ru": {
-    "name": "ВЫКЛ (питание)",
-    "description": "IEC 60417-5008: питание выключено.",
-    "warning": "Перед применением проверьте требование и текст маркировки.",
-    "category": "Электробезопасность",
-    "region": "Универсально"
-   },
-   "tr": {
-    "name": "KAPALI (güç)",
-    "description": "IEC 60417-5008: güç kapalı.",
-    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
-    "category": "Elektrik güvenliği",
-    "region": "Genel"
-   },
-   "de": {
-    "name": "AUS (Strom)",
-    "description": "IEC 60417-5008: ausgeschaltet.",
-    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
-    "category": "Elektrische Sicherheit",
-    "region": "Allgemein"
-   },
-   "fr": {
-    "name": "ARRÊT (alimentation)",
-    "description": "IEC 60417-5008 : alimentation coupée.",
-    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
-    "category": "Sécurité électrique",
-    "region": "Universel"
-   },
-   "es": {
-    "name": "APAGADO (alimentación)",
-    "description": "IEC 60417-5008: alimentación apagada.",
-    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
-    "category": "Seguridad eléctrica",
-    "region": "General"
-   },
-   "it": {
-    "name": "SPENTO (alimentazione)",
-    "description": "IEC 60417-5008: alimentazione spenta.",
-    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
-    "category": "Sicurezza elettrica",
-    "region": "Universale"
-   },
-   "zh-Hans": {
-    "name": "关闭（电源）",
-    "description": "IEC 60417-5008，关闭（电源）。",
-    "warning": "使用前核实适用要求及标签措辞。",
-    "category": "电气安全",
-    "region": "通用"
-   },
-   "zh-Hant": {
-    "name": "關閉（電源）",
-    "description": "IEC 60417-5008，關閉（電源）。",
-    "warning": "使用前核實適用要求及標籤措辭。",
-    "category": "電氣安全",
-    "region": "通用"
-   },
-   "ko": {
-    "name": "꺼짐(전원)",
-    "description": "IEC 60417-5008, 꺼짐(전원).",
-    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
-    "category": "전기 안전",
-    "region": "공통"
-   },
-   "ja": {
-    "name": "切（電源）",
-    "description": "IEC 60417-5008、切（電源）。",
-    "warning": "使用前に適用要件とラベルの表記を確認してください。",
-    "category": "電気安全",
-    "region": "共通"
-   }
-  }
- },
- {
-  "id": "on-off-iec-60417",
-  "file": "on-off-iec-60417.svg",
-  "lablyID": "On_Off_IEC",
-  "category": "safety",
-  "legal": "limited",
-  "registrationNumber": false,
-  "unverified": false,
-  "aspect": 1,
-  "copy": {
-   "en": {
-    "name": "ON/OFF (push-push)",
-    "description": "IEC 60417-5010, ON/OFF push-push control. This is not the stand-by symbol (5009).",
-    "warning": "Verify the applicable requirement and label wording before use.",
-    "category": "Electrical safety",
-    "region": "Universal"
-   },
-   "ru": {
-    "name": "ВКЛ/ВЫКЛ (кнопка с фиксацией)",
-    "description": "IEC 60417-5010: включение/выключение нажатием с фиксацией. Это не режим ожидания (5009).",
-    "warning": "Перед применением проверьте требование и текст маркировки.",
-    "category": "Электробезопасность",
-    "region": "Универсально"
-   },
-   "tr": {
-    "name": "AÇIK/KAPALI (basmalı)",
-    "description": "IEC 60417-5010: basmalı açma/kapama. Bekleme simgesi (5009) değildir.",
-    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
-    "category": "Elektrik güvenliği",
-    "region": "Genel"
-   },
-   "de": {
-    "name": "EIN/AUS (Druck-Druck)",
-    "description": "IEC 60417-5010: rastende EIN/AUS-Betätigung. Nicht das Stand-by-Zeichen (5009).",
-    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
-    "category": "Elektrische Sicherheit",
-    "region": "Allgemein"
-   },
-   "fr": {
-    "name": "MARCHE/ARRÊT (pousser-pousser)",
-    "description": "IEC 60417-5010 : commande marche/arrêt à enclenchement. Ce n’est pas le symbole veille (5009).",
-    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
-    "category": "Sécurité électrique",
-    "region": "Universel"
-   },
-   "es": {
-    "name": "ENCENDIDO/APAGADO (pulsar-pulsar)",
-    "description": "IEC 60417-5010: control enclavado de encendido/apagado. No es el símbolo de espera (5009).",
-    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
-    "category": "Seguridad eléctrica",
-    "region": "General"
-   },
-   "it": {
-    "name": "ACCESO/SPENTO (premi-premi)",
-    "description": "IEC 60417-5010: comando acceso/spento a scatto. Non è il simbolo di standby (5009).",
-    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
-    "category": "Sicurezza elettrica",
-    "region": "Universale"
-   },
-   "zh-Hans": {
-    "name": "开／关（按压切换）",
-    "description": "IEC 60417-5010 按压式开／关控制，不是待机符号（5009）。",
-    "warning": "使用前核实适用要求及标签措辞。",
-    "category": "电气安全",
-    "region": "通用"
-   },
-   "zh-Hant": {
-    "name": "開／關（按壓切換）",
-    "description": "IEC 60417-5010 按壓式開／關控制，不是待機符號（5009）。",
-    "warning": "使用前核實適用要求及標籤措辭。",
-    "category": "電氣安全",
-    "region": "通用"
-   },
-   "ko": {
-    "name": "켜짐/꺼짐(누름 전환)",
-    "description": "IEC 60417-5010 누름식 켜짐/꺼짐 제어입니다. 대기 기호(5009)가 아닙니다.",
-    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
-    "category": "전기 안전",
-    "region": "공통"
-   },
-   "ja": {
-    "name": "入／切（押すたびに切替）",
-    "description": "IEC 60417-5010 の押すたびに切り替わる入／切制御です。待機記号（5009）ではありません。",
     "warning": "使用前に適用要件とラベルの表記を確認してください。",
     "category": "電気安全",
     "region": "共通"
@@ -3985,6 +3718,273 @@
   }
  },
  {
+  "id": "ul-listed",
+  "file": "ul-listed.svg",
+  "lablyID": "UL",
+  "category": "safety",
+  "legal": "trademark",
+  "registrationNumber": false,
+  "unverified": false,
+  "aspect": 1,
+  "copy": {
+   "en": {
+    "name": "UL Listed",
+    "description": "UL Listed indicates a product evaluated to the scope shown in its UL certification record.",
+    "warning": "Use only with the current authorization of the mark owner.",
+    "category": "Electrical safety",
+    "region": "USA"
+   },
+   "ru": {
+    "name": "UL Listed",
+    "description": "UL Listed означает, что изделие оценено в пределах области, указанной в записи о сертификации UL.",
+    "warning": "Используйте только при действующем разрешении владельца знака.",
+    "category": "Электробезопасность",
+    "region": "США"
+   },
+   "tr": {
+    "name": "UL Listed",
+    "description": "UL Listed, ürünün UL sertifika kaydında belirtilen kapsamda değerlendirildiğini gösterir.",
+    "warning": "Yalnızca işaret sahibinin geçerli izniyle kullanın.",
+    "category": "Elektrik güvenliği",
+    "region": "ABD"
+   },
+   "de": {
+    "name": "UL Listed",
+    "description": "UL Listed zeigt eine Produktbewertung im Umfang des jeweiligen UL-Zertifizierungseintrags an.",
+    "warning": "Nur mit aktueller Genehmigung des Zeicheninhabers verwenden.",
+    "category": "Elektrische Sicherheit",
+    "region": "USA"
+   },
+   "fr": {
+    "name": "UL Listed",
+    "description": "UL Listed indique une évaluation du produit dans le champ précisé par son dossier de certification UL.",
+    "warning": "Utilisez uniquement avec l’autorisation actuelle du propriétaire de la marque.",
+    "category": "Sécurité électrique",
+    "region": "États-Unis"
+   },
+   "es": {
+    "name": "UL Listed",
+    "description": "UL Listed indica que el producto se evaluó dentro del alcance de su registro de certificación UL.",
+    "warning": "Úsela solo con autorización vigente del titular de la marca.",
+    "category": "Seguridad eléctrica",
+    "region": "Estados Unidos"
+   },
+   "it": {
+    "name": "UL Listed",
+    "description": "UL Listed indica una valutazione del prodotto nell’ambito registrato nella relativa certificazione UL.",
+    "warning": "Usare solo con l’autorizzazione attuale del titolare del marchio.",
+    "category": "Sicurezza elettrica",
+    "region": "Stati Uniti"
+   },
+   "zh-Hans": {
+    "name": "UL Listed",
+    "description": "UL Listed 表示产品按其 UL 认证记录中规定的范围通过评估。",
+    "warning": "仅在标志权利人当前授权下使用。",
+    "category": "电气安全",
+    "region": "美国"
+   },
+   "zh-Hant": {
+    "name": "UL Listed",
+    "description": "UL Listed 表示產品按其 UL 認證記錄中規定的範圍透過評估。",
+    "warning": "僅在標誌權利人當前授權下使用。",
+    "category": "電氣安全",
+    "region": "美國"
+   },
+   "ko": {
+    "name": "UL Listed",
+    "description": "UL Listed는 UL 인증 기록에 명시된 범위로 제품을 평가했음을 나타냅니다.",
+    "warning": "표시 소유자의 현재 허가가 있는 경우에만 사용하세요.",
+    "category": "전기 안전",
+    "region": "미국"
+   },
+   "ja": {
+    "name": "UL Listed",
+    "description": "UL Listed は、UL 認証記録に記載された範囲で評価された製品を示します。",
+    "warning": "マークの権利者の現在の許可を得た場合のみ使用してください。",
+    "category": "電気安全",
+    "region": "米国"
+   }
+  }
+ },
+ {
+  "id": "mains-powered",
+  "file": "mains-powered.svg",
+  "lablyID": "Off_O",
+  "category": "safety",
+  "legal": "limited",
+  "registrationNumber": false,
+  "unverified": false,
+  "aspect": 1,
+  "copy": {
+   "en": {
+    "name": "OFF (power)",
+    "description": "IEC 60417-5008, OFF (power).",
+    "warning": "Verify the applicable requirement and label wording before use.",
+    "category": "Electrical safety",
+    "region": "Universal"
+   },
+   "ru": {
+    "name": "ВЫКЛ (питание)",
+    "description": "IEC 60417-5008: питание выключено.",
+    "warning": "Перед применением проверьте требование и текст маркировки.",
+    "category": "Электробезопасность",
+    "region": "Универсально"
+   },
+   "tr": {
+    "name": "KAPALI (güç)",
+    "description": "IEC 60417-5008: güç kapalı.",
+    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
+    "category": "Elektrik güvenliği",
+    "region": "Genel"
+   },
+   "de": {
+    "name": "AUS (Strom)",
+    "description": "IEC 60417-5008: ausgeschaltet.",
+    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
+    "category": "Elektrische Sicherheit",
+    "region": "Allgemein"
+   },
+   "fr": {
+    "name": "ARRÊT (alimentation)",
+    "description": "IEC 60417-5008 : alimentation coupée.",
+    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
+    "category": "Sécurité électrique",
+    "region": "Universel"
+   },
+   "es": {
+    "name": "APAGADO (alimentación)",
+    "description": "IEC 60417-5008: alimentación apagada.",
+    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
+    "category": "Seguridad eléctrica",
+    "region": "General"
+   },
+   "it": {
+    "name": "SPENTO (alimentazione)",
+    "description": "IEC 60417-5008: alimentazione spenta.",
+    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
+    "category": "Sicurezza elettrica",
+    "region": "Universale"
+   },
+   "zh-Hans": {
+    "name": "关闭（电源）",
+    "description": "IEC 60417-5008，关闭（电源）。",
+    "warning": "使用前核实适用要求及标签措辞。",
+    "category": "电气安全",
+    "region": "通用"
+   },
+   "zh-Hant": {
+    "name": "關閉（電源）",
+    "description": "IEC 60417-5008，關閉（電源）。",
+    "warning": "使用前核實適用要求及標籤措辭。",
+    "category": "電氣安全",
+    "region": "通用"
+   },
+   "ko": {
+    "name": "꺼짐(전원)",
+    "description": "IEC 60417-5008, 꺼짐(전원).",
+    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
+    "category": "전기 안전",
+    "region": "공통"
+   },
+   "ja": {
+    "name": "切（電源）",
+    "description": "IEC 60417-5008、切（電源）。",
+    "warning": "使用前に適用要件とラベルの表記を確認してください。",
+    "category": "電気安全",
+    "region": "共通"
+   }
+  }
+ },
+ {
+  "id": "on-off-iec-60417",
+  "file": "on-off-iec-60417.svg",
+  "lablyID": "On_Off_IEC",
+  "category": "safety",
+  "legal": "limited",
+  "registrationNumber": false,
+  "unverified": false,
+  "aspect": 1,
+  "copy": {
+   "en": {
+    "name": "ON/OFF (push-push)",
+    "description": "IEC 60417-5010, ON/OFF push-push control. This is not the stand-by symbol (5009).",
+    "warning": "Verify the applicable requirement and label wording before use.",
+    "category": "Electrical safety",
+    "region": "Universal"
+   },
+   "ru": {
+    "name": "ВКЛ/ВЫКЛ (кнопка с фиксацией)",
+    "description": "IEC 60417-5010: включение/выключение нажатием с фиксацией. Это не режим ожидания (5009).",
+    "warning": "Перед применением проверьте требование и текст маркировки.",
+    "category": "Электробезопасность",
+    "region": "Универсально"
+   },
+   "tr": {
+    "name": "AÇIK/KAPALI (basmalı)",
+    "description": "IEC 60417-5010: basmalı açma/kapama. Bekleme simgesi (5009) değildir.",
+    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
+    "category": "Elektrik güvenliği",
+    "region": "Genel"
+   },
+   "de": {
+    "name": "EIN/AUS (Druck-Druck)",
+    "description": "IEC 60417-5010: rastende EIN/AUS-Betätigung. Nicht das Stand-by-Zeichen (5009).",
+    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
+    "category": "Elektrische Sicherheit",
+    "region": "Allgemein"
+   },
+   "fr": {
+    "name": "MARCHE/ARRÊT (pousser-pousser)",
+    "description": "IEC 60417-5010 : commande marche/arrêt à enclenchement. Ce n’est pas le symbole veille (5009).",
+    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
+    "category": "Sécurité électrique",
+    "region": "Universel"
+   },
+   "es": {
+    "name": "ENCENDIDO/APAGADO (pulsar-pulsar)",
+    "description": "IEC 60417-5010: control enclavado de encendido/apagado. No es el símbolo de espera (5009).",
+    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
+    "category": "Seguridad eléctrica",
+    "region": "General"
+   },
+   "it": {
+    "name": "ACCESO/SPENTO (premi-premi)",
+    "description": "IEC 60417-5010: comando acceso/spento a scatto. Non è il simbolo di standby (5009).",
+    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
+    "category": "Sicurezza elettrica",
+    "region": "Universale"
+   },
+   "zh-Hans": {
+    "name": "开／关（按压切换）",
+    "description": "IEC 60417-5010 按压式开／关控制，不是待机符号（5009）。",
+    "warning": "使用前核实适用要求及标签措辞。",
+    "category": "电气安全",
+    "region": "通用"
+   },
+   "zh-Hant": {
+    "name": "開／關（按壓切換）",
+    "description": "IEC 60417-5010 按壓式開／關控制，不是待機符號（5009）。",
+    "warning": "使用前核實適用要求及標籤措辭。",
+    "category": "電氣安全",
+    "region": "通用"
+   },
+   "ko": {
+    "name": "켜짐/꺼짐(누름 전환)",
+    "description": "IEC 60417-5010 누름식 켜짐/꺼짐 제어입니다. 대기 기호(5009)가 아닙니다.",
+    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
+    "category": "전기 안전",
+    "region": "공통"
+   },
+   "ja": {
+    "name": "入／切（押すたびに切替）",
+    "description": "IEC 60417-5010 の押すたびに切り替わる入／切制御です。待機記号（5009）ではありません。",
+    "warning": "使用前に適用要件とラベルの表記を確認してください。",
+    "category": "電気安全",
+    "region": "共通"
+   }
+  }
+ },
+ {
   "id": "csa",
   "file": "csa.svg",
   "lablyID": "CSA",
@@ -4397,95 +4397,6 @@
   }
  },
  {
-  "id": "weee_bar",
-  "file": "weee_bar.svg",
-  "lablyID": "WEEE_bar",
-  "category": "environmental",
-  "legal": "limited",
-  "registrationNumber": false,
-  "unverified": false,
-  "aspect": 1,
-  "copy": {
-   "en": {
-    "name": "Separate collection (WEEE)",
-    "description": "Crossed-out wheeled bin with the bar used to identify equipment placed on the EU market after the directive date; verify applicability and artwork.",
-    "warning": "Verify the applicable requirement and label wording before use.",
-    "category": "Environment",
-    "region": "EU"
-   },
-   "ru": {
-    "name": "Раздельный сбор WEEE",
-    "description": "Перечёркнутая корзина с полосой для оборудования, размещённого на рынке ЕС после установленной директивой даты; проверьте применимость и изображение.",
-    "warning": "Перед применением проверьте требование и текст маркировки.",
-    "category": "Экология",
-    "region": "ЕС"
-   },
-   "tr": {
-    "name": "Ayrı toplama WEEE",
-    "description": "Üzeri çizili kutunun altındaki çubuk, direktif tarihinden sonra AB pazarına sunulan ekipmanı belirtir; uygulanabilirliği ve çizimi doğrulayın.",
-    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
-    "category": "Çevre",
-    "region": "AB"
-   },
-   "de": {
-    "name": "Getrennte Sammlung WEEE",
-    "description": "Der Balken unter der durchgestrichenen Tonne kennzeichnet Geräte, die nach dem Richtliniendatum in der EU in Verkehr kamen; Geltung und Grafik prüfen.",
-    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
-    "category": "Umwelt",
-    "region": "EU"
-   },
-   "fr": {
-    "name": "Collecte séparée WEEE",
-    "description": "La barre sous la poubelle barrée identifie les équipements mis sur le marché de l’UE après la date de la directive ; vérifier l’applicabilité et le dessin.",
-    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
-    "category": "Environnement",
-    "region": "UE"
-   },
-   "es": {
-    "name": "Recogida separada WEEE",
-    "description": "La barra bajo el contenedor tachado identifica equipos comercializados en la UE después de la fecha de la directiva; confirme aplicación y dibujo.",
-    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
-    "category": "Medio ambiente",
-    "region": "UE"
-   },
-   "it": {
-    "name": "Raccolta separata WEEE",
-    "description": "La barra sotto il bidone barrato identifica le apparecchiature immesse sul mercato UE dopo la data della direttiva; verificare applicabilità e grafica.",
-    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
-    "category": "Ambiente",
-    "region": "UE"
-   },
-   "zh-Hans": {
-    "name": "分类收集（WEEE）",
-    "description": "带横线的划叉垃圾桶，用于识别指令规定日期后投放欧盟市场的设备；请核实适用性和图形。",
-    "warning": "使用前核实适用要求及标签措辞。",
-    "category": "环境",
-    "region": "欧盟"
-   },
-   "zh-Hant": {
-    "name": "分類收集（WEEE）",
-    "description": "帶橫線的劃叉垃圾桶，用於識別指令規定日期後投放歐盟市場的裝置；請核實適用性和圖形。",
-    "warning": "使用前核實適用要求及標籤措辭。",
-    "category": "環境",
-    "region": "歐盟"
-   },
-   "ko": {
-    "name": "분리 수거(WEEE)",
-    "description": "아래 막대가 있는 쓰레기통 표시는 지침 기준일 이후 EU 시장에 출시된 장비를 식별합니다. 적용 여부와 이미지를 확인하세요.",
-    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
-    "category": "환경",
-    "region": "유럽연합"
-   },
-   "ja": {
-    "name": "分別回収（WEEE）",
-    "description": "下線付きのごみ箱の記号です。指令の基準日以降に EU 市場へ出された機器を示します。適用可否と図柄を確認してください。",
-    "warning": "使用前に適用要件とラベルの表記を確認してください。",
-    "category": "環境",
-    "region": "欧州連合"
-   }
-  }
- },
- {
   "id": "rohs",
   "file": "rohs.svg",
   "lablyID": "RoHS",
@@ -4571,173 +4482,6 @@
     "warning": "使用前に適用要件とラベルの表記を確認してください。",
     "category": "環境",
     "region": "欧州連合"
-   }
-  }
- },
- {
-  "id": "china_rohs",
-  "file": "china_rohs.svg",
-  "lablyID": "China_RoHS",
-  "category": "environmental",
-  "legal": "free",
-  "registrationNumber": false,
-  "unverified": false,
-  "aspect": 1,
-  "copy": {
-   "en": {
-    "name": "China RoHS",
-    "description": "EFUP states the environment-friendly use period in years; the number in the circle is product-specific.",
-    "category": "Environment",
-    "region": "China"
-   },
-   "ru": {
-    "name": "China RoHS",
-    "description": "EFUP указывает срок экологически безопасного использования в годах; число в круге зависит от изделия.",
-    "category": "Экология",
-    "region": "Китай"
-   },
-   "tr": {
-    "name": "China RoHS",
-    "description": "EFUP, çevre dostu kullanım süresini yıl olarak belirtir; daire içindeki sayı ürüne özeldir.",
-    "category": "Çevre",
-    "region": "Çin"
-   },
-   "de": {
-    "name": "China RoHS",
-    "description": "EFUP nennt die umweltfreundliche Nutzungsdauer in Jahren; die Zahl im Kreis ist produktspezifisch.",
-    "category": "Umwelt",
-    "region": "China"
-   },
-   "fr": {
-    "name": "China RoHS",
-    "description": "EFUP indique en années la période d’utilisation respectueuse de l’environnement ; le nombre dans le cercle dépend du produit.",
-    "category": "Environnement",
-    "region": "Chine"
-   },
-   "es": {
-    "name": "China RoHS",
-    "description": "EFUP expresa en años el periodo de uso respetuoso con el medio ambiente; el número del círculo depende del producto.",
-    "category": "Medio ambiente",
-    "region": "China"
-   },
-   "it": {
-    "name": "China RoHS",
-    "description": "EFUP indica in anni il periodo di uso rispettoso dell’ambiente; il numero nel cerchio dipende dal prodotto.",
-    "category": "Ambiente",
-    "region": "Cina"
-   },
-   "zh-Hans": {
-    "name": "中国 RoHS",
-    "description": "EFUP 表示以年计的环保使用期限；圆圈中的数字因产品而异。",
-    "category": "环境",
-    "region": "中国"
-   },
-   "zh-Hant": {
-    "name": "中國 RoHS",
-    "description": "EFUP 表示以年計的環保使用期限；圓圈中的數字因產品而異。",
-    "category": "環境",
-    "region": "中國"
-   },
-   "ko": {
-    "name": "중국 RoHS",
-    "description": "EFUP는 연 단위 환경보호 사용 기간이며 원 안의 숫자는 제품마다 다릅니다.",
-    "category": "환경",
-    "region": "중국"
-   },
-   "ja": {
-    "name": "中国 RoHS",
-    "description": "EFUP は年単位の環境保護使用期限を示します。円内の数字は製品ごとに異なります。",
-    "category": "環境",
-    "region": "中国"
-   }
-  }
- },
- {
-  "id": "pb_free",
-  "file": "pb_free.svg",
-  "lablyID": "Pb_free",
-  "category": "environmental",
-  "legal": "limited",
-  "registrationNumber": false,
-  "unverified": false,
-  "aspect": 1,
-  "copy": {
-   "en": {
-    "name": "Pb-free text",
-    "description": "Lead-free claim; use only when supplier and assembly evidence supports the claim.",
-    "warning": "Verify the applicable requirement and label wording before use.",
-    "category": "Environment",
-    "region": "Universal"
-   },
-   "ru": {
-    "name": "Текст Pb-free",
-    "description": "Заявление об отсутствии свинца; используйте только при наличии подтверждений от поставщика и производства.",
-    "warning": "Перед применением проверьте требование и текст маркировки.",
-    "category": "Экология",
-    "region": "Универсально"
-   },
-   "tr": {
-    "name": "Pb-free metni",
-    "description": "Kurşunsuzluk iddiası; yalnızca tedarikçi ve üretim kayıtları destekliyorsa kullanın.",
-    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
-    "category": "Çevre",
-    "region": "Genel"
-   },
-   "de": {
-    "name": "Pb-free-Text",
-    "description": "Bleifrei-Aussage; nur verwenden, wenn Lieferanten- und Fertigungsnachweise sie stützen.",
-    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
-    "category": "Umwelt",
-    "region": "Allgemein"
-   },
-   "fr": {
-    "name": "Texte Pb-free",
-    "description": "Allégation sans plomb ; à utiliser uniquement si les preuves du fournisseur et de fabrication la justifient.",
-    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
-    "category": "Environnement",
-    "region": "Universel"
-   },
-   "es": {
-    "name": "Texto Pb-free",
-    "description": "Declaración sin plomo; úsela solo si la respaldan pruebas del proveedor y de fabricación.",
-    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
-    "category": "Medio ambiente",
-    "region": "General"
-   },
-   "it": {
-    "name": "Testo Pb-free",
-    "description": "Dichiarazione senza piombo; usare solo se supportata da prove del fornitore e della produzione.",
-    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
-    "category": "Ambiente",
-    "region": "Universale"
-   },
-   "zh-Hans": {
-    "name": "Pb-free 文字",
-    "description": "无铅声明；仅在供应商和生产证据支持时使用。",
-    "warning": "使用前核实适用要求及标签措辞。",
-    "category": "环境",
-    "region": "通用"
-   },
-   "zh-Hant": {
-    "name": "Pb-free 文字",
-    "description": "無鉛宣告；僅在供應商和生產證據支援時使用。",
-    "warning": "使用前核實適用要求及標籤措辭。",
-    "category": "環境",
-    "region": "通用"
-   },
-   "ko": {
-    "name": "Pb-free 문구",
-    "description": "무연 주장입니다. 공급업체와 조립 증거가 뒷받침하는 경우에만 사용하세요.",
-    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
-    "category": "환경",
-    "region": "공통"
-   },
-   "ja": {
-    "name": "Pb-free の文字",
-    "description": "鉛フリーの表示です。供給元と製造の証拠で裏付けられる場合のみ使用します。",
-    "warning": "使用前に適用要件とラベルの表記を確認してください。",
-    "category": "環境",
-    "region": "共通"
    }
   }
  },
@@ -5610,6 +5354,262 @@
   }
  },
  {
+  "id": "weee_bar",
+  "file": "weee_bar.svg",
+  "lablyID": "WEEE_bar",
+  "category": "environmental",
+  "legal": "limited",
+  "registrationNumber": false,
+  "unverified": false,
+  "aspect": 1,
+  "copy": {
+   "en": {
+    "name": "Separate collection (WEEE)",
+    "description": "Crossed-out wheeled bin with the bar used to identify equipment placed on the EU market after the directive date; verify applicability and artwork.",
+    "warning": "Verify the applicable requirement and label wording before use.",
+    "category": "Environment",
+    "region": "EU"
+   },
+   "ru": {
+    "name": "Раздельный сбор WEEE",
+    "description": "Перечёркнутая корзина с полосой для оборудования, размещённого на рынке ЕС после установленной директивой даты; проверьте применимость и изображение.",
+    "warning": "Перед применением проверьте требование и текст маркировки.",
+    "category": "Экология",
+    "region": "ЕС"
+   },
+   "tr": {
+    "name": "Ayrı toplama WEEE",
+    "description": "Üzeri çizili kutunun altındaki çubuk, direktif tarihinden sonra AB pazarına sunulan ekipmanı belirtir; uygulanabilirliği ve çizimi doğrulayın.",
+    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
+    "category": "Çevre",
+    "region": "AB"
+   },
+   "de": {
+    "name": "Getrennte Sammlung WEEE",
+    "description": "Der Balken unter der durchgestrichenen Tonne kennzeichnet Geräte, die nach dem Richtliniendatum in der EU in Verkehr kamen; Geltung und Grafik prüfen.",
+    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
+    "category": "Umwelt",
+    "region": "EU"
+   },
+   "fr": {
+    "name": "Collecte séparée WEEE",
+    "description": "La barre sous la poubelle barrée identifie les équipements mis sur le marché de l’UE après la date de la directive ; vérifier l’applicabilité et le dessin.",
+    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
+    "category": "Environnement",
+    "region": "UE"
+   },
+   "es": {
+    "name": "Recogida separada WEEE",
+    "description": "La barra bajo el contenedor tachado identifica equipos comercializados en la UE después de la fecha de la directiva; confirme aplicación y dibujo.",
+    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
+    "category": "Medio ambiente",
+    "region": "UE"
+   },
+   "it": {
+    "name": "Raccolta separata WEEE",
+    "description": "La barra sotto il bidone barrato identifica le apparecchiature immesse sul mercato UE dopo la data della direttiva; verificare applicabilità e grafica.",
+    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
+    "category": "Ambiente",
+    "region": "UE"
+   },
+   "zh-Hans": {
+    "name": "分类收集（WEEE）",
+    "description": "带横线的划叉垃圾桶，用于识别指令规定日期后投放欧盟市场的设备；请核实适用性和图形。",
+    "warning": "使用前核实适用要求及标签措辞。",
+    "category": "环境",
+    "region": "欧盟"
+   },
+   "zh-Hant": {
+    "name": "分類收集（WEEE）",
+    "description": "帶橫線的劃叉垃圾桶，用於識別指令規定日期後投放歐盟市場的裝置；請核實適用性和圖形。",
+    "warning": "使用前核實適用要求及標籤措辭。",
+    "category": "環境",
+    "region": "歐盟"
+   },
+   "ko": {
+    "name": "분리 수거(WEEE)",
+    "description": "아래 막대가 있는 쓰레기통 표시는 지침 기준일 이후 EU 시장에 출시된 장비를 식별합니다. 적용 여부와 이미지를 확인하세요.",
+    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
+    "category": "환경",
+    "region": "유럽연합"
+   },
+   "ja": {
+    "name": "分別回収（WEEE）",
+    "description": "下線付きのごみ箱の記号です。指令の基準日以降に EU 市場へ出された機器を示します。適用可否と図柄を確認してください。",
+    "warning": "使用前に適用要件とラベルの表記を確認してください。",
+    "category": "環境",
+    "region": "欧州連合"
+   }
+  }
+ },
+ {
+  "id": "china_rohs",
+  "file": "china_rohs.svg",
+  "lablyID": "China_RoHS",
+  "category": "environmental",
+  "legal": "free",
+  "registrationNumber": false,
+  "unverified": false,
+  "aspect": 1,
+  "copy": {
+   "en": {
+    "name": "China RoHS",
+    "description": "EFUP states the environment-friendly use period in years; the number in the circle is product-specific.",
+    "category": "Environment",
+    "region": "China"
+   },
+   "ru": {
+    "name": "China RoHS",
+    "description": "EFUP указывает срок экологически безопасного использования в годах; число в круге зависит от изделия.",
+    "category": "Экология",
+    "region": "Китай"
+   },
+   "tr": {
+    "name": "China RoHS",
+    "description": "EFUP, çevre dostu kullanım süresini yıl olarak belirtir; daire içindeki sayı ürüne özeldir.",
+    "category": "Çevre",
+    "region": "Çin"
+   },
+   "de": {
+    "name": "China RoHS",
+    "description": "EFUP nennt die umweltfreundliche Nutzungsdauer in Jahren; die Zahl im Kreis ist produktspezifisch.",
+    "category": "Umwelt",
+    "region": "China"
+   },
+   "fr": {
+    "name": "China RoHS",
+    "description": "EFUP indique en années la période d’utilisation respectueuse de l’environnement ; le nombre dans le cercle dépend du produit.",
+    "category": "Environnement",
+    "region": "Chine"
+   },
+   "es": {
+    "name": "China RoHS",
+    "description": "EFUP expresa en años el periodo de uso respetuoso con el medio ambiente; el número del círculo depende del producto.",
+    "category": "Medio ambiente",
+    "region": "China"
+   },
+   "it": {
+    "name": "China RoHS",
+    "description": "EFUP indica in anni il periodo di uso rispettoso dell’ambiente; il numero nel cerchio dipende dal prodotto.",
+    "category": "Ambiente",
+    "region": "Cina"
+   },
+   "zh-Hans": {
+    "name": "中国 RoHS",
+    "description": "EFUP 表示以年计的环保使用期限；圆圈中的数字因产品而异。",
+    "category": "环境",
+    "region": "中国"
+   },
+   "zh-Hant": {
+    "name": "中國 RoHS",
+    "description": "EFUP 表示以年計的環保使用期限；圓圈中的數字因產品而異。",
+    "category": "環境",
+    "region": "中國"
+   },
+   "ko": {
+    "name": "중국 RoHS",
+    "description": "EFUP는 연 단위 환경보호 사용 기간이며 원 안의 숫자는 제품마다 다릅니다.",
+    "category": "환경",
+    "region": "중국"
+   },
+   "ja": {
+    "name": "中国 RoHS",
+    "description": "EFUP は年単位の環境保護使用期限を示します。円内の数字は製品ごとに異なります。",
+    "category": "環境",
+    "region": "中国"
+   }
+  }
+ },
+ {
+  "id": "pb_free",
+  "file": "pb_free.svg",
+  "lablyID": "Pb_free",
+  "category": "environmental",
+  "legal": "limited",
+  "registrationNumber": false,
+  "unverified": false,
+  "aspect": 1,
+  "copy": {
+   "en": {
+    "name": "Pb-free text",
+    "description": "Lead-free claim; use only when supplier and assembly evidence supports the claim.",
+    "warning": "Verify the applicable requirement and label wording before use.",
+    "category": "Environment",
+    "region": "Universal"
+   },
+   "ru": {
+    "name": "Текст Pb-free",
+    "description": "Заявление об отсутствии свинца; используйте только при наличии подтверждений от поставщика и производства.",
+    "warning": "Перед применением проверьте требование и текст маркировки.",
+    "category": "Экология",
+    "region": "Универсально"
+   },
+   "tr": {
+    "name": "Pb-free metni",
+    "description": "Kurşunsuzluk iddiası; yalnızca tedarikçi ve üretim kayıtları destekliyorsa kullanın.",
+    "warning": "Kullanmadan önce geçerli gerekliliği ve etiket metnini doğrulayın.",
+    "category": "Çevre",
+    "region": "Genel"
+   },
+   "de": {
+    "name": "Pb-free-Text",
+    "description": "Bleifrei-Aussage; nur verwenden, wenn Lieferanten- und Fertigungsnachweise sie stützen.",
+    "warning": "Vor der Verwendung die geltende Anforderung und den Etikettentext prüfen.",
+    "category": "Umwelt",
+    "region": "Allgemein"
+   },
+   "fr": {
+    "name": "Texte Pb-free",
+    "description": "Allégation sans plomb ; à utiliser uniquement si les preuves du fournisseur et de fabrication la justifient.",
+    "warning": "Vérifiez l’exigence applicable et le texte de l’étiquette avant utilisation.",
+    "category": "Environnement",
+    "region": "Universel"
+   },
+   "es": {
+    "name": "Texto Pb-free",
+    "description": "Declaración sin plomo; úsela solo si la respaldan pruebas del proveedor y de fabricación.",
+    "warning": "Compruebe el requisito aplicable y el texto de la etiqueta antes de usarla.",
+    "category": "Medio ambiente",
+    "region": "General"
+   },
+   "it": {
+    "name": "Testo Pb-free",
+    "description": "Dichiarazione senza piombo; usare solo se supportata da prove del fornitore e della produzione.",
+    "warning": "Verificare il requisito applicabile e il testo dell’etichetta prima dell’uso.",
+    "category": "Ambiente",
+    "region": "Universale"
+   },
+   "zh-Hans": {
+    "name": "Pb-free 文字",
+    "description": "无铅声明；仅在供应商和生产证据支持时使用。",
+    "warning": "使用前核实适用要求及标签措辞。",
+    "category": "环境",
+    "region": "通用"
+   },
+   "zh-Hant": {
+    "name": "Pb-free 文字",
+    "description": "無鉛宣告；僅在供應商和生產證據支援時使用。",
+    "warning": "使用前核實適用要求及標籤措辭。",
+    "category": "環境",
+    "region": "通用"
+   },
+   "ko": {
+    "name": "Pb-free 문구",
+    "description": "무연 주장입니다. 공급업체와 조립 증거가 뒷받침하는 경우에만 사용하세요.",
+    "warning": "사용 전에 적용 요건과 라벨 문구를 확인하세요.",
+    "category": "환경",
+    "region": "공통"
+   },
+   "ja": {
+    "name": "Pb-free の文字",
+    "description": "鉛フリーの表示です。供給元と製造の証拠で裏付けられる場合のみ使用します。",
+    "warning": "使用前に適用要件とラベルの表記を確認してください。",
+    "category": "環境",
+    "region": "共通"
+   }
+  }
+ },
+ {
   "id": "green-dot",
   "file": "green-dot.svg",
   "lablyID": "Green_Dot",
@@ -5695,6 +5695,162 @@
     "warning": "マークの権利者の現在の許可を得た場合のみ使用してください。",
     "category": "環境",
     "region": "欧州連合"
+   }
+  }
+ },
+ {
+  "id": "infrared-radiation",
+  "file": "infrared-radiation.svg",
+  "lablyID": "Infrared_Radiation",
+  "category": "hazardous",
+  "legal": "free",
+  "registrationNumber": false,
+  "unverified": false,
+  "aspect": 1,
+  "copy": {
+   "en": {
+    "name": "Infrared radiation",
+    "description": "Indicates infrared radiation. The supplied artwork has no assigned ISO 7010 identifier.",
+    "category": "Hazard communication",
+    "region": "Universal"
+   },
+   "ru": {
+    "name": "Инфракрасное излучение",
+    "description": "Обозначает инфракрасное излучение. Для этого изображения не указан идентификатор ISO 7010.",
+    "category": "Опасные вещества",
+    "region": "Универсально"
+   },
+   "tr": {
+    "name": "Kızılötesi ışınım",
+    "description": "Kızılötesi ışınımı belirtir. Bu çizim için atanmış bir ISO 7010 kimliği yoktur.",
+    "category": "Tehlike bildirimi",
+    "region": "Genel"
+   },
+   "de": {
+    "name": "Infrarotstrahlung",
+    "description": "Kennzeichnet Infrarotstrahlung. Für diese Grafik ist keine ISO-7010-Kennung angegeben.",
+    "category": "Gefahrenhinweis",
+    "region": "Allgemein"
+   },
+   "fr": {
+    "name": "Rayonnement infrarouge",
+    "description": "Indique un rayonnement infrarouge. Aucun identifiant ISO 7010 n’est attribué à ce dessin.",
+    "category": "Information sur les dangers",
+    "region": "Universel"
+   },
+   "es": {
+    "name": "Radiación infrarroja",
+    "description": "Indica radiación infrarroja. Este dibujo no tiene un identificador ISO 7010 asignado.",
+    "category": "Comunicación de peligros",
+    "region": "General"
+   },
+   "it": {
+    "name": "Radiazione infrarossa",
+    "description": "Indica la presenza di radiazione infrarossa. A questo disegno non è assegnato un identificativo ISO 7010.",
+    "category": "Comunicazione dei pericoli",
+    "region": "Universale"
+   },
+   "zh-Hans": {
+    "name": "红外辐射",
+    "description": "表示红外辐射。提供的图形没有指定的 ISO 7010 编号。",
+    "category": "危险信息",
+    "region": "通用"
+   },
+   "zh-Hant": {
+    "name": "紅外輻射",
+    "description": "表示紅外輻射。提供的圖形沒有指定的 ISO 7010 編號。",
+    "category": "危險資訊",
+    "region": "通用"
+   },
+   "ko": {
+    "name": "적외선 방사",
+    "description": "적외선 방사를 나타냅니다. 제공된 이미지에는 지정된 ISO 7010 식별 번호가 없습니다.",
+    "category": "유해·위험 정보",
+    "region": "공통"
+   },
+   "ja": {
+    "name": "赤外線放射",
+    "description": "赤外線放射を示します。この画像には ISO 7010 の識別番号が割り当てられていません。",
+    "category": "危険有害性の表示",
+    "region": "共通"
+   }
+  }
+ },
+ {
+  "id": "ultraviolet-radiation",
+  "file": "ultraviolet-radiation.svg",
+  "lablyID": "Ultraviolet_Radiation",
+  "category": "hazardous",
+  "legal": "free",
+  "registrationNumber": false,
+  "unverified": false,
+  "aspect": 1,
+  "copy": {
+   "en": {
+    "name": "Ultraviolet radiation",
+    "description": "Indicates ultraviolet radiation. The supplied artwork has no assigned ISO 7010 identifier.",
+    "category": "Hazard communication",
+    "region": "Universal"
+   },
+   "ru": {
+    "name": "Ультрафиолетовое излучение",
+    "description": "Обозначает ультрафиолетовое излучение. Для этого изображения не указан идентификатор ISO 7010.",
+    "category": "Опасные вещества",
+    "region": "Универсально"
+   },
+   "tr": {
+    "name": "Morötesi ışınım",
+    "description": "Morötesi ışınımı belirtir. Bu çizim için atanmış bir ISO 7010 kimliği yoktur.",
+    "category": "Tehlike bildirimi",
+    "region": "Genel"
+   },
+   "de": {
+    "name": "Ultraviolettstrahlung",
+    "description": "Kennzeichnet ultraviolette Strahlung. Für diese Grafik ist keine ISO-7010-Kennung angegeben.",
+    "category": "Gefahrenhinweis",
+    "region": "Allgemein"
+   },
+   "fr": {
+    "name": "Rayonnement ultraviolet",
+    "description": "Indique un rayonnement ultraviolet. Aucun identifiant ISO 7010 n’est attribué à ce dessin.",
+    "category": "Information sur les dangers",
+    "region": "Universel"
+   },
+   "es": {
+    "name": "Radiación ultravioleta",
+    "description": "Indica radiación ultravioleta. Este dibujo no tiene un identificador ISO 7010 asignado.",
+    "category": "Comunicación de peligros",
+    "region": "General"
+   },
+   "it": {
+    "name": "Radiazione ultravioletta",
+    "description": "Indica la presenza di radiazione ultravioletta. A questo disegno non è assegnato un identificativo ISO 7010.",
+    "category": "Comunicazione dei pericoli",
+    "region": "Universale"
+   },
+   "zh-Hans": {
+    "name": "紫外辐射",
+    "description": "表示紫外辐射。提供的图形没有指定的 ISO 7010 编号。",
+    "category": "危险信息",
+    "region": "通用"
+   },
+   "zh-Hant": {
+    "name": "紫外輻射",
+    "description": "表示紫外輻射。提供的圖形沒有指定的 ISO 7010 編號。",
+    "category": "危險資訊",
+    "region": "通用"
+   },
+   "ko": {
+    "name": "자외선 방사",
+    "description": "자외선 방사를 나타냅니다. 제공된 이미지에는 지정된 ISO 7010 식별 번호가 없습니다.",
+    "category": "유해·위험 정보",
+    "region": "공통"
+   },
+   "ja": {
+    "name": "紫外線放射",
+    "description": "紫外線放射を示します。この画像には ISO 7010 の識別番号が割り当てられていません。",
+    "category": "危険有害性の表示",
+    "region": "共通"
    }
   }
  },
@@ -6500,162 +6656,6 @@
   }
  },
  {
-  "id": "infrared-radiation",
-  "file": "infrared-radiation.svg",
-  "lablyID": "Infrared_Radiation",
-  "category": "hazardous",
-  "legal": "free",
-  "registrationNumber": false,
-  "unverified": false,
-  "aspect": 1,
-  "copy": {
-   "en": {
-    "name": "Infrared radiation",
-    "description": "Indicates infrared radiation. The supplied artwork has no assigned ISO 7010 identifier.",
-    "category": "Hazard communication",
-    "region": "Universal"
-   },
-   "ru": {
-    "name": "Инфракрасное излучение",
-    "description": "Обозначает инфракрасное излучение. Для этого изображения не указан идентификатор ISO 7010.",
-    "category": "Опасные вещества",
-    "region": "Универсально"
-   },
-   "tr": {
-    "name": "Kızılötesi ışınım",
-    "description": "Kızılötesi ışınımı belirtir. Bu çizim için atanmış bir ISO 7010 kimliği yoktur.",
-    "category": "Tehlike bildirimi",
-    "region": "Genel"
-   },
-   "de": {
-    "name": "Infrarotstrahlung",
-    "description": "Kennzeichnet Infrarotstrahlung. Für diese Grafik ist keine ISO-7010-Kennung angegeben.",
-    "category": "Gefahrenhinweis",
-    "region": "Allgemein"
-   },
-   "fr": {
-    "name": "Rayonnement infrarouge",
-    "description": "Indique un rayonnement infrarouge. Aucun identifiant ISO 7010 n’est attribué à ce dessin.",
-    "category": "Information sur les dangers",
-    "region": "Universel"
-   },
-   "es": {
-    "name": "Radiación infrarroja",
-    "description": "Indica radiación infrarroja. Este dibujo no tiene un identificador ISO 7010 asignado.",
-    "category": "Comunicación de peligros",
-    "region": "General"
-   },
-   "it": {
-    "name": "Radiazione infrarossa",
-    "description": "Indica la presenza di radiazione infrarossa. A questo disegno non è assegnato un identificativo ISO 7010.",
-    "category": "Comunicazione dei pericoli",
-    "region": "Universale"
-   },
-   "zh-Hans": {
-    "name": "红外辐射",
-    "description": "表示红外辐射。提供的图形没有指定的 ISO 7010 编号。",
-    "category": "危险信息",
-    "region": "通用"
-   },
-   "zh-Hant": {
-    "name": "紅外輻射",
-    "description": "表示紅外輻射。提供的圖形沒有指定的 ISO 7010 編號。",
-    "category": "危險資訊",
-    "region": "通用"
-   },
-   "ko": {
-    "name": "적외선 방사",
-    "description": "적외선 방사를 나타냅니다. 제공된 이미지에는 지정된 ISO 7010 식별 번호가 없습니다.",
-    "category": "유해·위험 정보",
-    "region": "공통"
-   },
-   "ja": {
-    "name": "赤外線放射",
-    "description": "赤外線放射を示します。この画像には ISO 7010 の識別番号が割り当てられていません。",
-    "category": "危険有害性の表示",
-    "region": "共通"
-   }
-  }
- },
- {
-  "id": "ultraviolet-radiation",
-  "file": "ultraviolet-radiation.svg",
-  "lablyID": "Ultraviolet_Radiation",
-  "category": "hazardous",
-  "legal": "free",
-  "registrationNumber": false,
-  "unverified": false,
-  "aspect": 1,
-  "copy": {
-   "en": {
-    "name": "Ultraviolet radiation",
-    "description": "Indicates ultraviolet radiation. The supplied artwork has no assigned ISO 7010 identifier.",
-    "category": "Hazard communication",
-    "region": "Universal"
-   },
-   "ru": {
-    "name": "Ультрафиолетовое излучение",
-    "description": "Обозначает ультрафиолетовое излучение. Для этого изображения не указан идентификатор ISO 7010.",
-    "category": "Опасные вещества",
-    "region": "Универсально"
-   },
-   "tr": {
-    "name": "Morötesi ışınım",
-    "description": "Morötesi ışınımı belirtir. Bu çizim için atanmış bir ISO 7010 kimliği yoktur.",
-    "category": "Tehlike bildirimi",
-    "region": "Genel"
-   },
-   "de": {
-    "name": "Ultraviolettstrahlung",
-    "description": "Kennzeichnet ultraviolette Strahlung. Für diese Grafik ist keine ISO-7010-Kennung angegeben.",
-    "category": "Gefahrenhinweis",
-    "region": "Allgemein"
-   },
-   "fr": {
-    "name": "Rayonnement ultraviolet",
-    "description": "Indique un rayonnement ultraviolet. Aucun identifiant ISO 7010 n’est attribué à ce dessin.",
-    "category": "Information sur les dangers",
-    "region": "Universel"
-   },
-   "es": {
-    "name": "Radiación ultravioleta",
-    "description": "Indica radiación ultravioleta. Este dibujo no tiene un identificador ISO 7010 asignado.",
-    "category": "Comunicación de peligros",
-    "region": "General"
-   },
-   "it": {
-    "name": "Radiazione ultravioletta",
-    "description": "Indica la presenza di radiazione ultravioletta. A questo disegno non è assegnato un identificativo ISO 7010.",
-    "category": "Comunicazione dei pericoli",
-    "region": "Universale"
-   },
-   "zh-Hans": {
-    "name": "紫外辐射",
-    "description": "表示紫外辐射。提供的图形没有指定的 ISO 7010 编号。",
-    "category": "危险信息",
-    "region": "通用"
-   },
-   "zh-Hant": {
-    "name": "紫外輻射",
-    "description": "表示紫外輻射。提供的圖形沒有指定的 ISO 7010 編號。",
-    "category": "危險資訊",
-    "region": "通用"
-   },
-   "ko": {
-    "name": "자외선 방사",
-    "description": "자외선 방사를 나타냅니다. 제공된 이미지에는 지정된 ISO 7010 식별 번호가 없습니다.",
-    "category": "유해·위험 정보",
-    "region": "공통"
-   },
-   "ja": {
-    "name": "紫外線放射",
-    "description": "紫外線放射を示します。この画像には ISO 7010 の識別番号が割り当てられていません。",
-    "category": "危険有害性の表示",
-    "region": "共通"
-   }
-  }
- },
- {
   "id": "esd",
   "file": "esd.svg",
   "lablyID": "ESD",
@@ -6903,7 +6903,7 @@
  {
   "id": "this-way-up",
   "file": "this-way-up.svg",
-  "lablyID": "This_side_up",
+  "lablyID": "This_Way_Up",
   "category": "handling",
   "legal": "free",
   "registrationNumber": false,
@@ -6911,67 +6911,67 @@
   "aspect": 1,
   "copy": {
    "en": {
-    "name": "This side up",
+    "name": "This way up",
     "description": "ISO 780 orientation mark: keep the indicated package side upward during handling.",
     "category": "Handling",
     "region": "Universal"
    },
    "ru": {
-    "name": "Верх",
+    "name": "Этой стороной вверх",
     "description": "Знак ориентации ISO 780: при обращении держите указанную сторону упаковки сверху.",
     "category": "Обращение",
     "region": "Универсально"
    },
    "tr": {
-    "name": "Bu taraf yukarı",
+    "name": "Bu yön yukarı",
     "description": "ISO 780 yön işareti: taşıma sırasında belirtilen ambalaj yüzünü yukarıda tutun.",
     "category": "Taşıma ve kullanım",
     "region": "Genel"
    },
    "de": {
-    "name": "Oben",
+    "name": "Diese Seite nach oben",
     "description": "Orientierungszeichen ISO 780: die markierte Verpackungsseite beim Transport nach oben halten.",
     "category": "Handhabung",
     "region": "Allgemein"
    },
    "fr": {
-    "name": "Haut",
+    "name": "Ce côté vers le haut",
     "description": "Marque d’orientation ISO 780 : garder le côté indiqué vers le haut pendant la manutention.",
     "category": "Manutention",
     "region": "Universel"
    },
    "es": {
-    "name": "Este lado arriba",
+    "name": "Este lado hacia arriba",
     "description": "Marca de orientación ISO 780: mantenga hacia arriba el lado indicado durante la manipulación.",
     "category": "Manipulación",
     "region": "General"
    },
    "it": {
-    "name": "Alto",
+    "name": "Questo lato in alto",
     "description": "Marchio di orientamento ISO 780: mantenere verso l’alto il lato indicato durante la movimentazione.",
     "category": "Manipolazione",
     "region": "Universale"
    },
    "zh-Hans": {
-    "name": "此面向上",
+    "name": "向上",
     "description": "ISO 780 方向标志：搬运时保持所示包装面向上。",
     "category": "搬运与处理",
     "region": "通用"
    },
    "zh-Hant": {
-    "name": "此面向上",
+    "name": "向上",
     "description": "ISO 780 方向標誌：搬運時保持所示包裝面向上。",
     "category": "搬運與處理",
     "region": "通用"
    },
    "ko": {
-    "name": "이 면을 위로",
+    "name": "위쪽 방향",
     "description": "ISO 780 방향 표시입니다. 취급 중 표시된 포장 면을 위로 유지하세요.",
     "category": "취급",
     "region": "공통"
    },
    "ja": {
-    "name": "この面を上に",
+    "name": "天地無用",
     "description": "ISO 780 の方向マークです。荷扱い中は指定された包装面を上にしてください。",
     "category": "荷扱い",
     "region": "共通"
@@ -7916,7 +7916,7 @@
  {
   "id": "usb-superspeed",
   "file": "usb-superspeed.svg",
-  "lablyID": "USB_Certified",
+  "lablyID": "USB_SuperSpeed",
   "category": "wireless",
   "legal": "trademark",
   "registrationNumber": false,
@@ -7924,78 +7924,78 @@
   "aspect": 1,
   "copy": {
    "en": {
-    "name": "USB certification placeholder",
-    "description": "The bundled artwork is a generic trident placeholder, not USB-IF certification artwork or a certification claim.",
+    "name": "USB trident artwork placeholder",
+    "description": "The bundled artwork is a generic trident placeholder; it does not assert SuperSpeed performance or certification.",
     "warning": "Use only with the current authorization of the mark owner.",
     "category": "Connectivity",
     "region": "Universal"
    },
    "ru": {
-    "name": "Заглушка USB",
-    "description": "В файле универсальная заглушка в виде трезубца, а не знак сертификации USB-IF и не заявление о сертификации.",
+    "name": "Заглушка USB SuperSpeed",
+    "description": "В файле универсальная заглушка-трезубец; она не подтверждает производительность SuperSpeed или сертификацию.",
     "warning": "Используйте только при действующем разрешении владельца знака.",
     "category": "Связь",
     "region": "Универсально"
    },
    "tr": {
-    "name": "USB yer tutucusu",
-    "description": "Dosyadaki genel trident yer tutucusu USB-IF sertifikasyon çizimi veya sertifikasyon iddiası değildir.",
+    "name": "USB SuperSpeed yer tutucusu",
+    "description": "Dosyadaki genel trident yer tutucusu SuperSpeed performansı veya sertifikasını doğrulamaz.",
     "warning": "Yalnızca işaret sahibinin geçerli izniyle kullanın.",
     "category": "Bağlantı",
     "region": "Genel"
    },
    "de": {
-    "name": "USB-Platzhalter",
-    "description": "Die Grafik ist ein allgemeiner Trident-Platzhalter, kein USB-IF-Zertifizierungszeichen und keine Zertifizierungsaussage.",
+    "name": "USB-SuperSpeed-Platzhalter",
+    "description": "Der allgemeine Trident-Platzhalter belegt weder SuperSpeed-Leistung noch eine Zertifizierung.",
     "warning": "Nur mit aktueller Genehmigung des Zeicheninhabers verwenden.",
     "category": "Konnektivität",
     "region": "Allgemein"
    },
    "fr": {
-    "name": "Espace réservé USB",
-    "description": "Le dessin est un trident générique de remplacement, pas un visuel certifié USB-IF ni une allégation de certification.",
+    "name": "Espace réservé USB SuperSpeed",
+    "description": "Le trident générique ne prouve ni les performances SuperSpeed ni une certification.",
     "warning": "Utilisez uniquement avec l’autorisation actuelle du propriétaire de la marque.",
     "category": "Connectivité",
     "region": "Universel"
    },
    "es": {
-    "name": "Marcador USB",
-    "description": "El dibujo es un tridente genérico de marcador, no el arte de certificación USB-IF ni una afirmación de certificación.",
+    "name": "Marcador USB SuperSpeed",
+    "description": "El tridente genérico no demuestra rendimiento SuperSpeed ni certificación.",
     "warning": "Úsela solo con autorización vigente del titular de la marca.",
     "category": "Conectividad",
     "region": "General"
    },
    "it": {
-    "name": "Segnaposto USB",
-    "description": "Il disegno è un tridente generico segnaposto, non la grafica certificata USB-IF né un’affermazione di certificazione.",
+    "name": "Segnaposto USB SuperSpeed",
+    "description": "Il tridente generico non dimostra prestazioni SuperSpeed né certificazione.",
     "warning": "Usare solo con l’autorizzazione attuale del titolare del marchio.",
     "category": "Connettività",
     "region": "Universale"
    },
    "zh-Hans": {
-    "name": "USB 认证占位图形",
-    "description": "内置图形是通用三叉戟占位图形，不是 USB-IF 认证图形或认证声明。",
+    "name": "USB 三叉戟占位图形",
+    "description": "内置图形是通用三叉戟占位图形，不表示 SuperSpeed 性能或认证。",
     "warning": "仅在标志权利人当前授权下使用。",
     "category": "连接技术",
     "region": "通用"
    },
    "zh-Hant": {
-    "name": "USB 認證佔點陣圖形",
-    "description": "內建圖形是通用三叉戟佔點陣圖形，不是 USB-IF 認證圖形或認證宣告。",
+    "name": "USB 三叉戟佔點陣圖形",
+    "description": "內建圖形是通用三叉戟佔點陣圖形，不表示 SuperSpeed 效能或認證。",
     "warning": "僅在標誌權利人當前授權下使用。",
     "category": "連線技術",
     "region": "通用"
    },
    "ko": {
-    "name": "USB 인증 임시 이미지",
-    "description": "기본 이미지는 일반 삼지창 임시 이미지이며 USB-IF 인증 이미지나 인증 주장이 아닙니다.",
+    "name": "USB 삼지창 임시 이미지",
+    "description": "기본 이미지는 일반 삼지창 임시 이미지이며 SuperSpeed 성능이나 인증을 의미하지 않습니다.",
     "warning": "표시 소유자의 현재 허가가 있는 경우에만 사용하세요.",
     "category": "연결 기술",
     "region": "공통"
    },
    "ja": {
-    "name": "USB 認証の仮画像",
-    "description": "内蔵画像は汎用の三つ又の仮画像で、USB-IF の認証画像や認証の表示ではありません。",
+    "name": "USB 三つ又の仮画像",
+    "description": "内蔵画像は汎用の三つ又の仮画像です。SuperSpeed の性能や認証を示しません。",
     "warning": "マークの権利者の現在の許可を得た場合のみ使用してください。",
     "category": "接続技術",
     "region": "共通"

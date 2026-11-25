@@ -38,7 +38,10 @@
     "Skip All": "Пропустить все",
     "Spelling check complete.": "Проверка орфографии завершена.",
     "No supported spelling languages are installed in Windows": "В Windows не установлены поддерживаемые словари проверки орфографии",
-    "Show Rulers": "Показать линейки"
+    "Show Rulers": "Показать линейки",
+    "Unverified artwork: compare it with the official mark before use.": "Рисунок не сверен с официальным: перед использованием сравните его с оригиналом знака.",
+    "Trademark or certification mark: use only with the owner's authorization for this product.": "Товарный знак или знак сертификации: используйте только с разрешения владельца для этого изделия.",
+    "Add the required registration or licence number next to the mark.": "Рядом со знаком укажите обязательный регистрационный номер или номер лицензии."
   },
   "zh-Hans": {
     "Symbol or Code": "符号或条码",
@@ -489,7 +492,10 @@
     "Skip All": "Tümünü atla",
     "Spelling check complete.": "Yazım denetimi tamamlandı.",
     "No supported spelling languages are installed in Windows": "Windows’ta desteklenen yazım denetimi dilleri yüklü değil",
-    "Show Rulers": "Cetvelleri göster"
+    "Show Rulers": "Cetvelleri göster",
+    "Unverified artwork: compare it with the official mark before use.": "Doğrulanmamış çizim: kullanmadan önce resmî işaretle karşılaştırın.",
+    "Trademark or certification mark: use only with the owner's authorization for this product.": "Ticari marka veya sertifika işareti: yalnızca sahibinin bu ürün için verdiği izinle kullanın.",
+    "Add the required registration or licence number next to the mark.": "İşaretin yanına gerekli kayıt veya lisans numarasını ekleyin."
   },
   "fil": {
     "Symbol or Code": "Simbolo o code",

@@ -223,8 +223,11 @@ public enum TechnicalSymbols {
     private static let cache: [TechnicalSymbol] = entries.map { e in
         let english = e.copy["en"]
         let local = e.copy[Language.current.rawValue] ?? english
+        // Universal symbols (fuse, earth…) carry no region; only marks for one market show it ("CE — EU").
+        let regional = (english?.region).map { !$0.isEmpty && $0 != "Universal" } ?? false
         return TechnicalSymbol(id: e.id, file: e.file, category: e.category, name: local?.name ?? english?.name ?? e.id,
-                               categoryName: local?.category ?? english?.category ?? e.category, region: local?.region ?? english?.region ?? "",
+                               categoryName: local?.category ?? english?.category ?? e.category,
+                               region: regional ? (local?.region ?? english?.region ?? "") : "",
                                summary: local?.description ?? english?.description ?? "", warning: local?.warning ?? english?.warning,
                                needsNumber: e.registrationNumber, unverified: e.unverified, legal: e.legal)
     }
