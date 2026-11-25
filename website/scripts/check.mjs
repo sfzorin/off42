@@ -58,9 +58,15 @@ for(const page of manifest.files){
   links++;
   const [pathAndQuery,hash]=dest.split('#');
   const url=pathAndQuery.split('?')[0];
-  if(url.startsWith('/assets/'))assert((await stat(path.join(root,'dist',url))).isFile());
+  if(url.startsWith('/assets/')||/^\/(favicon\.ico|apple-touch-icon\.png|site\.webmanifest)$/.test(url))assert((await stat(path.join(root,'dist',url))).isFile(),url);
   else {assert(known.has(url),`Missing route ${dest} from ${page.path}`); if(hash){const target=await read('dist'+url+'index.html');assert(target.includes(`id="${hash}"`),dest);}}
  }
+ if(page.route===''){
+  assert(types.includes('VideoObject')&&types.includes('Organization'),page.path+' VideoObject and Organization');
+  assert(html.includes(`<meta property="og:video" content="${config.url}/assets/video/off42-demo-${page.lang}.mp4">`),page.path+' og:video');
+ }
+ assert(html.includes('max-image-preview:large')&&html.includes('rel="apple-touch-icon"')&&html.includes('rel="manifest"')&&html.includes('href="/favicon.ico"'),page.path+' robots preview, icons and manifest');
+ assert.equal((html.match(/og:locale:alternate/g)||[]).length,expected.length-1,page.path+' og:locale alternates');
  if(page.route===''){assert(html.includes(`src="/assets/video/off42-demo-${page.lang}.mp4"`)&&html.includes(`poster="/assets/video/off42-demo-${page.lang}.jpg"`),page.path+' localized demo video');assert(html.includes('id="codes"'),page.path+' codes section');}
  if(page.route==='download/')for(const [platform,release] of Object.entries(config.releases)){
   if(release){assert(new URL(release.url).protocol==='https:');assert(release.version&&release.requirements&&release.architecture);assert(!release.sha256||/^[a-f0-9]{64}$/.test(release.sha256));assert(html.includes(release.url));}
@@ -80,6 +86,11 @@ for(const page of manifest.files){
 // Safari plays video only with 206 byte ranges; static assets answer 200, so a Worker serves /assets/video/*.
 const wrangler=await read('wrangler.jsonc');assert(/"run_worker_first":\s*\["\/assets\/video\/\*"\]/.test(wrangler)&&/"main":\s*"worker\/index.js"/.test(wrangler),'video range Worker configured');
 assert((await read('worker/index.js')).includes("status: 206"),'video Worker answers byte ranges');
+// Video sitemap: one localized entry per home page; icons and manifest are served.
+assert.equal((sitemap.match(/<video:video>/g)||[]).length,expected.length,'video sitemap entries');
+for(const lang of expected)assert(sitemap.includes(`<video:content_loc>${config.url}/assets/video/off42-demo-${lang}.mp4</video:content_loc>`),'video sitemap '+lang);
+for(const file of ['favicon.ico','apple-touch-icon.png','site.webmanifest','assets/icon-192.png','assets/icon-512.png'])assert((await stat(path.join(root,'dist',file))).size>200,file);
+JSON.parse(await read('dist/site.webmanifest'));
 const headers=await read('dist/_headers');
 assert(/^\/\*\n(?:  [^\n]+\n)*?  Cache-Control: public, no-transform$/m.test(headers),'global response must prohibit automatic transformations');
 assert(/^\/assets\/\*\n  Cache-Control: public, max-age=86400$/m.test(headers),'retain static asset cache lifetime');

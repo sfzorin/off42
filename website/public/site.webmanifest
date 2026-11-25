@@ -1,0 +1,14 @@
+{
+  "name": "OFF42",
+  "short_name": "OFF42",
+  "description": "Free, open-source native office apps for macOS and Windows.",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#f7f6f2",
+  "theme_color": "#173b30",
+  "icons": [
+    {"src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "/assets/favicon.svg", "sizes": "any", "type": "image/svg+xml"}
+  ]
+}

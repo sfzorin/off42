@@ -114,6 +114,14 @@ the downloads page links the macOS DMG and Windows ZIP previews with their SHA-2
 Social previews use the 1200 × 630 `assets/og-image.jpg`. The sitemap omits `lastmod` until meaningful per-page dates are available. No `downloadUrl` is emitted while installer files are unavailable.
 `/` redirects permanently (301) to `/en/`.
 
+Each page also sets `max-image-preview:large`, `og:locale:alternate` for the other 19 languages and image alt text for
+social previews. Every page links `/favicon.ico` (16/32/48), the SVG favicon, `/apple-touch-icon.png` and
+`/site.webmanifest` (192/512 PNG icons); JSON-LD adds `Organization` (logo `assets/icon-512.png`). Home pages add a
+localized `VideoObject` and `og:video` for their demo, and the sitemap carries one `<video:video>` entry per language
+(thumbnail, title, description, content URL, 60 s, publication date). `npm run check` enforces all of these.
+`public/<key>.txt` is the IndexNow key: after a deployment, submit changed URLs to `https://api.indexnow.org/indexnow`
+(Bing, Yandex and other IndexNow engines). Google and Yandex Webmaster verification need the owner's accounts.
+
 ## Screenshots
 
 `public/assets/shots/` holds real macOS screenshots of the six apps in all 20 languages (WebP, two widths each): the
