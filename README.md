@@ -115,9 +115,9 @@ The apps use ad hoc signatures and the preview has no Apple notarization.
 
 The Windows preview ZIP contains all six Windows x64 apps, PDFium and tools for
 [labels and barcodes](rust/README.md#labels-barcodes-and-signatures). Extract the full ZIP and launch the app you want.
-The executables are unsigned. See the [release notes](https://github.com/sfzorin/off42/releases/tag/v1.0.0-windows-preview.3)
+The executables are unsigned. See the [release notes](https://github.com/sfzorin/off42/releases/tag/v1.0.0-windows-preview.4)
 for runtime requirements.
-[Download the Windows preview ZIP](https://github.com/sfzorin/off42/releases/download/v1.0.0-windows-preview.3/off42-1.0.0-windows-preview.3-x64.zip).
+[Download the Windows preview ZIP](https://github.com/sfzorin/off42/releases/download/v1.0.0-windows-preview.4/off42-1.0.0-windows-preview.4-x64.zip).
 
 ## Build and install on macOS
 
