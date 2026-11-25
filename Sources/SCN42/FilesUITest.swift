@@ -69,7 +69,8 @@ extension ScanWindowController {
             catch { check(doc.revision == dirtyRevision && doc.isDirty && (try? Data(contentsOf: output)) == bytes, "failed Export preserves the document revision and existing file") }
             doc.undo.undo()
 
-            let saveSheet = SaveSheetController(pages: pages.map(\.exportPage), title: "Invoice", options: options)
+            let exampleTitle = "Invoice"
+            let saveSheet = SaveSheetController(pages: pages.map(\.exportPage), title: exampleTitle, options: options)
             guard let sheetWindow = saveSheet.window else { throw CocoaError(.coderInvalidValue) }
             window.beginSheet(sheetWindow, completionHandler: { _ in })
             check(await UITest.wait({ window.attachedSheet === sheetWindow }), "native Save options sheet opens")

@@ -418,6 +418,7 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     }
 
     func windowWillClose(_ notification: Notification) {
+        cancelMarkPlacement()
         windowIsClosed = true
         pageWorkGeneration = UUID(); acquisitionGeneration = UUID(); scanGeneration = UUID(); overviewGeneration = UUID()
         if isScanning { scanner?.cancel() }

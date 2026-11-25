@@ -1,11 +1,11 @@
-# Suite42 — design system
+# off42 — design system
 
-Suite42 has native macOS and Windows implementations of PDF42, DOC42, XLS42, IMG42, PPT42 and SCN42.
+off42 has native macOS and Windows implementations of PDF42, DOC42, XLS42, IMG42, PPT42 and SCN42.
 The Swift/macOS apps share **Kit42** (`Sources/Kit42`); the Rust/Windows apps share native Windows infrastructure.
 The Kit42, AppKit and Swift contracts below describe macOS; the Windows workspace has its own implementation
 and feature scope. Shared product names do not imply identical capabilities.
-This describes the source as of 2026-11-06. Dated verification, published revisions, installed bundles and remaining
-gaps are recorded separately in [STATUS.md](STATUS.md).
+This describes the source as of 2026-11-06. [README.md](README.md#regression-checks) documents verification commands
+and scope; detailed build logs, executable identities and installation history are retained with each local audit.
 
 ## Principles
 
@@ -47,10 +47,24 @@ gaps are recorded separately in [STATUS.md](STATUS.md).
 
 ## Rust Windows workspace
 
-The separate Windows implementation provides all six apps through Rust, native Windows APIs and shared `win42`
-commands, menus, toolbars, dialogs and document infrastructure. Its formats, dependencies and build instructions
-are documented in the Windows workspace's README; this source snapshot contains the Swift/macOS tree.
-Windows implementation and runtime verification are tracked separately from the macOS contracts below.
+The separate Windows apps use `windows-rs` and shared `win42` native windows, command registry, menus, toolbars,
+dialogs and controls. App models own history and document state; shared save snapshots detect conflicts and use atomic
+replacement. Multi-file saves stage sidecars first with verified reuse and best-effort rollback, not OS-atomic
+replacement of the whole bundle. Async open retains the existing document/session through verification, cancellation
+and progress. The UI provides canvas drawing, rich text and scaled images, asynchronous jobs with generation-based
+cancellation, and printing using twips and DPI. DOC42 separates its editable RichEdit model from the read-only
+paginated preview. PDF password retries use the captured source bytes; async open rechecks identity before replacing the prior session.
+DOC42 reserves note space in preview/print and explicitly refreshes linked TOC entries, invalidating cached page numbers.
+XLS42 maps visible grid positions to physical cells for filtered, hidden and frozen areas. Typed clipboard preserves
+source cells and styles, translates formulas per destination and validates the whole sparse paste as one history step.
+Its registered payload is bound to the published Unicode text; invalid or mismatched payloads fall back to text.
+SCN42 shares immutable pixel/OCR data across history, bounds retained snapshots and OCR allocations, and commits a
+successful batch OCR as one undo step. Scene transforms rotate objects
+and groups; where a printer lacks `SB_PIXEL_ALPHA`, scene printing uses a bounded white raster fallback at up to
+200 DPI. Common controls v6 and PerMonitorV2 are declared in the application manifest.
+
+These are implementation contracts, not evidence of native event dispatch, rendering, printing or lifecycle behavior.
+See [rust/README.md](rust/README.md) for formats, dependencies and verification limits.
 
 ## Window layout (macOS)
 
@@ -116,7 +130,7 @@ Typical PDF42 layout; other apps add their own formula bar, notes, inspectors or
   batch output is not an atomic group. Missing merge inputs are errors; a no-reduction compression still writes the
   requested unchanged copy. Unsupported formats and invalid ranges must not produce a success-shaped no-op.
 
-These contracts describe the current source. README lists scenario boundaries; STATUS records the actual checked
+These contracts describe the current source. README lists scenario boundaries; each audit records the actual checked
 binary, failures/skips, installation and publication state. Native UI assertions complement saved-file inspection.
 
 ## XLS42 editing and output contracts
@@ -144,8 +158,8 @@ binary, failures/skips, installation and publication state. Native UI assertions
   disabled when it would consume at least 80% of the printable body. PDF export does not substitute a screenshot for
   complete sheet layout or mutate the user's print settings.
 
-These describe the current local implementation, not a published release. Keep scenario coverage in README and
-dated binary/test/installation evidence in STATUS; native action tests and PDFs establish more than panel snapshots.
+These describe the source implementation. Keep scenario coverage in README and
+dated binary/test/installation evidence with each audit; native action tests and PDFs establish more than panel snapshots.
 
 ## PPT42 editing and output contracts
 
@@ -179,7 +193,7 @@ dated binary/test/installation evidence in STATUS; native action tests and PDFs 
   scheduled them; moving elsewhere must not reveal a build on the wrong slide.
 
 These are local implementation contracts. Record exercised scenarios, limitations and the exact build's results in
-README/STATUS; passing model tests do not replace native actions, rendered-pixel assertions or saved-file checks.
+README and the audit artifacts; passing model tests do not replace native actions, rendered-pixel assertions or saved-file checks.
 
 ## IMG42 editing and output contracts
 
@@ -211,7 +225,7 @@ README/STATUS; passing model tests do not replace native actions, rendered-pixel
   without the requested effects. Per-file destination replacement is atomic after successful encoding; a batch is not
   one atomic transaction. Do not mark the document clean or switch its file identity before a write succeeds.
 
-These are source contracts; STATUS records the exact tested binary, exercised scenarios and remaining limits.
+These are source contracts; each audit records the exact tested binary, exercised scenarios and remaining limits.
 
 ## SCN42 editing and output contracts
 
@@ -236,16 +250,23 @@ These are source contracts; STATUS records the exact tested binary, exercised sc
   preserves the dark Otsu class, including an already black/white original; packed rows account for padding bits.
 - UI image import applies orientation and uses at most 6,000 pixels on the longest side. Valid source DPI is scaled
   with any pixel reduction. PDF import uses up to 250 dpi with the same pixel bound and preserves page rotation and
-  effective physical size. All TIFF/PDF pages are imported, with a 2,000-page bound and an error for an unreadable page.
-  Raster CLI input uses full resolution within the larger processing bound; PDF CLI input shares the PDF rasterizer.
+  effective physical size. All TIFF/PDF pages are imported, with a 2,000-page bound per input and an error for an unreadable
+  page. Batches remain in memory without an aggregate page/memory budget. Raster CLI input uses full resolution within
+  the larger processing bound; PDF CLI input shares the PDF rasterizer.
 - Save/export capture one immutable output snapshot. OCR must finish successfully when requested. Clean state, history
   counts/thumbnails and the completion callback refer to the saved snapshot, not later pages. PDF compression preserves
   physical page size and corresponding OCR geometry. Single-page encoders cannot silently drop extra pages. Each output
   file is atomically replaced after successful encoding; a multi-file batch is not one atomic transaction. History
   removal deletes its entry/thumbnail, not the saved document.
+- Signature/stamp placement belongs to one page identity. Return or Print into Page commits the mark into both the
+  displayed pixels and the geometry-corrected base with multiply blending; Escape, changing the shown page or its
+  pixel revision, and closing the window cancel unfinished placement. Existing OCR text/geometry is preserved because
+  page geometry is unchanged; pending results from the previous pixel revision are discarded. The mutation is one
+  complete Undo step. Preserve grayscale/1-bit page
+  kinds. Saved output contains the resulting page pixels, including PDF; no independent PDF annotation is created.
 - Native regression scenarios must exercise actions, mouse/key controls, complete Undo/Redo and rendered/saved data.
   Keep deterministic pixel/document checks separate from real Vision recognition/detection and virtual-scanner jobs.
-  None of these substitutes for physical scanner, Continuity Camera, external sharing or printer testing. STATUS records
+  None of these substitutes for physical scanner, Continuity Camera, external sharing or printer testing. Each audit records
   the tested binary, actual results, hardware used or absent, publication state and remaining limits.
 
 ## Menu bar (`MenuBarSpec` → `MenuBar.build`)
@@ -300,17 +321,24 @@ documented by the app: PPT42 uses ⇧⌘P for Play from Current Slide and remove
 
 ## Signature and stamp library
 
-- PDF42, DOC42, XLS42, IMG42 and PPT42 use the same local library and generator. A generated item stores a preview
+- PDF42, DOC42, XLS42, IMG42, PPT42 and SCN42 use the same local library and generator. A generated item stores a preview
   and a JSON recipe; an imported stamp also keeps its original source. Insert renders a fresh impression from the
   recipe. Importing a fixed picture retains a fixed image. Visual signatures and stamps are separate from the
   certificate-based digital-signature commands.
 - **My Signature…** accepts strokes from `SignaturePad` or traces an imported picture. The pad records points,
   time and available event pressure; picture samples have no measured timing. Rendering uses stroke geometry and
   captured or modelled durations, blends structurally compatible samples, and varies each copy. The recipe keeps
-  the samples, ink and chosen pen locally. It does not send samples to a training service.
+  the samples, ink and chosen pen locally. Picture tracing also stores an estimated stroke-width ratio, used within
+  the renderer's bounds when making copies. It does not send samples to a training service.
 - Generated and learned signatures share the renderer. A smooth path defines geometry; overlapping lognormal
   movement impulses define speed along it. Ballpoint, gel, fountain and felt-tip pens convert that motion into
   different widths and ink textures. Recipes without a pen field retain the ballpoint default.
+- Learned samples use one scale for both axes, with a width-aware floor for very flat strokes. Raw input, spline,
+  spatial resampling, timing integration and output bitmaps have explicit work/size bounds. Reject invalid/nonfinite
+  recipes before those operations; keep pixel and JSON-round-trip regressions for valid flat and wide samples.
+- The signature blind-test commands create a numbered, shuffled sheet and score a tester's selected cells against its
+  key. They normalize ink presentation and retain measured answers separately from generated fixtures. Correct/inverted
+  fixture answers validate scoring mechanics only; a human comparison requires real reference images and independent judgments.
 
 ## Kit42 components
 
@@ -401,6 +429,7 @@ must remain visible in the recorded result.
 For PPT42, `--app PPT42` adds canvas/editing, text/table/show, lifecycle and inspector suites. Pair those with
 `PPT42 --selftest` and `scripts/audit-presentations-cli.py --binary …`; record skipped PDF/movie checks explicitly.
 Native control tests include rendered fill/border samples and complete-document output assertions where relevant.
+
 For IMG42, use `IMG42 --selftest`, `scripts/audit-ui.py --app IMG42` and
 `scripts/audit-images-cli.py --binary …` together. Pixel fixtures cover actual masks/transforms/adjustments, native
 scenarios cover controls and Undo/lifecycle, and independent saved-file checks cover encoding and metadata. Record
@@ -408,6 +437,8 @@ codec- or Vision-dependent skips explicitly; successful panel toggles are not ed
 The IMG42 native suite also exercises disposable-file Trash/Undo/Redo across navigation, actual full-screen Spaces,
 VisionKit text-selection gestures and Escape, and real Vision subject segmentation. The model-dependent scenario
 preserves its generated source, alpha output and masks; it must fail visibly if recognition or segmentation fails.
+Native audit bundles use isolated identifiers and are re-signed. Reports distinguish original executable hashes from
+the launched copies and verify unsigned Mach-O equivalence, resource manifests and unchanged inputs after the run.
 For SCN42, pair `SCN42 --selftest` with `scripts/audit-scans-cli.py --binary …` and
 `scripts/audit-ui.py --app SCN42 --binary …`. Native core/scanner/editing/files scenarios exercise settings, cancellation,
 page gestures, complete Undo/Redo, saved snapshots and Copy-to-PDF. A separate real Vision scenario covers OCR,
@@ -433,11 +464,10 @@ These complement the behavioral suites and must not be reported as editing or co
 - Extension strings use `PL("…")` (legacy rows in `Previews42/Strings.swift`, additional languages in the Kit42
   catalogs) and follow the first supported system language: the sandbox cannot read the suite's language choice.
 
-
-## OFF42 website contracts — 2026-11-06
+## OFF42 website contracts
 
 The public product website lives in `website/`, independently of the macOS and Windows app builds.
-A dependency-free Node generator renders 13 route types for the same 20 language
+A dependency-free Node generator renders 14 route types for the same 20 language
 codes as `Kit42.Language`. Routes use `/<locale>/`; Arabic sets `dir=rtl`. Shared
 header, footer, feature illustrations, download cards and language navigation use
 one renderer and stylesheet. Language changes preserve the current route. Navigation
@@ -451,8 +481,9 @@ not negative horizontal positioning (which creates RTL overflow). Normal text co
 must remain at least 4.5:1. `website/QA.md` retains the reproduced regression scenarios.
 
 Every page has localized HTML, a unique title/canonical, 20 hreflang links plus
-x-default, social metadata and a single H1. Feature FAQs have matching JSON-LD.
-The sitemap enumerates all 260 canonical localized routes. The root selects English
+x-default, social metadata and a single H1. Feature FAQs have matching JSON-LD. Each localized home page
+embeds that language's demo video (MP4 with a JPEG poster); the build check requires both for all 20 languages.
+The sitemap enumerates all 280 canonical localized routes. The root selects English
 through an HTTP redirect; the site does not silently change language based on location.
 
 `website/site.config.json` owns the GitHub destination and nullable platform release
@@ -463,8 +494,7 @@ signs or notarises applications. Platform-specific capabilities and installer av
 Copy for both macOS and Windows must follow the implemented scope and configured releases; changes to either
 platform require explicit content updates.
 
-
-## Technical elements and label output — macOS, 2026-11-06
+## Technical elements and label output (macOS)
 
 `Kit42.TechnicalElement` is the shared editable recipe. The offline encoder produces integral-module PNG
 and vector PDF with quiet zones. PNG Description metadata stores the bounded versioned JSON recipe;
@@ -494,8 +524,9 @@ Saved templates rebind table fields by unique names, not by silently reusing col
 It transforms each complete printed page, including DOC subviews and XLS images, with positive Y
 meaning down on paper. Export renderers never read calibration. PDF and mixed-size DOC print paths
 use a shared vector print view; the existing XLS print options remain available in their accessory.
-There are no permanent sidebars or new default toolbar buttons. These technical-element, label and calibration
-features currently apply to macOS; their Windows integration is separate work.
+There are no permanent sidebars or new default toolbar buttons. These Kit42 technical-element, label and
+calibration contracts apply to macOS; the Windows apps have their own barcode and label-sheet tools, described in
+[rust/README.md](rust/README.md#labels-barcodes-and-signatures).
 
 `production42audit` verifies actual code decoding, vector/PNG output, table/copy/visibility rules,
 label pagination and print-to-file geometry. App native technical scenarios additionally cover

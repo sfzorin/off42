@@ -52,11 +52,11 @@
       },
       {
         "q": "¿Qué Mac son compatibles con OFF42?",
-        "a": "OFF42 está pensado para macOS 14 o posterior. Aún no se ha publicado un instalador público; puedes compilar las apps desde el código fuente con Xcode Command Line Tools."
+        "a": "Hay una versión preliminar en formato DMG para Mac con Apple Silicon y macOS 14 o posterior."
       },
       {
         "q": "¿Hay versión para Windows?",
-        "a": "Las aplicaciones nativas para Windows están implementadas y disponibles como código fuente. Consulta las funciones y limitaciones documentadas. Aún no se ha publicado un instalador público para Windows."
+        "a": "Versión preliminar con las seis aplicaciones. Extrae todo el ZIP y abre la aplicación que quieras. Incluye herramientas para etiquetas y códigos de barras."
       }
     ]
   },
@@ -82,7 +82,7 @@
   "marks": {
     "label": "FIRMAS Y SELLOS",
     "title": "Firma y sella como en papel. Sin impresora ni escáner.",
-    "text": "OFF42 escribe una firma manuscrita a partir de un nombre, estampa el sello de la empresa y coloca ambos directamente en el documento. Cada estampado sale un poco distinto, como la tinta real sobre el papel.",
+    "text": "Añade a tu documento imágenes de tu propia firma y de tu sello.",
     "points": [
       "Firmas con bolígrafo, tinta de gel, pluma estilográfica o rotulador",
       "132 estilos de sellos: sellos redondos, sellos de empresa, «Pagado» y «Recibido»",
@@ -112,6 +112,12 @@
     "title": "Apps reales. Documentos reales.",
     "text": "Cada imagen es una captura de pantalla de OFF42 en un Mac, con documentos de ejemplo de empresas ficticias abiertos en las apps. Sin maquetas."
   },
+  "video": {
+    "label": "MÍRALO EN ACCIÓN",
+    "title": "Un minuto con OFF42.",
+    "text": "Sigue escribiendo una carta de Word, revisa un presupuesto, presenta unas diapositivas, corrige un PDF y escanea una página; después convierte una lista de productos en etiquetas QR con marcado CE. Cada fotograma lo renderizan las propias apps en un Mac, con documentos de ejemplo de empresas ficticias.",
+    "caption": "Demo sin sonido, de aproximadamente un minuto. Renderizado real de las apps; los movimientos de cámara y el puntero son añadidos."
+  },
   "labels": {
     "learn": "Explorar",
     "allFeatures": "Todas las funciones",
@@ -129,7 +135,6 @@
     "available": "Disponible",
     "unavailable": "Aún no publicado",
     "downloadDmg": "Descargar DMG",
-    "downloadExe": "Descargar EXE",
     "checksum": "SHA-256",
     "version": "Versión",
     "requirements": "Requisitos del sistema",
@@ -141,7 +146,8 @@
     "notFoundText": "Ve al inicio o elige un idioma para seguir explorando.",
     "copy": "Copiar",
     "copied": "Copiado",
-    "screenshot": "Captura de pantalla en macOS. Documentos de ejemplo, empresas ficticias."
+    "screenshot": "Captura de pantalla en macOS. Documentos de ejemplo, empresas ficticias.",
+    "downloadZip": "Descargar ZIP"
   },
   "apps": {
     "pdf": {
@@ -362,12 +368,13 @@
     "sourceText": "Obtén el código con licencia MIT en GitHub. Para compilar en macOS necesitas Xcode Command Line Tools. Las compilaciones locales usan firma ad-hoc salvo que configures una firma de distribución.",
     "checkReleases": "Consultar versiones",
     "buildGuide": "Instrucciones de compilación",
-    "releaseNote": "Los botones de descarga aparecen cuando hay archivos de versión publicados. Ningún instalador se presenta como firmado o notarizado sin pruebas en la publicación.",
+    "releaseNote": "La versión preliminar para Mac tiene una firma ad hoc. Apple no la ha notarizado y macOS puede pedirte permiso al abrirla por primera vez.",
     "buildTitle": "Compila OFF42 en tu Mac",
     "buildText": "Hasta que se publique un instalador firmado, puedes compilar las apps tú mismo en pocos minutos. Ejecuta estos comandos en Terminal.",
     "buildStep1": "Instala Xcode Command Line Tools de Apple.",
     "buildStep2": "Descarga el código fuente desde GitHub.",
-    "buildStep3": "Compila las seis apps, o compila una y cópiala en la carpeta Aplicaciones."
+    "buildStep3": "Compila las seis apps, o compila una y cópiala en la carpeta Aplicaciones.",
+    "windowsPreviewText": "Versión preliminar con las seis aplicaciones. Extrae todo el ZIP y abre la aplicación que quieras. Incluye herramientas para etiquetas y códigos de barras."
   },
   "about": {
     "title": "Una oficina sin nada que ocultar.",

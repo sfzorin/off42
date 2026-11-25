@@ -1,0 +1,10 @@
+[package]
+name = "pdf42-core"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+suite42-core = { path = "../suite42-core" }
+lopdf = "0.47"
+flate2 = "1"
+getrandom = "0.4"
+suite42-pdf-text = { path = "../suite42-pdf-text" }

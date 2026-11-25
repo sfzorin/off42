@@ -52,11 +52,11 @@
       },
       {
         "q": "OFF42 hỗ trợ những máy Mac nào?",
-        "a": "OFF42 dành cho macOS 14 trở lên. Bộ cài công khai chưa được phát hành; bạn có thể tự biên dịch các ứng dụng từ mã nguồn bằng Xcode Command Line Tools."
+        "a": "Có bản xem trước dạng DMG cho máy Mac dùng Apple Silicon và macOS 14 trở lên."
       },
       {
         "q": "Có phiên bản Windows không?",
-        "a": "Các ứng dụng gốc cho Windows đã được triển khai và có sẵn mã nguồn. Hãy xem tính năng và giới hạn được ghi trong tài liệu. Bộ cài Windows công khai chưa được phát hành."
+        "a": "Bản xem trước có đủ sáu ứng dụng. Giải nén toàn bộ tệp ZIP rồi mở ứng dụng bạn muốn. Có công cụ tạo nhãn và mã vạch."
       }
     ]
   },
@@ -82,7 +82,7 @@
   "marks": {
     "label": "CHỮ KÝ VÀ CON DẤU",
     "title": "Ký tên, đóng dấu như trên giấy. Không cần máy in hay máy quét.",
-    "text": "Chỉ từ một cái tên, OFF42 viết ra chữ ký tay, đóng dấu công ty rồi đặt cả hai ngay vào tài liệu. Mỗi lần chèn lại hơi khác một chút, như mực thật trên giấy.",
+    "text": "Thêm hình ảnh chữ ký và con dấu của bạn vào tài liệu.",
     "points": [
       "Chữ ký bằng bút bi, bút gel, bút máy hoặc bút dạ",
       "132 kiểu con dấu: dấu tròn, dấu công ty, “Đã thanh toán” và “Đã nhận”",
@@ -112,6 +112,12 @@
     "title": "Ứng dụng thật. Tài liệu thật.",
     "text": "Mọi hình ảnh ở đây đều là ảnh chụp màn hình OFF42 trên Mac, với tài liệu mẫu của các công ty hư cấu mở trong ứng dụng. Không phải ảnh dựng."
   },
+  "video": {
+    "label": "XEM CÁCH HOẠT ĐỘNG",
+    "title": "Một phút với OFF42.",
+    "text": "Viết tiếp một lá thư Word, kiểm tra ngân sách, trình chiếu slide, sửa PDF và quét một trang giấy — rồi biến danh sách sản phẩm thành nhãn QR có dấu CE. Mọi khung hình đều do chính các ứng dụng kết xuất trên Mac, với tài liệu mẫu của các công ty hư cấu.",
+    "caption": "Bản demo không tiếng, khoảng một phút. Hình ảnh thật từ ứng dụng; chuyển động máy quay và con trỏ được thêm vào."
+  },
   "labels": {
     "learn": "Khám phá",
     "allFeatures": "Tất cả tính năng",
@@ -129,7 +135,6 @@
     "available": "Có sẵn",
     "unavailable": "Chưa phát hành",
     "downloadDmg": "Tải DMG",
-    "downloadExe": "Tải EXE",
     "checksum": "SHA-256",
     "version": "Phiên bản",
     "requirements": "Yêu cầu hệ thống",
@@ -141,7 +146,8 @@
     "notFoundText": "Về trang chủ hoặc chọn một ngôn ngữ để tiếp tục khám phá.",
     "copy": "Sao chép",
     "copied": "Đã sao chép",
-    "screenshot": "Ảnh chụp màn hình trên macOS. Tài liệu mẫu, công ty hư cấu."
+    "screenshot": "Ảnh chụp màn hình trên macOS. Tài liệu mẫu, công ty hư cấu.",
+    "downloadZip": "Tải ZIP"
   },
   "apps": {
     "pdf": {
@@ -362,12 +368,13 @@
     "sourceText": "Lấy mã nguồn có giấy phép MIT trên GitHub. Biên dịch trên macOS cần Xcode Command Line Tools. Bản dựng cục bộ dùng chữ ký ad-hoc, trừ khi bạn cấu hình ký để phân phối.",
     "checkReleases": "Xem bản phát hành",
     "buildGuide": "Hướng dẫn biên dịch",
-    "releaseNote": "Nút tải xuống xuất hiện khi có tệp phát hành công khai. Không bộ cài nào được ghi là đã ký hay được Apple chứng thực nếu chưa có bằng chứng từ bản phát hành.",
+    "releaseNote": "Bản xem trước cho Mac dùng chữ ký ad hoc. Bản này chưa được Apple công chứng và macOS có thể yêu cầu cho phép mở lần đầu.",
     "buildTitle": "Biên dịch OFF42 trên Mac của bạn",
     "buildText": "Trong khi chờ bộ cài có chữ ký được phát hành, bạn có thể tự biên dịch các ứng dụng chỉ trong vài phút. Hãy chạy các lệnh sau trong Terminal.",
     "buildStep1": "Cài đặt Xcode Command Line Tools của Apple.",
     "buildStep2": "Tải mã nguồn từ GitHub.",
-    "buildStep3": "Biên dịch cả sáu ứng dụng, hoặc biên dịch một ứng dụng và sao chép vào thư mục Applications."
+    "buildStep3": "Biên dịch cả sáu ứng dụng, hoặc biên dịch một ứng dụng và sao chép vào thư mục Applications.",
+    "windowsPreviewText": "Bản xem trước có đủ sáu ứng dụng. Giải nén toàn bộ tệp ZIP rồi mở ứng dụng bạn muốn. Có công cụ tạo nhãn và mã vạch."
   },
   "about": {
     "title": "Một bộ văn phòng không giấu điều gì.",

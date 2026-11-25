@@ -52,11 +52,11 @@
       },
       {
         "q": "OFF42 hangi Mac'leri destekler?",
-        "a": "OFF42, macOS 14 ve üzerini hedefler. Herkese açık bir yükleyici henüz yayımlanmadı; uygulamaları Xcode Command Line Tools ile kaynak koddan derleyebilirsiniz."
+        "a": "Apple Silicon işlemcili ve macOS 14 veya üzeri yüklü Mac’ler için bir önizleme DMG’si sunuluyor."
       },
       {
         "q": "Windows sürümü var mı?",
-        "a": "Yerel Windows uygulamaları geliştirilmiş ve kaynak koduyla sunulmuştur. Belgelenen özellikleri ve sınırlamaları inceleyin. Henüz herkese açık bir Windows yükleyicisi yayımlanmamıştır."
+        "a": "Altı uygulamanın tamamını içeren önizleme sürümü. ZIP dosyasının tamamını çıkarıp istediğiniz uygulamayı açın. Etiket ve barkod oluşturma araçları içerir."
       }
     ]
   },
@@ -82,7 +82,7 @@
   "marks": {
     "label": "İMZALAR VE KAŞELER",
     "title": "Kâğıttaki gibi imzalayın ve kaşeleyin. Yazıcısız, tarayıcısız.",
-    "text": "OFF42 bir isimden el yazısı imza oluşturur, şirket kaşesini basar ve ikisini doğrudan belgeye yerleştirir. Her baskı biraz farklı çıkar; tıpkı kâğıttaki gerçek mürekkep gibi.",
+    "text": "Kendi imzanızın ve kaşenizin görsellerini belgenize ekleyin.",
     "points": [
       "Tükenmez, jel, dolma veya keçeli kalemle imzalar",
       "132 kaşe stili: yuvarlak mühürler, şirket kaşeleri, “Ödendi” ve “Teslim Alındı”",
@@ -112,6 +112,12 @@
     "title": "Gerçek uygulamalar. Gerçek belgeler.",
     "text": "Buradaki her görsel, OFF42'nin Mac'teki ekran görüntüsüdür; uygulamalarda kurgusal şirketlere ait örnek belgeler açıktır. Maket yok."
   },
+  "video": {
+    "label": "ÇALIŞIRKEN İZLEYİN",
+    "title": "OFF42 ile bir dakika.",
+    "text": "Bir Word mektubuna devam edin, bütçeyi kontrol edin, sunum yapın, bir PDF'i düzeltin ve bir sayfa tarayın; ardından ürün listesini CE işaretli QR etiketlerine dönüştürün. Her kare, kurgusal şirketlerin örnek belgeleriyle bir Mac'te uygulamaların kendisi tarafından oluşturuldu.",
+    "caption": "Sessiz demo, yaklaşık bir dakika. Gerçek uygulama görüntüleri; kamera hareketleri ve işaretçi sonradan eklendi."
+  },
   "labels": {
     "learn": "Keşfedin",
     "allFeatures": "Tüm özellikler",
@@ -129,7 +135,6 @@
     "available": "Kullanılabilir",
     "unavailable": "Henüz yayımlanmadı",
     "downloadDmg": "DMG indir",
-    "downloadExe": "EXE indir",
     "checksum": "SHA-256",
     "version": "Sürüm",
     "requirements": "Sistem gereksinimleri",
@@ -141,7 +146,8 @@
     "notFoundText": "Keşfetmeye devam etmek için ana sayfaya gidin veya bir dil seçin.",
     "copy": "Kopyala",
     "copied": "Kopyalandı",
-    "screenshot": "macOS'ta ekran görüntüsü. Örnek belgeler, kurgusal şirketler."
+    "screenshot": "macOS'ta ekran görüntüsü. Örnek belgeler, kurgusal şirketler.",
+    "downloadZip": "ZIP indir"
   },
   "apps": {
     "pdf": {
@@ -362,12 +368,13 @@
     "sourceText": "MIT lisanslı kaynak kodunu GitHub'dan edinin. macOS üzerinde derleme için Xcode Command Line Tools gerekir. Dağıtım imzası ayarlamadıkça yerel derlemeler ad-hoc imzalama kullanır.",
     "checkReleases": "Sürümleri kontrol edin",
     "buildGuide": "Derleme talimatları",
-    "releaseNote": "Yayımlanmış sürüm dosyaları hazır olduğunda indirme düğmeleri görünür. Sürüm kanıtı olmadan hiçbir yükleyici imzalı veya noter onaylı olarak sunulmaz.",
+    "releaseNote": "Mac önizlemesi ad hoc olarak imzalanmıştır. Apple noter onayı yoktur ve macOS ilk açılışta izin isteyebilir.",
     "buildTitle": "OFF42'yi Mac'inizde derleyin",
     "buildText": "İmzalı bir yükleyici yayımlanana kadar uygulamaları birkaç dakikada kendiniz derleyebilirsiniz. Bu komutları Terminal'de çalıştırın.",
     "buildStep1": "Apple'ın Xcode Command Line Tools paketini yükleyin.",
     "buildStep2": "Kaynak kodunu GitHub'dan indirin.",
-    "buildStep3": "Altı uygulamanın tümünü derleyin ya da tek bir uygulamayı derleyip Uygulamalar klasörüne kopyalayın."
+    "buildStep3": "Altı uygulamanın tümünü derleyin ya da tek bir uygulamayı derleyip Uygulamalar klasörüne kopyalayın.",
+    "windowsPreviewText": "Altı uygulamanın tamamını içeren önizleme sürümü. ZIP dosyasının tamamını çıkarıp istediğiniz uygulamayı açın. Etiket ve barkod oluşturma araçları içerir."
   },
   "about": {
     "title": "Saklayacak şeyi olmayan bir ofis.",

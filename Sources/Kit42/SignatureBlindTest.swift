@@ -8,7 +8,7 @@ import AppKit
 /// grey paper — and shuffled into numbered cells of `sheet.pdf`; `key.json` holds which is which. Testers write the
 /// numbers they think are generated, one per line or comma-separated, into a text file;
 /// `PDF42 --signature-blindtest-score OUT_DIR/key.json answers.txt` prints accuracy, hit and false-alarm rates and d′.
-/// Accuracy near 50 % (d′ near 0) means the generated signatures cannot be told apart.
+/// Interpret accuracy against the generated/real balance; d′ near 0 indicates low measured separation in this test.
 /// Use only signatures you may use: your own, or with the owner's consent.
 public enum SignatureBlindTest {
     struct Key: Codable {
@@ -134,16 +134,25 @@ public enum SignatureBlindTest {
     public static func score(key url: URL, answers: URL) throws -> String {
         let key = try JSONDecoder().decode(Key.self, from: Data(contentsOf: url))
         let text = try String(contentsOf: answers, encoding: .utf8)
-        let marked = Set(text.split(separator: "\n").filter { !$0.hasPrefix("#") }.joined(separator: ",")
-            .split(whereSeparator: { ",; \t".contains($0) }).compactMap { Int($0) }.map { $0 - 1 })
         let n = key.cells.count, generated = key.cells.filter { $0 }.count, real = n - generated
+        let tokens = text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.hasPrefix("#") }.joined(separator: ",")
+            .split(whereSeparator: { ",; \t".contains($0) })
+        var marked = Set<Int>()
+        for token in tokens {
+            guard let number = Int(token), number >= 1, number <= n else {
+                throw NSError(domain: "SignatureBlindTest", code: 3,
+                              userInfo: [NSLocalizedDescriptionKey: "Invalid answer '\(token)': expected a cell number from 1 to \(n)"])
+            }
+            marked.insert(number - 1)
+        }
         let hits = key.cells.indices.filter { key.cells[$0] && marked.contains($0) }.count
         let falseAlarms = key.cells.indices.filter { !key.cells[$0] && marked.contains($0) }.count
         let correct = hits + (real - falseAlarms)
         // Rates clamped away from 0 and 1 (log-linear correction) for d′.
         let h = (Double(hits) + 0.5) / Double(generated + 1), f = (Double(falseAlarms) + 0.5) / Double(real + 1)
         let dPrime = probit(h) - probit(f)
-        return String(format: "Blind test: %d of %d correct (%.0f %%); generated found %d of %d, real marked as generated %d of %d; d′ = %.2f (0 = indistinguishable)",
+        return String(format: "Blind test: %d of %d correct (%.0f %%); generated found %d of %d, real marked as generated %d of %d; d′ = %.2f (0 = no measured separation)",
                       correct, n, 100 * Double(correct) / Double(max(1, n)), hits, generated, falseAlarms, real, dPrime)
     }
 

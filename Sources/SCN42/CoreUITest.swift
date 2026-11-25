@@ -27,7 +27,7 @@ extension ScanWindowController {
             Cmd.exportText, Cmd.mail, Cmd.copyText, Cmd.pagesPanel, Cmd.settingsPanel, Cmd.historyPanel, Cmd.showGlass,
             Cmd.zoomIn, Cmd.zoomOut, Cmd.actualSize, Cmd.zoomToFit, Cmd.rotateLeft, Cmd.rotateRight, Cmd.deletePage,
             Cmd.moveUp, Cmd.moveDown, Cmd.rescan, Cmd.insertHere, Cmd.split, Cmd.recognize, Cmd.enhance,
-            Cmd.removeBlank, Cmd.straighten, Cmd.welcome] + Cmd.enhancements + Cmd.colorModes
+            Cmd.removeBlank, Cmd.straighten, Cmd.stamps, Cmd.welcome] + Cmd.enhancements + Cmd.colorModes
         let missing = inventory.filter { NSApp.target(forAction: $0.action, to: nil, from: $0.menuItem()) == nil }
         if !missing.isEmpty { print("SCN42 missing responders:", missing.map(\.title)) }
         check(missing.isEmpty, "all declared menu commands resolve responders (wiring only)")

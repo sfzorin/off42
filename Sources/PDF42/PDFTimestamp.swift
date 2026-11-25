@@ -88,7 +88,11 @@ enum Timestamp {
     }
 
     static func requestToken(for signature: [UInt8], tsa: URL) throws -> [UInt8] {
-        let hash = [UInt8](SHA256.hash(data: Data(signature)))
+        try requestToken(digest: [UInt8](SHA256.hash(data: Data(signature))), tsa: tsa)
+    }
+
+    /// TimeStampToken for a SHA-256 digest (also used for PAdES document timestamps).
+    static func requestToken(digest hash: [UInt8], tsa: URL) throws -> [UInt8] {
         let sha256: [UInt8] = [0x30, 0x0D, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00]
         let imprint = tlv(0x30, sha256 + tlv(0x04, hash))
         var nonce = (0..<8).map { _ in UInt8.random(in: 0...255) }

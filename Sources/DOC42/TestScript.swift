@@ -77,7 +77,7 @@ extension DocWindowController {
                     try? data.write(to: URL(fileURLWithPath: arg))
                 }
             default:
-                if !runWriterStep(parts[0], arg, nums) { print("unknown step", step) }
+                if !runWriterStep(parts[0], arg, nums) { print("FAIL DOC script: unknown or invalid step", step); exit(1) }
             }
             paged.layoutAll()
         }
@@ -135,7 +135,7 @@ extension DocWindowController {
 
 
 extension DocWindowController {
-    /// Steps for the Writer-like features (see runTestScript). Returns false for an unknown step.
+    /// Steps for the Writer-like features (see runTestScript). Returns false for an unknown or invalid step.
     func runWriterStep(_ name: String, _ arg: String, _ nums: [Int]) -> Bool {
         let storage = textView.textStorage!
         func kv() -> [String: String] {
@@ -157,7 +157,7 @@ extension DocWindowController {
         case "modstyle":
             let a = kv()
             let id = String(arg.split(separator: " ").first ?? "Normal")
-            guard var st = styleSheet[id] else { return true }
+            guard var st = styleSheet[id] else { return false }
             if let v = num(a["size"]) { st.size = v }
             if let c = color(a["color"]) { st.color = c }
             if let b = a["bold"] { st.weight = b == "1" ? 9 : 5 }

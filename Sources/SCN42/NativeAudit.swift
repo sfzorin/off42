@@ -19,6 +19,7 @@ import Kit42
             case "scanner": passed = await owner.auditScanner(folder: folder)
             case "editing": passed = await owner.auditEditing()
             case "files": passed = await owner.auditFiles()
+            case "marks": passed = await owner.auditMarks()
             default: print("FAIL SCN42 audit: unknown scenario")
             }
             UITest.capture(window, "scn-" + scenario)

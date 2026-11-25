@@ -1,0 +1,14 @@
+[package]
+name = "scn42"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+suite42-pdf-raster = { path = "../../crates/suite42-pdf-raster" }
+win42 = { path = "../../crates/win42" }
+scn42-core = { path = "../../crates/scn42-core" }
+img42-core = { path = "../../crates/img42-core" }
+
+tempfile = "3"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Win32_Devices_ImageAcquisition", "Win32_Foundation", "Win32_System_Com", "Win32_Graphics_Imaging", "Media_Ocr", "Globalization", "Graphics_Imaging", "Storage_Streams", "Foundation", "Win32_System_WinRT"] }

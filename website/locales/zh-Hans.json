@@ -52,11 +52,11 @@
       },
       {
         "q": "OFF42 支持哪些 Mac？",
-        "a": "OFF42 面向 macOS 14 及更高版本。公开安装程序尚未发布；你可以使用 Xcode Command Line Tools 从源代码构建这些应用。"
+        "a": "搭载 Apple 芯片并运行 macOS 14 或更高版本的 Mac 可以下载预览版 DMG。"
       },
       {
         "q": "有 Windows 版本吗？",
-        "a": "Windows 原生应用已经实现，并提供源代码。请查看文档中的功能范围和限制。目前尚未发布公开的 Windows 安装程序。"
+        "a": "预览版包含全部六款应用。请完整解压 ZIP 文件，再启动所需的应用。 包含标签和条码制作工具。"
       }
     ]
   },
@@ -82,7 +82,7 @@
   "marks": {
     "label": "签名与印章",
     "title": "像在纸上一样签字盖章，不用打印，也不用扫描。",
-    "text": "输入姓名，OFF42 就能写出手写签名，盖上公司印章，并直接放进文档。每一次落款都略有不同，就像真实的墨迹落在纸上。",
+    "text": "将您自己的签名和印章图片添加到文档中。",
     "points": [
       "圆珠笔、中性笔、钢笔或马克笔笔迹",
       "132 种印章样式：圆形公章、公司印章、“已付款”与“已收讫”",
@@ -112,6 +112,12 @@
     "title": "真实的应用，真实的文档。",
     "text": "这里的每张图片都是 OFF42 在 Mac 上的截图，应用中打开的是虚构公司的示例文档。没有效果图。"
   },
+  "video": {
+    "label": "实际演示",
+    "title": "一分钟了解 OFF42。",
+    "text": "接着写一封 Word 信函，核对预算，放映演示文稿，修改 PDF，扫描一页纸，再把产品清单变成带 CE 标志的 QR 标签。每一帧都由应用本身在 Mac 上渲染，使用的是虚构公司的示例文档。",
+    "caption": "无声演示，约一分钟。画面为应用真实渲染；镜头运动和指针为后期添加。"
+  },
   "labels": {
     "learn": "探索",
     "allFeatures": "全部功能",
@@ -129,7 +135,6 @@
     "available": "可用",
     "unavailable": "尚未发布",
     "downloadDmg": "下载 DMG",
-    "downloadExe": "下载 EXE",
     "checksum": "SHA-256",
     "version": "版本",
     "requirements": "系统要求",
@@ -141,7 +146,8 @@
     "notFoundText": "前往首页，或选择一种语言继续探索。",
     "copy": "复制",
     "copied": "已复制",
-    "screenshot": "macOS 实机截图。示例文档，公司均为虚构。"
+    "screenshot": "macOS 实机截图。示例文档，公司均为虚构。",
+    "downloadZip": "下载 ZIP"
   },
   "apps": {
     "pdf": {
@@ -362,12 +368,13 @@
     "sourceText": "在 GitHub 获取 MIT 许可的源代码。在 macOS 上构建需要 Xcode Command Line Tools。除非配置分发签名，否则本地构建使用临时签名。",
     "checkReleases": "查看发布版本",
     "buildGuide": "构建说明",
-    "releaseNote": "有已发布的安装文件后才会显示下载按钮。没有发布证据时，不会将安装程序标示为已签名或已公证。",
+    "releaseNote": "Mac 预览版采用临时签名（ad hoc），未经 Apple 公证。首次打开时，macOS 可能会要求你授权。",
     "buildTitle": "在你的 Mac 上构建 OFF42",
     "buildText": "在签名安装程序发布之前，你可以在几分钟内自行构建这些应用。请在“终端”中运行以下命令。",
     "buildStep1": "安装 Apple 的 Xcode Command Line Tools。",
     "buildStep2": "从 GitHub 下载源代码。",
-    "buildStep3": "构建全部六款应用，或只构建一款应用并拷贝到“应用程序”文件夹。"
+    "buildStep3": "构建全部六款应用，或只构建一款应用并拷贝到“应用程序”文件夹。",
+    "windowsPreviewText": "预览版包含全部六款应用。请完整解压 ZIP 文件，再启动所需的应用。 包含标签和条码制作工具。"
   },
   "about": {
     "title": "一个坦诚开放的办公套件。",

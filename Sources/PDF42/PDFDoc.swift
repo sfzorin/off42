@@ -90,8 +90,8 @@ final class PDFDoc: NSDocument {
             }
             restored = document
             restoredData = data
-            restoredSignatures = PDFSignatureVerifier.verify(data)
             restoredExtras = DocumentExtras.read(data, pdf: document)
+            restoredSignatures = PDFSignatureVerifier.verify(data, attachments: restoredExtras.files)
         }
         // Parse first: a failed Revert must retain the live document and in-place draft.
         editor?.pdfView.cancelTextEdit()
@@ -124,7 +124,7 @@ final class PDFDoc: NSDocument {
         let data = try data(ofType: typeName)
         try data.write(to: url, options: .atomic)
         originalData = data
-        signatures = PDFSignatureVerifier.verify(data)
+        signatures = PDFSignatureVerifier.verify(data, attachments: extras.files)
     }
 
     override func revert(toContentsOf url: URL, ofType typeName: String) throws {

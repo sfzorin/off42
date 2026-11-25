@@ -14,6 +14,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 
 REPO = Path(__file__).resolve().parent.parent
 APPS = ('PDF42', 'DOC42', 'XLS42', 'IMG42', 'PPT42', 'SCN42')
@@ -38,14 +39,40 @@ shots = out / 'screenshots'
 shots.mkdir(exist_ok=True)
 
 
+def sha256(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def resource_manifest(folder):
+    return {str(path.relative_to(folder)): sha256(path)
+            for path in sorted(folder.rglob('*')) if path.is_file()} if folder else {}
+
+
+def unsigned_executable_sha256(path):
+    # Audit bundles need a different identifier/signature. Compare their Mach-O bytes
+    # after removing signatures from disposable copies, never from either executable.
+    with tempfile.TemporaryDirectory(prefix='suite42-ui-code-') as folder:
+        copy = Path(folder) / path.name
+        shutil.copy2(path, copy)
+        subprocess.run(['codesign', '--remove-signature', str(copy)], check=True, capture_output=True)
+        return sha256(copy)
+
+
+prepared_identities = {}
+
+
 def prepare(app):
     bundle = out / 'apps' / f'{app}Audit.app'
     contents = bundle / 'Contents'
     (contents / 'MacOS').mkdir(parents=True, exist_ok=True)
     (contents / 'Resources').mkdir(exist_ok=True)
     binary = contents / 'MacOS' / app
-    shutil.copy2(args.binary or REPO / '.build/debug' / app, binary)
     source_binary = (args.binary or REPO / '.build/debug' / app).resolve()
+    source_hash = sha256(source_binary)
+    source_code_hash = unsigned_executable_sha256(source_binary)
+    shutil.copy2(source_binary, binary)
+    if sha256(binary) != source_hash:
+        raise RuntimeError(f'Executable changed while copying {source_binary}')
     # Use the tested bundle's own metadata/icon, including when checking an archived release.
     source_contents = source_binary.parent.parent
     packaged = source_contents.name == 'Contents' and (source_contents / 'Info.plist').is_file()
@@ -55,6 +82,7 @@ def prepare(app):
     resource_candidates = (source_binary.parent / 'Suite42_Kit42.bundle',
                            source_binary.parent.parent / 'Resources/Suite42_Kit42.bundle')
     resource_bundle = next((path for path in resource_candidates if path.is_dir()), None)
+    source_resource_hashes = resource_manifest(resource_bundle)
     # Legacy EN/RU/TR binaries embed their tables in Swift. Expanded locales require a resource bundle.
     if resource_bundle is None and set(info.get('CFBundleLocalizations', [])) - {'en', 'ru', 'tr'}:
         raise RuntimeError(f'Missing Kit42 translations for {source_binary}')
@@ -63,6 +91,8 @@ def prepare(app):
         shutil.rmtree(destination)
     if resource_bundle:
         shutil.copytree(resource_bundle, destination)
+        if resource_manifest(destination) != source_resource_hashes:
+            raise RuntimeError(f'Resources changed while copying {resource_bundle}')
     info['CFBundleIdentifier'] = f'com.sfzorin.uiaudit.{app.lower()}'
     info['CFBundleName'] = info['CFBundleDisplayName'] = app + ' Audit'
     with (contents / 'Info.plist').open('wb') as f:
@@ -70,12 +100,25 @@ def prepare(app):
     icon = source_contents / 'Resources/AppIcon.icns' if packaged else REPO / 'Resources' / app / 'AppIcon.icns'
     shutil.copy2(icon, contents / 'Resources/AppIcon.icns')
     subprocess.run(['codesign', '--force', '-s', '-', str(bundle)], check=True, capture_output=True)
+    tested_code_hash = unsigned_executable_sha256(binary)
+    if tested_code_hash != source_code_hash:
+        raise RuntimeError(f'Audit executable differs from {source_binary} beyond its signature')
+    prepared_identities[app] = {
+        'app': app, 'binary': str(source_binary), 'binary_sha256': source_hash,
+        'tested_executable': str(binary), 'tested_executable_sha256': sha256(binary),
+        'source_unsigned_sha256': source_code_hash, 'tested_unsigned_sha256': tested_code_hash,
+        'code_equivalent': True,
+        'equivalence_method': 'Byte-identical disposable Mach-O copies after codesign --remove-signature; source and tested signatures remain intact.',
+        'source_resource_bundle': str(resource_bundle) if resource_bundle else None,
+        'source_resource_manifest': source_resource_hashes,
+        'tested_resource_manifest': resource_manifest(contents / 'Resources'),
+        'tested_info_plist_sha256': sha256(contents / 'Info.plist'),
+    }
     return binary
 
 
 binaries = {app: prepare(app) for app in APPS if not args.app or args.app == app}
 sources = {app: (args.binary or REPO / '.build/debug' / app).resolve() for app in binaries}
-source_hashes = {app: hashlib.sha256(path.read_bytes()).hexdigest() for app, path in sources.items()}
 run_records = []
 
 
@@ -121,7 +164,7 @@ def run(app, name, arguments=(), settings=None, marker=None, snapshot=False, tim
             if dialog_target:
                 ok = ok and dialog_target.is_file() and dialog_target.stat().st_size > 1000
         print(f'{"PASS" if ok else "FAIL"} {name} (exit {result.returncode})', flush=True)
-        run_records.append({'name': name, 'app': app, 'passed': ok, 'launcher_exit_code': result.returncode})
+        run_records.append({'name': name, 'app': app, 'kind': 'behavioral' if marker else 'screenshot', 'passed': ok, 'launcher_exit_code': result.returncode})
         if not ok:
             print(text[-3500:], flush=True)
         return ok
@@ -138,7 +181,7 @@ def run(app, name, arguments=(), settings=None, marker=None, snapshot=False, tim
         else:
             log.write_bytes((error.stdout or b'') + (error.stderr or b''))
         print(f'FAIL {name}: timeout; see {log}', flush=True)
-        run_records.append({'name': name, 'app': app, 'passed': False, 'timeout': True})
+        run_records.append({'name': name, 'app': app, 'kind': 'behavioral' if marker else 'screenshot', 'passed': False, 'timeout': True})
         return False
 
 
@@ -172,31 +215,21 @@ if args.mode in ('all', 'tests'):
         ('SCN42', 'scn-scanner', ('--audit', 'scanner'), {}, 'SCN42 scanner regressions:', False),
         ('SCN42', 'scn-editing', ('--audit', 'editing'), {}, 'SCN42 editing regressions:', False),
         ('SCN42', 'scn-files', ('--audit', 'files'), {}, 'SCN42 file UI regressions:', False),
+        ('SCN42', 'scn-marks', ('--audit', 'marks'), {}, 'SCN42 mark regressions:', False),
+        ('DOC42', 'doc-technical', (), {'K42_NEW': '1', 'K42_SCRIPT': 'audittechnical'}, 'DOC technical:', True),
+        ('PDF42', 'pdf-technical', (out / 'sample.pdf',), {'K42_AUDIT': 'technical'}, 'PDF technical:', True),
         ('SCN42', 'scn-vision', ('--audit', 'vision'), {}, 'SCN42 Vision regressions:', False),
         ('DOC42', 'doc-panels', (), {'K42_NEW': '1', 'K42_SCRIPT': 'auditpanels', 'K42_AUDIT_RECENT': '1'}, 'DOC panel UI regressions: 16/16 passed', True),
         ('DOC42', 'doc-rulers', (), {'K42_NEW': '1', 'K42_SCRIPT': 'auditrulers'}, 'DOC ruler UI regressions:', True),
         ('DOC42', 'doc-editing', (), {'K42_NEW': '1', 'K42_SCRIPT': 'auditediting'}, 'DOC editing UI regressions:', True),
         ('DOC42', 'doc-document', (), {'K42_NEW': '1', 'K42_SCRIPT': 'auditdocument'}, 'DOC document UI regressions:', True),
-        ('DOC42', 'doc-technical', (), {'K42_NEW': '1', 'K42_SCRIPT': 'audittechnical'}, 'DOC technical:', True),
         ('DOC42', 'doc-pagination', (out / 'sample.docx',), {'K42_SCRIPT': 'auditpagination'}, 'DOC pagination UI regressions:', True),
         ('PDF42', 'pdf-markup', (out / 'sample.pdf',), {'K42_AUDIT': 'markup'}, 'PDF markup UI regressions:', True),
         ('PDF42', 'pdf-pages', (out / 'sample.pdf',), {'K42_AUDIT': 'pages'}, 'PDF pages UI regressions:', True),
         ('PDF42', 'pdf-core', (out / 'sample.pdf',), {'K42_AUDIT': 'core'}, 'PDF core UI regressions:', True),
         ('PDF42', 'pdf-files', (out / 'sample.pdf',), {'K42_AUDIT': 'files'}, 'PDF document lifecycle regressions:', True),
-        ('PDF42', 'pdf-technical', (out / 'sample.pdf',), {'K42_AUDIT': 'technical'}, 'PDF technical:', True),
         ('PDF42', 'mark-samples', ('--mark-samples', out / 'marks'), {}, 'Mark samples: ', False),
         ('PDF42', 'signature-fidelity', ('--signature-fidelity-synthetic', out / 'signature-fidelity'), {}, 'Synthetic checks: passed', False),
-        ('PDF42', 'mark-signature', (out / 'sample.pdf',), {'K42_OPEN_GENERATOR': 'signature', 'K42_SNAPSHOT_SHEET': '1'}, None, True),
-        ('PDF42', 'mark-seal', (out / 'sample.pdf',), {'K42_OPEN_GENERATOR': 'seal', 'K42_SNAPSHOT_SHEET': '1'}, None, True),
-        ('PDF42', 'mark-learn', (out / 'sample.pdf',), {'K42_OPEN_GENERATOR': 'learn', 'K42_SNAPSHOT_SHEET': '1'}, None, True),
-        # Insert preview with resolution choice: maximum on a vector page, the scan's own dpi on a scanned page.
-        ('PDF42', 'mark-insert-vector', (out / 'sample.pdf',), {'K42_OPEN_MARK_INSERT': 'seal', 'K42_SNAPSHOT_SHEET': '1'}, None, True),
-        ('PDF42', 'mark-insert-scan', (out / 'sample.pdf',), {'K42_OPEN_MARK_INSERT': 'signature', 'K42_MARK_SCAN_DPI': '300',
-                                                              'K42_SNAPSHOT_SHEET': '1'}, None, True),
-        # Regression 2026-11-06: long translations squeezed the Form/Pen/Ink row ("Любая…", missing "Форма:").
-        *[('PDF42', f'mark-signature-layout-{lang}', (out / 'sample.pdf', '-Suite42Language', lang),
-           {'K42_OPEN_GENERATOR': 'signature', 'K42_SNAPSHOT_SHEET': '1', 'K42_GENERATOR_LAYOUT_AUDIT': '1'},
-           f'Generator layout: PASS {lang}', True) for lang in ('ru', 'tr')],
         ('PPT42', 'ppt-notes', (), {'K42_NEW': '1', 'K42_DO': 'auditnotes', 'K42_AUDIT_RECENT': '1'}, 'PPT notes UI regressions: 6/6 passed', True),
         ('PPT42', 'ppt-editing', (), {'K42_NEW': '1', 'K42_DO': 'auditediting', 'K42_PASTEBOARD': '1'}, 'PPT editing UI regressions:', True),
         ('PPT42', 'ppt-text', (), {'K42_NEW': '1', 'K42_DO': 'audittext', 'K42_PASTEBOARD': '1'}, 'PPT text/table/show UI regressions:', True),
@@ -233,6 +266,18 @@ if args.mode in ('all', 'screenshots'):
             options = dict(settings, K42_APPEARANCE=appearance, K42_SIZE=size, K42_AUDIT_RECENT='1')
             results.append(run(app, app.lower() + '-' + appearance, arguments, options, snapshot=True))
     if 'PDF42' in binaries:
+        # Opening a popover is visual evidence, not a functional generator regression.
+        for generator in ('signature', 'seal', 'learn'):
+            results.append(run('PDF42', 'mark-' + generator, [out / 'sample.pdf'],
+                               {'K42_OPEN_GENERATOR': generator, 'K42_SNAPSHOT_SHEET': '1'}, snapshot=True))
+        # Insert preview with resolution choice: maximum on a vector page, the scan's own dpi on a scanned page.
+        results.append(run('PDF42', 'mark-insert-vector', [out / 'sample.pdf'], {'K42_OPEN_MARK_INSERT': 'seal', 'K42_SNAPSHOT_SHEET': '1'}, snapshot=True))
+        results.append(run('PDF42', 'mark-insert-scan', [out / 'sample.pdf'], {'K42_OPEN_MARK_INSERT': 'signature', 'K42_MARK_SCAN_DPI': '300', 'K42_SNAPSHOT_SHEET': '1'}, snapshot=True))
+        # Regression 2026-11-06: long translations squeezed the Form/Pen/Ink row ("Любая…", missing "Форма:").
+        for lang in ('ru', 'tr'):
+            results.append(run('PDF42', f'mark-signature-layout-{lang}', [out / 'sample.pdf', '-Suite42Language', lang],
+                               {'K42_OPEN_GENERATOR': 'signature', 'K42_SNAPSHOT_SHEET': '1', 'K42_GENERATOR_LAYOUT_AUDIT': '1'},
+                               f'Generator layout: PASS {lang}', snapshot=True))
         results.append(run('PDF42', 'pdf-properties', [out / 'sample.pdf'], {'K42_ACTION': 'propertiesAction'}, snapshot=True))
     if 'DOC42' in binaries:
         for name, script, appearance in [('doc-book', 'viewmode 1', 'light'),
@@ -243,10 +288,20 @@ if args.mode in ('all', 'screenshots'):
     if 'XLS42' in binaries:
         results.append(run('XLS42', 'xls-format', [], {'K42_OPEN': str(out / 'sample.xlsx'), 'K42_ACTION': 'formatCellsAction:'}, snapshot=True))
 print(f'{sum(results)}/{len(results)} UI runs passed', flush=True)
-identities = [{'app': app, 'binary': str(path), 'binary_sha256': source_hashes[app],
-               'unchanged_during_audit': hashlib.sha256(path.read_bytes()).hexdigest() == source_hashes[app]}
-              for app, path in sources.items()]
-unchanged = all(item['unchanged_during_audit'] for item in identities)
+identities = []
+for app, path in sources.items():
+    identity = dict(prepared_identities[app])
+    contents = binaries[app].parent.parent
+    resource_bundle = identity['source_resource_bundle']
+    identity['unchanged_during_audit'] = sha256(path) == identity['binary_sha256']
+    identity['tested_executable_unchanged'] = sha256(binaries[app]) == identity['tested_executable_sha256']
+    identity['source_resources_unchanged'] = resource_manifest(Path(resource_bundle) if resource_bundle else None) == identity['source_resource_manifest']
+    identity['tested_resources_unchanged'] = resource_manifest(contents / 'Resources') == identity['tested_resource_manifest']
+    identity['tested_metadata_unchanged'] = sha256(contents / 'Info.plist') == identity['tested_info_plist_sha256']
+    identities.append(identity)
+unchanged = all(all(item[key] for key in ('unchanged_during_audit', 'tested_executable_unchanged',
+                                        'source_resources_unchanged', 'tested_resources_unchanged',
+                                        'tested_metadata_unchanged')) for item in identities)
 (out / 'result.json').write_text(json.dumps({'binaries': identities, 'runs': run_records}, indent=2) + '\n')
-if not unchanged: print('FAIL: a source executable changed during the UI audit', flush=True)
+if not unchanged: print('FAIL: an executable, resource bundle or audit metadata changed during the UI audit', flush=True)
 sys.exit(0 if all(results) and unchanged else 1)

@@ -52,11 +52,11 @@
       },
       {
         "q": "Which Macs does OFF42 support?",
-        "a": "OFF42 targets macOS 14 or later. A public installer has not been released yet; you can build the apps from source with the Xcode Command Line Tools."
+        "a": "A preview DMG is available for Apple Silicon Macs running macOS 14 or later."
       },
       {
         "q": "Is there a Windows version?",
-        "a": "Native Windows apps are implemented and available as source code. Check the documented features and limitations. A public Windows installer has not been released."
+        "a": "Preview with all six apps. Extract the entire ZIP, then launch the app you want. Includes tools for labels and barcodes."
       }
     ]
   },
@@ -82,7 +82,7 @@
   "marks": {
     "label": "SIGNATURES AND STAMPS",
     "title": "Sign and stamp like on paper. No printer, no scanner.",
-    "text": "OFF42 writes a handwritten signature from a name and presses a company stamp, then puts both right into the document. Each insertion comes out slightly different, like real ink on paper.",
+    "text": "Add images of your own signature and stamp to your document.",
     "points": [
       "Signatures in ballpoint, gel, fountain or felt-tip ink",
       "132 stamp styles: round seals, company stamps, “Paid” and “Received”",
@@ -135,7 +135,6 @@
     "available": "Available",
     "unavailable": "Not released yet",
     "downloadDmg": "Download DMG",
-    "downloadExe": "Download EXE",
     "checksum": "SHA-256",
     "version": "Version",
     "requirements": "System requirements",
@@ -147,7 +146,8 @@
     "notFoundText": "Try the homepage or choose a language to keep exploring.",
     "copy": "Copy",
     "copied": "Copied",
-    "screenshot": "Screenshot on macOS. Sample documents, fictional companies."
+    "screenshot": "Screenshot on macOS. Sample documents, fictional companies.",
+    "downloadZip": "Download ZIP"
   },
   "apps": {
     "pdf": {
@@ -368,12 +368,13 @@
     "sourceText": "Get the MIT-licensed source on GitHub. Building on macOS requires the Xcode Command Line Tools. Local builds use ad-hoc signing unless you configure distribution signing.",
     "checkReleases": "Check releases",
     "buildGuide": "Build instructions",
-    "releaseNote": "Download buttons appear when published release files are available. No installer is represented as signed or notarised without release evidence.",
+    "releaseNote": "The Mac preview is signed ad hoc. Apple notarization is unavailable for this build, and macOS may ask you to approve the first launch.",
     "buildTitle": "Build OFF42 on your Mac",
     "buildText": "Until a signed installer is published, you can build the apps yourself in a few minutes. Run these commands in Terminal.",
     "buildStep1": "Install Apple's Xcode Command Line Tools.",
     "buildStep2": "Download the source code from GitHub.",
-    "buildStep3": "Build all six apps, or build one app and copy it to Applications."
+    "buildStep3": "Build all six apps, or build one app and copy it to Applications.",
+    "windowsPreviewText": "Preview with all six apps. Extract the entire ZIP, then launch the app you want. Includes tools for labels and barcodes."
   },
   "about": {
     "title": "An office with nothing to hide.",

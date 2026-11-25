@@ -5,3 +5,7 @@ build/
 Resources/*/AppIcon.iconset/
 .DS_Store
 .claude/
+
+# Local audit history and working instructions.
+/STATUS.md
+/AGENTS.md

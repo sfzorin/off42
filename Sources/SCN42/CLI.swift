@@ -37,7 +37,8 @@ enum CLI {
             listDevices(seconds)
         case "--name":
             guard rest.count <= 1 else { fail("--name takes one quoted template"); return true }
-            print(Exporter.expand(rest.first ?? SaveOptions.defaultTemplate, counter: 7, title: "Invoice No 4217"))
+            let exampleTitle = "Invoice No 4217"
+            print(Exporter.expand(rest.first ?? SaveOptions.defaultTemplate, counter: 7, title: exampleTitle))
         default:
             if args[1].hasPrefix("--"), !["--uitest", "--audit"].contains(args[1]) { fail("unknown command: " + args[1]); return true }
             return false

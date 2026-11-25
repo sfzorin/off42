@@ -3,7 +3,7 @@ import PDFKit
 import Kit42
 
 extension ScanWindowController {
-    /// Part of `SCN42 --uitest`: a signature/stamp placed by native events and printed into the page pixels.
+    /// Part of `SCN42 --uitest` and `SCN42 --audit marks`: a signature/stamp placed by native events and printed into the page pixels.
     @MainActor func auditMarks() async -> Bool {
         guard let window else { print("FAIL SCN marks: no window"); return false }
         var count = 0, failures = 0
@@ -82,6 +82,7 @@ extension ScanWindowController {
         showingGlass = false; refreshPreview(); window.layoutIfNeeded()
 
         let original = color.snapshot
+        let originalRevision = color.contentRevision
         beginMarkPlacement(mark)
         guard let view = markPlacement else { check(false, "placement starts"); print("SCN42 mark regressions: \(count - failures)/\(count) passed"); return false }
         check(window.firstResponder === view && preview.view.subviews.contains { $0.accessibilityIdentifier() == "SCN42.markPlacementBar" },
@@ -119,15 +120,20 @@ extension ScanWindowController {
               && isWhite(rgb(color.image, 0.05, 0.05)) && isWhite(rgb(color.image, rect.maxX + 0.05, paperUnder.y)),
               "ink is multiplied into the shown pixels: paper turns blue, text stays black, the rest is untouched")
         check(isBlue(rgb(color.base, paperUnder.x, paperUnder.y)), "the original behind clean-up also carries the mark")
+        check(color.contentRevision != originalRevision
+              && !doc.setText(color, [TextLine(text: "Obsolete OCR", box: .zero)], expectedContentRevision: originalRevision),
+              "printing invalidates workers that captured the unstamped page")
         let printed = color.snapshot
         doc.modify([color], name: "Colour") { page in var o = page.options; o.colorMode = .gray; try? page.refinish(o) }
         check(rgb(color.image, paperUnder.x, paperUnder.y).0 < 200, "re-running clean-up keeps the printed mark")
         doc.undo.undo()
-        check(color.image === printed.image, "Undo of the clean-up returns to the stamped page")
+        check(color.snapshot.hasSameContent(as: printed), "Undo of the clean-up returns to the complete stamped page state")
         doc.undo.undo()
-        check(color.image === original.image && color.base === original.base, "Undo restores the exact unstamped pixels")
+        check(color.snapshot.hasSameContent(as: original) && !doc.isDirty,
+              "Undo restores exact unstamped pixels, metadata and the clean saved baseline")
         doc.undo.redo()
-        check(color.image === printed.image && isBlue(rgb(color.image, paperUnder.x, paperUnder.y)), "Redo prints it again")
+        check(color.snapshot.hasSameContent(as: printed) && doc.isDirty && isBlue(rgb(color.image, paperUnder.x, paperUnder.y)),
+              "Redo restores the complete stamped state and its unsaved marker")
 
         // Saved PDF: the mark is part of the page image, with no annotation layer.
         do {
@@ -152,11 +158,62 @@ extension ScanWindowController {
         check(bw.image.bitsPerPixel == 1 && rgb(bw.image, paperUnder.x, paperUnder.y).0 < 50 && isWhite(rgb(bw.image, 0.05, 0.05)),
               "a black-and-white page stays 1-bit with the mark printed")
 
+        let emptyImage = Bitmap(width: 400, height: 300, channels: 4, fill: 255).cgImage()!
+        var emptyReport = ProcessReport(); emptyReport.outputSize = CGSize(width: 400, height: 300); emptyReport.blank = true
+        let formerlyBlank = ScanPage(base: emptyImage, image: emptyImage, dpi: 100, options: options, report: emptyReport)
+        reset([formerlyBlank])
+        let blankState = formerlyBlank.snapshot
+        beginMarkPlacement(mark); markPlacement?.rect = CGRect(x: 0.2, y: 0.2, width: 0.5, height: 0.3)
+        applyMarkPlacementAction(nil)
+        check(!formerlyBlank.report.blank && formerlyBlank.report.tone > 10 && formerlyBlank.report.ink > 0,
+              "printing ink recomputes blank-page diagnostics")
+        removeBlankAction(nil)
+        check(pages.count == 1 && pages.first === formerlyBlank,
+              "Remove Blank Pages preserves a previously blank page after printing a mark")
+        doc.undo.undo()
+        check(formerlyBlank.snapshot.hasSameContent(as: blankState) && formerlyBlank.report.blank && !doc.isDirty,
+              "Undo restores the original blank report and clean baseline")
+        doc.undo.redo()
+        check(!formerlyBlank.report.blank && doc.isDirty, "Redo restores the stamped report and dirty state")
+
+        reset([formerlyBlank])
+        let beforeInvalid = formerlyBlank.snapshot
+        beginMarkPlacement(mark); markPlacement?.rect = CGRect(x: 2, y: 2, width: 0.2, height: 0.1)
+        applyMarkPlacementAction(nil)
+        check(formerlyBlank.snapshot.hasSameContent(as: beforeInvalid) && !doc.isDirty && !doc.undo.canUndo,
+              "an entirely off-page mark cannot create an invisible dirty edit")
+        check(MarkPrinter.print(mark, into: emptyImage, at: CGRect(x: CGFloat.nan, y: 0, width: 1, height: 1)) == nil,
+              "nonfinite mark geometry is rejected before drawing")
+
+        let tall = Bitmap(width: 20, height: 400, channels: 4, fill: 80).cgImage()!
+        beginMarkPlacement(tall)
+        if let placement = markPlacement {
+            let placed = placement.rect
+            let aspect = placed.width * CGFloat(formerlyBlank.image.width) / (placed.height * CGFloat(formerlyBlank.image.height))
+            check(CGRect(x: 0, y: 0, width: 1, height: 1).contains(placed) && abs(aspect - 0.05) < 1e-9,
+                  "a tall mark starts entirely on the page with its original aspect ratio")
+        } else { check(false, "a tall mark starts a placement") }
+        cancelMarkPlacement()
+        beginMarkPlacement(mark)
+        let beforeRotation = markPlacement
+        check(NSApp.sendAction(Cmd.rotateRight.action, to: self, from: Cmd.rotateRight.menuItem())
+              && markPlacement == nil && beforeRotation?.superview == nil,
+              "changing the page pixels cancels the old placement overlay")
+        doc.undo.undo()
+
         // A placement belongs to its page.
         reset([color, gray, bw])
         beginMarkPlacement(mark)
         pageList.select([1], scroll: false); refreshPreview()
         check(markPlacement == nil && !doc.isDirty, "showing another page drops an unfinished placement")
+        if let other = AppDelegate.shared?.newWindow(), let otherWindow = other.window {
+            other.doc.append([page(channels: 4)]); other.doc.markSaved(revision: other.doc.revision)
+            other.pageList.select([0]); other.refreshPreview(); other.beginMarkPlacement(mark)
+            let placement = other.markPlacement
+            otherWindow.performClose(nil)
+            check(!otherWindow.isVisible && other.markPlacement == nil && placement?.superview == nil,
+                  "closing a clean window removes its placement overlay and retained toolbar")
+        } else { check(false, "placement lifecycle fixture opens") }
         print("SCN42 mark regressions: \(count - failures)/\(count) passed")
         return failures == 0
     }

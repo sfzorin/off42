@@ -1,0 +1,20 @@
+[package]
+name = "pdf42"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+suite42-pdf-raster = { path = "../../crates/suite42-pdf-raster" }
+win42 = { path = "../../crates/win42" }
+suite42-core = { path = "../../crates/suite42-core" }
+pdf42-core = { path = "../../crates/pdf42-core" }
+suite42-pdf-text = { path = "../../crates/suite42-pdf-text" }
+lopdf = "0.47"
+flate2 = "1"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+png = "0.18"
+zip = { version = "6", default-features = false, features = ["deflate"] }
+tempfile = "3"
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Data_Pdf", "Storage_Streams", "Graphics_Imaging", "Foundation", "Win32_System_WinRT"] }
+[dev-dependencies]
+scn42-core = { path = "../../crates/scn42-core" }

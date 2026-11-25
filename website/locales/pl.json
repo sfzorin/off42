@@ -52,11 +52,11 @@
       },
       {
         "q": "Na jakich Macach działa OFF42?",
-        "a": "OFF42 jest przeznaczony dla macOS 14 lub nowszego. Publiczny instalator nie został jeszcze wydany; aplikacje możesz zbudować z kodu źródłowego za pomocą Xcode Command Line Tools."
+        "a": "Podglądowy obraz DMG jest dostępny dla komputerów Mac z Apple Silicon i systemem macOS 14 lub nowszym."
       },
       {
         "q": "Czy jest wersja dla Windows?",
-        "a": "Natywne aplikacje Windows są zaimplementowane i dostępne w postaci kodu źródłowego. Sprawdź udokumentowane funkcje i ograniczenia. Publiczny instalator dla Windows nie został jeszcze wydany."
+        "a": "Wersja wstępna zawiera wszystkie sześć aplikacji. Rozpakuj całe archiwum ZIP i uruchom wybraną aplikację. Zawiera narzędzia do tworzenia etykiet i kodów kreskowych."
       }
     ]
   },
@@ -82,7 +82,7 @@
   "marks": {
     "label": "PODPISY I PIECZĘCIE",
     "title": "Podpisuj i stempluj jak na papierze. Bez drukarki i skanera.",
-    "text": "OFF42 kreśli odręczny podpis na podstawie imienia i nazwiska, odbija pieczęć firmy i wstawia oba prosto do dokumentu. Każde odbicie wychodzi nieco inaczej – jak prawdziwy tusz na papierze.",
+    "text": "Dodawaj do dokumentu obrazy własnego podpisu i pieczęci.",
     "points": [
       "Podpisy długopisem, piórem żelowym, piórem wiecznym lub flamastrem",
       "132 style pieczęci: okrągłe pieczęcie, pieczątki firmowe, „Zapłacono” i „Otrzymano”",
@@ -112,6 +112,12 @@
     "title": "Prawdziwe aplikacje. Prawdziwe dokumenty.",
     "text": "Każdy obraz to zrzut ekranu OFF42 na Macu, z przykładowymi dokumentami fikcyjnych firm otwartymi w aplikacjach. Żadnych makiet."
   },
+  "video": {
+    "label": "ZOBACZ W DZIAŁANIU",
+    "title": "Minuta z OFF42.",
+    "text": "Dokończ list w Wordzie, sprawdź budżet, poprowadź prezentację, popraw PDF i zeskanuj stronę, a potem zamień listę produktów w etykiety z kodami QR i znakiem CE. Każdą klatkę renderują same aplikacje na Macu, na przykładowych dokumentach fikcyjnych firm.",
+    "caption": "Demo bez dźwięku, około minuty. Prawdziwy obraz z aplikacji; ruchy kamery i wskaźnik zostały dodane."
+  },
   "labels": {
     "learn": "Poznaj",
     "allFeatures": "Wszystkie funkcje",
@@ -129,7 +135,6 @@
     "available": "Dostępne",
     "unavailable": "Jeszcze niewydane",
     "downloadDmg": "Pobierz DMG",
-    "downloadExe": "Pobierz EXE",
     "checksum": "SHA-256",
     "version": "Wersja",
     "requirements": "Wymagania systemowe",
@@ -141,7 +146,8 @@
     "notFoundText": "Otwórz stronę główną lub wybierz język, by odkrywać dalej.",
     "copy": "Kopiuj",
     "copied": "Skopiowano",
-    "screenshot": "Zrzut ekranu w macOS. Przykładowe dokumenty, fikcyjne firmy."
+    "screenshot": "Zrzut ekranu w macOS. Przykładowe dokumenty, fikcyjne firmy.",
+    "downloadZip": "Pobierz ZIP"
   },
   "apps": {
     "pdf": {
@@ -362,12 +368,13 @@
     "sourceText": "Pobierz kod na licencji MIT z GitHub. Budowanie na macOS wymaga Xcode Command Line Tools. Lokalne kompilacje korzystają z podpisu ad-hoc, chyba że skonfigurujesz podpisywanie dystrybucyjne.",
     "checkReleases": "Sprawdź wydania",
     "buildGuide": "Instrukcja budowania",
-    "releaseNote": "Przyciski pobierania pojawiają się, gdy dostępne są opublikowane pliki wydania. Żaden instalator nie jest przedstawiany jako podpisany lub notaryzowany bez potwierdzenia dla tego wydania.",
+    "releaseNote": "Wersja podglądowa dla Maca ma podpis ad hoc. Nie przeszła notaryzacji Apple, a macOS może poprosić o zgodę przy pierwszym uruchomieniu.",
     "buildTitle": "Zbuduj OFF42 na swoim Macu",
     "buildText": "Dopóki nie zostanie opublikowany podpisany instalator, możesz w kilka minut samodzielnie zbudować aplikacje. Uruchom te polecenia w Terminalu.",
     "buildStep1": "Zainstaluj Xcode Command Line Tools od Apple.",
     "buildStep2": "Pobierz kod źródłowy z GitHub.",
-    "buildStep3": "Zbuduj wszystkie sześć aplikacji albo tylko jedną i skopiuj ją do folderu Aplikacje."
+    "buildStep3": "Zbuduj wszystkie sześć aplikacji albo tylko jedną i skopiuj ją do folderu Aplikacje.",
+    "windowsPreviewText": "Wersja wstępna zawiera wszystkie sześć aplikacji. Rozpakuj całe archiwum ZIP i uruchom wybraną aplikację. Zawiera narzędzia do tworzenia etykiet i kodów kreskowych."
   },
   "about": {
     "title": "Biuro bez tajemnic.",

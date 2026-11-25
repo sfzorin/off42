@@ -52,11 +52,11 @@
       },
       {
         "q": "Welche Macs unterstützt OFF42?",
-        "a": "OFF42 richtet sich an macOS 14 oder neuer. Ein öffentliches Installationspaket gibt es noch nicht; du kannst die Apps mit den Xcode Command Line Tools aus dem Quellcode bauen."
+        "a": "Für Macs mit Apple Silicon und macOS 14 oder neuer gibt es eine Vorschau als DMG."
       },
       {
         "q": "Gibt es eine Windows-Version?",
-        "a": "Native Windows-Apps sind implementiert und als Quellcode verfügbar. Beachte die dokumentierten Funktionen und Einschränkungen. Ein öffentlicher Windows-Installer wurde noch nicht veröffentlicht."
+        "a": "Vorschau mit allen sechs Apps. Entpacke die ZIP-Datei vollständig und starte die gewünschte App. Mit Werkzeugen für Etiketten und Barcodes."
       }
     ]
   },
@@ -82,7 +82,7 @@
   "marks": {
     "label": "UNTERSCHRIFTEN UND STEMPEL",
     "title": "Unterschreiben und stempeln wie auf Papier. Ohne Drucker, ohne Scanner.",
-    "text": "OFF42 schreibt aus deinem Namen eine handschriftliche Unterschrift, drückt den Firmenstempel auf und setzt beides direkt ins Dokument. Jeder Abdruck fällt ein wenig anders aus – wie echte Tinte auf Papier.",
+    "text": "Füge Bilder deiner eigenen Unterschrift und deines Stempels in dein Dokument ein.",
     "points": [
       "Unterschriften mit Kugelschreiber, Gelschreiber, Füller oder Filzstift",
       "132 Stempelstile: Rundstempel, Firmenstempel, „Bezahlt“ und „Erhalten“",
@@ -112,6 +112,12 @@
     "title": "Echte Apps. Echte Dokumente.",
     "text": "Jedes Bild hier ist ein Screenshot von OFF42 auf einem Mac, mit Beispieldokumenten fiktiver Firmen in den Apps. Keine Mock-ups."
   },
+  "video": {
+    "label": "IN AKTION",
+    "title": "Eine Minute mit OFF42.",
+    "text": "Einen Word-Brief weiterschreiben, ein Budget prüfen, Folien präsentieren, ein PDF korrigieren und eine Seite scannen – dann eine Produktliste in QR-Etiketten mit CE-Zeichen verwandeln. Jedes Bild rendern die Apps selbst auf einem Mac, mit Beispieldokumenten fiktiver Firmen.",
+    "caption": "Stumme Demo, etwa eine Minute. Echte App-Darstellung; Kamerabewegungen und Zeiger sind hinzugefügt."
+  },
   "labels": {
     "learn": "Entdecken",
     "allFeatures": "Alle Funktionen",
@@ -129,7 +135,6 @@
     "available": "Verfügbar",
     "unavailable": "Noch nicht veröffentlicht",
     "downloadDmg": "DMG herunterladen",
-    "downloadExe": "EXE herunterladen",
     "checksum": "SHA-256",
     "version": "Version",
     "requirements": "Systemanforderungen",
@@ -141,7 +146,8 @@
     "notFoundText": "Gehe zur Startseite oder wähle eine Sprache, um weiterzustöbern.",
     "copy": "Kopieren",
     "copied": "Kopiert",
-    "screenshot": "Screenshot unter macOS. Beispieldokumente, fiktive Firmen."
+    "screenshot": "Screenshot unter macOS. Beispieldokumente, fiktive Firmen.",
+    "downloadZip": "ZIP herunterladen"
   },
   "apps": {
     "pdf": {
@@ -362,12 +368,13 @@
     "sourceText": "Den Quellcode unter MIT-Lizenz findest du auf GitHub. Zum Kompilieren auf macOS brauchst du Xcode Command Line Tools. Lokale Builds verwenden Ad-hoc-Signaturen, sofern du keine Signatur für die Verteilung konfigurierst.",
     "checkReleases": "Veröffentlichungen prüfen",
     "buildGuide": "Build-Anleitung",
-    "releaseNote": "Download-Schaltflächen erscheinen, sobald veröffentlichte Dateien verfügbar sind. Kein Installationspaket wird ohne entsprechenden Nachweis als signiert oder notarisiert bezeichnet.",
+    "releaseNote": "Die Mac-Vorschau ist ad hoc signiert. Sie wurde nicht von Apple notarisiert. macOS kann beim ersten Start eine Freigabe verlangen.",
     "buildTitle": "OFF42 auf deinem Mac bauen",
     "buildText": "Bis ein signiertes Installationspaket veröffentlicht ist, kannst du die Apps in wenigen Minuten selbst bauen. Führe diese Befehle im Terminal aus.",
     "buildStep1": "Installiere die Xcode Command Line Tools von Apple.",
     "buildStep2": "Lade den Quellcode von GitHub herunter.",
-    "buildStep3": "Baue alle sechs Apps oder eine einzelne App und kopiere sie in den Ordner „Programme“."
+    "buildStep3": "Baue alle sechs Apps oder eine einzelne App und kopiere sie in den Ordner „Programme“.",
+    "windowsPreviewText": "Vorschau mit allen sechs Apps. Entpacke die ZIP-Datei vollständig und starte die gewünschte App. Mit Werkzeugen für Etiketten und Barcodes."
   },
   "about": {
     "title": "Ein Büro, das nichts zu verbergen hat.",

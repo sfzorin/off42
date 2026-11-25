@@ -52,11 +52,11 @@
       },
       {
         "q": "Quels Mac sont compatibles avec OFF42 ?",
-        "a": "OFF42 cible macOS 14 ou ultérieur. Aucun programme d'installation public n'est encore disponible ; vous pouvez compiler les apps depuis le code source avec les Xcode Command Line Tools."
+        "a": "Une version préliminaire au format DMG est disponible pour les Mac équipés d’une puce Apple et de macOS 14 ou version ultérieure."
       },
       {
         "q": "Existe-t-il une version Windows ?",
-        "a": "Les applications Windows natives sont implémentées et disponibles sous forme de code source. Consultez les fonctions et limites documentées. Aucun programme d’installation Windows public n’a encore été publié."
+        "a": "Version préliminaire avec les six applications. Décompressez toute l’archive ZIP, puis lancez l’application de votre choix. Des outils permettent de créer des étiquettes et des codes-barres."
       }
     ]
   },
@@ -82,7 +82,7 @@
   "marks": {
     "label": "SIGNATURES ET TAMPONS",
     "title": "Signez et tamponnez comme sur papier. Sans imprimante ni scanner.",
-    "text": "OFF42 trace une signature manuscrite à partir d'un nom, appose le tampon de l'entreprise et place le tout directement dans le document. Chaque empreinte est légèrement différente, comme de la vraie encre sur du papier.",
+    "text": "Ajoutez à votre document les images de votre propre signature et de votre tampon.",
     "points": [
       "Signatures au stylo bille, stylo gel, stylo plume ou feutre",
       "132 styles de tampons : cachets ronds, tampons d'entreprise, « Payé » et « Reçu »",
@@ -112,6 +112,12 @@
     "title": "De vraies apps. De vrais documents.",
     "text": "Chaque image ici est une capture d'écran d'OFF42 sur Mac, avec des documents d'exemple d'entreprises fictives ouverts dans les apps. Aucune maquette."
   },
+  "video": {
+    "label": "EN ACTION",
+    "title": "Une minute avec OFF42.",
+    "text": "Poursuivez une lettre Word, vérifiez un budget, présentez un diaporama, corrigez un PDF et numérisez une page, puis transformez une liste de produits en étiquettes QR avec marquage CE. Chaque image est rendue par les apps elles-mêmes sur un Mac, avec des documents d'exemple de sociétés fictives.",
+    "caption": "Démo muette, environ une minute. Rendus réels des apps ; mouvements de caméra et pointeur ajoutés."
+  },
   "labels": {
     "learn": "Découvrir",
     "allFeatures": "Toutes les fonctionnalités",
@@ -129,7 +135,6 @@
     "available": "Disponible",
     "unavailable": "Pas encore publié",
     "downloadDmg": "Télécharger le DMG",
-    "downloadExe": "Télécharger l'EXE",
     "checksum": "SHA-256",
     "version": "Version",
     "requirements": "Configuration requise",
@@ -141,7 +146,8 @@
     "notFoundText": "Essayez l'accueil ou choisissez une langue pour poursuivre la découverte.",
     "copy": "Copier",
     "copied": "Copié",
-    "screenshot": "Capture d'écran sur macOS. Documents d'exemple, entreprises fictives."
+    "screenshot": "Capture d'écran sur macOS. Documents d'exemple, entreprises fictives.",
+    "downloadZip": "Télécharger le ZIP"
   },
   "apps": {
     "pdf": {
@@ -362,12 +368,13 @@
     "sourceText": "Retrouvez le code sous licence MIT sur GitHub. La compilation sur macOS nécessite Xcode Command Line Tools. Les compilations locales utilisent une signature ad-hoc sauf si vous configurez une signature de distribution.",
     "checkReleases": "Voir les versions",
     "buildGuide": "Instructions de compilation",
-    "releaseNote": "Les boutons de téléchargement apparaissent lorsque des fichiers de version sont publiés. Aucun programme d'installation n'est présenté comme signé ou notarié sans preuve dans la publication.",
+    "releaseNote": "La version préliminaire pour Mac utilise une signature ad hoc. Elle n’est pas notariée par Apple et macOS peut demander une autorisation à la première ouverture.",
     "buildTitle": "Compilez OFF42 sur votre Mac",
     "buildText": "En attendant la publication d'un programme d'installation signé, vous pouvez compiler les apps vous-même en quelques minutes. Exécutez ces commandes dans le Terminal.",
     "buildStep1": "Installez les Xcode Command Line Tools d'Apple.",
     "buildStep2": "Téléchargez le code source depuis GitHub.",
-    "buildStep3": "Compilez les six apps, ou une seule et copiez-la dans le dossier Applications."
+    "buildStep3": "Compilez les six apps, ou une seule et copiez-la dans le dossier Applications.",
+    "windowsPreviewText": "Version préliminaire avec les six applications. Décompressez toute l’archive ZIP, puis lancez l’application de votre choix. Des outils permettent de créer des étiquettes et des codes-barres."
   },
   "about": {
     "title": "Un bureau qui n'a rien à cacher.",

@@ -52,11 +52,11 @@
       },
       {
         "q": "Aling mga Mac ang sinusuportahan ng OFF42?",
-        "a": "Para sa macOS 14 o mas bago ang OFF42. Wala pang inilalabas na pampublikong installer; maaari mong i-build ang mga app mula sa source gamit ang Xcode Command Line Tools."
+        "a": "May preview na DMG para sa mga Mac na may Apple Silicon at macOS 14 o mas bago."
       },
       {
         "q": "May bersyon ba para sa Windows?",
-        "a": "Naipatupad na ang mga native Windows app at makukuha ang source code. Tingnan ang dokumentadong mga feature at limitasyon. Wala pang inilalabas na pampublikong Windows installer."
+        "a": "Preview na may anim na app. I-extract ang buong ZIP at buksan ang app na gusto mo. May mga tool para sa mga label at barcode."
       }
     ]
   },
@@ -82,7 +82,7 @@
   "marks": {
     "label": "MGA LAGDA AT STAMP",
     "title": "Pumirma at mag-stamp na parang sa papel. Walang printer, walang scanner.",
-    "text": "Gumagawa ang OFF42 ng lagdang sulat-kamay mula sa isang pangalan at nagtatatak ng stamp ng kompanya, saka inilalagay ang dalawa mismo sa dokumento. Bahagyang naiiba ang bawat paglalagay, gaya ng totoong tinta sa papel.",
+    "text": "Magdagdag sa dokumento ng mga larawan ng sarili mong lagda at selyo.",
     "points": [
       "Lagda gamit ang ballpen, gel pen, fountain pen o felt-tip pen",
       "132 estilo ng stamp: bilog na seal, stamp ng kompanya, “Bayad na” at “Natanggap”",
@@ -112,6 +112,12 @@
     "title": "Totoong app. Totoong dokumento.",
     "text": "Bawat larawan dito ay screenshot ng OFF42 sa Mac, na may mga sample na dokumento ng kathang-isip na kompanya na nakabukas sa mga app. Walang mock-up."
   },
+  "video": {
+    "label": "PANOORIN ITONG GUMAGANA",
+    "title": "Isang minuto kasama ang OFF42.",
+    "text": "Ituloy ang isang liham sa Word, suriin ang budget, mag-present ng slides, ayusin ang isang PDF at mag-scan ng pahina — pagkatapos ay gawing mga QR label na may CE mark ang isang listahan ng produkto. Bawat frame ay ni-render ng mismong mga app sa isang Mac, gamit ang mga sample na dokumento ng mga kathang-isip na kompanya.",
+    "caption": "Tahimik na demo, mga isang minuto. Totoong render ng app; idinagdag ang galaw ng camera at ang pointer."
+  },
   "labels": {
     "learn": "Tuklasin",
     "allFeatures": "Lahat ng tampok",
@@ -129,7 +135,6 @@
     "available": "Available",
     "unavailable": "Hindi pa nailalabas",
     "downloadDmg": "I-download ang DMG",
-    "downloadExe": "I-download ang EXE",
     "checksum": "SHA-256",
     "version": "Bersyon",
     "requirements": "Mga kinakailangan sa system",
@@ -141,7 +146,8 @@
     "notFoundText": "Subukan ang homepage o pumili ng wika para magpatuloy.",
     "copy": "Kopyahin",
     "copied": "Nakopya na",
-    "screenshot": "Screenshot sa macOS. Mga sample na dokumento, kathang-isip na kompanya."
+    "screenshot": "Screenshot sa macOS. Mga sample na dokumento, kathang-isip na kompanya.",
+    "downloadZip": "I-download ang ZIP"
   },
   "apps": {
     "pdf": {
@@ -362,12 +368,13 @@
     "sourceText": "Kunin sa GitHub ang source code na may lisensyang MIT. Kailangan ang Xcode Command Line Tools para mag-build sa macOS. Gumagamit ng ad-hoc signing ang lokal na build maliban kung mag-configure ka ng distribution signing.",
     "checkReleases": "Tingnan ang mga release",
     "buildGuide": "Mga tagubilin sa pag-build",
-    "releaseNote": "Lilitaw ang mga download button kapag may available nang nailathalang release file. Walang installer na ilalarawang signed o notarized nang walang ebidensya sa release.",
+    "releaseNote": "Ad hoc ang lagda ng preview para sa Mac. Hindi ito notarized ng Apple, at maaaring humingi ang macOS ng pahintulot sa unang pagbukas.",
     "buildTitle": "I-build ang OFF42 sa iyong Mac",
     "buildText": "Habang wala pang naka-sign na installer, maaari mong i-build mismo ang mga app sa loob ng ilang minuto. Patakbuhin ang mga command na ito sa Terminal.",
     "buildStep1": "I-install ang Xcode Command Line Tools ng Apple.",
     "buildStep2": "I-download ang source code mula sa GitHub.",
-    "buildStep3": "I-build ang lahat ng anim na app, o i-build ang isang app at kopyahin ito sa Applications."
+    "buildStep3": "I-build ang lahat ng anim na app, o i-build ang isang app at kopyahin ito sa Applications.",
+    "windowsPreviewText": "Preview na may anim na app. I-extract ang buong ZIP at buksan ang app na gusto mo. May mga tool para sa mga label at barcode."
   },
   "about": {
     "title": "Isang opisinang walang itinatago.",

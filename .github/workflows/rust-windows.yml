@@ -1,0 +1,97 @@
+name: Rust Windows
+on:
+  push:
+    tags: ['v*-windows-preview.*']
+    paths: ['rust/**', '.github/workflows/rust-windows.yml']
+  pull_request:
+    paths: ['rust/**', '.github/workflows/rust-windows.yml']
+  workflow_dispatch:
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Provision pinned PDFium for file-engine tests
+        shell: pwsh
+        run: |
+          python scripts/fetch-pdfium.py build/test-pdfium
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force target/debug/deps | Out-Null
+          Copy-Item build/test-pdfium/pdfium.dll target/debug/deps/pdfium.dll
+      - run: cargo test --locked --workspace
+      - name: Build six native executables with Windows visual styles
+        shell: pwsh
+        run: |
+          Push-Location scripts
+          rc.exe /fo windows-app.res windows-app.rc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+          $env:RUSTFLAGS = "-C link-arg=$((Resolve-Path scripts/windows-app.res).Path)"
+          cargo build --locked --release -p img42 -p doc42 -p xls42 -p ppt42 -p pdf42 -p scn42
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Stage PDFium runtime and licenses
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build/off42 | Out-Null
+          python scripts/fetch-pdfium.py build/off42
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($app in @('img42','doc42','xls42','ppt42','pdf42','scn42')) {
+            Copy-Item "target/release/$app.exe" "build/off42/$($app.ToUpper()).exe"
+          }
+          cargo metadata --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc | Out-File -Encoding utf8 build/metadata.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/collect-licenses.py build/metadata.json build/off42/licenses
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $rustLicenses = Join-Path (rustc --print sysroot) 'share/doc/rust/licenses'
+          if (Test-Path $rustLicenses) { Copy-Item -Recurse $rustLicenses build/off42/licenses/rust-toolchain }
+          Copy-Item ../LICENSE build/off42/licenses/off42-LICENSE
+          Copy-Item crates/doc42-layout-probe/fixtures/OFL.txt build/off42/licenses/NotoSans-OFL.txt
+          Compress-Archive -Path build/off42 -DestinationPath build/Suite42-windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Suite42-windows-x64
+          path: rust/build/Suite42-windows-x64.zip
+
+  publish-preview:
+    if: startsWith(github.ref, 'refs/tags/') && contains(github.ref_name, '-windows-preview.')
+    needs: windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Suite42-windows-x64
+      - name: Publish the tested ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          asset="off42-${TAG#v}-x64.zip"
+          mv Suite42-windows-x64.zip "$asset"
+          unzip -tq "$asset"
+          digest=$(sha256sum "$asset" | cut -d' ' -f1)
+          cat > release-notes.md <<EOF
+          Windows x64 preview of off42 with PDF42, DOC42, XLS42, IMG42, PPT42 and SCN42.
+
+          PDF42, DOC42 and XLS42 can export A4 label sheets and PNG barcodes in four formats.
+          XLS42 can fill serial numbers with leading zeroes. PDF42, DOC42 and PPT42 share a local signature and stamp library.
+
+          Extract the entire ZIP and run the app you want. Keep \`pdfium.dll\` alongside \`PDF42.exe\`.
+          The executables are unsigned. If Windows reports a missing Visual C++ runtime, install the
+          [Microsoft Visual C++ Redistributable for x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/).
+
+          [Windows build and automated tests]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$RUN_ID) · [Features and limits]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$TAG/rust/README.md)
+
+          SHA-256 \`$digest\`
+          EOF
+          gh release create "$TAG" "$asset" --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease \
+            --title "off42 ${TAG#v} (x64)" --notes-file release-notes.md

@@ -7,16 +7,20 @@ import Kit42
 extension ScanPage {
     /// Prints `mark` into the page at `rect` (fractions of the page, origin top left). Both the geometry-corrected
     /// original and the shown image get it, so re-running clean-up or straightening keeps the mark.
-    func printMark(_ mark: CGImage, at rect: CGRect) {
+    @discardableResult func printMark(_ mark: CGImage, at rect: CGRect) -> Bool {
         guard let newBase = MarkPrinter.print(mark, into: base, at: rect),
-              let newImage = MarkPrinter.print(mark, into: image, at: rect) else { return }
+              let newImage = MarkPrinter.print(mark, into: image, at: rect) else { return false }
         replacePixels(base: ScanPage.compact(newBase), image: newImage)
+        return true
     }
 }
 
 enum MarkPrinter {
     /// `page` with `mark` multiplied over it; keeps the page's kind (colour, gray or 1-bit black and white).
     static func print(_ mark: CGImage, into page: CGImage, at rect: CGRect) -> CGImage? {
+        guard [rect.origin.x, rect.origin.y, rect.width, rect.height].allSatisfy(\.isFinite),
+              rect.width > 0, rect.height > 0,
+              !rect.intersection(CGRect(x: 0, y: 0, width: 1, height: 1)).isEmpty else { return nil }
         let oneBit = page.bitsPerPixel == 1
         let gray = oneBit || page.colorSpace?.model == .monochrome
         var bitmap = Bitmap(page, gray: gray)
@@ -24,14 +28,16 @@ enum MarkPrinter {
         let w = CGFloat(bitmap.width), h = CGFloat(bitmap.height)
         let target = CGRect(x: rect.minX * w, y: (1 - rect.maxY) * h, width: rect.width * w, height: rect.height * h)
         let channels = bitmap.channels, width = bitmap.width, height = bitmap.height
-        bitmap.data.withUnsafeMutableBytes { raw in
+        let painted = bitmap.data.withUnsafeMutableBytes { raw -> Bool in
             guard let ctx = CGContext(data: raw.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * channels,
                                       space: gray ? Bitmap.gray : Bitmap.sRGB,
-                                      bitmapInfo: gray ? CGImageAlphaInfo.none.rawValue : CGImageAlphaInfo.noneSkipLast.rawValue) else { return }
+                                      bitmapInfo: gray ? CGImageAlphaInfo.none.rawValue : CGImageAlphaInfo.noneSkipLast.rawValue) else { return false }
             ctx.interpolationQuality = .high
             ctx.setBlendMode(.multiply)
             ctx.draw(mark, in: target)
+            return true
         }
+        guard painted else { return nil }
         return oneBit ? bitmap.oneBitImage(threshold: 140) : bitmap.cgImage()
     }
 
@@ -51,15 +57,17 @@ final class MarkPlacementView: NSView {
     /// Fractions of the page, origin top left.
     var rect: CGRect { didSet { needsDisplay = true } }
     let pageID: UUID
+    let contentRevision: UUID
     var onApply: ((MarkPlacementView) -> Void)?
     var onCancel: ((MarkPlacementView) -> Void)?
     private var drag: (corner: Int?, start: CGPoint, original: CGRect)?
     private let accent = Theme42.App.scn.accent
 
-    init(mark: CGImage, rect: CGRect, pageID: UUID) {
+    init(mark: CGImage, rect: CGRect, pageID: UUID, contentRevision: UUID) {
         self.mark = mark
         self.rect = rect
         self.pageID = pageID
+        self.contentRevision = contentRevision
         super.init(frame: .zero)
         setAccessibilityElement(true)
         setAccessibilityRole(.image)
@@ -191,11 +199,12 @@ extension ScanWindowController {
     func beginMarkPlacement(_ mark: CGImage) {
         guard let page = shownPage else { NSSound.beep(); return }
         cancelMarkPlacement()
-        let width = MarkPrinter.defaultWidth(of: mark, pageWidth: page.image.width, dpi: page.dpi)
+        var width = MarkPrinter.defaultWidth(of: mark, pageWidth: page.image.width, dpi: page.dpi)
         let pageAspect = CGFloat(page.image.width) / CGFloat(max(1, page.image.height))
-        let height = width * CGFloat(mark.height) / CGFloat(max(1, mark.width)) * pageAspect
+        var height = width * CGFloat(mark.height) / CGFloat(max(1, mark.width)) * pageAspect
+        if height > 0.6 { width *= 0.6 / height; height = 0.6 }
         let rect = CGRect(x: min(0.95 - width, 0.62 - width / 2), y: min(0.95 - height, 0.8 - height / 2), width: width, height: height)
-        let view = MarkPlacementView(mark: mark, rect: rect, pageID: page.id)
+        let view = MarkPlacementView(mark: mark, rect: rect, pageID: page.id, contentRevision: page.contentRevision)
         view.frame = preview.canvas.bounds
         view.autoresizingMask = [.width, .height]
         view.onApply = { [weak self] v in self?.applyMarkPlacement(v) }
@@ -235,12 +244,15 @@ extension ScanWindowController {
     }
 
     func applyMarkPlacement(_ view: MarkPlacementView) {
-        guard busyText == nil, let page = pages.first(where: { $0.id == view.pageID }), page === shownPage else {
+        guard busyText == nil, let page = pages.first(where: { $0.id == view.pageID }), page === shownPage,
+              page.contentRevision == view.contentRevision else {
             NSSound.beep(); cancelMarkPlacement(); return
         }
         let mark = view.mark, rect = view.rect
         cancelMarkPlacement()
-        doc.modify([page], name: L("Signature or Stamp")) { $0.printMark(mark, at: rect) }
+        var printed = false
+        doc.modify([page], name: L("Signature or Stamp")) { printed = $0.printMark(mark, at: rect) }
+        if !printed { banner.show(.warning, CocoaError(.coderInvalidValue).localizedDescription) }
     }
 
     func cancelMarkPlacement() {
@@ -253,6 +265,6 @@ extension ScanWindowController {
     /// A placement belongs to the page it was started on; showing another page or the glass drops it.
     func dropStalePlacement() {
         guard let view = markPlacement else { return }
-        if shownPage?.id != view.pageID || busyText != nil { cancelMarkPlacement() }
+        if shownPage?.id != view.pageID || shownPage?.contentRevision != view.contentRevision || busyText != nil { cancelMarkPlacement() }
     }
 }

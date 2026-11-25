@@ -97,6 +97,8 @@ final class ScanPage {
         var report = report
         report.outputSize = CGSize(width: newImage.width, height: newImage.height)
         report.ink = Processor.inkCoverage(newImage)
+        report.tone = Processor.toneSpread(newImage)
+        // A page with a printed signature or stamp is never blank, however small the mark.
         report.blank = false
         restore(Snapshot(base: newBase, image: newImage, dpi: dpi, options: options, report: report, text: text))
     }

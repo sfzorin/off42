@@ -52,11 +52,11 @@
       },
       {
         "q": "Quais Macs são compatíveis com o OFF42?",
-        "a": "O OFF42 é destinado ao macOS 14 ou posterior. Um instalador público ainda não foi lançado; você pode compilar os aplicativos a partir do código-fonte com o Xcode Command Line Tools."
+        "a": "Há uma versão de prévia em DMG para Macs com Apple Silicon e macOS 14 ou posterior."
       },
       {
         "q": "Existe uma versão para Windows?",
-        "a": "Os aplicativos nativos para Windows estão implementados e disponíveis em código-fonte. Confira os recursos e as limitações documentados. Um instalador público para Windows ainda não foi lançado."
+        "a": "Versão de prévia com os seis aplicativos. Extraia todo o conteúdo do ZIP e abra o aplicativo desejado. Inclui ferramentas para criar etiquetas e códigos de barras."
       }
     ]
   },
@@ -82,7 +82,7 @@
   "marks": {
     "label": "ASSINATURAS E CARIMBOS",
     "title": "Assine e carimbe como no papel. Sem impressora, sem scanner.",
-    "text": "O OFF42 escreve uma assinatura à mão a partir de um nome, aplica o carimbo da empresa e coloca os dois direto no documento. Cada aplicação sai um pouco diferente, como tinta de verdade no papel.",
+    "text": "Adicione ao documento imagens da sua própria assinatura e do seu carimbo.",
     "points": [
       "Assinaturas com caneta esferográfica, gel, tinteiro ou hidrográfica",
       "132 estilos de carimbo: carimbos redondos, carimbos de empresa, “Pago” e “Recebido”",
@@ -112,6 +112,12 @@
     "title": "Apps de verdade. Documentos de verdade.",
     "text": "Cada imagem aqui é uma captura de tela do OFF42 em um Mac, com documentos de exemplo de empresas fictícias abertos nos apps. Nada de mockups."
   },
+  "video": {
+    "label": "VEJA FUNCIONANDO",
+    "title": "Um minuto com o OFF42.",
+    "text": "Continue uma carta no Word, confira um orçamento, apresente slides, corrija um PDF e digitalize uma página — depois transforme uma lista de produtos em etiquetas com QR code e marcação CE. Cada quadro é renderizado pelos próprios apps em um Mac, com documentos de exemplo de empresas fictícias.",
+    "caption": "Demonstração sem som, cerca de um minuto. Renderização real dos apps; movimentos de câmera e o ponteiro foram adicionados."
+  },
   "labels": {
     "learn": "Explorar",
     "allFeatures": "Todos os recursos",
@@ -129,7 +135,6 @@
     "available": "Disponível",
     "unavailable": "Ainda não lançado",
     "downloadDmg": "Baixar DMG",
-    "downloadExe": "Baixar EXE",
     "checksum": "SHA-256",
     "version": "Versão",
     "requirements": "Requisitos do sistema",
@@ -141,7 +146,8 @@
     "notFoundText": "Acesse o início ou escolha um idioma para continuar explorando.",
     "copy": "Copiar",
     "copied": "Copiado",
-    "screenshot": "Captura de tela no macOS. Documentos de exemplo, empresas fictícias."
+    "screenshot": "Captura de tela no macOS. Documentos de exemplo, empresas fictícias.",
+    "downloadZip": "Baixar ZIP"
   },
   "apps": {
     "pdf": {
@@ -362,12 +368,13 @@
     "sourceText": "Obtenha o código com licença MIT no GitHub. A compilação no macOS requer Xcode Command Line Tools. Compilações locais usam assinatura ad-hoc, a menos que você configure a assinatura para distribuição.",
     "checkReleases": "Ver versões",
     "buildGuide": "Instruções de compilação",
-    "releaseNote": "Os botões de download aparecem quando há arquivos de versão publicados. Nenhum instalador é apresentado como assinado ou notarizado sem comprovação na publicação.",
+    "releaseNote": "A prévia para Mac usa assinatura ad hoc. Ela não foi notarizada pela Apple, e o macOS pode pedir autorização na primeira abertura.",
     "buildTitle": "Compile o OFF42 no seu Mac",
     "buildText": "Até que um instalador assinado seja publicado, você mesmo pode compilar os aplicativos em poucos minutos. Execute estes comandos no Terminal.",
     "buildStep1": "Instale o Xcode Command Line Tools da Apple.",
     "buildStep2": "Baixe o código-fonte do GitHub.",
-    "buildStep3": "Compile os seis aplicativos ou compile apenas um e copie-o para a pasta Aplicativos."
+    "buildStep3": "Compile os seis aplicativos ou compile apenas um e copie-o para a pasta Aplicativos.",
+    "windowsPreviewText": "Versão de prévia com os seis aplicativos. Extraia todo o conteúdo do ZIP e abra o aplicativo desejado. Inclui ferramentas para criar etiquetas e códigos de barras."
   },
   "about": {
     "title": "Um escritório sem nada a esconder.",

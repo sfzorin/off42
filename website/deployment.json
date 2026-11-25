@@ -1,25 +1,20 @@
 {
   "date": "2026-11-06",
   "worker": "off42",
-  "deployment_version_prefix": "ea3a61a3",
+  "deployment_version_prefix": "c07b828d",
   "primary_origin": "https://off42.cc",
-  "files": 270,
-  "build_sha256": "05c1116cc6c9d6155c0d8c52c3ea96ee3a68a7d35291c92c163b3dadb3794d25",
+  "files": 631,
   "localized_pages": 260,
-  "live_verified_pages": 260,
-  "source_published_to_git": false,
   "custom_domains": [
     "off42.cc",
     "www.off42.cc"
   ],
-  "www_verification": {
-    "dns_resolvers": [
-      "1.1.1.1",
-      "8.8.8.8"
-    ],
-    "https_status": 200,
-    "tls_verification": true,
-    "note": "HTTPS verified with a public-DNS address via curl --resolve; local negative DNS cache still delayed ordinary resolution at verification time."
-  },
-  "repository": "https://github.com/sfzorin/off42"
+  "repository": "https://github.com/sfzorin/off42",
+  "previous_deployment_version_prefix": "1a879a27",
+  "deployment_zip_sha256": "761f095bd96260b9767d93c9665b705757497b0ba225f9261d52df7523e07e9a",
+  "file_manifest_sha256": "6909dfd3a2e20118cb07e0c8a382ebea0d2a680ffa6872254fbb7deb9529d2a4",
+  "publication_method": "Cloudflare dashboard direct upload",
+  "live_verification": "Normal /en/, /en/features/, CSS, JS, og-image, robots.txt, sitemap.xml and a missing URL matched the reviewed snapshot; missing URL returned 404 and / returned 301 to /en/. Fresh Chrome home smoke loaded first-party assets without console or CSP errors. Representative coverage only.",
+  "pre_audit_version_prefix": "ea3a61a3",
+  "bytes": 19204401
 }

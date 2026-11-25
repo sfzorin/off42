@@ -52,11 +52,11 @@
       },
       {
         "q": "Milyen Maceken fut az OFF42?",
-        "a": "Az OFF42 macOS 14 vagy újabb rendszerre készül. Nyilvános telepítő még nem jelent meg; az alkalmazásokat forráskódból fordíthatod le az Xcode Command Line Tools segítségével."
+        "a": "Az előzetes DMG Apple Silicon chipet és macOS 14 vagy újabb rendszert használó Mac gépekhez érhető el."
       },
       {
         "q": "Van Windows-verzió?",
-        "a": "A natív Windows-alkalmazások megvalósultak, és forráskódként elérhetők. Nézd meg a dokumentált funkciókat és korlátokat. Nyilvános Windows-telepítő még nem jelent meg."
+        "a": "Előzetes verzió mind a hat alkalmazással. Bontsd ki a teljes ZIP-fájlt, majd indítsd el a kívánt alkalmazást. Címkék és vonalkódok készítésére is használható."
       }
     ]
   },
@@ -82,7 +82,7 @@
   "marks": {
     "label": "ALÁÍRÁSOK ÉS BÉLYEGZŐK",
     "title": "Aláírás és bélyegző, mint papíron. Nyomtató és szkenner nélkül.",
-    "text": "Az OFF42 egy névből kézzel írt aláírást készít, rányomja a cégbélyegzőt, és mindkettőt egyenesen a dokumentumba helyezi. Minden lenyomat kicsit más, akár a valódi tinta a papíron.",
+    "text": "Illeszd be a dokumentumba a saját aláírásod és bélyegződ képét.",
     "points": [
       "Aláírás golyóstollal, zselés tollal, töltőtollal vagy filctollal",
       "132 bélyegzőstílus: körbélyegzők, cégbélyegzők, „Fizetve” és „Átvéve”",
@@ -112,6 +112,12 @@
     "title": "Valódi appok. Valódi dokumentumok.",
     "text": "Minden kép itt az OFF42 képernyőképe Macen, kitalált cégek mintadokumentumaival az appokban. Semmi látványterv."
   },
+  "video": {
+    "label": "MŰKÖDÉS KÖZBEN",
+    "title": "Egy perc az OFF42-vel.",
+    "text": "Folytass egy Word-levelet, ellenőrizz egy költségvetést, tarts egy bemutatót, javíts ki egy PDF-et és szkennelj be egy oldalt, majd alakíts egy terméklistát CE-jelöléses QR-címkékké. Minden képkockát maguk az alkalmazások renderelnek egy Macen, kitalált cégek mintadokumentumaival.",
+    "caption": "Néma bemutató, körülbelül egy perc. Valódi alkalmazásképek; a kameramozgás és a mutató utólag került rá."
+  },
   "labels": {
     "learn": "Felfedezés",
     "allFeatures": "Összes funkció",
@@ -129,7 +135,6 @@
     "available": "Elérhető",
     "unavailable": "Még nem jelent meg",
     "downloadDmg": "DMG letöltése",
-    "downloadExe": "EXE letöltése",
     "checksum": "SHA-256",
     "version": "Verzió",
     "requirements": "Rendszerkövetelmények",
@@ -141,7 +146,8 @@
     "notFoundText": "Próbáld a kezdőlapot, vagy válassz nyelvet a további böngészéshez.",
     "copy": "Másolás",
     "copied": "Másolva",
-    "screenshot": "Képernyőkép macOS-en. Mintadokumentumok, kitalált cégek."
+    "screenshot": "Képernyőkép macOS-en. Mintadokumentumok, kitalált cégek.",
+    "downloadZip": "ZIP letöltése"
   },
   "apps": {
     "pdf": {
@@ -362,12 +368,13 @@
     "sourceText": "Szerezd be az MIT-licencű forráskódot a GitHubon. A macOS-en történő fordításhoz Xcode Command Line Tools szükséges. A helyi fordítások ad-hoc aláírást használnak, hacsak nem állítasz be terjesztési aláírást.",
     "checkReleases": "Kiadások megtekintése",
     "buildGuide": "Fordítási útmutató",
-    "releaseNote": "A letöltési gombok akkor jelennek meg, amikor közzétett kiadási fájlok érhetők el. Kiadási bizonyíték nélkül egy telepítőt sem jelölünk aláírtnak vagy Apple által hitelesítettnek.",
+    "releaseNote": "A Mac-előzetes ad hoc aláírást használ. Az Apple nem hitelesítette, ezért a macOS az első megnyitáskor jóváhagyást kérhet.",
     "buildTitle": "Fordítsd le az OFF42-t a Maceden",
     "buildText": "Amíg nem jelenik meg aláírt telepítő, néhány perc alatt magad is lefordíthatod az alkalmazásokat. Futtasd ezeket a parancsokat a Terminálban.",
     "buildStep1": "Telepítsd az Apple Xcode Command Line Tools csomagját.",
     "buildStep2": "Töltsd le a forráskódot a GitHubról.",
-    "buildStep3": "Fordítsd le mind a hat alkalmazást, vagy csak egyet, és másold az Alkalmazások mappába."
+    "buildStep3": "Fordítsd le mind a hat alkalmazást, vagy csak egyet, és másold az Alkalmazások mappába.",
+    "windowsPreviewText": "Előzetes verzió mind a hat alkalmazással. Bontsd ki a teljes ZIP-fájlt, majd indítsd el a kívánt alkalmazást. Címkék és vonalkódok készítésére is használható."
   },
   "about": {
     "title": "Iroda, titkok nélkül.",

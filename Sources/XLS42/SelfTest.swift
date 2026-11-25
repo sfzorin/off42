@@ -49,9 +49,13 @@ enum SelfTest {
         ]
         for f in formats {
             let got = NumberFormat.format(.number(f.0), f.1).text
-            let ok = NumberFormat.decimal != "," || got == f.2
+            // Fixtures use comma decimals and NBSP grouping. Adapt both separators, but always compare.
+            // Replace decimals first so a locale's comma grouping separator is not replaced a second time.
+            let expected = f.2.replacingOccurrences(of: ",", with: NumberFormat.decimal)
+                .replacingOccurrences(of: "\u{00A0}", with: NumberFormat.grouping)
+            let ok = got == expected
             if !ok { failed += 1 }
-            print(ok ? "ok  " : "FAIL", f.1, "→", got, ok ? "" : "(expected \(f.2))")
+            print(ok ? "ok  " : "FAIL", f.1, "→", got, ok ? "" : "(expected \(expected))")
         }
         // Reference shifting
         let shifted = Formula.shifted("=SUM($A1:B2)+C$3", rows: 2, cols: 1)

@@ -33,14 +33,28 @@ source, audit output or native app bundles.
 
 Custom domains `off42.cc` and `www.off42.cc` are attached in the Worker's Domains tab. The canonical
 site origin is `https://off42.cc`, including sitemap, alternate-language tags and
-social previews. `/` redirects to `/en/`; `/404.html` is a noindex error page.
-`_headers` sets content security and other response headers. No analytics,
+social previews. `/` redirects to `/en/`; `/404.html` is a noindex error page with error-specific metadata, without canonical or alternate-language links.
+`_headers` sets content security and other response headers, including `no-transform` to prevent edge HTML injection. In the tested location this also resulted in uncompressed responses, a performance tradeoff. No analytics,
 advertising, account system, cookies or file uploads are implemented by the site.
 Cloudflare may process requests to serve and protect it.
 
-Deployment evidence and current domain status are recorded in the root `STATUS.md`.
-The initial deployment uses direct upload, not a Git-connected auto-deploy pipeline.
-A source edit needs rebuild, verification and a fresh upload to take effect.
+Deployment metadata is recorded in `deployment.json`; detailed local audit evidence is in the root `STATUS.md`.
+The Worker supports direct upload and Git-based deployment. For Cloudflare Workers Builds,
+connect `sfzorin/off42` to the existing `off42` Worker with these settings:
+
+| Setting | Value |
+| --- | --- |
+| Production branch | `main` |
+| Root directory | `website` |
+| Build command | `npm run build && npm run check` |
+| Deploy command | `npx --yes wrangler@4.145.0 deploy` |
+| Preview builds | Disabled |
+| Build watch paths | `website/**` |
+
+`wrangler.jsonc` deploys only `dist/` and keeps the existing HTML and 404 handling.
+For a manual update, build and check the site, package the contents of `dist/`, and upload
+that archive to the existing Worker. Verify the canonical and `www` hosts, redirects and
+representative routes after either deployment method.
 
 ## GitHub repository
 
@@ -48,11 +62,10 @@ The public repository is `https://github.com/sfzorin/off42`. The site reads
 this address from `site.config.json` when building source, license, issues
 and release links. Rebuild and redeploy after changing it.
 
-## Installer links
+## Download links
 
-No DMG or EXE release existed when the site was created. The project has separate macOS (Swift/Kit42) and Windows
-(Rust) implementations. Downloads show the configured installer availability, GitHub releases and platform-specific
-build instructions. This website does not build or distribute unverified native apps.
+The macOS and Windows previews are published on GitHub Releases as a DMG and a ZIP, respectively.
+The website links to those assets and publishes their SHA-256 digests.
 
 `site.config.json` has separate nullable `releases.macos` and `releases.windows`.
 An enabled release entry must have:
@@ -92,10 +105,10 @@ open source, privacy) or a feature's `seoTitle`/`seoDescription`. They use the p
 (“free PDF editor for Mac”, “compress PDF”) and differ from the visible headings, which keep the brand voice.
 Titles carry the OFF42 name and must stay unique across all 280 pages. JSON-LD adds `SoftwareApplication`
 (free offer, MIT license), with macOS and Windows in the general product metadata and macOS scope on feature pages.
-It also adds `FAQPage` on the home and feature pages, plus `BreadcrumbList` on feature pages. The home page follows the product story: promise, demo (EN), the six apps, screenshots, formats, features, then QR
+It also adds `FAQPage` on the home and feature pages, plus `BreadcrumbList` on feature pages. The home page follows the product story: promise, demo video, the six apps, screenshots, formats, features, then QR
 codes and marks, signatures, the name, privacy, languages and open source. It also lists the formats each app opens and saves and answers common questions;
-the downloads page shows build-from-source commands with copy buttons while no installer is released.
-Social previews use the 1200 × 630 `assets/og-image.jpg`. The sitemap carries `lastmod` with the build date.
+the downloads page links the macOS DMG and Windows ZIP previews with their SHA-256 digests and shows build-from-source commands with copy buttons.
+Social previews use the 1200 × 630 `assets/og-image.jpg`. The sitemap omits `lastmod` until meaningful per-page dates are available. No `downloadUrl` is emitted while installer files are unavailable.
 `/` redirects permanently (301) to `/en/`.
 
 ## Screenshots
@@ -106,15 +119,15 @@ companies — agreement and invoice, proposal letter, budget with chart, deck �
 country-style stamps (company stamps, round seals, hanko/kakuin, Chinese seals, “Paid” stamps). East Asian samples
 seal instead of signing; Arabic samples are right-to-left. `screenshots/sizes.json` lists every image's size; the
 build falls back to English for a missing language. Signature designs are pinned (`design` in the samples,
-`K42_GENERATOR_DESIGNS` for the generator window) after review on `PDF42 --site-candidates` contact sheets.
+`K42_GENERATOR_DESIGNS` for the generator window) after contact-sheet review.
 
-Regenerate (DIR = a scratch folder; copy `screenshots/*` into `DIR/shots`, `screenshots/samples` to `DIR/samples`):
-1. `swift build`; `python3 scripts/audit-ui.py --mode screenshots --output DIR/shots/audit` prepares isolated
-   `*Audit.app` bundles (copy fresh `.build/debug` binaries into them after code changes).
-2. `DIR/shots/pipeline.sh en,ru,de,…` runs `PDF42 --site-samples` (local helper `Sources/PDF42/SiteSamples.swift`,
-   not part of the product), `make_docs.py` (python-docx, openpyxl, python-pptx), the scanner input, the app shots
-   (`K42_SNAPSHOT`, rendered by the apps themselves, no screen recording) and WebP encoding with the signed crop.
-3. `npm run build && npm run check`.
+Optional regeneration requires a special external PDF42 binary supporting `--site-samples` at
+`$OFF42_REPO/.build/debug/PDF42`, plus prebuilt isolated audit bundles. The current native
+source tree does not include that helper; this pipeline is not self-contained. It also requires
+`python-docx`, `openpyxl`, and `python-pptx`. Set `OFF42_REPO`, `OFF42_WEBSITE`, and
+`OFF42_SAMPLES` when their default paths do not apply, then run
+`website/screenshots/pipeline.sh en,ru` (or the required comma-separated languages).
+The pipeline exits nonzero on failure. Rebuild and check the website after updating images.
 
 ## Assets
 
@@ -129,30 +142,21 @@ The home page section `#codes` and the feature page `features/labels-codes/` des
 File › Create Labels (PDF42, DOC42, XLS42 on macOS) with the 97 bundled marks (CE, UKCA, EAC, FCC, UL, CCC, GHS…).
 Keep the limits in the copy: a mark is artwork and certifies nothing, conformity marks and trademarks need the
 certificate or licence, and the dialog is translated into English, Russian and Turkish (mark names into 11 languages).
-`public/assets/codes-marks.webp` is a row of the app's own mark artwork. Images `codes-labels-*` (window with the label sheet and the PDF its preview generated) and `codes-qr-*`
-(the dialog) exist for EN and RU; other languages fall back to English.
+`public/assets/codes-marks.webp` is a row of the app's own mark artwork. Images `codes-labels-*` and `codes-qr-*`
+exist for EN and RU; other languages fall back to English.
 
-## Demo video (English home page only)
+## Demo video
 
-`public/assets/video/off42-demo-en.mp4` (H.264, 1920×1080, silent, ~56 s) and `off42-demo-poster.jpg` appear only
-on `/en/`; the `video` block exists only in `locales/en.json` and `npm run check` enforces both. The video is composed
-from the apps' own window renders, not recorded from the screen. Scripts are in `screenshots/video/`:
+Each home page shows `public/assets/video/off42-demo-<lang>.mp4` (H.264, 1920×1080, silent, about a minute) with
+`off42-demo-<lang>.jpg` as poster; `npm run check` requires both for all 20 languages. The videos are composed from the
+apps' own window renders in that interface language (`K42_SNAPSHOT`, isolated `*Audit` bundles), not screen
+recordings; camera moves, sheet slides and the pointer are added. Scripts are in `screenshots/video/`:
+`prepare.py` (isolated bundles), `make_products.py` (fictional product lists), `render.py <lang>` (window and dialog
+renders, including XLS42 debug hooks `K42_SELECT=A1:D11`, `K42_DIALOG_STEPS`, `K42_DIALOG_DELAY`, `K42_DIALOG_PDF`),
+`compose2.py` (the cut; captions per language from `video-i18n/<lang>.json`, text drawn with AppKit so Arabic, Thai
+and CJK shape correctly) and `site_shots.py`. `npm run preview` serves byte ranges so the video plays in Safari.
 
-1. Copy them to a scratch folder DIR with `screenshots/*` in `DIR/shots` and `screenshots/samples` in `DIR/samples`.
-2. `python3 DIR/prepare.py DIR/shots/audit/apps` builds isolated `*Audit.app` bundles from `.build/debug`.
-3. In `DIR/shots`: `PDF42 --site-samples ../samples docs`, `make_docs.py` and `scanner_input.py` as for screenshots;
-   `python3 DIR/make_products.py DIR/shots/docs en ru` writes the fictional product list.
-4. `python3 DIR/render.py en` (and `ru`) renders the windows and dialogs into `DIR/raw` (XLS42 debug hooks
-   `K42_SELECT=A1:D11`, `K42_DIALOG_STEPS`, `K42_DIALOG_DELAY`, `K42_DIALOG_PDF`); rasterize the label PDF with
-   `sips -s format png -Z 2200 raw/xls-labels-en.pdf --out raw/labels-page-en.png`.
-5. `python3 DIR/compose2.py OUT.mp4` builds the current cut (`--preview 12,38` writes still frames; `compose.py` holds
-   the shared camera/sheet/pointer code and the first cut). It also needs `docs/portfolio-en.pdf` (a 4-page photo PDF
-   for the Reduce File Size scene) and the site's `xls-budget-*-1600.webp` shots for the language montage.
-   `python3 DIR/site_shots.py en ru` writes the section images and `sizes.json`.
-
-The cut follows the product story: the promise (“Your whole office. No subscription.”), keep writing a Word letter
-(successive DOC42 renders after `K42_SCRIPT` typing), an Excel budget with its formula, a PowerPoint deck and presenter
-view, editing text inside a PDF, shrinking a heavy PDF, scanning, then QR codes, a CE mark with its conditions and a
-label sheet, a short signature shot, the interface in other languages, and the promise again.
-
-`npm run preview` serves byte ranges so the video plays in Safari locally; check a deployment the same way.
+The cut follows the product story: the promise (“Your whole office. No subscription.”), keep writing a Word letter,
+an Excel formula and chart, a PowerPoint deck and presenter view, editing text inside a PDF, shrinking a heavy PDF,
+scanning, then QR codes, a CE mark with its conditions and a label sheet, a short signature shot, the interface in
+other languages, and the promise again.

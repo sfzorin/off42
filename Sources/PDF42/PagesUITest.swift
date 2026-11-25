@@ -5,7 +5,7 @@ import PDFKit
 
 extension EditorWindowController {
     /// Native page/sidebar commands and modal controls, including complete Undo and emitted PDF state.
-    func auditPages() -> Bool {
+    @MainActor func auditPages() async -> Bool {
         guard let doc = pdfDoc, let window else { print("FAIL PDF pages: no document window"); return false }
         prepareForSave()
         let original = doc.pdf, extras = doc.extras, originalUndo = doc.undoManager
@@ -48,12 +48,33 @@ extension EditorWindowController {
             }
             context.closePDF(); return PDFDocument(data: data as Data)!
         }
-        func reset(_ count: Int = 4) {
+        func reset(_ count: Int = 4) async -> Bool {
             window.makeFirstResponder(pdfView)
-            doc.pdf = fixture(count); doc.extras = DocumentExtras(); replaceDocument(doc.pdf)
+            let expected = fixture(count), firstPage = expected.page(at: 0)!
+            doc.pdf = expected; doc.extras = DocumentExtras(); replaceDocument(expected)
             pdfView.displayMode = .singlePage; sidebar.mode = .thumbnails
-            if let page = pdf?.page(at: 0) { pdfView.go(to: page); sidebar.thumbnails.selectPages([page]) }
+            window.layoutIfNeeded(); pdfView.layoutDocumentView()
+            pdfView.go(to: firstPage); sidebar.thumbnails.selectPages([firstPage])
+            // Replacing the PDF invalidates PDFKit's current page until its view is laid out.
+            // Let queued layout/navigation work finish before invoking a native page command.
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                DispatchQueue.main.async { continuation.resume() }
+            }
+            let deadline = Date(timeIntervalSinceNow: 3)
+            while pdfView.document !== expected || pdfView.currentPage !== firstPage ||
+                    pdfView.documentView == nil || pdfView.bounds.width <= 0 || pdfView.bounds.height <= 0 {
+                guard Date() < deadline else {
+                    print("FAIL PDF pages: fixture page did not become ready", "pages", count,
+                          "expected document", pdfView.document === expected,
+                          "expected page", pdfView.currentPage === firstPage,
+                          "current index", pdfView.currentPage.map { expected.index(for: $0) } ?? -1,
+                          "view bounds", pdfView.bounds, "document view", pdfView.documentView != nil)
+                    return false
+                }
+                try? await Task.sleep(nanoseconds: 20_000_000)
+            }
             manager.removeAllActions(); doc.updateChangeCount(.changeCleared)
+            return true
         }
         func pages() -> [PDFPage] { guard let pdf else { return [] }; return (0..<pdf.pageCount).compactMap { pdf.page(at: $0) } }
         func order() -> [String] { pages().map { $0.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "" } }
@@ -61,7 +82,7 @@ extension EditorWindowController {
             window.makeFirstResponder(pdfView); doc.pdf = original; doc.extras = extras; doc.undoManager = originalUndo
             replaceDocument(original); sidebar.mode = originalMode; zoomMode = originalZoom
         }
-        reset(); window.makeKeyAndOrderFront(nil)
+        guard await reset() else { return false }; window.makeKeyAndOrderFront(nil)
         let originalPages = pages(), originalOrder = order()
         sidebar.thumbnails.selectPages([originalPages[1], originalPages[2]]); pdfView.go(to: originalPages[1])
         send(#selector(movePageDownAction(_:)))
@@ -73,23 +94,23 @@ extension EditorWindowController {
         event { movePages([-1, 2, 2, Int.max], to: Int.max) }
         check(order() == [originalOrder[0], originalOrder[1], originalOrder[3], originalOrder[2]] && pdf?.pageCount == 4, "drag reorder sanitizes negative, duplicate and stale indices")
         manager.undo(); check(order() == originalOrder, "sanitized drag move is undoable")
-        reset(); let same = order(); movePages([-1, Int.max], to: Int.min)
+        guard await reset() else { return false }; let same = order(); movePages([-1, Int.max], to: Int.min)
         check(order() == same && !manager.canUndo, "invalid drag creates no mutation or Undo")
         let selected = [pages()[1], pages()[3]]; sidebar.thumbnails.selectPages(selected)
         send(#selector(rotateRightAction(_:)))
         check(pages().map(\.rotation) == [0, 90, 0, 90] && targetIndices == [1, 3], "Rotate Right applies to selected pages and retains selection")
         manager.undo(); check(pages().allSatisfy { $0.rotation == 0 }, "multi-page rotation Undo restores every page")
         manager.redo(); check(pages()[1].rotation == 90 && pages()[3].rotation == 90, "multi-page rotation Redo")
-        reset(); let deleted = [pages()[1], pages()[2]]; sidebar.thumbnails.selectPages(deleted)
+        guard await reset() else { return false }; let deleted = [pages()[1], pages()[2]]; sidebar.thumbnails.selectPages(deleted)
         send(#selector(deletePagesAction(_:))); check(pdf?.pageCount == 2, "Delete Pages removes the whole selection")
         manager.undo(); check(pdf?.pageCount == 4 && targetIndices == [1, 2], "Delete Pages Undo restores pages and selection")
         manager.redo(); check(pdf?.pageCount == 2, "Delete Pages Redo removes the same pages")
-        reset(); send(#selector(insertBlankPageAction(_:)))
+        guard await reset() else { return false }; send(#selector(insertBlankPageAction(_:)))
         check(pdf?.pageCount == 5 && currentIndex == 1 && targetIndices == [1], "Blank Page inserts after the current page and selects it")
         manager.undo(); check(pdf?.pageCount == 4 && currentIndex == 0, "Blank Page Undo restores the current page")
         manager.redo(); check(pdf?.pageCount == 5 && currentIndex == 1, "Blank Page Redo restores inserted selection")
 
-        reset(); let source = pages()[0], destination = pages()[2]
+        guard await reset() else { return false }; let source = pages()[0], destination = pages()[2]
         let destinationLabel = "Destination"
         let bookmark = PDFOutline(); bookmark.label = destinationLabel; bookmark.destination = PDFDestination(page: destination, at: CGPoint(x: 30, y: 170))
         let root = PDFOutline(); root.insertChild(bookmark, at: 0); pdf?.outlineRoot = root
@@ -115,7 +136,7 @@ extension EditorWindowController {
         manager.redo(); check(doc.extras.outlineStyles.values.contains { $0.bold }, "bookmark style Redo")
         if let parent = pdf?.outlineRoot?.child(at: 0) { moveBookmark(parent, to: parent, at: 0); check(pdf?.outlineRoot?.numberOfChildren == 1, "bookmark cannot be nested inside itself") }
 
-        reset(2); let page = pages()[0]
+        guard await reset(2) else { return false }; let page = pages()[0]
         let a = PDFAnnotation(bounds: CGRect(x: 10, y: 10, width: 20, height: 20), forType: PDFAnnotationSubtype(rawValue: "FileAttachment"), withProperties: nil)
         let b = PDFAnnotation(bounds: CGRect(x: 50, y: 10, width: 20, height: 20), forType: PDFAnnotationSubtype(rawValue: "FileAttachment"), withProperties: nil)
         page.addAnnotation(a); page.addAnnotation(b)
@@ -137,7 +158,7 @@ extension EditorWindowController {
         check(attachmentInfo(.annotation(copyB, page: 0))?.name == "two.txt", "page replacement rebinds attachment metadata to the copied annotation")
         manager.undo(); check(doc.extras.linkFit[ObjectIdentifier(fitted)] == "FitH" && attachmentInfo(.annotation(b, page: 0))?.name == "two.txt", "page replacement Undo restores original metadata identities")
 
-        reset(1); let full = pages()[0].bounds(for: .mediaBox)
+        guard await reset(1) else { return false }; let full = pages()[0].bounds(for: .mediaBox)
         modal(L("Crop"), edit: { view in fields(view).first?.stringValue = "10" }) { cropAction(nil) }
         check(abs(pages()[0].bounds(for: .cropBox).minX - 10 * PageGeometry.mm) < 0.01, "native Crop applies a typed margin")
         manager.undo(); check(pages()[0].bounds(for: .cropBox) == full, "Crop Undo restores the full page")
@@ -149,7 +170,7 @@ extension EditorWindowController {
         check(pages()[0].bounds(for: .cropBox) == full, "Remove Crop restores the media box")
         manager.undo(); check(pages()[0].bounds(for: .cropBox) == beforeInvalid, "Remove Crop is undoable")
 
-        reset(1)
+        guard await reset(1) else { return false }
         let text = PDFAnnotation(bounds: CGRect(x: 30, y: 40, width: 80, height: 30), forType: .freeText, withProperties: nil)
         text.contents = "Scaled annotation"; text.font = NSFont.systemFont(ofSize: 12); pages()[0].addAnnotation(text)
         let family = text.font?.familyName
@@ -170,14 +191,14 @@ extension EditorWindowController {
         let priorSize = pages()[0].bounds(for: .mediaBox)
         resizePages([0], to: CGSize(width: CGFloat.nan, height: 200), orientation: 0, scale: true)
         check(pages()[0].bounds(for: .mediaBox) == priorSize, "nonfinite page dimensions are rejected")
-        reset(1)
+        guard await reset(1) else { return false }
         modal(L("Apply"), edit: { view in
             let popups = views(view).compactMap { $0 as? NSPopUpButton }
             check(popups.first?.indexOfSelectedItem == PageGeometry.paperSizes.count, "Page Size identifies existing custom dimensions")
         }) { pageSizeAction(nil) }
         check(abs(pages()[0].bounds(for: .mediaBox).width - 320) < 2, "accepting a custom page size does not change it to A4")
 
-        reset(2)
+        guard await reset(2) else { return false }
         modal(L("Add"), edit: { view in
             let editable = fields(view)
             editable.first { $0.stringValue == "CONFIDENTIAL" }?.stringValue = "AUDIT-WATERMARK"
@@ -187,11 +208,11 @@ extension EditorWindowController {
         manager.undo(); check(pages().allSatisfy { $0.annotations.isEmpty }, "multi-page watermark is one Undo event")
         manager.redo(); check(pages().allSatisfy { $0.annotations.count == 1 }, "watermark Redo restores every target")
         send(#selector(removeWatermarksAction(_:))); check(pages().allSatisfy { $0.annotations.isEmpty }, "Remove Watermarks removes live overlays")
-        reset(2)
+        guard await reset(2) else { return false }
         modal(L("Add"), edit: { view in fields(view).first { $0.stringValue == "1" }?.stringValue = "4" }) { pageNumbersAction(nil) }
         check(pages().enumerated().allSatisfy { i, page in page.annotations.contains { ($0 as? PageNumberOverlay)?.text == "\(i + 4)" } }, "Page Numbers dialog applies the chosen starting number")
         manager.undo(); check(pages().allSatisfy { $0.annotations.isEmpty }, "Page Numbers Undo removes the entire numbering action")
-        reset(2)
+        guard await reset(2) else { return false }
         modal(L("Add"), edit: { view in fields(view).first { $0.stringValue == "<<page>> / <<pages>>" }?.stringValue = "AUDIT-HF <<page>>" }) { headerFooterAction(nil) }
         check(pages().enumerated().allSatisfy { i, page in page.annotations.contains { ($0 as? HeaderFooterOverlay)?.lines[4] == "AUDIT-HF \(i + 1)" } }, "Header and Footer dialog expands page tokens on each page")
         if let data = try? doc.data(ofType: "com.adobe.pdf"), let reopened = PDFDocument(data: data) {
@@ -199,7 +220,7 @@ extension EditorWindowController {
         } else { check(false, "header/footer fixture saves and opens") }
         send(#selector(removeHeaderFooterAction(_:))); check(pages().allSatisfy { $0.annotations.allSatisfy { !($0 is HeaderFooterOverlay) } }, "Remove Headers and Footers removes live overlays")
 
-        reset(3)
+        guard await reset(3) else { return false }
         doc.extras.view.openPage = 2; doc.extras.view.openZoom = "150"
         if let raw = pdf?.dataRepresentation() {
             let saved = DocumentWriter.apply(raw, extras: doc.extras, pdf: doc.pdf)

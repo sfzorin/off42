@@ -52,11 +52,11 @@
       },
       {
         "q": "Mac manakah yang disokong OFF42?",
-        "a": "OFF42 menyasarkan macOS 14 atau lebih baharu. Pemasang awam belum dikeluarkan; anda boleh membina aplikasi daripada kod sumber dengan Xcode Command Line Tools."
+        "a": "DMG pratonton tersedia untuk Mac dengan Apple Silicon yang menjalankan macOS 14 atau versi lebih baharu."
       },
       {
         "q": "Adakah versi Windows tersedia?",
-        "a": "Aplikasi natif Windows telah dilaksanakan dan tersedia sebagai kod sumber. Semak ciri dan batasan yang didokumenkan. Pemasang Windows awam belum diterbitkan."
+        "a": "Versi pratonton yang mengandungi kesemua enam aplikasi. Ekstrak keseluruhan ZIP, kemudian jalankan aplikasi pilihan anda. Termasuk alat untuk membuat label dan kod bar."
       }
     ]
   },
@@ -82,7 +82,7 @@
   "marks": {
     "label": "TANDATANGAN DAN COP",
     "title": "Tandatangan dan cop seperti di atas kertas. Tanpa pencetak, tanpa pengimbas.",
-    "text": "OFF42 menulis tandatangan tulisan tangan daripada nama dan mengecap cop syarikat, kemudian meletakkan kedua-duanya terus ke dalam dokumen. Setiap sisipan sedikit berbeza, seperti dakwat sebenar di atas kertas.",
+    "text": "Tambahkan imej tandatangan dan cop anda sendiri pada dokumen.",
     "points": [
       "Tandatangan dengan pen mata bulat, pen gel, pen dakwat atau pen felt",
       "132 gaya cop: cop bulat, cop syarikat, “Telah Dibayar” dan “Diterima”",
@@ -112,6 +112,12 @@
     "title": "Aplikasi sebenar. Dokumen sebenar.",
     "text": "Setiap gambar di sini ialah tangkapan skrin OFF42 pada Mac, dengan dokumen contoh syarikat rekaan dibuka dalam aplikasi. Bukan reka bentuk olok-olok."
   },
+  "video": {
+    "label": "LIHAT IA BERFUNGSI",
+    "title": "Seminit bersama OFF42.",
+    "text": "Teruskan menulis surat Word, semak bajet, bentangkan slaid, betulkan PDF dan imbas sehelai halaman — kemudian tukar senarai produk kepada label QR bertanda CE. Setiap bingkai dipaparkan oleh aplikasi itu sendiri pada Mac, dengan dokumen contoh syarikat rekaan.",
+    "caption": "Demo tanpa suara, kira-kira seminit. Paparan sebenar aplikasi; pergerakan kamera dan penuding ditambah."
+  },
   "labels": {
     "learn": "Terokai",
     "allFeatures": "Semua ciri",
@@ -129,7 +135,6 @@
     "available": "Tersedia",
     "unavailable": "Belum dikeluarkan",
     "downloadDmg": "Muat turun DMG",
-    "downloadExe": "Muat turun EXE",
     "checksum": "SHA-256",
     "version": "Versi",
     "requirements": "Keperluan sistem",
@@ -141,7 +146,8 @@
     "notFoundText": "Cuba laman utama atau pilih bahasa untuk terus meneroka.",
     "copy": "Salin",
     "copied": "Disalin",
-    "screenshot": "Tangkapan skrin pada macOS. Dokumen contoh, syarikat rekaan."
+    "screenshot": "Tangkapan skrin pada macOS. Dokumen contoh, syarikat rekaan.",
+    "downloadZip": "Muat turun ZIP"
   },
   "apps": {
     "pdf": {
@@ -362,12 +368,13 @@
     "sourceText": "Dapatkan kod sumber berlesen MIT di GitHub. Pembinaan pada macOS memerlukan Xcode Command Line Tools. Binaan setempat menggunakan tandatangan ad-hoc melainkan anda mengkonfigurasi tandatangan pengedaran.",
     "checkReleases": "Semak keluaran",
     "buildGuide": "Arahan pembinaan",
-    "releaseNote": "Butang muat turun muncul apabila fail keluaran yang diterbitkan tersedia. Tiada pemasang dinyatakan sebagai ditandatangani atau dinotarisasi tanpa bukti keluaran.",
+    "releaseNote": "Pratonton Mac menggunakan tandatangan ad hoc. Apple belum menotarikannya, dan macOS mungkin meminta kebenaran ketika pertama kali dibuka.",
     "buildTitle": "Bina OFF42 pada Mac anda",
     "buildText": "Sementara pemasang bertandatangan belum diterbitkan, anda boleh membina aplikasi sendiri dalam beberapa minit. Jalankan arahan ini dalam Terminal.",
     "buildStep1": "Pasang Xcode Command Line Tools daripada Apple.",
     "buildStep2": "Muat turun kod sumber daripada GitHub.",
-    "buildStep3": "Bina keenam-enam aplikasi, atau bina satu aplikasi dan salin ke folder Applications."
+    "buildStep3": "Bina keenam-enam aplikasi, atau bina satu aplikasi dan salin ke folder Applications.",
+    "windowsPreviewText": "Versi pratonton yang mengandungi kesemua enam aplikasi. Ekstrak keseluruhan ZIP, kemudian jalankan aplikasi pilihan anda. Termasuk alat untuk membuat label dan kod bar."
   },
   "about": {
     "title": "Pejabat tanpa apa-apa untuk disembunyikan.",

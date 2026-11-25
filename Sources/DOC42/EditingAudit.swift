@@ -25,6 +25,8 @@ extension DocWindowController {
             if !condition { failures += 1 }
             print("\(condition ? "PASS" : "FAIL") DOC editing: \(name)")
         }
+        check(!editor.runWriterStep("modstyle", "MissingAuditStyle42", []),
+              "script rejects a missing style instead of silently accepting the command")
         func reset(_ text: NSAttributedString) {
             editor.headerEditor?.commit()
             storage.setAttributedString(text)

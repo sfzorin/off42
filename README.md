@@ -1,19 +1,21 @@
-# Suite42 — PDF42 · DOC42 · XLS42 · IMG42 · PPT42 · SCN42
+# off42 — PDF42 · DOC42 · XLS42 · IMG42 · PPT42 · SCN42
 
-Suite42 is a suite of six native apps for **macOS and Windows**, covering documents, spreadsheets, presentations,
+off42 brings together six native apps for **macOS and Windows**, covering documents, spreadsheets, presentations,
 PDFs, images and scanning. The macOS apps are written in Swift and share Kit42 for menus, toolbars, language
 selection, signatures and stamps. The Windows apps use a separate Rust implementation and native Windows controls.
 Available features, file-format support and runtime dependencies depend on the platform.
 
 Core editing works offline. The macOS implementation uses Apple's system frameworks; barcode generation uses
-a bundled, licensed bwip-js encoder. No separate runtime installation is needed for that encoder.
+a bundled, licensed bwip-js encoder, with no separate runtime installation. Windows dependencies
+and build requirements are documented in [rust/README.md](rust/README.md).
 The macOS interface is available in **20 languages**: English, Simplified Chinese, Traditional Chinese (Taiwan), Spanish,
 Arabic, French, Portuguese, Indonesian, Russian, German, Japanese, Vietnamese, Turkish, Filipino, Korean, Thai,
-Italian, Polish, Malay and Hungarian. Network features in the macOS apps, such as trusted signature timestamps and opening web links,
-need a connection.
+Italian, Polish, Malay and Hungarian. Network features in the macOS apps, including remote signing, trusted timestamps,
+validation-data retrieval and opening web links,
+need a connection. Optional GOST signing uses a separately installed CryptoPro CSP.
 
 The format table and detailed app descriptions below cover the **macOS implementation**.
-The separate Rust/Windows workspace documents its own formats, build instructions and current limits.
+See [Windows scope and limits](rust/README.md#implemented-scope-and-limits) for the Rust apps.
 
 | App | For | Opens | Saves |
 |---|---|---|---|
@@ -26,17 +28,24 @@ The separate Rust/Windows workspace documents its own formats, build instruction
 
 ## What's new on macOS
 
-- **Symbols, codes and labels on macOS.** PDF42, DOC42 and XLS42 share Insert → Symbol or Code and File → Create Labels. QR, Data Matrix, Code 128 and Aztec codes retain editable values after saving. Label sheets use selected spreadsheet rows, document content/tables or a PDF page/region; printer calibration lives in the native print panel. These commands are optional toolbar items.
+- **Symbols, codes and labels on macOS.** PDF42, DOC42 and XLS42 share Insert → Symbol or Code and File → Create
+  Labels. QR, Data Matrix, Code 128 and Aztec codes retain editable values after saving. Label sheets use selected
+  spreadsheet rows, document content/tables or a PDF page/region; printer calibration lives in the native print panel.
+  These commands are optional toolbar items.
 - **Twenty languages across all six apps.** Bundled translations, native language names in the welcome-screen
   picker, shared language preference and localized Quick Look previews. Interface language is independent of
   document content, OCR language support and formula syntax.
 - **Your signature, from your samples.** Draw in the signature pad or import a scan or photo, then create new copies
   with ballpoint, gel, fountain or felt-tip ink. Name-based signatures and 132 editable stamp templates remain in the
   shared library; each insertion creates a fresh impression.
+- **PDF signature workflows.** PAdES baseline levels, long-term validation data and document timestamps, CSC remote
+  signing, and GOST/МЧД integration through a separately installed CryptoPro CSP. Provider and interoperability
+  limits are recorded in the PDF42 section and the regression coverage below.
 - **Deeper editing and file checks.** Recent work covers PDF markup, redaction, forms and page operations;
   XLS42 protected cells, arrays, dates and file round trips; DOC42 rulers and complete-document pagination;
-  and PPT42 text, tables, object geometry, slide shows and export. Regression scenarios exercise native controls,
-  Undo/Redo and saved output. [STATUS.md](STATUS.md) identifies the tested binaries, results and remaining gaps.
+  PPT42 text, tables, object geometry, slide shows and export; and IMG42 selection, colour adjustments, metadata
+  and safe image output; SCN42 acquisition, processing, OCR, page marks and export. Regression scenarios exercise native controls,
+  Undo/Redo and saved output. The regression checks below describe their scope and remaining gaps.
 
 ## Labels and technical codes (macOS)
 
@@ -64,19 +73,42 @@ available in English, Russian and Turkish; other interface languages currently u
 
 ## Current status
 
-This README describes the source as of **2026-11-06**. The [status report](STATUS.md) records dated audit results,
-known limitations, source publication and the exact builds installed locally. Publishing source on GitHub does not
-update an installed app or imply a notarized binary release. Use the recorded revision and binary identity when
-matching a test result to an app bundle.
+This README describes the source as of **2026-11-06**. [Regression checks](#regression-checks) lists reproducible
+commands and coverage limits. Publishing source on GitHub does not update an installed app or imply a notarized
+binary release. Match verification results to the recorded revision and executable identity; detailed logs and
+local installation history are retained separately.
+
+Final macOS audit on **2026-11-06**: debug/release builds, app selftests and independent file checks passed.
+The selected final results comprise **62 behavioral runs**, **40 screenshot captures** and **144 language launches**
+across six apps; screenshots and language launches are not counted as functional editing tests. After the last
+PDF audit-readiness change, only its page scenario was repeated in debug/release (**73/73 assertions each**).
+Later checks should target changed behavior; repeat the full language matrix when localization changes warrant it.
+
+The audit fixed scanner lifecycle/output/Undo issues and stamp-page state, bounded signature rendering work,
+and removed false-positive format/sample checks and duplicate runs. One initial IMG42 debug file scenario failed;
+it did not reproduce in three diagnostic sequences or subsequent full app checks. Its cause remains unconfirmed;
+the stronger fixture baseline and failure diagnostics remain. Hardware and external-provider limits are listed below.
+The local macOS packages are ad-hoc signed; this source publication does not install apps or provide a notarized binary release.
 
 ## Windows Rust workspace
 
-Suite42 also includes six native Windows apps implemented in a separate Rust workspace. This source snapshot
-contains the Swift/macOS tree; use the Windows workspace's README for build instructions, supported formats and
-runtime dependencies. Windows functionality differs from macOS, and native Windows interaction, printing,
-scanner hardware and PDFium interoperability still require verification on Windows.
+The separate Rust workspace implements the six apps for Windows. Its formats, runtime dependencies, build commands
+and current limitations are described in [rust/README.md](rust/README.md). Native Windows interaction, printing,
+scanner hardware and PDFium interoperability have not been verified on a Windows desktop; it is not a parity claim.
 
 <a id="install"></a>
+
+## Downloads
+
+The off42 1.0 preview DMG contains all six apps for Apple Silicon Macs running macOS 14 or later.
+The apps use ad hoc signatures and the preview has no Apple notarization.
+[Download the macOS preview DMG](https://github.com/sfzorin/off42/releases/download/v1.0.0-preview.1/off42-1.0.0-preview.1-arm64.dmg).
+
+The Windows preview ZIP contains all six Windows x64 apps, PDFium and tools for
+[labels and barcodes](rust/README.md#labels-barcodes-and-signatures). Extract the full ZIP and launch the app you want.
+The executables are unsigned. See the [release notes](https://github.com/sfzorin/off42/releases/tag/v1.0.0-windows-preview.3)
+for runtime requirements.
+[Download the Windows preview ZIP](https://github.com/sfzorin/off42/releases/download/v1.0.0-windows-preview.3/off42-1.0.0-windows-preview.3-x64.zip).
 
 ## Build and install on macOS
 
@@ -87,7 +119,8 @@ git clone https://github.com/sfzorin/off42.git && cd off42
 SUITE42_BUILD_DIR=build/languages ./build.sh # isolated output directory for verification
 ```
 
-The package declares macOS 14+ and Swift tools 5.9; the verified environment is listed in [STATUS.md](STATUS.md).
+The package declares macOS 14+ and Swift tools 5.9. The verification environment is macOS 27.0.1 (arm64) with Swift 6.3.1;
+the minimum-supported macOS is not covered by this run.
 Install the Xcode Command Line Tools to build. The default build uses ad-hoc signing and does not notarize the apps.
 It writes `build/*.app`; only the explicit `install` argument replaces a copy in `/Applications`.
 To make an app the default one for a file type:
@@ -103,10 +136,6 @@ the app (`Contents/PlugIns`), so installing the app is enough; if Finder keeps t
 lets you switch extensions off.
 
 ## PDF42 — PDF
-
-The PDF42 audit and local installation recorded on 2026-11-06 use a fixed shared-library revision with EN/RU/TR
-and the existing signature/stamp generators. Concurrent signature-learning, pen-rendering and expanded-language work
-described under Common is outside that installed binary; see [STATUS.md](STATUS.md#pdf42-detailed-follow-up--2026-11-06).
 
 - Reading: thumbnails and contents, zoom, display modes, search, go to page, forms, password-protected files.
 - Pages: add blank pages, delete, rotate, reorder, insert from other PDFs, extract, export as PNG.
@@ -158,8 +187,12 @@ described under Common is outside that installed binary; see [STATUS.md](STATUS.
   `--edit-text in out OLD NEW`, `--redact in out x,y,w,h[@page] …`, `--add-field in out`, `--fill in out name=value …`, `--fields file`.
   `--add-field` adds three demonstration fields; use the UI for custom field placement.
   Other CLI commands: `--ocr in out`, `--images-to-pdf out images…`, `--export in out.docx|out.txt`,
-  `--verify file`, `--sign in identity.p12 password out [visible] [tsa]`.
-  `--verify` prints signature statuses; its exit code is not a signature-validity result.
+  `--verify file`, `--sign in identity.p12 password out [visible] [tsa | tsa=URL] [level=pkcs7|B-B|B-T|B-LT|B-LTA]`
+  (default: B-T with a TSA, otherwise B-B), `--ltv in out` (add validation data to the existing signatures),
+  `--doc-timestamp in out [TSA-URL]`, `--csc-credentials SERVICE-URL [auth]`,
+  `--csc-sign in out SERVICE-URL CREDENTIAL-ID [auth] [pin=…] [otp=…] [tsa | tsa=URL] [level=…]`, where auth is
+  `token=…`, `user=… password=…` (CSC auth/login) or `client-id=… [client-secret=…] [port=8765] [no-browser]` (OAuth 2.0).
+  `--verify` prints signature statuses, the PAdES level and the LTV status; its exit code is not a signature-validity result.
   Invalid ranges, dimensions and unsupported export formats fail explicitly. Missing/unreadable merge inputs do not
   produce a partial merged document. Output files are replaced atomically after successful generation; a set of split
   or batch outputs is not one atomic transaction.
@@ -172,12 +205,54 @@ described under Common is outside that installed binary; see [STATUS.md](STATUS.
   uses this dialog: PDF42 detects scans, IMG42 and SCN42 use the image's or scan's resolution, DOC42/XLS42/PPT42 pages
   are vector. The image is embedded losslessly. Imported SVG/PDF stamps are drawn at 2400 px; a scan cannot become
   sharper than it is, so for the best result import your stamp as SVG/PDF or a 600-dpi scan.
-- Digital signature (⌥⌘D): standard PDF signature (PKCS#7/CMS, adbe.pkcs7.detached, SHA-256), readable by Acrobat.
-  Certificate from the macOS Keychain, .p12 import or a self-signed one. Counter-signing is supported
-  (incremental update). Visible signature (select a placed signature image first, or bottom right of the page)
-  and RFC 3161 trusted timestamp (default TSA: DigiCert). Verification (⌥⌘V) and a status banner on open.
+- Digital signature (⌥⌘D): PAdES baseline signatures (ETSI EN 319 142-1, ETSI.CAdES.detached, SHA-256) chosen
+  in the Sign dialog's Format menu — **B-B** (signing-certificate-v2, no signing-time), **B-T** (plus an RFC 3161
+  signature timestamp), **B-LT** (plus a DSS with the certificate chains, OCSP responses and CRLs fetched at signing
+  for the signer and the timestamp authority), **B-LTA** (default; plus a document timestamp over the DSS) — or the
+  older basic adbe.pkcs7.detached signature. Certificate from the macOS Keychain, .p12 import, a self-signed one, or a
+  remote signing service. Counter-signing is supported (incremental update). Visible signature (select a placed
+  signature image first, or bottom right of the page); default TSA: DigiCert. Without a timestamp the level is B-B.
+  Verification (⌥⌘V) and a status banner on open; the verification card shows the PAdES level and whether long-term
+  validation is enabled (revocation data for every non-root certificate of the signer and timestamp paths).
   Timestamp addresses must be valid HTTP/HTTPS URLs. Visible-signature images are rendered at 3× resolution with the
   same 16,384-pixel side and 64,000,000-pixel total limits as image export.
+- Signature › Enable Long-Term Validation: adds or extends the DSS (certificates, OCSP, CRLs; /VRI per signature) of an
+  already signed PDF without invalidating it, so a B-T signature becomes B-LT. Signature › Add Document Timestamp: an
+  RFC 3161 document timestamp (ETSI.RFC3161) over the whole file — B-LTA for a signed file (its DSS is extended
+  afterwards), or a timestamp-only seal for an unsigned one. Validation data comes from the URLs in the certificates
+  (AIA OCSP/caIssuers, CRL distribution points), so these steps need a connection.
+- Remote signing (Sign dialog › Remote (CSC)…): Cloud Signature Consortium API v2 with a configurable service URL.
+  Sign-in by OAuth 2.0 in the browser (authorization code with PKCE and a loopback redirect
+  `http://127.0.0.1:PORT/callback` that must be registered with the provider), client credentials, HTTP Basic or a
+  pasted access token; credentials/list → credentials/authorize (PIN / one-time code, or credential-scoped OAuth for
+  `oauth2code` credentials) → signatures/signHash. Only the SHA-256 hash of the signed attributes is sent; the document
+  stays local. RSA (PKCS#1 v1.5) and ECDSA with SHA-256.
+- GOST signatures (ГОСТ Р 34.10-2012) through the user's own **CryptoPro CSP 5.0 for macOS**, which PDF42 does not
+  include. Install CSP from cryptopro.ru (registration, administrator rights; 90-day trial licence, then a purchased
+  serial number), the certificate with its key container (token or folder) and the CA root. PDF42 calls CSP's
+  `cryptcp`/`certmgr`/`csptest` from `/opt/cprocsp/bin` (`SUITE42_CPROCSP_BIN` overrides the path) and performs no
+  GOST cryptography itself; without CSP, GOST signatures are shown as "not checked", with the signer's details
+  taken from the signature.
+  - Sign Document lists CryptoPro certificates linked to a key (“GOST: …”, with SNILS/INN) next to Keychain ones,
+    with an optional container PIN. The PDF gets a detached CAdES CMS from CSP in `/Contents`
+    (`/Filter /CryptoPro#20PDF`, `/SubFilter /adbe.pkcs7.detached`), and CAdES-T when a TSA is set.
+    Counter-signing keeps earlier signatures valid. GOST signatures keep this format; the PAdES Format menu applies
+    to Keychain and CSC signers.
+  - Signature › CryptoPro CSP… shows the CSP version, licence and key containers, and installs a certificate from a
+    container into the personal store. When CSP is missing, it shows installation steps and links to the test CA.
+  - Signature › Sign Any File with GOST (.sig)… writes a detached CAdES-BES signature `file.sig` (DER), as commonly
+    used in Russia. Verify Detached Signature (.sig)… checks it through CSP, optionally with a power of attorney.
+  - Power of attorney (МЧД): choose the XML in Sign Document; it is embedded in the PDF before signing, together with
+    its own signature (`poa.xml.sig`/`.p7s` next to it), so the new signature covers both. Verification reads the
+    unified format (`EMCHD_1`) and format 002 (UTF-8 or windows-1251). It checks validity on the signing date, that the signer is
+    the representative (SNILS, otherwise personal INN), the principal's INN, and the МЧД's own signature through CSP.
+    Revocation in the FNS registry is not checked; the number to look up is shown.
+  - CLI: `--gost-status`, `--gost-certs [all]`,
+    `--gost-sign in.pdf out.pdf --thumbprint SHA1 [--pin PIN] [--poa poa.xml] [--tsa URL] [--reason TEXT] [--visible]`,
+    `--gost-sign-file file [--out file.sig] --thumbprint SHA1 [--pin PIN] [--tsa URL]`,
+    `--gost-verify file.pdf`, `--gost-verify file --sig file.sig [--poa poa.xml]`,
+    `--poa-check poa.xml [--sig document.sig] [--date YYYY-MM-DD]`. Unlike `--verify`, these return the verdict as the exit code:
+    0 valid, 1 invalid, 2 intact but certificate not trusted, 3 not checked (no CSP), 4 power-of-attorney mismatch.
 - Thumbnails: drag to reorder pages, multi-select, drop PDFs/images to insert.
 - OCR (⌥⌘T): Vision (ru/en/tr) adds an invisible searchable text layer to scans. It processes a captured document state,
   preserves the page's annotation appearance and avoids applying a stale result after intervening document changes.
@@ -250,8 +325,7 @@ described under Common is outside that installed binary; see [STATUS.md](STATUS.
 
 ## XLS42 — spreadsheets (.xlsx, .xls, .ods, .csv)
 
-The capabilities below describe the current source. Dated test results and the installed bundle's revision are
-recorded in [STATUS.md](STATUS.md).
+The capabilities below describe the current source. The regression scenarios below identify their verification scope.
 
 - Opens .xlsx, legacy .xls (Excel 97–2003, formulas decompiled), .ods (LibreOffice/OpenOffice) and CSV/TSV
   (UTF-8/UTF-16/Windows-1251, delimiter detection); saves .xlsx, .ods and CSV. The format is detected by content.
@@ -513,10 +587,6 @@ recorded in [STATUS.md](STATUS.md).
 
 ## IMG42 — images (everything ImageIO reads, plus SVG and PDF)
 
-The verified local IMG42 installation recorded on 2026-11-06 uses the fixed shared-library base with EN/RU/TR and
-the older signature generator. Newer shared language and signature-learning work described under Common is outside
-that installed binary; see [STATUS.md](STATUS.md#img42-detailed-follow-up--2026-11-06) for the exact tests and limitations.
-
 - Formats: whatever ImageIO decodes on this Mac (asked at runtime) — JPEG, PNG, HEIC/HEIF, AVIF, WebP, GIF, TIFF, BMP,
   ICO/ICNS, PSD, TGA, JPEG 2000, OpenEXR, JPEG XL, camera RAW (CR2/CR3/NEF/ARW/DNG/RAF/ORF…), plus SVG and PDF (pages).
   EXIF orientation is applied. Animated GIF/APNG/WebP/HEICS play; multi-page TIFF and PDF page with ⌥← / ⌥→.
@@ -562,7 +632,8 @@ that installed binary; see [STATUS.md](STATUS.md#img42-detailed-follow-up--2026-
   strokes are rejected; contour resampling is bounded to 20,000 points.
 - Adjust panel (Core Image, live, non-destructive): exposure, brightness, contrast, highlights, shadows, saturation,
   vibrance, temperature, tint, sharpness, vignette; looks (Black & White, Noir, Sepia, Invert); Auto Enhance; double-click
-  a slider resets it; hold Show Original to compare; Reset All. One undo step per slider drag.
+  a slider resets it; hold Show Original to compare; Reset All. One undo step per slider drag; keyboard/accessibility
+  changes also create undoable edits. Both positive and negative Highlights values affect rendered pixels.
 - Image: Rotate ⌘L / ⌘R and Flip — untouched JPEG/HEIC/PNG/TIFF files get a new orientation tag (no re-encoding, undoable);
   otherwise it becomes an edit. Adjust Size ⌥⌘R (pixels, %, cm, inches, resolution, keep proportions), Remove Background
   (Vision subject lifting), Image Description.
@@ -591,6 +662,10 @@ that installed binary; see [STATUS.md](STATUS.md#img42-detailed-follow-up--2026-
   numbers, missing values and unsupported output extensions return a nonzero exit without replacing the destination.
   CLI `--edit` refuses a reduced-resolution preview rather than silently exporting it as a full-resolution edit.
   `--demo-marks` follow subsequent resize/crop operations; `--description ""` explicitly clears the caption.
+- Regression checks: `.build/debug/IMG42 --selftest` (pixels and file output),
+  `python3 scripts/audit-images-cli.py --binary .build/debug/IMG42` (independent file/OCR checks), and
+  `python3 scripts/audit-ui.py --app IMG42` (native editing, markup, files and navigation). Record the tested binary
+  identity and actual results alongside each run.
 - UI checks: `K42_SNAPSHOT=out.png` plus `K42_NEXT=n`, `K42_PAGE=n`, `K42_INFO`, `K42_FILMSTRIP`, `K42_ADJUST`, `K42_MARKUP`,
   `K42_DEMO_MARKS`, `K42_TOOL=n`, `K42_SELECT=rect|ellipse|alpha` (+ `K42_CROP`, `K42_DELETE`), `K42_SEARCH=text`,
   `K42_ZOOM=x`, `K42_STAMPS`, `K42_RESIZE`, `K42_DESCRIPTION`, `K42_FULLSCREEN`, `K42_HIDE_ALL`, `K42_SAVE`, `K42_UNDO`,
@@ -682,10 +757,6 @@ that installed binary; see [STATUS.md](STATUS.md#img42-detailed-follow-up--2026-
 
 ## SCN42 — scanning (replaces Image Capture)
 
-The verified local SCN42 installation recorded on 2026-11-06 uses a fixed shared-library base with EN/RU/TR and
-the older signature generator. Newer shared language and signature-learning work described under Common is outside
-that installed binary; see [STATUS.md](STATUS.md#scn42-detailed-follow-up--2026-11-06) for exact tests and hardware limits.
-
 One window: pages on the left, a big preview in the middle, a few clear settings and one big **Scan** button on the
 right. Every scan adds pages to the document; save them as one searchable PDF when you are done.
 
@@ -761,8 +832,10 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   Without `--format`, an unsupported output extension is rejected; an explicit pipeline `--format` chooses the output
   format and its actual extension. Explicit `--dpi` accepts finite values from 1 to 2,400 (whole numbers for fake scans).
   Processing and rendering have the same 32,768-side/256-million-pixel allocation bound, which includes standard Legal
-  paper at 1,200 dpi. Cleanup and geometric rendering use 8-bit channels, or 1-bit B&W; scanner acquisition bit depth
-  does not promise high-bit-depth preservation through those operations.
+  paper at 1,200 dpi. Cleanup and geometric rendering use 8-bit channels, or 1-bit for B&W pages;
+  B&W file output can be packed to 1-bit. Scanner
+  acquisition bit depth does not promise high-bit-depth preservation through those operations. The 2,000-page bound
+  applies to each multi-page input; batches remain in memory without an aggregate page or memory budget.
 - Virtual scanner: `K42_FAKE_SCANNER=dir` replaces Image Capture with a scanner that "scans" the images in `dir` (`glass*`
   for the flatbed in turn, `feed*` for the feeder; areas, resolution, colour, duplex, `K42_FAKE_WARMUP`, `K42_FAKE_SPEED`).
   UI checks: `K42_SNAPSHOT` with `K42_AUTOSCAN=flatbed|feeder|overview|photos`, `K42_DEMO_PAGES=n`, `K42_SHOW=history|settings|more|glass`,
@@ -771,7 +844,7 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   `K42_PRINT_TEST`, `K42_DUMP_MENUS`, `K42_WELCOME`, `K42_SCAN_DIR` (saves and history go there), `K42_WATCHDOG=s`.
   `--selftest` exercises deterministic page, processing and output invariants. Native control scenarios and real Vision
   fixtures run through `python3 scripts/audit-ui.py --app SCN42`; independent saved-file checks run through
-  `python3 scripts/audit-scans-cli.py --binary .build/debug/SCN42` (Pillow and pypdf required). Exact results belong in STATUS. A virtual scan, a
+  `python3 scripts/audit-scans-cli.py --binary .build/debug/SCN42` (Pillow and pypdf required). Record the tested executable and results. A virtual scan, a
   successful model fixture or a generated Print-to-PDF file does not verify physical scanner drivers, duplex hardware,
   Continuity Camera, Share/Mail delivery or a physical printer. PDF/A-style output is not a certified conformance claim.
   Unsaved scans still have no document recovery autosave.
@@ -809,6 +882,8 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   signed many times is split into its signatures automatically (ink found against the local paper, only on the
   paper; fragments, two signatures written into each other and ones cut by the edge are left out), and each becomes
   a sample. Samples and the chosen pen are stored locally in the library recipe.
+  Horizontal and nearly horizontal strokes retain their proportions and are scaled before rendering. Invalid or
+  excessive geometry/timing is rejected before allocating stroke samples; a failed recipe does not produce an image.
   `PDF42 --signature-bench DIR [designs copies] [--check]` measures the generator with metrics from handwriting
   research — normalized jerk, velocity peaks, hesitation (near-stops), line wobble, DTW distance between copies and
   between styles, and whether Vision reads legible forms — against fluent, laboured and shaky reference trajectories;
@@ -817,7 +892,7 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   picture in REAL_DIR (your own, or with the owner's consent) is learned and generated `copies` times, and real and
   generated are shuffled into numbered cells of `sheet.pdf` with the same grey ink, size and darkness; `key.json`
   keeps the answers. `PDF42 --signature-blindtest-score key.json answers.txt` scores the numbers a tester marked as
-  generated: accuracy, hits, false alarms and d′ (0 = indistinguishable).
+  generated: accuracy, hits, false alarms and d′ (0 = no measured separation in this test). Results do not establish realism for people generally.
   `PDF42 --signature-fidelity INPUT… OUT [--check]` measures learning on a person's sample sheet(s): every third
   signature is held out, the rest are learned, and copies are compared with the held-out real ones after the same
   tracing at the same ink size — shape ratio (copies vs real distance to unseen signatures), variation ratio, outliers
@@ -861,7 +936,18 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
 
 ## Known limitations
 
-- GOST signatures (needs CryptoPro CSP), tracked formatting changes in DOC42, saving to legacy .xls, Excel 5.0/95 files.
+- PDF42 signatures: signing and LTV need a file with a classic cross-reference table (any file saved by PDF42; files
+  with cross-reference streams are re-saved before the first signature, which is impossible once they are signed).
+  The PAdES level is reported from the file's structure (attributes, timestamps, DSS order, revocation coverage); it is
+  not an eIDAS qualification check: PDF42 does not consult the EU trusted lists, and its trust decision is the macOS
+  trust store. CSC remote signing has been tested only against a local mock service, not a real QTSP. RSA-PSS keys,
+  OCSP nonces and asynchronous (multi-signature) CSC operations are not supported. Network calls block the window
+  while they run (the OAuth wait keeps the run loop alive).
+- GOST signatures need the user's own CryptoPro CSP. The GOST path has been exercised only against stand-in tools
+  (`scripts/fake-cryptopro`), not against a real CSP install, so `cryptcp` option compatibility (`-cadesbes`,
+  `-cadest`) and interoperability with CryptoPro PDF/Acrobat are not yet confirmed.
+  МЧД revocation is not checked online, and the МЧД XML is not validated against the FNS schema.
+- Tracked formatting changes in DOC42, saving to legacy .xls, Excel 5.0/95 files.
 - XLS42 implements a subset of Excel/LibreOffice behavior; the function list and passing fixtures do not establish
   full format or calculation compatibility. Richer pivot tables refresh in its simpler one-pivot-per-sheet layout.
   CSV retains one sheet's computed values and automatically detects numeric/date fields on import, so it cannot
@@ -878,7 +964,7 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   multi-page or read-only inputs export the displayed frame/page through Save As. AVIF export is offered only when supported.
 - PDF/A export has not been checked with a conformance validator in this audit; see each app's format notes above.
 - The audit's scanner tests use a virtual source. Physical scanners, Continuity Camera and the minimum supported macOS
-  version were not validated in this run. More detailed coverage is in [STATUS.md](STATUS.md).
+  version were not validated in this run. The regression scenarios below state their individual coverage.
 
 ## Regression checks
 
@@ -899,6 +985,7 @@ python3 scripts/audit-media-previews.py
 python3 scripts/audit-documents-video.py
 python3 scripts/audit-documents-cli.py
 python3 scripts/audit-pdf-cli.py --binary .build/debug/PDF42
+python3 scripts/audit-signing-cli.py --binary .build/debug/PDF42
 python3 scripts/audit-spreadsheets-cli.py --binary .build/debug/XLS42
 python3 scripts/audit-presentations-cli.py --binary .build/debug/PPT42
 python3 scripts/audit-images-cli.py --binary .build/debug/IMG42
@@ -907,9 +994,15 @@ swiftc -module-cache-path .build/ModuleCache Sources/Kit42/Zip.swift Sources/Kit
   scripts/audit-documents-regressions.swift -o .build/audit-documents-regressions
 .build/audit-documents-regressions
 python3 scripts/check_strings.py
+python3 scripts/audit-gost-cli.py
 python3 -m unittest discover -s scripts/tests -p 'test_*.py'
 .build/debug/localization42audit
 ```
+
+`audit-gost-cli.py` runs PDF42's GOST commands against `scripts/fake-cryptopro`, OpenSSL (RSA) stand-ins for
+`cryptcp`/`certmgr`/`csptest` that need Homebrew `openssl@3`. It covers process plumbing, PDF embedding,
+verdicts and МЧД matching, but not GOST cryptography. With a real CSP and a certificate from the CryptoPro test CA,
+run `python3 scripts/audit-gost-cli.py --real --thumbprint SHA1 [--pin PIN] --snils <SNILS in the certificate>`.
 
 The PDF CLI runner requires `pypdf` and uses `openssl` for its default isolated signature checks. It writes fixtures,
 command logs, the tested binary's SHA-256 and `result.json` to `build/pdf-cli-audit`; use `--output-dir` to change the
@@ -926,16 +1019,22 @@ a packaged binary. These fixtures do not certify every installed codec, camera R
 
 These cover malformed PDF/ZIP input, attachment extraction, spreadsheet references and numeric precision,
 text encodings, CSV/ODS previews, scan save state, and preservation of existing files when exports fail.
-The document CLI check verifies DOCX round trips and PDF text. The spreadsheet CLI check writes its fixtures,
+The document CLI check verifies DOCX round trips and PDF text. It accepts a positional executable path, for example
+`python3 scripts/audit-documents-cli.py build/DOC42.app/Contents/MacOS/DOC42`. The spreadsheet CLI check writes its fixtures,
 converted files, PDFs, command log and `result.json` to `build/xls-cli-audit` (`--output-dir` changes that path).
 It accepts `--binary build/XLS42.app/Contents/MacOS/XLS42` for testing a packaged bundle and `--skip-pdf` for an
 explicitly limited run. The presentation CLI runner writes corresponding artifacts and `result.json` to
 `build/ppt-cli-audit`; it accepts `--binary build/PPT42.app/Contents/MacOS/PPT42`, `--output-dir`, `--skip-pdf` and
 `--skip-movie`. PDF checks require Poppler and report explicit SKIP results when unavailable; an explicitly skipped
 movie check also remains visible in the report. Movie checks exercise successful creation and replacement.
+The SCN42 CLI runner requires Pillow and pypdf. It writes generated input/output files to `build/scn-cli-audit`;
+`result.json` records command results and the tested executable's SHA-256. Use `--output-dir` to choose an isolated directory
+and `--binary build/SCN42.app/Contents/MacOS/SCN42` to test a packaged build. It checks output geometry, compression,
+multi-page files, EXIF orientation, B&W encoding, failures and actual OCR/TXT/RTF; successful virtual acquisition
+is covered by the native scanner scenario, and physical scanner hardware is a separate check.
 
 PDF42's matrix lists the scope of its regression scenarios. It does not assert that all scenarios pass on an arbitrary
-binary; observed results, installation state and unexercised areas are recorded in [STATUS.md](STATUS.md).
+binary; each run must record its observed results, tested executable and unexercised areas.
 
 | Common PDF workflow | Regression coverage | Boundary of the check |
 |---|---|---|
@@ -949,7 +1048,7 @@ binary; observed results, installation state and unexercised areas are recorded 
 | Sign digitally | Generated temporary identity, visible/incremental signing and tamper cases | Local self-signed fixture; Keychain import, trusted PKI, real timestamp services and external-viewer trust remain separate |
 
 XLS42's regression scenarios are listed below as coverage, not as a claim that every scenario has passed on the
-current binary. Actual run results belong in [STATUS.md](STATUS.md); none establishes complete Excel compatibility.
+current binary. Preserve actual run results and binary identities; none establishes complete Excel compatibility.
 
 | Common workflow | Regression coverage | Boundary of the check |
 |---|---|---|
@@ -965,7 +1064,7 @@ current binary. Actual run results belong in [STATUS.md](STATUS.md); none establ
 | Open malformed or oversized data | Invalid XML indices/repeats/spans, worksheet limits, dense allocation and expensive numeric arguments | Explicit fixtures and resource limits, not an exhaustive fuzzing campaign |
 
 PPT42's scenarios define the scope of its regression suites. Run results, binary identity and installation state are
-recorded in [STATUS.md](STATUS.md); a passing fixture does not establish a usage percentage or full PowerPoint/Impress
+recorded with each tested build; a passing fixture does not establish a usage percentage or full PowerPoint/Impress
 compatibility.
 
 | Common presentation workflow | Regression coverage | Boundary of the check |
@@ -1014,9 +1113,17 @@ screenshots to `build/localization-audit`; it does not change the saved suite la
 picker contents, menu translation and label sizing, not document editing or every translated dialog.
 PDF42 window checks launch through macOS LaunchServices so native field editors and menu routing have an active window.
 `--case` can be repeated to select behavioral scenarios with `--mode tests`; a subset run does not replace the full audit.
+Generator-popover captures (`mark-signature`, `mark-seal`, `mark-learn`) belong to `--mode screenshots`, not behavioral
+checks. Reports label behavioral and screenshot runs separately. SCN42 mark placement runs once in its dedicated
+`scn-marks` scenario; it is not repeated by the legacy lifecycle smoke test.
 Logs and screenshots go to `build/ui-audit`. It checks recent-file menus,
 spreadsheet selection and formatting, document panels, note replacement, image resizing/DPI and undo,
 and scanner page ordering, rescan and close/save behavior. Scanner checks use generated images.
+SCN42 adds settings/presets, delayed source preparation, DPI/duplex preservation, Scan/Overview/Stop callbacks,
+page/selection gestures, complete Undo/Redo and saved-snapshot lifecycle. Copy exercises controlled acquisition,
+processing and print-to-file parameters. A separate real Vision scenario checks OCR, four source orientations,
+document crop and photo separation. These checks do not establish physical scanner, Continuity Camera, Mail/Share
+delivery or printer interoperability; pair them with `SCN42 --selftest` and `audit-scans-cli.py`.
 XLS42 adds editing/protection/array checks, native Format Cells controls, row Autofit Undo/Redo, pending-edit and
 Revert lifecycle, sheet-reference changes, sparse conditional formatting and actual PDF scope/layout assertions.
 PDF42 adds native markup, page operations and dialogs, toolbar/navigation, pending drafts and Revert, forms, OCR
@@ -1028,7 +1135,7 @@ Escape, and real Vision background removal and Smart Lasso masks on a generated 
 scenario; the deterministic `--selftest` remains independent of model availability. File checks use disposable images,
 a private native pasteboard and Print's save-to-PDF disposition; no job is sent to a physical printer. Run
 `IMG42 --selftest` and the independent image CLI suite alongside these native scenarios; observed results and limitations
-belong in STATUS.
+must accompany each tested build.
 PPT42 adds canvas manipulation, media-safe copy/paste, text/Find/table commands, document lifecycle, inspector
 controls with rendered fill/border checks, and slideshow navigation/builds.
 DOC42 checks dispatch native mouse events for ruler drags at 25–200% zoom, exercise section/column/header targeting,
@@ -1043,6 +1150,7 @@ The snapshots render AppKit views; native material layers may require checking t
 
 ## Structure
 
+- `rust/` — the separate native Windows workspace; see [its README](rust/README.md) for crates, build instructions and limits.
 - `Sources/Kit42` — shared macOS components: commands, menu bar, toolbar, tool strip, banners, welcome window, localisation,
   signature library, certificates, ZIP.
 - `Sources/Previews42` — Quick Look rendering (Markdown → HTML/page, ODS/TSV → table); `Sources/QLPreview42` and
@@ -1052,8 +1160,6 @@ The snapshots render AppKit views; native material layers may require checking t
 - `Sources/PDF42`, `Sources/XLS42`, `Sources/DOC42`, `Sources/IMG42`, `Sources/PPT42`, `Sources/SCN42` — the macOS apps. Each has `Commands.swift` (all commands, menus, toolbar)
   and `Strings.swift` (translations).
 - `DESIGN.md` — the design system: menu order, reserved shortcuts, window layout, how to add an app.
-- `STATUS.md` — dated audit results, local build/publication state and unverified areas.
-- `AGENTS.md` — repository rules, including owner-only Git authorship and documentation upkeep.
 
 ## License
 
@@ -1062,12 +1168,12 @@ MIT — see [LICENSE](LICENSE).
 ## OFF42 public website
 
 The OFF42 product website is live at [off42.cc](https://off42.cc), with a
-[Russian version](https://off42.cc/ru/), 20 languages and separate feature pages.
+[Russian version](https://off42.cc/ru/), 20 languages and separate feature pages (280 pages in all).
+Each home page shows a localized demo video and a section on QR codes, product marks and labels.
 Its source is in [`website/`](website/README.md). Build with `cd website && npm run build`,
 verify with `npm run check`, and preview with `npm run preview` (Node.js 22+; no dependency installation).
 Cloudflare Workers Static Assets hosts only `website/dist/`; native app builds are separate.
 The GitHub URL and installer availability are configured once in `website/site.config.json`.
-The current project has no public DMG or EXE release, so the download pages show availability
-and link to source/build instructions for the macOS and Windows implementations.
-The website does not imply a signed or notarised application release. See its README for
-release synchronization and publishing steps, and STATUS.md for deployment evidence.
+The download pages link to the macOS DMG and Windows ZIP previews on GitHub Releases, with their SHA-256 digests,
+and to source/build instructions. The website does not imply a signed or notarised application release.
+See its README for release synchronization and publishing steps.

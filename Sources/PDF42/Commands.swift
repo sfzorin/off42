@@ -128,8 +128,13 @@ enum Cmd {
     static let sign = Command(L("Sign Document…"), #selector(W.signDocumentAction(_:)), symbol: "checkmark.seal",
                               shortcut: Shortcut("d", [.command, .option]), toolTip: L("Add a digital signature"), label: L("Sign Digitally"))
     static let verify = Command(L("Verify Signatures"), #selector(W.verifySignaturesAction(_:)), shortcut: Shortcut("v", [.command, .option]))
+    static let enableLTV = Command(L("Enable Long-Term Validation"), #selector(W.enableLTVAction(_:)))
+    static let documentTimestamp = Command(L("Add Document Timestamp"), #selector(W.documentTimestampAction(_:)))
     static let importCertificate = Command(L("Import Certificate (.p12)…"), #selector(A.importCertificateAction(_:)))
     static let createCertificate = Command(L("Create Self-Signed Certificate…"), #selector(A.createCertificateAction(_:)))
+    static let gostSignFile = Command(L("Sign Any File with GOST (.sig)…"), #selector(A.gostSignFileAction(_:)))
+    static let gostVerifyFile = Command(L("Verify Detached Signature (.sig)…"), #selector(A.gostVerifyFileAction(_:)))
+    static let cryptoPro = Command(L("CryptoPro CSP…"), #selector(A.cryptoProAction(_:)))
 
     static let welcome = Command(L("Welcome Window"), #selector(A.showWelcomeAction(_:)), shortcut: Shortcut("0", [.command, .shift]))
     static let shortcuts = Command(L("PDF42 Keyboard Shortcuts"), #selector(A.showShortcutsAction(_:)))
@@ -165,7 +170,9 @@ enum Cmd {
                           .command(watermark), .command(pageNumbers), .command(headerFooter), .command(pageLabels), .separator,
                           .command(removeWatermarks), .command(removeHeaderFooter)]),
             (L("Signature"), [.command(sign), .command(verify), .separator,
-                         .command(importCertificate), .command(createCertificate)]),
+                         .command(enableLTV), .command(documentTimestamp), .separator,
+                         .command(importCertificate), .command(createCertificate), .separator,
+                         .command(gostSignFile), .command(gostVerifyFile), .command(cryptoPro)]),
         ]
         spec.help = [.command(shortcuts), .command(welcome)]
         return spec

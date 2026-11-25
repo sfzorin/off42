@@ -38,6 +38,10 @@ public enum SignatureForm: Int, CaseIterable {
 /// proportions, garland or arcade, loops and rhythm. The **impression** seed varies each copy: via-points (±2.5 % of
 /// the capital), size, slant, angle, pressure, ink shade, skips and touch-down blobs.
 public enum SignatureGenerator {
+    /// Bound work before spatial/timing resampling, not only when allocating the final bitmap.
+    static let maximumRenderSamples = 100_000
+    /// Largest capital height in pixels: 130 px (the preview) at up to 8× for insertion (`MarkInsertDialog.render`).
+    static let maximumPixelHeight: CGFloat = 130 * 8
     enum Archetype: Int, CaseIterable {
         case full, fullFading, initialSurname, initialSurnameFading, surname, surnameFading,
              initialsScribble, capitalScribble, monogram, enclosed
@@ -423,6 +427,15 @@ public enum SignatureGenerator {
                      durations: [[Double]]? = nil, runOut: Bool = true, smoothing: CGFloat? = nil, sharpCorners: Bool = false,
                      merge: CGFloat = 0.012, layout: Double? = nil, strokeShift: CGFloat = 0,
                      capture: (([[PenSample]]) -> Void)? = nil) -> CGImage? {
+        guard pixelHeight.isFinite, pixelHeight > 0, pixelHeight <= maximumPixelHeight,
+              baseSlant.isFinite, penRatio.isFinite, penRatio > 0, penRatio <= 1,
+              variation.isFinite, (0...2).contains(variation), raw.count <= 1_024 else { return nil }
+        var rawCount = 0
+        for stroke in raw {
+            guard stroke.count <= SignatureLearning.maximumSamplePoints - rawCount,
+                  stroke.allSatisfy({ $0.x.isFinite && $0.y.isFinite }) else { return nil }
+            rawCount += stroke.count
+        }
         let vary = CGFloat(variation)
         let jitter: CGFloat = 0.006 * vary
         let driftA = copy.range(0.02...0.045) * vary, driftX = copy.range(1.1...2.2), driftY = copy.range(0.9...1.8)
@@ -440,6 +453,11 @@ public enum SignatureGenerator {
             return CGPoint(x: q.x * ca - q.y * sa, y: q.x * sa + q.y * ca)
         }
         var trajectories: [[PenSample]] = []
+        // Above the usual capital height (130 px) the same pen is drawn at a higher resolution, not a finer pen:
+        // spatial sampling (about one pixel) and bitmap limits grow with it; timing (400 Hz) does not.
+        let scale = max(1, pixelHeight / 130)
+        var spatialBudget = Int(CGFloat(maximumRenderSamples) * scale), timedBudget = maximumRenderSamples
+        var timingWorkBudget: Double = 5_000_000
         for (index, stroke) in raw.enumerated() {
             // After a pen lift the next part lands a little elsewhere each time.
             let shift = CGPoint(x: copy.range(-1...1) * strokeShift, y: copy.range(-1...1) * strokeShift)
@@ -468,7 +486,9 @@ public enum SignatureGenerator {
                     start = c
                 }
             } else { path = splineThrough(via) }
-            let line = fastHand(path.map(toPixels), smoothing: smoothing.map { size * $0 } ?? max(width * 3, size * 0.03), runOut: runOut)
+            guard let line = fastHand(path.map(toPixels), smoothing: smoothing.map { size * $0 } ?? max(width * 3, size * 0.03),
+                                      runOut: runOut, pointBudget: spatialBudget, scale: scale) else { return nil }
+            spatialBudget -= line.count
             guard line.count > 2 else { continue }
             var lengths: [CGFloat] = [0]
             for i in 1..<line.count { lengths.append(lengths[i - 1] + hypot(line[i].x - line[i - 1].x, line[i].y - line[i - 1].y)) }
@@ -476,7 +496,19 @@ public enum SignatureGenerator {
             // Time: lognormal impulses for the movements between via-points (this copy's timing perturbed).
             var comps = SigmaLognormal.components(via: via, corners: corners, durations: durations?[safe: index], hand: hand, rng: &copy)
             comps = SigmaLognormal.perturb(comps, amount: variation, rng: &copy)
+            // speedProfile integrates at 400 Hz and visits every component at each step. Reject invalid or
+            // excessive recorded timing before entering that loop, including corrupt persisted recipes.
+            guard let first = comps.first,
+                  comps.allSatisfy({ $0.D.isFinite && $0.t0.isFinite && $0.mu.isFinite && $0.sigma.isFinite && $0.sigma > 0 }),
+                  let end = comps.map({ $0.t0 + exp($0.mu + 3.2 * $0.sigma) }).max() else { return nil }
+            let estimatedSteps = ceil((end - first.t0) * 400) + 1
+            let timingWork = estimatedSteps * Double(comps.count)
+            guard estimatedSteps.isFinite, estimatedSteps > 0, estimatedSteps <= Double(timedBudget),
+                  timingWork <= timingWorkBudget else { return nil }
+            timingWorkBudget -= timingWork
             let profile = SigmaLognormal.speedProfile(comps)
+            guard profile.count <= timedBudget else { return nil }
+            timedBudget -= profile.count
             let travel = profile.reduce(0) { $0 + $1.1 }
             guard travel > 0 else { continue }
             // Walk the line at the model's speed: distance travelled so far → position on the line.
@@ -495,24 +527,40 @@ public enum SignatureGenerator {
             if samples.count > 1 { trajectories.append(samples) }
         }
         guard !trajectories.isEmpty else { return nil }
+        let points = trajectories.flatMap { $0.map(\.p) }
+        guard points.allSatisfy({ $0.x.isFinite && $0.y.isFinite }),
+              let minX = points.map(\.x).min(), let maxX = points.map(\.x).max(),
+              let minY = points.map(\.y).min(), let maxY = points.map(\.y).max(),
+              maxX - minX + width * 8 < 6_000 * scale, maxY - minY + width * 8 < 4_000 * scale else { return nil }
         capture?(trajectories)   // measurement (SignatureBench): the pen's path and timing in pixels
-        // Above the usual capital height (130 px) the same pen is drawn at a higher resolution, not a finer pen.
-        return PenRenderer.draw(trajectories, pen: pen, width: width, ink: shift(ink, &copy), rng: &copy, scale: max(1, pixelHeight / 130))
+        return PenRenderer.draw(trajectories, pen: pen, width: width, ink: shift(ink, &copy), rng: &copy, scale: scale)
     }
 
     /// The hand at speed: even spacing along the path (about one pixel), a short straight run-out where the pen
     /// lifts, and a low-pass filter over a few pen widths — fast movements carry no small wobbles.
-    private static func fastHand(_ path: [CGPoint], smoothing: CGFloat, runOut: Bool = true) -> [CGPoint] {
-        guard path.count > 2 else { return path }
+    private static func fastHand(_ path: [CGPoint], smoothing: CGFloat, runOut: Bool = true, pointBudget: Int,
+                                 scale: CGFloat = 1) -> [CGPoint]? {
+        guard path.allSatisfy({ $0.x.isFinite && $0.y.isFinite }), smoothing.isFinite,
+              smoothing >= 0, smoothing <= 1_024 * scale, pointBudget >= 2 else { return nil }
+        guard path.count >= 2 else { return path }
         var p = path
         let a = p[p.count - 2], b = p[p.count - 1], d = max(0.001, hypot(b.x - a.x, b.y - a.y))
         if runOut { p.append(CGPoint(x: b.x + (b.x - a.x) / d * smoothing * 3, y: b.y + (b.y - a.y) / d * smoothing * 3)) }
+        guard let minX = p.map(\.x).min(), let maxX = p.map(\.x).max(),
+              let minY = p.map(\.y).min(), let maxY = p.map(\.y).max(),
+              maxX - minX < 6_000 * scale, maxY - minY < 4_000 * scale else { return nil }
+        var length: CGFloat = 0
+        for i in 1..<p.count {
+            length += hypot(p[i].x - p[i - 1].x, p[i].y - p[i - 1].y)
+            guard length.isFinite, length <= CGFloat(pointBudget - 2) else { return nil }
+        }
         var even: [CGPoint] = [p[0]]
         var carry: CGFloat = 0
         for i in 1..<p.count {
             let s = p[i - 1], e = p[i], len = hypot(e.x - s.x, e.y - s.y)
             var t = 1 - carry
             while t <= len {
+                guard even.count < pointBudget - 1 else { return nil }
                 even.append(CGPoint(x: s.x + (e.x - s.x) * t / len, y: s.y + (e.y - s.y) * t / len))
                 t += 1
             }

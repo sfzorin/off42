@@ -7,7 +7,18 @@ extension ImageWindowController {
     func auditFiles() async -> Bool {
         guard let window else { print("FAIL IMG42 files: no window"); return false }
         var count = 0, failures = 0
-        func check(_ condition: Bool, _ name: String) { count += 1; if !condition { failures += 1 }; print(condition ? "PASS" : "FAIL", "IMG files UI:", name) }
+        func check(_ condition: Bool, _ name: String) {
+            count += 1
+            if !condition { failures += 1 }
+            print(condition ? "PASS" : "FAIL", "IMG files UI:", name)
+            if !condition {
+                let dimensions = base.map { "\($0.width)x\($0.height)" } ?? "nil"
+                print("IMG files failure state: url=\(url?.path ?? "nil") loadedURL=\(loaded?.url.path ?? "nil") base=\(dimensions) "
+                    + "loadedError=\(String(reflecting: loaded?.error)) dpi=\(imageDPI) originalDPI=\(originalDPI) "
+                    + "caption=\(String(reflecting: imageDescription)) originalCaption=\(String(reflecting: originalDescription)) "
+                    + "dirty=\(isDirty) textEditor=\(canvas.markup.isEditingText) pendingText=\(canvas.markup.hasPendingTextEdit) marks=\(canvas.markup.marks.count)")
+            }
+        }
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("IMG42-file-ui-" + UUID().uuidString)
         let savedURLs = urls, savedURL = url
         let oldGroups = undo.groupsByEvent; undo.groupsByEvent = false
@@ -63,7 +74,9 @@ extension ImageWindowController {
                 }
             }
             reset()
-            check(!isDirty && imageDPI == 144 && imageDescription == "Saved caption", "opening fixture establishes pixels/DPI/description baseline")
+            check(url == first && loaded?.url == first && base?.width == 320 && base?.height == 240
+                && !isDirty && imageDPI == 144 && imageDescription == "Saved caption",
+                  "opening fixture establishes pixels/DPI/description baseline")
             check(beginText("VISIBLE SAVE"), "native text editor contains a pending Save draft")
             check(isDirty && canvas.markup.marks.isEmpty, "uncommitted text participates in dirty state")
             var saved = false

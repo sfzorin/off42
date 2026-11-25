@@ -1,0 +1,14 @@
+[package]
+name = "label42"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+datamatrix = "0.3.3"
+png = "0.18"
+lopdf = "0.47"
+rxing = { version = "0.9.3", default-features = false, features = ["encoders", "encoding_rs", "aztec", "datamatrix", "oned", "qrcode"] }
+suite42-pdf-text = { path = "../suite42-pdf-text" }
+
+[dev-dependencies]
+rxing = { version = "0.9.3", default-features = false, features = ["decoders"] }

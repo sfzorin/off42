@@ -175,8 +175,14 @@ extension StampLibrary {
 public enum MarkSamples {
     public static func write(to folder: URL) throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        func failure(_ stage: String) -> NSError {
+            NSError(domain: "MarkSamples", code: 1, userInfo: [NSLocalizedDescriptionKey: "Mark sample failed: \(stage)"])
+        }
         func save(_ image: CGImage?, _ name: String) throws {
-            guard let image, let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else { return }
+            guard let image else { throw failure("render \(name)") }
+            guard let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
+                throw failure("PNG encoding \(name)")
+            }
             try data.write(to: folder.appendingPathComponent(name + ".png"))
         }
         // Each name in every form (one style per form) and four copies of each style.
@@ -195,21 +201,23 @@ public enum MarkSamples {
         // and the same hand from a picture (as a scan or an iPhone sketch) → four copies made from its ink.
         let design = SignatureGenerator.design(form: .initialSurname, variant: 1, seed: 501)
         let recorded = (0..<3).compactMap { SignatureGenerator.recordedSample("Sergey Zorin", design: design, impression: UInt64(900 + $0)) }
+        guard recorded.count == 3 else { throw failure("three timed recordings") }
         let learned = LearnedSignature(samples: recorded)
         for c in 0..<4 { try save(learned.render(impression: UInt64(c + 1) &* 6151, ink: InkColor.blue.pen, pen: .ballpoint), "learned-timed-copy\(c)") }
-        if let picture = SignatureGenerator.render("Sergey Zorin", design: design, impression: 77, ink: InkColor.black.pen) {
-            try save(picture, "learned-source-picture")
-            if let traced = SignatureSample.from(picture: picture) {
-                let fromPicture = LearnedSignature(samples: [traced])
-                for c in 0..<4 { try save(fromPicture.render(impression: UInt64(c + 11) &* 6151, ink: InkColor.blue.pen, pen: .ballpoint), "learned-traced-copy\(c)") }
-            }
+        guard let picture = SignatureGenerator.render("Sergey Zorin", design: design, impression: 77, ink: InkColor.black.pen) else {
+            throw failure("render learned-source-picture")
         }
+        try save(picture, "learned-source-picture")
+        guard let traced = SignatureSample.from(picture: picture) else { throw failure("trace learned-source-picture") }
+        let fromPicture = LearnedSignature(samples: [traced])
+        for c in 0..<4 { try save(fromPicture.render(impression: UInt64(c + 11) &* 6151, ink: InkColor.blue.pen, pen: .ballpoint), "learned-traced-copy\(c)") }
         // Pens: one signature in each pen type.
         for pen in PenType.allCases {
             try save(SignatureGenerator.render("Sergey Zorin", design: design, impression: 5, ink: InkColor.blue.pen, pen: pen), "pen-\(pen.rawValue)")
         }
         // An imported SVG stamp, three impressions (the import path used for the user's own stamps).
         let svg = folder.appendingPathComponent("imported-stamp.svg")
+        defer { try? FileManager.default.removeItem(at: svg) }
         try """
         <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
         <circle cx="200" cy="200" r="186" fill="none" stroke="#2a4fb3" stroke-width="10"/>
@@ -217,10 +225,9 @@ public enum MarkSamples {
         <text x="200" y="215" font-family="Helvetica" font-weight="bold" font-size="48" fill="#2a4fb3" text-anchor="middle">MY STAMP</text>
         </svg>
         """.write(to: svg, atomically: true, encoding: .utf8)
-        if let picture = StampLibrary.rasterize(svg) {
-            for c in 0..<3 { try save(SealGenerator.impress(picture, round: true, impression: UInt64(c + 3) &* 7_919), "imported-svg-copy\(c)") }
-            try save(SealGenerator.impress(picture, round: true, impression: 3 &* 7_919, scale: GeneratedMark.outputScale), "hires-imported-svg")
-        }
+        guard let imported = StampLibrary.rasterize(svg) else { throw failure("rasterize imported-stamp.svg") }
+        for c in 0..<3 { try save(SealGenerator.impress(imported, round: true, impression: UInt64(c + 3) &* 7_919), "imported-svg-copy\(c)") }
+        try save(SealGenerator.impress(imported, round: true, impression: 3 &* 7_919, scale: GeneratedMark.outputScale), "hires-imported-svg")
         // The resolution actually inserted into documents (GeneratedMark.impression): same impressions as above, sharper.
         let k = GeneratedMark.outputScale
         try save(SignatureGenerator.render("Sergey Zorin", design: design, impression: 5, ink: InkColor.blue.pen, pixelHeight: 130 * k), "hires-signature")
@@ -229,7 +236,6 @@ public enum MarkSamples {
             let spec = SealSpec(template: template, values: [:], ink: template.ink.stampPad, designSeed: 42)
             try save(SealGenerator.render(spec, impression: 104_729, scale: k), "hires-seal-000")
         }
-        try? FileManager.default.removeItem(at: svg)
         // Every catalogue template once (its example texts), plus a second impression of a few to show variation.
         for (i, template) in SealTemplate.all.enumerated() {
             let spec = SealSpec(template: template, values: [:], ink: template.ink.stampPad, designSeed: 42)

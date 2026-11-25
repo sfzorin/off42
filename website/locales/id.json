@@ -52,11 +52,11 @@
       },
       {
         "q": "Mac mana saja yang didukung OFF42?",
-        "a": "OFF42 menargetkan macOS 14 atau lebih baru. Penginstal publik belum dirilis; Anda dapat membangun aplikasinya dari kode sumber dengan Xcode Command Line Tools."
+        "a": "Pratinjau dalam format DMG tersedia untuk Mac dengan Apple Silicon dan macOS 14 atau yang lebih baru."
       },
       {
         "q": "Apakah ada versi Windows?",
-        "a": "Aplikasi native Windows sudah diimplementasikan dan tersedia sebagai kode sumber. Periksa fitur dan batasan yang didokumentasikan. Penginstal publik Windows belum dirilis."
+        "a": "Versi pratinjau berisi keenam aplikasi. Ekstrak seluruh isi ZIP, lalu jalankan aplikasi yang Anda inginkan. Termasuk alat untuk membuat label dan kode batang."
       }
     ]
   },
@@ -82,7 +82,7 @@
   "marks": {
     "label": "TANDA TANGAN DAN STEMPEL",
     "title": "Tanda tangan dan stempel seperti di kertas. Tanpa printer, tanpa pemindai.",
-    "text": "OFF42 menulis tanda tangan tulisan tangan dari sebuah nama, membubuhkan stempel perusahaan, lalu menaruh keduanya langsung di dokumen. Setiap bubuhan sedikit berbeda, seperti tinta asli di atas kertas.",
+    "text": "Tambahkan gambar tanda tangan dan stempel milikmu ke dokumen.",
     "points": [
       "Tanda tangan dengan pulpen, pena gel, pena tinta, atau spidol",
       "132 gaya stempel: stempel bulat, stempel perusahaan, “Lunas” dan “Diterima”",
@@ -112,6 +112,12 @@
     "title": "Aplikasi nyata. Dokumen nyata.",
     "text": "Setiap gambar di sini adalah tangkapan layar OFF42 di Mac, dengan contoh dokumen perusahaan fiktif yang dibuka di aplikasi. Bukan mock-up."
   },
+  "video": {
+    "label": "LIHAT CARA KERJANYA",
+    "title": "Satu menit bersama OFF42.",
+    "text": "Lanjutkan menulis surat Word, periksa anggaran, tampilkan presentasi, perbaiki PDF, dan pindai halaman — lalu ubah daftar produk menjadi label QR dengan tanda CE. Setiap bingkai dirender oleh aplikasinya sendiri di Mac, dengan dokumen contoh dari perusahaan fiktif.",
+    "caption": "Demo tanpa suara, sekitar satu menit. Tampilan asli aplikasi; gerakan kamera dan penunjuk ditambahkan."
+  },
   "labels": {
     "learn": "Jelajahi",
     "allFeatures": "Semua fitur",
@@ -129,7 +135,6 @@
     "available": "Tersedia",
     "unavailable": "Belum dirilis",
     "downloadDmg": "Unduh DMG",
-    "downloadExe": "Unduh EXE",
     "checksum": "SHA-256",
     "version": "Versi",
     "requirements": "Persyaratan sistem",
@@ -141,7 +146,8 @@
     "notFoundText": "Coba beranda atau pilih bahasa untuk terus menjelajah.",
     "copy": "Salin",
     "copied": "Tersalin",
-    "screenshot": "Tangkapan layar di macOS. Contoh dokumen, perusahaan fiktif."
+    "screenshot": "Tangkapan layar di macOS. Contoh dokumen, perusahaan fiktif.",
+    "downloadZip": "Unduh ZIP"
   },
   "apps": {
     "pdf": {
@@ -362,12 +368,13 @@
     "sourceText": "Dapatkan kode sumber berlisensi MIT di GitHub. Pembuatan di macOS memerlukan Xcode Command Line Tools. Build lokal memakai penandatanganan ad-hoc kecuali Anda mengatur penandatanganan distribusi.",
     "checkReleases": "Periksa rilis",
     "buildGuide": "Petunjuk build",
-    "releaseNote": "Tombol unduh muncul saat file rilis yang dipublikasikan tersedia. Tidak ada penginstal yang dinyatakan ditandatangani atau dinotarisasi tanpa bukti rilis.",
+    "releaseNote": "Pratinjau untuk Mac ditandatangani secara ad hoc. Apple belum melakukan notarisasi untuk build ini, dan macOS mungkin meminta persetujuan saat pertama kali dibuka.",
     "buildTitle": "Bangun OFF42 di Mac Anda",
     "buildText": "Sampai penginstal bertanda tangan diterbitkan, Anda dapat membangun aplikasinya sendiri dalam beberapa menit. Jalankan perintah berikut di Terminal.",
     "buildStep1": "Instal Xcode Command Line Tools dari Apple.",
     "buildStep2": "Unduh kode sumber dari GitHub.",
-    "buildStep3": "Bangun keenam aplikasi, atau bangun satu aplikasi lalu salin ke folder Aplikasi."
+    "buildStep3": "Bangun keenam aplikasi, atau bangun satu aplikasi lalu salin ke folder Aplikasi.",
+    "windowsPreviewText": "Versi pratinjau berisi keenam aplikasi. Ekstrak seluruh isi ZIP, lalu jalankan aplikasi yang Anda inginkan. Termasuk alat untuk membuat label dan kode batang."
   },
   "about": {
     "title": "Kantor tanpa hal yang disembunyikan.",

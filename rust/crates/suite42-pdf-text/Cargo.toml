@@ -1,0 +1,7 @@
+[package]
+name = "suite42-pdf-text"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+lopdf = "0.47"
+ttf-parser = "0.21"

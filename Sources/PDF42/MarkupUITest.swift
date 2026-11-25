@@ -5,7 +5,7 @@ import PDFKit
 
 extension EditorWindowController {
     /// Actual tool actions, pointer gestures, modal controls, Undo/Redo and saved/rendered annotations.
-    func auditMarkup() -> Bool {
+    @MainActor func auditMarkup() async -> Bool {
         guard let doc = pdfDoc, let window else { print("FAIL PDF markup: document window missing"); return false }
         pdfView.cancelTextEdit(); pdfView.cancelInteraction(); pdfView.selectAnnotation(nil)
         let originalPDF = doc.pdf, originalUndo = doc.undoManager, originalZoom = zoomMode
@@ -246,8 +246,8 @@ extension EditorWindowController {
         formPage.addAnnotation(PDFTools.makeField(.text, name: "ExistingText", bounds: CGRect(x: 130, y: 295, width: 220, height: 30)))
         if let bytes = formFixture.dataRepresentation(), let opened = PDFDocument(data: AcroFormFixer.ensureFields(bytes)) {
             page = reset(opened); choose(.select)
-            // The synchronous audit runs inside one outer AppKit event. Supply the same group boundary
-            // that returning from each real input event creates; the nested event pump cannot end that outer event.
+            // Keep each input's Undo group synchronous, as it is for a real AppKit event.
+            // Focus waits below suspend only between groups.
             func settleNativeEvents() {
                 let deadline = Date(timeIntervalSinceNow: 0.08)
                 while Date() < deadline {
@@ -265,14 +265,8 @@ extension EditorWindowController {
                 print("PDF native form event", "grouping", manager.groupingLevel, "undo", manager.canUndo, "revision", doc.revision, "dirty", doc.isDocumentEdited)
             }
             func clickWidget(_ annotation: PDFAnnotation) -> Bool {
-                // Another application can take focus while PDFKit commits or serializes a field.
-                // Re-establish the native input precondition before measuring coordinates or dispatching the click.
-                let focusDeadline = Date(timeIntervalSinceNow: 0.8)
-                repeat {
-                    NSApp.activate(ignoringOtherApps: true)
-                    window.makeKeyAndOrderFront(nil); window.makeMain()
-                    settleNativeEvents()
-                } while (!NSApp.isActive || !window.isKeyWindow) && Date() < focusDeadline
+                // Activation is awaited outside the Undo group. Verify it again immediately before
+                // measuring coordinates and dispatching the native event.
                 guard NSApp.isActive, window.isKeyWindow else {
                     print("FAIL PDF markup: native form click requires an active key window", annotation.fieldName ?? "",
                           "active", NSApp.isActive, "key", window.isKeyWindow)
@@ -298,6 +292,7 @@ extension EditorWindowController {
                 check(checkbox.buttonWidgetState == .offState && !doc.isDocumentEdited, "opened form starts with an unchecked field and clean document")
                 let beforeCheckbox = captureOCR(indices: [0])
                 var clickDelivered = false
+                guard await activateForNativeAudit("fill existing checkbox") else { return false }
                 nativeEvent { clickDelivered = clickWidget(checkbox) }
                 check(clickDelivered && checkbox.buttonWidgetState == .onState, "Select click fills an existing checkbox through PDFKit")
                 check(doc.isDocumentEdited, "checkbox fill marks the document dirty")
@@ -305,6 +300,7 @@ extension EditorWindowController {
                 manager.undo(); check(checkbox.buttonWidgetState == .offState, "native checkbox Undo restores its value")
                 manager.redo(); check(checkbox.buttonWidgetState == .onState, "native checkbox Redo restores its value")
                 manager.removeAllActions(); doc.updateChangeCount(.changeCleared)
+                guard await activateForNativeAudit("type in existing text field") else { return false }
                 nativeEvent {
                     clickDelivered = clickWidget(textField)
                     guard clickDelivered else { return }
@@ -326,6 +322,7 @@ extension EditorWindowController {
                     let reopenedFields = PDFTools.fields(saved).map(\.1)
                     check(reopenedFields.first(where: { $0.fieldName == "ExistingCheck" })?.buttonWidgetState == .onState, "Save/reopen preserves a natively filled checkbox")
                     check(reopenedFields.first(where: { $0.fieldName == "ExistingText" })?.widgetStringValue == "FILLED BY NATIVE EDITOR", "Save/reopen preserves natively typed form text")
+                    guard await activateForNativeAudit("clear existing checkbox") else { return false }
                     nativeEvent { clickDelivered = clickWidget(checkbox) }
                     check(clickDelivered && checkbox.buttonWidgetState == .offState, "a second native click clears the checkbox")
                     let cleared = PDFDocument(data: try doc.data(ofType: "com.adobe.pdf"))!
