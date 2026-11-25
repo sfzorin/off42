@@ -40,6 +40,8 @@ struct SlideSource {
     timing: SlideTiming,
     hidden: bool,
     timing_editable: bool,
+    animations: Vec<crate::animation::Animation>,
+    animations_editable: bool,
 }
 pub struct Source {
     bytes: Vec<u8>,
@@ -79,6 +81,10 @@ impl Source {
             .map(|o| o.transform)
             .unwrap_or([1.0, 1.0, 0.0, 0.0]);
         ((transform[0] * 720.0 / self.width) - (transform[1] * 405.0 / self.height)).abs() <= 1e-9
+    }
+    /// Whether the slide's animation timeline can be rewritten without losing effects.
+    pub fn can_edit_animations(&self, slide: u64) -> bool {
+        self.slides.iter().find(|s| s.slide_id == slide).is_none_or(|s| s.animations_editable)
     }
     pub fn can_edit_rich(&self, slide: u64, object: u64) -> bool {
         self.slides
@@ -1045,6 +1051,26 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
                 chart_part,
             });
         }
+        let (animations, animations_editable) = match local(tree.root_element(), "timing") {
+            None => (Vec::new(), true),
+            Some(timing) => {
+                let (found, complete) = crate::animation::read_pptx_timing(timing);
+                let mut mapped = Vec::new();
+                let mut complete = complete;
+                for mut a in found {
+                    match objects.iter().find(|o| o.xml_id.parse::<u64>().ok() == Some(a.object)) {
+                        Some(o) => {
+                            a.object = o.object_id;
+                            mapped.push(a);
+                        }
+                        None => complete = false,
+                    }
+                }
+                (mapped, complete)
+            }
+        };
+        let animations = if deck.set_slide_animations(animations.clone()).is_ok() { animations } else { Vec::new() };
+        let animations_editable = animations_editable && deck.slides()[index].animations == animations;
         let notes_cloneable = if let Some(ref note) = notes_path {
             if note.starts_with("ppt/notesSlides/") {
                 if let Some((dir, file)) = note.rsplit_once('/') {
@@ -1093,6 +1119,8 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
             timing,
             hidden,
             timing_editable: parsed_timing.is_some(),
+            animations,
+            animations_editable,
         });
     }
     for (index, slide) in slides.iter_mut().enumerate().filter(|(_, slide)| !slide.notes.is_empty()) {
@@ -1591,8 +1619,11 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
             slide_overrides.push_str(&chart_overrides);
             let group="<p:nvGrpSpPr><p:cNvPr id=\"1\" name=\"\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>";
             let transition = timing_xml(slide.timing);
+            let animations = crate::animation::pptx_timing(&slide.animations, |object| {
+                slide.objects.iter().position(|o| o.id == object).map(|k| k as u64 + 2)
+            })?;
             let visibility = visibility_attr(slide.hidden);
-            let xml=format!("<p:sld xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"{visibility}><p:cSld><p:spTree>{group}{fragments}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>{transition}</p:sld>");
+            let xml=format!("<p:sld xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"{visibility}><p:cSld><p:spTree>{group}{fragments}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>{transition}{animations}</p:sld>");
             let rels=format!("<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"layout\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout\" Target=\"{}\"/>{relationships}</Relationships>",escape(layout));
             let (dir, file) = path.rsplit_once('/').ok_or("Invalid slide path")?;
             added_files.push((format!("{dir}/_rels/{file}.rels"), rels.into_bytes()));
@@ -1631,6 +1662,36 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
             } else {
                 let at = super::xml_name_end(root, content)?;
                 patches.push((at..at, format!(" show=\"{value}\"")));
+            }
+        }
+        if slide.animations != record.animations {
+            if !record.animations_editable {
+                return Err("This PPTX animation timeline cannot be safely edited".into());
+            }
+            let first_new = tree
+                .descendants()
+                .filter(|n| n.is_element() && n.tag_name().name() == "cNvPr")
+                .filter_map(|n| attr(n, "id").and_then(|v| v.parse::<u64>().ok()))
+                .max()
+                .unwrap_or(1);
+            let timing = crate::animation::pptx_timing(&slide.animations, |object| {
+                record
+                    .objects
+                    .iter()
+                    .find(|o| o.object_id == object)
+                    .and_then(|o| o.xml_id.parse().ok())
+                    .or_else(|| extras.iter().position(|o| o.id == object).map(|k| first_new + k as u64 + 1))
+            })?;
+            let root = tree.root_element();
+            if let Some(node) = root.children().find(|n| n.is_element() && n.tag_name().name() == "timing") {
+                patches.push((node.range(), timing));
+            } else {
+                let insertion = root
+                    .children()
+                    .find(|n| n.is_element() && n.tag_name().name() == "extLst")
+                    .map(|n| n.range().start)
+                    .unwrap_or_else(|| content.rfind("</").unwrap_or(root.range().end));
+                patches.push((insertion..insertion, timing));
             }
         }
         if slide.timing != record.timing {
@@ -2720,8 +2781,11 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
             parts.push((format!("ppt/notesSlides/_rels/notesSlide{n}.xml.rels"), notes::relationships(n)));
         }
         let transition = timing_xml(slide.timing);
+        let animations = crate::animation::pptx_timing(&slide.animations, |object| {
+            slide.objects.iter().position(|o| o.id == object).map(|k| k as u64 + 2)
+        })?;
         let visibility = visibility_attr(slide.hidden);
-        parts.push((format!("ppt/slides/slide{n}.xml"),format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><p:sld xmlns:p=\"{pns}\" xmlns:a=\"{ans}\" xmlns:r=\"{rns}\"{visibility}><p:cSld><p:spTree>{group}{shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>{transition}</p:sld>").into_bytes()));
+        parts.push((format!("ppt/slides/slide{n}.xml"),format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><p:sld xmlns:p=\"{pns}\" xmlns:a=\"{ans}\" xmlns:r=\"{rns}\"{visibility}><p:cSld><p:spTree>{group}{shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>{transition}{animations}</p:sld>").into_bytes()));
         parts.push((
             format!("ppt/slides/_rels/slide{n}.xml.rels"),
             format!("<Relationships xmlns=\"{pkg}\">{rels}</Relationships>").into_bytes(),
@@ -2847,6 +2911,7 @@ fn appended_objects(
             o
         })
         .collect();
+    temp_slide.animations.clear();
     temp_slide.title.clear();
     temp_slide.body.clear();
     temp_slide.title_text = TextValue::from_raw(String::new());

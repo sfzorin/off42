@@ -7,6 +7,7 @@ use std::{
     path::Path,
 };
 use suite42_core::{write_new, SnapshotHistory, TextValue};
+pub mod animation;
 pub mod chart;
 pub mod geometry;
 pub mod odp;
@@ -47,6 +48,8 @@ pub struct Slide {
     pub hidden: bool,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub animations: Vec<animation::Animation>,
 }
 fn is_visible(hidden: &bool) -> bool {
     !hidden
@@ -293,6 +296,7 @@ impl Slide {
             timing: SlideTiming::default(),
             hidden: false,
             notes: String::new(),
+            animations: Vec::new(),
         }
     }
     fn edited(&self, title: &str, body: &str) -> Self {
@@ -310,6 +314,7 @@ impl Slide {
             timing: self.timing,
             hidden: self.hidden,
             notes: self.notes.clone(),
+            animations: self.animations.clone(),
         }
     }
 }
@@ -345,6 +350,8 @@ impl Deck {
                         .advance_ms
                         .is_none_or(|ms| (100..=86_400_000).contains(&ms))
                     && (100..=10_000).contains(&s.timing.duration_ms)
+                    && s.animations.len() <= animation::MAX_ANIMATIONS
+                    && s.animations.iter().all(|a| a.valid() && s.objects.iter().any(|o| o.id == a.object))
                     && {
                         let mut object_ids = HashSet::new();
                         s.next_object_id > 0
@@ -555,6 +562,55 @@ impl Presentation {
         }
         let mut state = self.history.current().clone();
         state.deck.theme = theme;
+        self.history.apply(state);
+        Ok(())
+    }
+    /// Sets, replaces (keeping its place in the order) or removes the animation of an object.
+    pub fn set_animation(&mut self, object: u64, animation: Option<animation::Animation>) -> Result<(), String> {
+        let mut state = self.history.current().clone();
+        let slide = &mut state.deck.slides[self.current()];
+        if !slide.objects.iter().any(|o| o.id == object) {
+            return Err("Select an object".into());
+        }
+        let position = slide.animations.iter().position(|a| a.object == object);
+        match (animation, position) {
+            (Some(mut a), Some(i)) => {
+                a.object = object;
+                slide.animations[i] = a;
+            }
+            (Some(mut a), None) => {
+                a.object = object;
+                slide.animations.push(a);
+            }
+            (None, Some(_)) => slide.animations.retain(|a| a.object != object),
+            (None, None) => return Ok(()),
+        }
+        if &state == self.history.current() {
+            return Ok(());
+        }
+        if !state.deck.valid() {
+            return Err("Invalid animation".into());
+        }
+        self.history.apply(state);
+        Ok(())
+    }
+    /// Replaces the animation list of the current slide without validation of intent (importers).
+    pub(crate) fn set_slide_animations(&mut self, animations: Vec<animation::Animation>) -> Result<(), String> {
+        let mut state = self.history.current().clone();
+        state.deck.slides[self.current()].animations = animations;
+        if !state.deck.valid() {
+            return Err("Invalid animation".into());
+        }
+        self.history.apply(state);
+        Ok(())
+    }
+    /// Moves an object's animation one place earlier or later in the slide order.
+    pub fn move_animation(&mut self, object: u64, earlier: bool) -> Result<(), String> {
+        let mut state = self.history.current().clone();
+        let list = &mut state.deck.slides[self.current()].animations;
+        let i = list.iter().position(|a| a.object == object).ok_or("The object has no animation")?;
+        let j = if earlier { i.checked_sub(1) } else { (i + 1 < list.len()).then_some(i + 1) }.ok_or("The animation cannot move further")?;
+        list.swap(i, j);
         self.history.apply(state);
         Ok(())
     }
@@ -1010,6 +1066,8 @@ impl Presentation {
             return Err("Invalid object selection".into());
         }
         objects.retain(|o| !ids.contains(&o.id));
+        state.deck.slides[self.current()].animations.retain(|a| !ids.contains(&a.object));
+        let objects = &mut state.deck.slides[self.current()].objects;
         let counts =
             objects
                 .iter()

@@ -28,6 +28,7 @@ struct PageSource {
     visibility_editable: bool,
     notes: String,
     notes_editable: bool,
+    animations: Vec<animation::Animation>,
 }
 pub struct Source {
     bytes: Vec<u8>,
@@ -59,6 +60,10 @@ impl Source {
             .and_then(|p| p.objects.iter().find(|o| o.object_id == object))
             .map(|o| o.rich_safe)
             .unwrap_or(true)
+    }
+    /// Animation changes are written to new ODP files; existing ODP timelines stay untouched.
+    pub fn can_edit_animations(&self, _slide: u64) -> bool {
+        false
     }
     /// Solid background of the first master page, when it has one.
     pub fn background(&self) -> Option<[u8; 3]> {
@@ -631,6 +636,7 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
         });
         let mut source_objects = Vec::new();
         let mut group_ids = HashMap::new();
+        let mut shape_ids: HashMap<String, u64> = HashMap::new();
         for node in page.descendants().filter(|n| {
             n.is_element()
                 && n.parent()
@@ -904,6 +910,9 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
                 }
             }
             deck.update_object(object.clone())?;
+            if let Some(shape) = attr(node, "id") {
+                shape_ids.insert(shape.to_owned(), id);
+            }
             let text_editable = node.descendants().any(|n| {
                 n.is_element() && n.tag_name().name() == "p" && n.descendants().any(|n| n.is_text())
             });
@@ -944,7 +953,17 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
                     }),
             });
         }
+        let animations = read_animations(*page)
+            .0
+            .into_iter()
+            .filter_map(|(shape, mut a)| {
+                a.object = *shape_ids.get(&shape)?;
+                Some(a)
+            })
+            .collect::<Vec<_>>();
+        let animations = if deck.set_slide_animations(animations.clone()).is_ok() { animations } else { Vec::new() };
         source_pages.push(PageSource {
+            animations,
             slide_id: deck.slides()[i].id,
             objects: source_objects,
             timing,
@@ -1028,6 +1047,7 @@ pub fn export(deck: &Presentation) -> Result<Vec<u8>, String> {
         ));
         let mut group_shapes: HashMap<u64, String> = HashMap::new();
         let mut group_order = Vec::new();
+        let mut animated_ids: HashMap<u64, String> = HashMap::new();
         for (oi, o) in slide.objects.iter().enumerate() {
             if let Some(group) = o.group_id {
                 if !group_shapes.contains_key(&group) {
@@ -1049,12 +1069,13 @@ pub fn export(deck: &Presentation) -> Result<Vec<u8>, String> {
                 rich_text(&o.paragraphs, &name, &mut styles)
             };
             let geo = format!("draw:style-name=\"{name}\" {}", geometry_attrs(o));
+            let object_start = target.len();
             match o.kind {
+                ObjectKind::Rectangle | ObjectKind::Ellipse if o.preset.is_some() => {
+                    let preset = o.preset.as_ref().unwrap();
+                    target.push_str(&format!("<draw:custom-shape {geo}>{object_text}{}</draw:custom-shape>", preset_xml(preset, o.width, o.height)));
+                }
                 ObjectKind::Rectangle | ObjectKind::Ellipse => {
-                    if let Some(preset) = &o.preset {
-                        target.push_str(&format!("<draw:custom-shape {geo}>{object_text}{}</draw:custom-shape>", preset_xml(preset, o.width, o.height)));
-                        continue;
-                    }
                     let tag = if o.kind == ObjectKind::Rectangle {
                         "rect"
                     } else {
@@ -1108,6 +1129,12 @@ pub fn export(deck: &Presentation) -> Result<Vec<u8>, String> {
                     target.push_str(&format!("<draw:line draw:style-name=\"{name}\"{transform} svg:x1=\"{}\" svg:y1=\"{}\" svg:x2=\"{}\" svg:y2=\"{}\"/>",pt(x),pt(y),pt(x+o.width),pt(y+o.height)));
                 }
             }
+            if slide.animations.iter().any(|a| a.object == o.id) {
+                let id = format!("anim{si}_{}", o.id);
+                animated_ids.insert(o.id, id.clone());
+                let end = target[object_start..].find(|c: char| c.is_whitespace() || c == '>').ok_or("Invalid ODP object")? + object_start;
+                target.insert_str(end, &format!(" xml:id=\"{id}\" draw:id=\"{id}\""));
+            }
         }
         for group in group_order {
             let children = group_shapes.remove(&group).unwrap();
@@ -1126,10 +1153,11 @@ pub fn export(deck: &Presentation) -> Result<Vec<u8>, String> {
                 pages.push_str(&format!("<draw:frame svg:x=\"35pt\" svg:y=\"{}pt\" svg:width=\"650pt\" svg:height=\"50pt\"><draw:text-box>{}</draw:text-box></draw:frame>",30+j*55,body));
             }
         }
+        pages.push_str(&animation_xml(&slide.animations, &animated_ids)?);
         pages.push_str(&notes::generate(&slide.notes));
         pages.push_str("</draw:page>");
     }
-    let ns="xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\" xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\" xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\" xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:svg=\"urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"";
+    let ns="xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\" xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\" xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\" xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:svg=\"urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:anim=\"urn:oasis:names:tc:opendocument:xmlns:animation:1.0\" xmlns:smil=\"urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0\" xmlns:presentation=\"urn:oasis:names:tc:opendocument:xmlns:presentation:1.0\"";
     let content=format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><office:document-content {ns} office:version=\"1.2\"><office:automatic-styles>{styles}</office:automatic-styles><office:body><office:presentation>{pages}</office:presentation></office:body></office:document-content>");
     let (master_background, master_style) = match deck.theme() {
         Some(theme) => {
@@ -1614,6 +1642,9 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
             .iter()
             .position(|p| p.slide_id == slide.source_identity())
         else {
+            if !slide.animations.is_empty() {
+                return Err("Animation changes are not saved into existing ODP files yet; save as a new ODP or PPTX file".into());
+            }
             let mut added = String::new();
             for object in &slide.objects {
                 if original.contains(&format!("suite42_{}_{}", slide.id, object.id)) {
@@ -1922,6 +1953,9 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
                 }
             }
         }
+        if slide.animations != page.animations {
+            return Err("Animation changes are not saved into existing ODP files yet; save as a new ODP or PPTX file".into());
+        }
         if slide.notes != page.notes {
             if !page.notes_editable {
                 return Err("This ODP speaker-notes layout cannot be safely edited".into());
@@ -2163,6 +2197,123 @@ fn chart_frame(
     media.push((format!("{path}/"), Vec::new(), chart::ODF_CHART_MIME));
     media.push((format!("{path}/content.xml"), chart::to_odf(chart, o.width, o.height).into_bytes(), "text/xml"));
     Ok(format!("<draw:frame {geo}><draw:object xlink:href=\"./{}\" xlink:type=\"simple\" xlink:show=\"embed\" xlink:actuate=\"onLoad\"/></draw:frame>", esc(path)))
+}
+const ODF_PRESETS: [(&str, animation::Effect); 7] = [
+    ("ooo-entrance-appear", animation::Effect::Appear),
+    ("ooo-entrance-fade-in", animation::Effect::Fade),
+    ("ooo-entrance-fly-in", animation::Effect::FlyIn),
+    ("ooo-entrance-zoom", animation::Effect::Zoom),
+    ("ooo-exit-disappear", animation::Effect::Disappear),
+    ("ooo-exit-fade-out", animation::Effect::FadeOut),
+    ("ooo-exit-fly-out", animation::Effect::FlyOut),
+];
+fn seconds(ms: u32) -> String {
+    format!("{}s", chart::number(ms as f64 / 1000.0))
+}
+/// The page's `anim:par` main sequence (LibreOffice Impress structure).
+fn animation_xml(list: &[animation::Animation], ids: &HashMap<u64, String>) -> Result<String, String> {
+    use animation::{Effect, Start};
+    if list.is_empty() {
+        return Ok(String::new());
+    }
+    let schedule = animation::schedule(list);
+    let mut groups = String::new();
+    for group in 0..=schedule.last().map_or(0, |s| s.group) {
+        let items = schedule.iter().filter(|s| s.group == group).collect::<Vec<_>>();
+        if items.is_empty() {
+            continue;
+        }
+        let mut effects = String::new();
+        for item in items {
+            let a = &list[item.index];
+            let id = esc(ids.get(&a.object).ok_or("Animated object is missing")?);
+            let preset = ODF_PRESETS.iter().find(|p| p.1 == a.effect).unwrap().0;
+            let class = if a.effect.entrance() { "entrance" } else { "exit" };
+            let node = match (a.start, group) {
+                (Start::OnClick, g) if g > 0 => "on-click",
+                (Start::AfterPrevious, _) => "after-previous",
+                _ => "with-previous",
+            };
+            let dur = seconds(a.duration_ms.max(1));
+            let set = |value: &str, begin: &str| format!("<anim:set smil:begin=\"{begin}\" smil:dur=\"0.001s\" smil:fill=\"hold\" smil:targetElement=\"{id}\" smil:attributeName=\"visibility\" smil:to=\"{value}\"/>");
+            let fade = |mode: &str| format!("<anim:transitionFilter smil:dur=\"{dur}\" smil:targetElement=\"{id}\" smil:type=\"fade\" smil:subtype=\"crossfade\"{mode}/>");
+            let animate = |attribute: &str, values: &str| format!("<anim:animate smil:dur=\"{dur}\" smil:fill=\"hold\" smil:targetElement=\"{id}\" smil:attributeName=\"{attribute}\" smil:values=\"{values}\" smil:keyTimes=\"0;1\" presentation:additive=\"base\"/>");
+            let behaviors = match a.effect {
+                Effect::Appear => set("visible", "0s"),
+                Effect::Disappear => set("hidden", "0s"),
+                Effect::Fade => set("visible", "0s") + &fade(""),
+                Effect::FadeOut => fade(" smil:mode=\"out\"") + &set("hidden", &dur),
+                Effect::FlyIn => set("visible", "0s") + &animate("y", "1+height/2;y"),
+                Effect::FlyOut => animate("y", "y;1+height/2") + &set("hidden", &dur),
+                Effect::Zoom => set("visible", "0s") + &animate("width", "0;width") + &animate("height", "0;height"),
+            };
+            effects.push_str(&format!("<anim:par smil:begin=\"{}\" smil:fill=\"hold\" presentation:node-type=\"{node}\" presentation:preset-class=\"{class}\" presentation:preset-id=\"{preset}\">{behaviors}</anim:par>", seconds(item.begin_ms)));
+        }
+        let begin = if group == 0 { "0s" } else { "next" };
+        groups.push_str(&format!("<anim:par smil:begin=\"{begin}\"><anim:par smil:begin=\"0s\">{effects}</anim:par></anim:par>"));
+    }
+    Ok(format!("<anim:par xmlns:anim=\"urn:oasis:names:tc:opendocument:xmlns:animation:1.0\" xmlns:smil=\"urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0\" xmlns:presentation=\"urn:oasis:names:tc:opendocument:xmlns:presentation:1.0\" presentation:node-type=\"timing-root\"><anim:seq presentation:node-type=\"main-sequence\">{groups}</anim:seq></anim:par>"))
+}
+/// Reads a page's main sequence; shape references are returned as their `xml:id`/`draw:id`.
+fn read_animations(page: roxmltree::Node<'_, '_>) -> (Vec<(String, animation::Animation)>, bool) {
+    use animation::Start;
+    let mut out = Vec::new();
+    let mut complete = true;
+    let Some(root) = page.children().find(|n| n.is_element() && n.tag_name().name() == "par") else {
+        return (out, true);
+    };
+    let secs = |v: Option<&str>| -> Option<u32> {
+        let v = v?.trim().strip_suffix('s')?;
+        let ms = v.parse::<f64>().ok()? * 1000.0;
+        (ms.is_finite() && ms >= 0.0).then(|| (ms.round() as u32).min(animation::MAX_MS))
+    };
+    for node in root.descendants().filter(|n| n.is_element() && n.tag_name().name() == "par" && attr(*n, "preset-class").is_some()) {
+        let Some(effect) = attr(node, "preset-id").and_then(|id| ODF_PRESETS.iter().find(|p| p.0 == id)).map(|p| p.1) else {
+            complete = false;
+            continue;
+        };
+        let targets = node.descendants().filter_map(|n| attr(n, "targetElement")).collect::<Vec<_>>();
+        let Some(target) = targets.first() else {
+            complete = false;
+            continue;
+        };
+        if targets.iter().any(|t| t != target) {
+            complete = false;
+        }
+        let start = match attr(node, "node-type") {
+            Some("on-click") => Start::OnClick,
+            Some("after-previous") => Start::AfterPrevious,
+            _ => Start::WithPrevious,
+        };
+        let duration = node.descendants().filter(|n| n.is_element() && n.tag_name().name() != "set").filter_map(|n| secs(attr(n, "dur"))).max().unwrap_or(500);
+        let mut begin = secs(attr(node, "begin")).unwrap_or(0);
+        if let Some(parent) = node.parent().filter(|p| p.tag_name().name() == "par") {
+            begin = begin.saturating_add(secs(attr(parent, "begin")).unwrap_or(0));
+        }
+        out.push(((*target).to_owned(), animation::Animation {
+            object: 0,
+            effect,
+            start,
+            duration_ms: if matches!(effect, animation::Effect::Appear | animation::Effect::Disappear) { 0 } else { duration },
+            delay_ms: begin,
+        }));
+    }
+    // Convert absolute begins to the chained delays of the model.
+    let (mut previous, mut end) = (0u32, 0u32);
+    for (_, a) in out.iter_mut() {
+        let begin = a.delay_ms;
+        a.delay_ms = match a.start {
+            Start::OnClick => {
+                end = 0;
+                begin
+            }
+            Start::WithPrevious => begin.saturating_sub(previous),
+            Start::AfterPrevious => begin.saturating_sub(end),
+        };
+        previous = begin;
+        end = end.max(begin + a.duration_ms);
+    }
+    (out, complete)
 }
 fn appended_object(
     slide: u64,

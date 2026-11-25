@@ -2444,6 +2444,107 @@ def audit_ppt_theme(process, main, output, results):
     results["checks"].append("PPT42 Slide Theme dialog, themed background pixels, Undo/Redo, PPTX theme and master background, ODF master page background and reopened backgrounds")
 
 
+def audit_ppt_animations(process, main, output, results):
+    def text_value(raw):
+        return {"raw": raw, "crlf": False}
+
+    red, green = [200, 20, 20], [20, 160, 20]
+    slides = []
+    for index, color in enumerate((red, green)):
+        slides.append({
+            "id": index + 1, "title_text": text_value(""), "body_text": text_value(""), "next_object_id": 2,
+            "objects": [{"id": 1, "kind": "Rectangle", "x": 200, "y": 100, "width": 320,
+                         "height": 205, "fill": color, "stroke": color, "text": ""}],
+        })
+    source = output / "ppt-anim-source.json"
+    source.write_text(json.dumps({"version": 2, "next_id": 3, "slides": slides}), encoding="utf-8")
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+
+    def saved(name, extension, kind):
+        path = output / f"ppt-anim-{name}.{extension}"
+        save_as(main)
+        choose_file(process, path, format_name=kind)
+        output_ready(process, main, path, b"{" if extension == "json" else b"PK")
+        return path
+
+    def project(name):
+        return json.loads(saved(name, "json", "off42 slides JSON").read_text(encoding="utf-8"))["slides"][0].get("animations", [])
+
+    command(main, 46)
+    fill_prompt(process, main, 83, "Object Animation", ["Fade", "On click", "300", "0"])
+    command(main, 4)
+    assert project("undo") == []
+    command(main, 5)
+    assert project("redo") == [{"object": 1, "effect": "Fade", "start": "OnClick", "duration_ms": 300, "delay_ms": 0}]
+    pptx = saved("fade", "pptx", "PowerPoint presentation")
+    odp = saved("fade", "odp", "OpenDocument presentation")
+    with zipfile.ZipFile(pptx) as package:
+        slide = package.read("ppt/slides/slide1.xml")
+        assert b'presetID="10" presetClass="entr"' in slide and b'nodeType="clickEffect"' in slide
+        assert b"<p:timing" not in package.read("ppt/slides/slide2.xml")
+    with zipfile.ZipFile(odp) as package:
+        content = package.read("content.xml")
+        assert b'presentation:preset-id="ooo-entrance-fade-in"' in content and b'smil:targetElement="anim0_1"' in content
+    open_fixture(process, main, odp)
+    open_fixture(process, main, pptx)
+    command(main, 46)
+    command(main, 83)
+    dialog = modal(process, title="Object Animation", native_class="Suite42InputDialog")
+    assert [text(u.GetDlgItem(dialog, 100 + index)) for index in range(4)] == ["Fade", "On click", "300", "0"]
+    click(dialog, 2)
+    wait_for(lambda: not u.IsWindow(dialog), "animation dialog cancelled", process)
+    fill_prompt(process, main, 72, "Slide Show Settings", ["No", "No"])
+
+    gdi = c.WinDLL("gdi32", use_last_error=True)
+    gdi.GetPixel.argtypes, gdi.GetPixel.restype = [w.HDC, c.c_int, c.c_int], w.DWORD
+    u.GetDC.argtypes, u.GetDC.restype = [w.HWND], w.HDC
+    u.ReleaseDC.argtypes = [w.HWND, w.HDC]
+    u.GetClientRect.argtypes = [w.HWND, c.POINTER(w.RECT)]
+    u.RedrawWindow.argtypes = [w.HWND, c.c_void_p, c.c_void_p, w.UINT]
+    listing = u.GetDlgItem(main, 100)
+
+    def canvas():
+        return next((h for h in windows(process.pid, main)
+                     if classname(h) == "Suite42Canvas" and u.IsWindowVisible(h)), None)
+
+    def expect(color, description):
+        value = color[0] | color[1] << 8 | color[2] << 16
+
+        def actual():
+            target = canvas()
+            if not target:
+                return False
+            rect = w.RECT()
+            u.GetClientRect(target, c.byref(rect))
+            u.RedrawWindow(target, None, None, 0x101)
+            dc = u.GetDC(target)
+            try:
+                return gdi.GetPixel(dc, rect.right // 2, rect.bottom // 2) == value
+            finally:
+                u.ReleaseDC(target, dc)
+        wait_for(actual, description, process)
+
+    def key(value):
+        assert u.PostMessageW(canvas(), 0x100, value, 0)
+
+    command(main, 71)
+    wait_for(lambda: not u.GetMenu(main) and not u.IsWindowVisible(listing), "PPT42 presenting the animated deck", process)
+    expect([255, 255, 255], "entrance hides the object until the click")
+    key(39)
+    expect(red, "click fades the object in on the same slide")
+    key(39)
+    expect(green, "next click moves to the following slide")
+    key(37)
+    expect(red, "returning shows the finished animation")
+    key(37)
+    expect([255, 255, 255], "stepping back reverses the click")
+    key(27)
+    wait_for(lambda: u.GetMenu(main) and u.IsWindowVisible(listing), "show ended", process)
+    assert source.read_bytes() == original
+    results["checks"].append("PPT42 Object Animation dialog, Undo/Redo, PPTX p:timing and ODF anim:par output, reopened settings and click-step fade playback with back navigation in the slide show")
+
+
 def audit_ppt_pdf(process, main, binary, output, results, native_print):
     dll = binary.parent / "pdfium.dll"
 
@@ -4113,6 +4214,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
                 audit_ppt_slide_images(process,main,output,results)
                 audit_ppt_charts(process,main,output,results)
                 audit_ppt_theme(process,main,output,results)
+                audit_ppt_animations(process,main,output,results)
                 audit_ppt_pdf(process,main,binary,output,results,native_print)
             return results
         if binary.stem.lower() == "pdf42" and not startup:
