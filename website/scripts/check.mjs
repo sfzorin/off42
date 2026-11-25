@@ -77,6 +77,9 @@ for(const page of manifest.files){
  }
  assert.equal((entry[1].match(/<xhtml:link /g)||[]).length,21,page.path+' sitemap alternate count');
 }
+// Safari plays video only with 206 byte ranges; static assets answer 200, so a Worker serves /assets/video/*.
+const wrangler=await read('wrangler.jsonc');assert(/"run_worker_first":\s*\["\/assets\/video\/\*"\]/.test(wrangler)&&/"main":\s*"worker\/index.js"/.test(wrangler),'video range Worker configured');
+assert((await read('worker/index.js')).includes("status: 206"),'video Worker answers byte ranges');
 const headers=await read('dist/_headers');
 assert(/^\/\*\n(?:  [^\n]+\n)*?  Cache-Control: public, no-transform$/m.test(headers),'global response must prohibit automatic transformations');
 assert(/^\/assets\/\*\n  Cache-Control: public, max-age=86400$/m.test(headers),'retain static asset cache lifetime');

@@ -52,6 +52,9 @@ connect `sfzorin/off42` to the existing `off42` Worker with these settings:
 | Build watch paths | `website/**` |
 
 `wrangler.jsonc` deploys only `dist/` and keeps the existing HTML and 404 handling.
+Requests for `/assets/video/*` go first to `worker/index.js`, which answers `Range` requests with 206 Partial
+Content (Workers Static Assets return the whole file with 200, and Safari then refuses to play the video); every other
+path is served directly as a static asset.
 For a manual update, build and check the site, package the contents of `dist/`, and upload
 that archive to the existing Worker. Verify the canonical and `www` hosts, redirects and
 representative routes after either deployment method.
