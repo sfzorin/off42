@@ -18,3 +18,10 @@ with (out / 'DEPENDENCIES.txt').open('w', encoding='utf-8') as f:
             if src.is_file():
                 dest.mkdir(exist_ok=True)
                 shutil.copyfile(src, dest / f'{index}-{src.name}')
+
+# The generated OOXML preset data is MPL-2.0 covered; distribute its source beside the notice.
+presets = pathlib.Path(__file__).resolve().parent.parent / 'crates/ppt42-core/src/geometry'
+dest = out / 'drawingml-presets'
+dest.mkdir(exist_ok=True)
+for name in ('presets.txt', 'NOTICE.txt', 'MPL-2.0.txt'):
+    shutil.copyfile(presets / name, dest / name)

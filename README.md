@@ -73,7 +73,7 @@ available in English, Russian and Turkish; other interface languages currently u
 
 ## Current status
 
-This README describes the source as of **2026-11-06**. [Regression checks](#regression-checks) lists reproducible
+This README describes the source as of **2026-11-08**. [Regression checks](#regression-checks) lists reproducible
 commands and coverage limits. Publishing source on GitHub does not update an installed app or imply a notarized
 binary release. Match verification results to the recorded revision and executable identity; detailed logs and
 local installation history are retained separately.
@@ -93,8 +93,17 @@ The local macOS packages are ad-hoc signed; this source publication does not ins
 ## Windows Rust workspace
 
 The separate Rust workspace implements the six apps for Windows. Its formats, runtime dependencies, build commands
-and current limitations are described in [rust/README.md](rust/README.md). Native Windows interaction, printing,
-scanner hardware and PDFium interoperability have not been verified on a Windows desktop; it is not a parity claim.
+and current limitations are described in [rust/README.md](rust/README.md). Native interaction and saved-output checks
+run on Windows CI; their scope and failures are recorded in [the parity tracker](rust/PARITY.md). Printer drivers,
+scanner hardware and full macOS feature parity remain unverified. The development branch adds a shared language
+picker and bundled catalogs; menu/prompt checks pass on twenty languages in Windows CI. Successful-file recents
+are also implemented. PDF page-list extraction, per-page ZIP exports, editable page labels and engineering spreadsheet functions are also
+implemented on the development branch. Goal Seek has passed native value/history/reopen checks; a constrained
+Solver with persisted XLSX/ODS models has also passed native value/history and independent-import checks. These changes
+have not yet shipped in the downloadable Windows preview. Full Excel-size sparse sheets and supported
+whole-row/column aggregates also pass Windows editing, saved-cache and complete-history checks. Standard
+XLSX/ODS selected-sheet state survives external saves. Blank viewport growth and atomic edits in newly
+visible areas are under native verification on the development branch.
 
 <a id="install"></a>
 

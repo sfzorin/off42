@@ -13,21 +13,25 @@ use windows_sys::Win32::{
     System::{
         Com::{CoInitializeEx, CoTaskMemFree, CoUninitialize, COINIT_APARTMENTTHREADED},
         LibraryLoader::{GetModuleHandleW, LoadLibraryW},
+        Memory::{GlobalLock,GlobalUnlock,GlobalSize},
     },
     UI::{
         Controls::{Dialogs::*, *},
         HiDpi::*,
         Input::KeyboardAndMouse::{
-            EnableWindow, GetFocus, GetKeyState, ReleaseCapture, SetCapture, SetFocus, VK_CONTROL,
-            VK_SHIFT,
+            EnableWindow, IsWindowEnabled, GetFocus, GetKeyState, ReleaseCapture, SetCapture, SetFocus, VK_CONTROL,
+            TrackMouseEvent, TRACKMOUSEEVENT, TME_LEAVE, VK_SHIFT,
         },
-        Shell::ShellExecuteW,
+        Shell::{DragAcceptFiles, DragFinish, DragQueryFileW, ShellExecuteW, DefSubclassProc, SetWindowSubclass, RemoveWindowSubclass},
         WindowsAndMessaging::*,
     },
 };
+#[path = "presenter.rs"]
+mod presenter;
 const OPEN: u16 = 1;
 const SAVE: u16 = 2;
-const SAVE_AS: u16 = 18;
+// Host-only IDs stay outside the applications’ 10+ command range.
+const SAVE_AS: u16 = 65507;
 const EXIT: u16 = 3;
 const UNDO: u16 = 4;
 const REDO: u16 = 5;
@@ -40,10 +44,27 @@ const EDIT: usize = 101;
 const TABLE: usize = 102;
 const TOOLBAR_MORE: u16 = 65520;
 const CANCEL_OPEN: u16 = 65519;
-const CREATE_LABEL_SHEET: u16 = 65518;
+const CREATE_LABEL_SHEET: u16 = crate::CREATE_LABEL_SHEET_COMMAND;
 const CREATE_BARCODE: u16 = 65517;
 const IMPORT_MARK: u16 = 65516;
 const INSERT_MARK: u16 = 65515;
+const EXPORT_TECHNICAL: u16 = 65514;
+const CONFIGURE_CALIBRATION: u16 = 65513;
+const TOGGLE_CALIBRATION: u16 = 65512;
+const CALIBRATION_SHEET: u16 = 65511;
+const TOGGLE_PROOFING: u16 = 65510;
+const INSERT_TECHNICAL: u16 = 65509;
+const EDIT_TECHNICAL: u16 = 65508;
+const NEW_WINDOW: u16 = 65506;
+const RECOVER_DOCUMENT:u16=65505;
+const CHECK_SPELLING:u16=65504;
+const TOGGLE_SIDEBAR:u16=65503;
+const TOGGLE_TOOLBAR:u16=65502;
+const TOGGLE_STATUS:u16=65501;
+const TOGGLE_RULERS:u16=65500;
+const LANGUAGE_FIRST: u16 = 64000;
+const RECENT_FIRST: u16 = 62000;
+const CLEAR_RECENTS: u16 = RECENT_FIRST + crate::recents::LIMIT as u16;
 struct AsyncOpen {
     path: PathBuf,
     phase: AsyncOpenPhase,
@@ -57,6 +78,15 @@ enum AsyncOpenPhase {
 }
 struct State {
     app: Box<dyn App>,
+    calibrate_print: bool,
+    panels:crate::window_layout::Panels,
+    deferred_commands: Vec<(u16, u16)>,
+    close_confirmed: bool,
+    recovery:Option<crate::recovery::Journal>,
+    recovery_last:std::time::Instant,
+    recovery_unsaved:bool,
+    recovered_copy:Option<crate::recovery::Claim>,
+    recovery_error:Option<String>,
     path: Option<PathBuf>,
     session: suite42_core::session::DocumentSession,
     async_open: Option<AsyncOpen>,
@@ -67,14 +97,213 @@ struct State {
     canvas: HWND,
     status: HWND,
     menu: HMENU,
+    recent_menu: HMENU,
+    recent_paths: Vec<PathBuf>,
     grid_cache: Option<Vec<Vec<String>>>,
+    sparse_grid:Option<crate::SparseTable>,
     toolbar: Vec<(u16, HWND)>,
     toolbar_more: HWND,
     ruler_horizontal: HWND,
     ruler_vertical: HWND,
     ruler_format: Option<(crate::PrintGeometry, u16, i32, i32, i32)>,
-    fullscreen: Option<(isize, WINDOWPLACEMENT)>,
+    presentation_placement: Option<(isize, WINDOWPLACEMENT)>,
+    presenter: Option<presenter::Controls>,
 }
+impl State {
+    fn dirty(&self) -> bool {
+        self.app.dirty() || self.recovery_unsaved
+    }
+    fn status_text(&self) -> String {
+        if self.async_open.is_some() {
+            format!("{} · Opening… (Esc to cancel)", self.app.status())
+        } else if let Some(error) = &self.recovery_error {
+            format!("{} · {}: {error}",self.app.status(),crate::localization::text("Recovery"))
+        } else if self.recovery_unsaved {
+            format!(
+                "{} · {}",
+                self.app.status(),
+                crate::localization::text("Recovered copy; save to keep your changes")
+            )
+        } else {
+            self.app.status()
+        }
+    }
+    fn clear_recovery(&mut self) {
+        self.recovery_unsaved = false;
+        if let Some(journal) = self.recovery.as_mut() {
+            if let Err(error) = journal.clear() {
+                self.recovery_error = Some(error);
+            }
+        }
+        if let Some(copy) = self.recovered_copy.take() {
+            if let Err(error) = copy.discard() {
+                self.recovery_error = Some(error);
+            }
+        }
+    }
+}
+unsafe fn poll_recovery() {
+    let previous = STATE.with(|slot| {
+        slot.borrow()
+            .as_ref()
+            .and_then(|state| state.recovery_error.clone())
+    });
+    STATE.with(|slot| {
+        let mut slot = slot.borrow_mut();
+        let Some(state) = slot.as_mut() else {
+            return;
+        };
+        if !state.app.supports_recovery() {
+            return;
+        }
+        if let Some(journal) = state.recovery.as_mut() {
+            while let Some(result) = journal.poll() {
+                state.recovery_error = result.err();
+            }
+        }
+        if !state.dirty() {
+            if let Some(journal) = state.recovery.as_mut() {
+                if let Err(error) = journal.clear() {
+                    state.recovery_error = Some(error);
+                }
+            }
+            return;
+        }
+        let delay = std::env::var("OFF42_RECOVERY_INTERVAL_MS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(30000)
+            .clamp(1000, 30000);
+        if state.recovery_last.elapsed() < std::time::Duration::from_millis(delay)
+            || state.async_open.is_some()
+        {
+            return;
+        }
+        state.recovery_last = std::time::Instant::now();
+        let result = (|| -> Result<(), String> {
+            let Some(snapshot) = state.app.recovery_snapshot()? else {
+                return Ok(());
+            };
+            if state.recovery.is_none() {
+                let root =
+                    crate::recovery::directory().ok_or("Local recovery storage is unavailable")?;
+                state.recovery = Some(crate::recovery::Journal::start(&root, state.app.name())?);
+            }
+            let origin = state.path.clone().or_else(|| {
+                state
+                    .recovered_copy
+                    .as_ref()
+                    .and_then(|copy| copy.origin().map(Path::to_path_buf))
+            });
+            state.recovery.as_mut().unwrap().record(snapshot, origin)?;
+            Ok(())
+        })();
+        if let Err(error) = result {
+            state.recovery_error = Some(error);
+        }
+    });
+    if STATE.with(|slot| {
+        slot.borrow()
+            .as_ref()
+            .and_then(|state| state.recovery_error.clone())
+    }) != previous
+    {
+        update_caption();
+    }
+}
+unsafe fn recover_document(hwnd: HWND) -> Result<(), String> {
+    let (app, supported) = STATE.with(|slot| {
+        let slot = slot.borrow();
+        let state = slot.as_ref().unwrap();
+        (state.app.name(), state.app.supports_recovery())
+    });
+    if !supported {
+        return Ok(());
+    }
+    let root = crate::recovery::directory().ok_or("Local recovery storage is unavailable")?;
+    let copies = crate::recovery::copies(&root, app);
+    if copies.is_empty() {
+        msg(
+            hwnd,
+            &crate::localization::text("No recovery copies are available."),
+            MB_OK | MB_ICONINFORMATION,
+        );
+        return Ok(());
+    }
+    let choices = copies
+        .iter()
+        .enumerate()
+        .map(|(index, copy)| format!("{}. {}", index + 1, copy.title()))
+        .collect::<Vec<_>>();
+    let request = crate::InputRequest {
+        title: "Recover Unsaved Document",
+        fields: vec![
+            ("Recovery copy", choices[0].clone()),
+            ("Action", "Recover".into()),
+        ],
+    };
+    let Some(values) = crate::prompt::show_choices(
+        hwnd,
+        &request,
+        false,
+        false,
+        &[
+            (0, choices.clone()),
+            (1, vec!["Recover".into(), "Delete Recovery Copy".into()]),
+        ],
+    ) else {
+        return Ok(());
+    };
+    let index = choices
+        .iter()
+        .position(|v| v == &values[0])
+        .ok_or("Choose a recovery copy")?;
+    if values[1] == "Delete Recovery Copy" {
+        copies[index].discard()?;
+        return Ok(());
+    }
+    if values[1] != "Recover" {
+        return Err("Choose a recovery action".into());
+    }
+    let claim=copies[index].acquire()?;
+    if !confirm(hwnd) {
+        return Ok(());
+    }
+    let allowed = STATE.with(|slot| {
+        let slot = slot.borrow();
+        let app = &slot.as_ref().unwrap().app;
+        app.recovery_extensions().iter().any(|extension|extension.eq_ignore_ascii_case(claim.extension()))||app.open_formats()
+            .iter()
+            .chain(app.save_formats().iter())
+            .any(|format| {
+                format
+                    .extensions
+                    .iter()
+                    .any(|extension| extension.eq_ignore_ascii_case(claim.extension()))
+            })
+    });
+    if !allowed {
+        return Err("This recovery format is unavailable in this application".into());
+    }
+    let path = claim.materialize()?;
+    cancel_pending_open();
+    STATE.with(|slot| -> Result<(), String> {
+        let mut slot = slot.borrow_mut();
+        let state = slot.as_mut().unwrap();
+        state.app.open(&path)?;
+        state.clear_recovery();
+        state.path = None;
+        state.session = Default::default();
+        state.recovery_unsaved = true;
+        state.recovered_copy = Some(claim);
+        state.recovery_error = None;
+        state.recovery_last = std::time::Instant::now() - std::time::Duration::from_secs(30);
+        Ok(())
+    })?;
+    refresh();
+    Ok(())
+}
+
 thread_local! { static STATE:RefCell<Option<State>>=const { RefCell::new(None) }; static REFRESHING:Cell<bool>=const {Cell::new(false)}; static DRAGGING:Cell<bool>=const {Cell::new(false)}; static POLL_MS:Cell<u32>=const {Cell::new(100)}; }
 
 unsafe fn msg(hwnd: HWND, s: &str, flags: MESSAGEBOX_STYLE) -> MESSAGEBOX_RESULT {
@@ -105,7 +334,7 @@ unsafe fn pick_folder(hwnd: HWND, title: &str) -> Option<String> {
             | FOS_PATHMUSTEXIST
             | FOS_NOCHANGEDIR;
         picker.SetOptions(flags)?;
-        let title = wide(title);
+        let title = wide(&crate::localization::text(title));
         picker.SetTitle(PCWSTR(title.as_ptr()))?;
         picker.Show(Some(WinHwnd(hwnd)))?;
         let item = picker.GetResult()?;
@@ -118,6 +347,23 @@ unsafe fn pick_folder(hwnd: HWND, title: &str) -> Option<String> {
     CoUninitialize();
     result
 }
+unsafe fn pick_multiple_files(hwnd:HWND,action:crate::FileAction)->Result<Option<Vec<PathBuf>>,String>{
+    use windows::{core::PCWSTR,Win32::{Foundation::HWND as WinHwnd,System::Com::{CoCreateInstance,CLSCTX_INPROC_SERVER},UI::Shell::{Common::COMDLG_FILTERSPEC,FileOpenDialog,IFileOpenDialog,FOS_ALLOWMULTISELECT,FOS_FORCEFILESYSTEM,FOS_PATHMUSTEXIST,FOS_FILEMUSTEXIST,FOS_NOCHANGEDIR,FOS_DONTADDTORECENT,SIGDN_FILESYSPATH}}};
+    if CoInitializeEx(null(),COINIT_APARTMENTTHREADED as u32)<0{return Err("Could not initialize the Windows file picker".into());}
+    let result=(||->Result<Option<Vec<PathBuf>>,String>{
+        let result=(||->windows::core::Result<Option<Vec<PathBuf>>>{
+            let picker:IFileOpenDialog=CoCreateInstance(&FileOpenDialog,None,CLSCTX_INPROC_SERVER)?;
+            picker.SetOptions(picker.GetOptions()?|FOS_ALLOWMULTISELECT|FOS_FORCEFILESYSTEM|FOS_PATHMUSTEXIST|FOS_FILEMUSTEXIST|FOS_NOCHANGEDIR|FOS_DONTADDTORECENT)?;
+            let(title,format,pattern)=(wide(&crate::localization::text(action.title)),wide(&crate::localization::text(action.format)),wide(action.pattern));
+            picker.SetTitle(PCWSTR(title.as_ptr()))?;picker.SetFileTypes(&[COMDLG_FILTERSPEC{pszName:PCWSTR(format.as_ptr()),pszSpec:PCWSTR(pattern.as_ptr())}])?;
+            match picker.Show(Some(WinHwnd(hwnd))){Err(e)if e.code().0 as u32==0x800704c7=>return Ok(None),result=>result?,}
+            let items=picker.GetResults()?;let mut paths=Vec::new();let count=items.GetCount()?;
+            if count>128{return Err(windows::core::Error::new(windows::core::HRESULT(0x80070057u32 as i32),"Choose at most 128 files"));}
+            for index in 0..count{let path=items.GetItemAt(index)?.GetDisplayName(SIGDN_FILESYSPATH)?;paths.push(PathBuf::from(OsString::from_wide(path.as_wide())));CoTaskMemFree(path.0.cast());}Ok(Some(paths))
+        })();result.map_err(|e|format!("Could not select input files: {e}"))
+    })();CoUninitialize();result
+}
+
 unsafe fn dialog(
     hwnd: HWND,
     save: bool,
@@ -125,7 +371,7 @@ unsafe fn dialog(
     format: &str,
     pattern: &str,
 ) -> Option<PathBuf> {
-    file_dialog(hwnd, save, ext, format, pattern, None)
+    file_dialog(hwnd, save, ext, format, pattern, None, None)
 }
 unsafe fn file_dialog(
     hwnd: HWND,
@@ -134,8 +380,15 @@ unsafe fn file_dialog(
     format: &str,
     pattern: &str,
     private_title: Option<&str>,
+    suggested_name: Option<&str>,
 ) -> Option<PathBuf> {
     let mut buf = vec![0u16; 32768];
+    if let Some(name) = suggested_name.filter(|_| save) {
+        let name = wide(&format!("{name}.{ext}"));
+        if name.len() <= buf.len() {
+            buf[..name.len()].copy_from_slice(&name);
+        }
+    }
     let filter: Vec<u16> = format!("{format}\0{pattern}\0\0").encode_utf16().collect();
     let extw = wide(ext);
     let mut f: OPENFILENAMEW = zeroed();
@@ -151,7 +404,7 @@ unsafe fn file_dialog(
         | if save { 0 } else { OFN_FILEMUSTEXIST };
     let title;
     if let Some(name) = private_title {
-        title = wide(name);
+        title = wide(&crate::localization::text(name));
         f.lpstrTitle = title.as_ptr();
         f.Flags |= OFN_DONTADDTORECENT;
     }
@@ -180,7 +433,7 @@ unsafe fn format_dialog(
             .map(|e| format!("*.{e}"))
             .collect::<Vec<_>>()
             .join(";");
-        filter.extend(format.title.encode_utf16());
+        filter.extend(crate::localization::text(format.title).encode_utf16());
         filter.push(0);
         filter.extend(pattern.encode_utf16());
         filter.push(0);
@@ -229,11 +482,14 @@ unsafe fn save_mode(hwnd: HWND, save_as: bool) -> bool {
 }
 unsafe fn save_snapshot(hwnd: HWND, save_as: bool) -> bool {
     use suite42_core::session::{publish_bundle, FileIdentity};
-    let (formats, existing) = STATE.with(|s| {
+    let (mut formats, existing, recovery_extension) = STATE.with(|s| {
         let s = s.borrow();
         let s = s.as_ref().unwrap();
-        (s.app.save_formats(), s.session.location().cloned())
+        (s.app.save_formats(), s.session.location().cloned(),s.recovered_copy.as_ref().map(|copy|copy.extension().to_owned()))
     });
+    if existing.is_none(){if let Some(extension)=recovery_extension{
+        if let Some(index)=formats.iter().position(|format|format.extensions.iter().any(|value|value.eq_ignore_ascii_case(&extension))){formats.swap(0,index);}
+    }}
     if formats.is_empty() {
         return false;
     }
@@ -254,6 +510,9 @@ unsafe fn save_snapshot(hwnd: HWND, save_as: bool) -> bool {
         }
     };
     let format = &formats[index];
+    if crate::recovery::directory().is_some_and(|root|crate::recovery::owns_destination(&root,&path)){
+        msg(hwnd,&crate::localization::text("Choose a save destination outside the automatic recovery folder."),MB_OK|MB_ICONWARNING);return false;
+    }
     if !path
         .extension()
         .and_then(|v| v.to_str())
@@ -340,6 +599,7 @@ unsafe fn save_snapshot(hwnd: HWND, save_as: bool) -> bool {
             .published(path.clone(), format.id.into(), revision);
         if result.is_ok() {
             s.app.saved_snapshot(revision);
+            s.clear_recovery();
             s.path = Some(path);
         }
         result
@@ -348,6 +608,7 @@ unsafe fn save_snapshot(hwnd: HWND, save_as: bool) -> bool {
         msg(hwnd, &e.to_string(), MB_OK | MB_ICONERROR);
         return false;
     }
+    remember_current_document();
     true
 }
 unsafe fn legacy_save(hwnd: HWND) -> bool {
@@ -384,12 +645,16 @@ unsafe fn legacy_save(hwnd: HWND) -> bool {
             let s = s.as_mut().unwrap();
             let r = s.app.save(&p);
             if r.is_ok() {
+                s.clear_recovery();
                 s.path = Some(p)
             }
             r
         });
         match r {
-            Ok(()) => return true,
+            Ok(()) => {
+                remember_current_document();
+                return true;
+            }
             Err(e) => {
                 msg(hwnd, &e, MB_OK | MB_ICONERROR);
                 return false;
@@ -398,7 +663,7 @@ unsafe fn legacy_save(hwnd: HWND) -> bool {
     }
 }
 unsafe fn confirm(hwnd: HWND) -> bool {
-    if !STATE.with(|s| s.borrow().as_ref().unwrap().app.dirty()) {
+    if !STATE.with(|s| s.borrow().as_ref().unwrap().dirty()) {
         return true;
     }
     match msg(
@@ -430,6 +695,7 @@ unsafe fn refresh() {
         readonly,
         image,
         grid,
+        sparse,
     ) = STATE.with(|s| {
         let s = s.borrow();
         let s = s.as_ref().unwrap();
@@ -447,8 +713,8 @@ unsafe fn refresh() {
                     .as_ref()
                     .and_then(|p| p.file_name())
                     .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| "Untitled".into()),
-                if s.app.dirty() { " *" } else { "" },
+                    .unwrap_or_else(|| crate::localization::text("Untitled")),
+                if s.dirty() { " *" } else { "" },
                 s.app.name()
             ),
             s.app
@@ -456,19 +722,18 @@ unsafe fn refresh() {
                 .map(|v| v.0)
                 .unwrap_or_else(|| s.app.items()),
             s.app.text(),
-            if s.async_open.is_some() {
-                format!("{} · Opening… (Esc to cancel)", s.app.status())
-            } else {
-                s.app.status()
-            },
+            s.status_text(),
             s.app.can_undo(),
             s.app.can_redo(),
             s.app.list_visible(),
             s.app.text_readonly(),
             s.app.image().is_some() || s.app.canvas_scene().is_some(),
-            s.app.table(),
+            if s.app.uses_custom_grid(){None}else{s.app.table()},
+            if s.app.uses_custom_grid(){s.app.sparse_table().or_else(||s.app.table().and_then(crate::SparseTable::from_dense))}else{None},
         )
     });
+    let grid_visible=grid.is_some()||sparse.is_some();
+    STATE.with(|s|s.borrow_mut().as_mut().unwrap().sparse_grid=sparse);
     REFRESHING.with(|x| x.set(true));
     SetWindowTextW(hwnd, wide(&title).as_ptr());
     SetWindowTextW(status, wide(&info).as_ptr());
@@ -502,6 +767,11 @@ unsafe fn refresh() {
                 .chain(a.view_actions().iter())
                 .map(|&(id, _)| (id, a.command_state(id)))
                 .chain(
+                    a.file_actions()
+                        .iter()
+                        .map(|action| (action.id, a.command_state(action.id))),
+                )
+                .chain(
                     a.command_specs()
                         .into_iter()
                         .map(|c| (c.id, a.command_state(c.id))),
@@ -528,8 +798,10 @@ unsafe fn refresh() {
     let can_insert_mark = STATE.with(|s| {
         let s = s.borrow();
         let app = &s.as_ref().unwrap().app;
-        app.mark_file_action()
-            .is_some_and(|id| app.command_state(id).enabled)
+        app.mark_file_action().map_or_else(
+            || app.mark_canvas_size().is_some(),
+            |id| app.command_state(id).enabled,
+        )
     });
     EnableMenuItem(
         menu,
@@ -541,6 +813,49 @@ unsafe fn refresh() {
                 MF_GRAYED
             },
     );
+    let (insert_technical, edit_technical) = STATE.with(|state| {
+        let state = state.borrow();
+        let app = &state.as_ref().unwrap().app;
+        (
+            app.can_insert_technical_element(),
+            !app.technical_targets().is_empty(),
+        )
+    });
+    for (id, enabled) in [
+        (INSERT_TECHNICAL, insert_technical),
+        (EDIT_TECHNICAL, insert_technical && edit_technical),
+    ] {
+        EnableMenuItem(
+            menu,
+            id as u32,
+            MF_BYCOMMAND | if enabled { MF_ENABLED } else { MF_GRAYED },
+        );
+    }
+    let calibration_enabled = STATE.with(|state| state.borrow().as_ref().unwrap().calibrate_print);
+    CheckMenuItem(
+        menu,
+        TOGGLE_CALIBRATION as u32,
+        MF_BYCOMMAND
+            | if calibration_enabled {
+                MF_CHECKED
+            } else {
+                MF_UNCHECKED
+            },
+    );
+    let proofing = STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref().unwrap();
+        state.app.uses_rich_edit() && crate::rich_edit::proofing_enabled(state.edit)
+    });
+    CheckMenuItem(
+        menu,
+        TOGGLE_PROOFING as u32,
+        MF_BYCOMMAND | if proofing { MF_CHECKED } else { MF_UNCHECKED },
+    );
+    let spelling_available=STATE.with(|slot|{
+        let slot=slot.borrow();let state=slot.as_ref().unwrap();state.app.uses_rich_edit()&&!state.app.text_readonly()&&IsWindowVisible(state.edit)!=0&&state.async_open.is_none()
+    });
+    EnableMenuItem(menu,CHECK_SPELLING as u32,MF_BYCOMMAND|if spelling_available{MF_ENABLED}else{MF_GRAYED});
     let opening = STATE.with(|s| s.borrow().as_ref().is_some_and(|s| s.async_open.is_some()));
     EnableMenuItem(
         menu,
@@ -554,18 +869,8 @@ unsafe fn refresh() {
     );
     SendMessageW(list, LB_SETCURSEL, selected, 0);
     for (id, state) in actions {
-        STATE.with(|s| {
-            if let Some((_, button)) = s
-                .borrow()
-                .as_ref()
-                .unwrap()
-                .toolbar
-                .iter()
-                .find(|(key, _)| *key == id)
-            {
-                EnableWindow(*button, state.enabled as i32);
-            }
-        });
+        let state=effective_command_state(id,state);
+        update_toolbar_command(id,state);
         EnableMenuItem(
             menu,
             id as u32,
@@ -583,11 +888,11 @@ unsafe fn refresh() {
         );
     }
     update_table(table, grid.as_deref());
-    ShowWindow(table, if grid.is_some() { SW_SHOW } else { SW_HIDE });
+    ShowWindow(table, if grid_visible { SW_SHOW } else { SW_HIDE });
     ShowWindow(
         list,
         if visible
-            && (grid.is_none()
+            && (!grid_visible
                 || STATE.with(|s| s.borrow().as_ref().unwrap().app.grid_sheets().is_some()))
         {
             SW_SHOW
@@ -621,14 +926,20 @@ unsafe fn refresh() {
     );
     REFRESHING.with(|x| x.set(false));
     sync_presentation(hwnd);
+    sync_panel_menu();
     DrawMenuBar(hwnd);
     layout(hwnd);
+    flush_deferred_commands();
 }
 unsafe fn sync_presentation(hwnd: HWND) {
-    let (presenting, active) = STATE.with(|s| {
+    let (presenting, fullscreen, active) = STATE.with(|s| {
         let s = s.borrow();
         let s = s.as_ref().unwrap();
-        (s.app.presentation_size().is_some(), s.fullscreen.is_some())
+        (
+            s.app.presentation_size().is_some(),
+            s.app.presentation_fullscreen(),
+            s.presentation_placement.is_some(),
+        )
     });
     if presenting && !active {
         let mut placement: WINDOWPLACEMENT = zeroed();
@@ -636,30 +947,42 @@ unsafe fn sync_presentation(hwnd: HWND) {
         if GetWindowPlacement(hwnd, &mut placement) == 0 {
             return;
         }
-        let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        let mut info: MONITORINFO = zeroed();
-        info.cbSize = size_of::<MONITORINFO>() as u32;
-        if GetMonitorInfoW(monitor, &mut info) == 0 {
-            return;
-        }
+        let bounds = if fullscreen {
+            let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+            let mut info: MONITORINFO = zeroed();
+            info.cbSize = size_of::<MONITORINFO>() as u32;
+            if GetMonitorInfoW(monitor, &mut info) == 0 {
+                return;
+            }
+            Some(info.rcMonitor)
+        } else {
+            None
+        };
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-        STATE.with(|s| s.borrow_mut().as_mut().unwrap().fullscreen = Some((style, placement)));
+        STATE.with(|s| s.borrow_mut().as_mut().unwrap().presentation_placement = Some((style, placement)));
         SetMenu(hwnd, null_mut());
-        SetWindowLongPtrW(hwnd, GWL_STYLE, (WS_POPUP | WS_VISIBLE) as isize);
-        SetWindowPos(
-            hwnd,
-            HWND_TOP,
-            info.rcMonitor.left,
-            info.rcMonitor.top,
-            info.rcMonitor.right - info.rcMonitor.left,
-            info.rcMonitor.bottom - info.rcMonitor.top,
-            SWP_FRAMECHANGED | SWP_SHOWWINDOW,
-        );
+        if let Some(bounds) = bounds {
+            SetWindowLongPtrW(hwnd, GWL_STYLE, (WS_POPUP | WS_VISIBLE) as isize);
+            SetWindowPos(
+                hwnd,
+                HWND_TOP,
+                bounds.left,
+                bounds.top,
+                bounds.right - bounds.left,
+                bounds.bottom - bounds.top,
+                SWP_FRAMECHANGED | SWP_SHOWWINDOW,
+            );
+        } else {
+            SetWindowPos(
+                hwnd, null_mut(), 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+            );
+        }
     } else if !presenting && active {
         let (style, placement, menu) = STATE.with(|s| {
             let mut s = s.borrow_mut();
             let s = s.as_mut().unwrap();
-            let (style, placement) = s.fullscreen.take().unwrap();
+            let (style, placement) = s.presentation_placement.take().unwrap();
             (style, placement, s.menu)
         });
         SetWindowLongPtrW(hwnd, GWL_STYLE, style);
@@ -713,6 +1036,7 @@ unsafe fn layout(hwnd: HWND) {
         ruler_horizontal,
         ruler_vertical,
         has_ruler,
+        panels,
     ) = STATE.with(|s| {
         let s = s.borrow();
         let s = s.as_ref().unwrap();
@@ -722,15 +1046,16 @@ unsafe fn layout(hwnd: HWND) {
             s.edit,
             s.canvas,
             s.status,
-            s.app.list_visible(),
-            s.grid_cache.is_some(),
+            s.app.list_visible()&&s.panels.sidebar,
+            s.grid_cache.is_some()||s.sparse_grid.is_some(),
             s.toolbar.clone(),
             s.toolbar_more,
             s.ruler_horizontal,
             s.ruler_vertical,
-            s.app.rich_ruler().is_some()
+            s.panels.rulers && s.app.rich_ruler().is_some()
                 && s.app.canvas_scene().is_none()
                 && s.app.image().is_none(),
+            s.panels,
         )
     });
     let mut r: RECT = zeroed();
@@ -756,24 +1081,29 @@ unsafe fn layout(hwnd: HWND) {
             ShowWindow(ruler_vertical, SW_HIDE);
         }
         ShowWindow(canvas, SW_SHOW);
+        if presenter::layout(hwnd, canvas, r) {
+            return;
+        }
         MoveWindow(canvas, 0, 0, r.right.max(0), r.bottom.max(0), 1);
         SetFocus(canvas);
         return;
     }
-    ShowWindow(status, SW_SHOW);
+    presenter::hide();
+    ShowWindow(status, if panels.status{SW_SHOW}else{SW_HIDE});
     let dpi = GetDpiForWindow(hwnd) as i32;
-    let sh = 24 * dpi / 96;
+    let sh = if panels.status{24 * dpi / 96}else{0};
     let row_height = (32 * dpi / 96).max(1);
     let button_width = (105 * dpi / 96).max(1);
     let columns = (r.right.max(1) / button_width).max(1) as usize;
     let max_rows =
         ((r.bottom - sh - (80 * dpi / 96)).max(row_height) / row_height).clamp(1, 3) as usize;
     let capacity = columns.saturating_mul(max_rows);
-    let overflow = toolbar.len() > capacity;
+    let toolbar_len=if panels.toolbar{toolbar.len()}else{0};
+    let overflow = toolbar_len > capacity;
     let visible_count = if overflow {
         capacity.saturating_sub(1)
     } else {
-        toolbar.len()
+        toolbar_len
     };
     let occupied = visible_count + usize::from(overflow);
     let rows = if occupied == 0 {
@@ -814,6 +1144,7 @@ unsafe fn layout(hwnd: HWND) {
         ShowWindow(toolbar_more, SW_HIDE);
     }
     if grid {
+        ShowWindow(list,if visible&&STATE.with(|s|s.borrow().as_ref().unwrap().app.grid_sheets().is_some()){SW_SHOW}else{SW_HIDE});
         if !ruler_horizontal.is_null() {
             ShowWindow(ruler_horizontal, SW_HIDE);
             ShowWindow(ruler_vertical, SW_HIDE);
@@ -821,7 +1152,7 @@ unsafe fn layout(hwnd: HWND) {
         let height = (r.bottom - sh - bar_height).max(0);
         let top = height * 3 / 4;
         let sheet_width =
-            if STATE.with(|s| s.borrow().as_ref().unwrap().app.grid_sheets().is_some()) {
+            if visible && STATE.with(|s| s.borrow().as_ref().unwrap().app.grid_sheets().is_some()) {
                 (180 * dpi / 96).min(r.right / 3)
             } else {
                 0
@@ -846,6 +1177,7 @@ unsafe fn layout(hwnd: HWND) {
         MoveWindow(status, 0, r.bottom - sh, r.right, sh, 1);
         return;
     }
+    ShowWindow(list,if visible{SW_SHOW}else{SW_HIDE});
     let left = if visible {
         (240 * dpi / 96).min(r.right / 2)
     } else {
@@ -1039,8 +1371,154 @@ unsafe fn cancel_pending_open() {
         update_caption();
     }
 }
+unsafe fn update_recent_menu() {
+    let (hwnd, menu, app) = STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref().unwrap();
+        (state.hwnd, state.recent_menu, state.app.name())
+    });
+    let paths = crate::recents::load(app);
+    while GetMenuItemCount(menu) > 0 {
+        DeleteMenu(menu, 0, MF_BYPOSITION);
+    }
+    if paths.is_empty() {
+        AppendMenuW(
+            menu,
+            MF_STRING | MF_GRAYED,
+            0,
+            wide(&crate::localization::text("No Recent Documents")).as_ptr(),
+        );
+    }
+    for (index, path) in paths.iter().enumerate() {
+        // Path text is user data: escape menu mnemonics, never translate it.
+        let title = format!(
+            "{}. {}",
+            index + 1,
+            path.to_string_lossy().replace('&', "&&")
+        );
+        AppendMenuW(
+            menu,
+            MF_STRING,
+            usize::from(RECENT_FIRST) + index,
+            wide(&title).as_ptr(),
+        );
+    }
+    AppendMenuW(menu, MF_SEPARATOR, 0, null());
+    item(menu, CLEAR_RECENTS, "Clear Menu");
+    STATE.with(|state| state.borrow_mut().as_mut().unwrap().recent_paths = paths);
+    DrawMenuBar(hwnd);
+}
+unsafe fn remember_current_document() {
+    let document = STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref()?;
+        Some((state.app.name(), state.path.clone()?))
+    });
+    if let Some((app, path)) = document {
+        if crate::recents::remember(app, &path).is_ok() {
+            update_recent_menu();
+        }
+    }
+}
+
+fn spawn_document_window(path: Option<&Path>) -> Result<(), String> {
+    let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+    let mut process = std::process::Command::new(executable);
+    process
+        .arg("--language")
+        .arg(crate::localization::current().code)
+        .arg("--");
+    if let Some(path) = path {
+        process.arg(path);
+    }
+    process
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+unsafe fn restore_window_layout(hwnd: HWND) {
+    let app = STATE.with(|state| state.borrow().as_ref().unwrap().app.name());
+    if let Some(layout) = crate::window_layout::load(app) {
+        let [left, top, right, bottom] = layout.normal;
+        let placement = WINDOWPLACEMENT {
+            length: size_of::<WINDOWPLACEMENT>() as u32,
+            showCmd: if layout.maximized {
+                SW_SHOWMAXIMIZED as u32
+            } else {
+                SW_SHOWNORMAL as u32
+            },
+            ptMinPosition: POINT { x: -1, y: -1 },
+            ptMaxPosition: POINT { x: -1, y: -1 },
+            rcNormalPosition: RECT {
+                left,
+                top,
+                right,
+                bottom,
+            },
+            ..zeroed()
+        };
+        // Keep WINDOWPLACEMENT coordinates paired with its API. Windows adjusts
+        // entirely offscreen positions after monitor/resolution changes.
+        if SetWindowPlacement(hwnd, &placement) != 0 {
+            return;
+        }
+    }
+    ShowWindow(hwnd, SW_SHOW);
+}
+unsafe fn remember_window_layout(hwnd: HWND) {
+    let (app, fullscreen) = STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref().unwrap();
+        (
+            state.app.name(),
+            state.presentation_placement.as_ref().map(|(_, placement)| *placement),
+        )
+    });
+    let mut placement = fullscreen.unwrap_or(WINDOWPLACEMENT {
+        length: size_of::<WINDOWPLACEMENT>() as u32,
+        ..zeroed()
+    });
+    if fullscreen.is_none() && GetWindowPlacement(hwnd, &mut placement) == 0 {
+        return;
+    }
+    let r = placement.rcNormalPosition;
+    let maximized = placement.showCmd == SW_SHOWMAXIMIZED as u32
+        || (placement.showCmd == SW_SHOWMINIMIZED as u32
+            && placement.flags & WPF_RESTORETOMAXIMIZED != 0);
+    if let Some(mut layout) =
+        crate::window_layout::Layout::new([r.left, r.top, r.right, r.bottom], maximized)
+    {
+        layout.panels=STATE.with(|state|state.borrow().as_ref().unwrap().panels);
+        // A preference write failure must not prevent closing a saved document.
+        let _ = crate::window_layout::save(app, &layout);
+    }
+}
+unsafe fn open_paths(hwnd: HWND, paths: Vec<PathBuf>) {
+    let first_add = paths.first().is_some_and(|path| {
+        STATE.with(|state| state.borrow().as_ref().unwrap().app.opens_as_import(path))
+    });
+    if !first_add && !confirm(hwnd) {
+        return;
+    }
+    for (index, path) in paths.into_iter().enumerate() {
+        let add = STATE.with(|state| state.borrow().as_ref().unwrap().app.opens_as_import(&path));
+        let result = if index == 0 || add {
+            open_document_path(path)
+        } else {
+            spawn_document_window(Some(&path))
+        };
+        if let Err(error) = result {
+            msg(hwnd, &error, MB_OK | MB_ICONERROR);
+        }
+    }
+    refresh();
+}
+
 unsafe fn open_document_path(path: PathBuf) -> Result<(), String> {
     cancel_pending_open();
+    if STATE.with(|state| state.borrow().as_ref().unwrap().app.opens_as_import(&path)) {
+        return STATE.with(|state| state.borrow_mut().as_mut().unwrap().app.import_open(&path));
+    }
     let async_started = STATE.with(|s| {
         let mut s = s.borrow_mut();
         let s = s.as_mut().unwrap();
@@ -1059,11 +1537,12 @@ unsafe fn open_document_path(path: PathBuf) -> Result<(), String> {
         });
         return Ok(());
     }
-    STATE.with(|s| {
+    let result = STATE.with(|s| {
         let mut s = s.borrow_mut();
         let s = s.as_mut().unwrap();
         let result = s.app.open(&path);
         if result.is_ok() && !s.app.open_is_add() {
+            s.clear_recovery();
             s.session = Default::default();
             let formats = s.app.save_formats();
             let extension = path.extension().and_then(|v| v.to_str());
@@ -1083,7 +1562,11 @@ unsafe fn open_document_path(path: PathBuf) -> Result<(), String> {
             s.path = Some(path);
         }
         result
-    })
+    });
+    if result.is_ok() {
+        remember_current_document();
+    }
+    result
 }
 unsafe fn poll_pending_open(hwnd: HWND) {
     use std::sync::mpsc::{self, TryRecvError};
@@ -1093,6 +1576,7 @@ unsafe fn poll_pending_open(hwnd: HWND) {
     };
     let result = match pending.phase {
         AsyncOpenPhase::Loading => {
+            trace_command("open_loading", OPEN, 0);
             let ready = STATE.with(|s| {
                 s.borrow_mut()
                     .as_mut()
@@ -1148,6 +1632,7 @@ unsafe fn poll_pending_open(hwnd: HWND) {
                 }
                 Some(Err(e)) => Err(e),
                 Some(Ok(expected)) => {
+                    trace_command("open_decoded", OPEN, 0);
                     let path = pending.path.clone();
                     let (sender, receiver) = mpsc::channel();
                     match std::thread::Builder::new()
@@ -1175,6 +1660,7 @@ unsafe fn poll_pending_open(hwnd: HWND) {
             Err(TryRecvError::Disconnected) => Err("Could not verify the opened file".into()),
             Ok(Err(e)) => Err(e.to_string()),
             Ok(Ok(actual)) => {
+                trace_command("open_verified", OPEN, 0);
                 if actual != expected
                     || !expected
                         .metadata_matches(&pending.path)
@@ -1197,7 +1683,10 @@ unsafe fn poll_pending_open(hwnd: HWND) {
                             .find(|f| f.extensions.iter().any(|e| e.eq_ignore_ascii_case(format)))
                             .map(|f| f.id.to_string())
                             .unwrap_or_else(|| format.to_ascii_lowercase());
+                        trace_command("open_commit_begin", OPEN, 0);
                         let revision = s.app.commit_async_open()?;
+                        trace_command("open_commit_end", OPEN, 0);
+                        s.clear_recovery();
                         s.session = suite42_core::session::DocumentSession::opened_with_identity(
                             pending.path.clone(),
                             format,
@@ -1215,7 +1704,10 @@ unsafe fn poll_pending_open(hwnd: HWND) {
         Ok(Some(pending)) => {
             STATE.with(|s| s.borrow_mut().as_mut().unwrap().async_open = Some(pending))
         }
-        Ok(None) => refresh(),
+        Ok(None) => {
+            remember_current_document();
+            refresh();
+        }
         Err(e) => {
             STATE.with(|s| s.borrow_mut().as_mut().unwrap().app.cancel_async_open());
             msg(hwnd, &e, MB_OK | MB_ICONERROR);
@@ -1239,50 +1731,233 @@ unsafe fn apply_requested_rich_selection() {
 unsafe fn production_command(hwnd: HWND, id: u16) -> Result<(), String> {
     use crate::{production, LabelSource};
     let is_sheet = id == CREATE_LABEL_SHEET;
-    let source = if is_sheet {
-        STATE.with(|state| state.borrow().as_ref().unwrap().app.label_source())?
+    let source_override = if is_sheet {
+        STATE.with(|state| state.borrow_mut().as_mut().unwrap().app.take_label_source_override())?
+    } else { None };
+    let source = if let Some(source) = source_override { source } else if is_sheet {
+        let mut sources =
+            STATE.with(|state| state.borrow().as_ref().unwrap().app.label_sources())?;
+        if sources.is_empty() {
+            return Err("There are no label sources in this document".into());
+        }
+        let rich_selection=STATE.with(|state|{
+            let state=state.borrow();let state=state.as_ref().unwrap();
+            let width=state.app.label_rich_selection_width()?;
+            if state.edit.is_null(){return None;}
+            let range=crate::rich_edit::selection(state.edit);
+            (range.0<range.1).then_some((state.edit,range,width))
+        });
+        // Native offsets include table delimiters and object characters that are absent
+        // from the model's plain-text projection. Use the actual selected text here.
+        if let Some((edit,_,_))=rich_selection {
+            let bytes=crate::rich_edit::extract_selection(edit,false)?;
+            if bytes.len()%2!=0||bytes.len()>2*1024*1024{return Err("Selected label text exceeds one million characters".into());}
+            let units=bytes.chunks_exact(2).map(|b|u16::from_le_bytes([b[0],b[1]])).collect::<Vec<_>>();
+            let selected=String::from_utf16(&units).map_err(|_|"Select complete text characters")?.replace('\u{fffc}',"").replace("\r\n","\n").replace('\r',"\n");
+            for(_,source)in &mut sources {if let LabelSource::Text(text)=source{*text=selected.clone();}}
+        }
+        let index = if sources.len() == 1&&rich_selection.is_none() {
+            0
+        } else {
+            let mut choices = sources
+                .iter()
+                .map(|(title, _)| title.clone())
+                .collect::<Vec<_>>();
+            if rich_selection.is_some(){choices.push("Selected Content Artwork".into());}
+            let request = crate::InputRequest {
+                title: "Label Source",
+                fields: vec![("Source", choices[0].clone())],
+            };
+            let Some(values) =
+                crate::prompt::show_choices(hwnd, &request, false, false, &[(0, choices.clone())])
+            else {
+                return Ok(());
+            };
+            choices
+                .iter()
+                .position(|choice| choice == &values[0])
+                .ok_or("Choose a label source")?
+        };
+        if index==sources.len(){
+            let(edit,range,width)=rich_selection.ok_or("Select document content first")?;
+            if crate::rich_edit::selection(edit)!=range{return Err("The selection changed; select the label content again".into());}
+            crate::rich_artwork::capture(edit,width)?
+        }else{sources.remove(index).1}
     } else {
         LabelSource::Text(String::new())
     };
-    let request = if is_sheet {
-        production::sheet_request(&source)
+    let mut request = if is_sheet {
+        production::sheet_request(&source)?
+    } else if id == EXPORT_TECHNICAL {
+        production::technical_request()
     } else {
         production::barcode_request(String::new())
     };
+    let app_name = STATE.with(|state| state.borrow().as_ref().unwrap().app.name());
+    let preferences = crate::label_preferences::directory();
+    if is_sheet {
+        if let Some(directory) = &preferences {
+            let _ = crate::label_preferences::restore(directory, app_name, &source, &mut request);
+        }
+    }
     let multiline = is_sheet && matches!(&source, LabelSource::Text(_));
-    let Some(fields) = crate::prompt::show_options(hwnd, &request, multiline, false) else {
+    let choices = if matches!(&source,LabelSource::PdfArtwork{..}|LabelSource::PictureArtwork{..}) {
+        production::artwork_choices()?
+    } else if is_sheet {
+        production::sheet_choices()?
+    } else if id == EXPORT_TECHNICAL {
+        production::technical_choices()
+    } else {
+        production::barcode_choices()
+    };
+    let Some(fields) = crate::prompt::show_choices(hwnd, &request, multiline, false, &choices)
+    else {
         return Ok(());
     };
-    let (output, ext, name, pattern) = if is_sheet {
+    if id == EXPORT_TECHNICAL {
+        let element = production::technical_element(&fields)?;
+        let formats = [
+            crate::FileFormat {
+                id: "png",
+                title: "PNG symbol or code",
+                extensions: &["png"],
+            },
+            crate::FileFormat {
+                id: "svg",
+                title: "SVG vector symbol or code",
+                extensions: &["svg"],
+            },
+            crate::FileFormat {
+                id: "pdf",
+                title: "PDF vector symbol or code",
+                extensions: &["pdf"],
+            },
+        ];
+        if let Some((path, index)) = format_dialog(hwnd, &formats, true) {
+            let extension = formats[index].extensions[0];
+            if !path
+                .extension()
+                .is_some_and(|value| value.eq_ignore_ascii_case(extension))
+            {
+                return Err(format!("Choose a file name ending in .{extension}."));
+            }
+            let output = match extension {
+                "svg" => element.svg()?.into_bytes(),
+                "pdf" => element.pdf()?,
+                _ => element.png()?,
+            };
+            suite42_core::write_new(&path, &output)
+                .map_err(|error| format!("Could not save the technical object: {error}"))?;
+        }
+        return Ok(());
+    }
+    if is_sheet {
+        use crate::pdf_preview::{Action,Update};
+        let mut fields=fields;
+        let mut output:std::sync::Arc<[u8]>=production::sheet_output(&source,&fields)?.into();
+        crate::pdf_preview::show(hwnd,output.clone(),|action,owner|{
+            match action {
+                Action::Save=>{
+                    if let Some(path)=dialog(owner,true,"pdf","PDF label sheet","*.pdf") {
+                        if !path.extension().is_some_and(|extension|extension.eq_ignore_ascii_case("pdf")){return Err("Choose a file name ending in .pdf".into());}
+                        suite42_core::write_new(&path,&output).map_err(|e|e.to_string())?;
+                        if let Some(directory)=&preferences{let _=crate::label_preferences::save(directory,app_name,&source,&fields);}
+                        return Ok(Update::Message(crate::localization::text("Saved %@").replacen("%@",&path.file_name().unwrap_or_default().to_string_lossy(),1)));
+                    }
+                },
+                Action::Print=>print_job(owner,&crate::PrintJob::ActualSizePdf(output.clone()))?,
+                Action::Settings=>{
+                    let mut request=production::sheet_request(&source)?;
+                    for ((_,value),current)in request.fields.iter_mut().zip(&fields){*value=current.clone();}
+                    if let Some(values)=crate::prompt::show_choices(owner,&request,multiline,false,&choices){
+                        let replacement:std::sync::Arc<[u8]>=production::sheet_output(&source,&values)?.into();
+                        fields=values;output=replacement.clone();return Ok(Update::Replace(replacement));
+                    }
+                }
+            }
+            Ok(Update::Keep)
+        })?;
+        return Ok(());
+    }
+    let output=production::barcode_output(&fields)?;
+    if let Some(path)=dialog(hwnd,true,"png","PNG barcode","*.png") {
+        if !path.extension().is_some_and(|extension|extension.eq_ignore_ascii_case("png")){return Err("Choose a file name ending in .png".into());}
+        suite42_core::write_new(&path,&output).map_err(|e|format!("Could not save the production file: {e}"))?;
+    }
+    Ok(())
+}
+unsafe fn technical_command(hwnd: HWND, edit: bool) -> Result<(), String> {
+    let enabled = STATE.with(|state| {
+        state
+            .borrow()
+            .as_ref()
+            .unwrap()
+            .app
+            .can_insert_technical_element()
+    });
+    if !enabled {
+        return Ok(());
+    }
+    let (target, request) = if edit {
+        let (targets, selected) = STATE.with(|state| {
+            let state = state.borrow();
+            let app = &state.as_ref().unwrap().app;
+            (app.technical_targets(), app.selected_technical_target())
+        });
+        if targets.is_empty() {
+            return Err("The current document has no editable symbols or codes.".into());
+        }
+        let selected = selected
+            .and_then(|id| targets.iter().position(|target| target.id == id))
+            .unwrap_or(0);
+        let selected = if targets.len() == 1 {
+            0
+        } else {
+            let labels = targets
+                .iter()
+                .map(|target| format!("{} — {}", target.id, target.title))
+                .collect::<Vec<_>>();
+            let request = crate::InputRequest {
+                title: "Choose Symbol or Code",
+                fields: vec![("Object", labels[selected].clone())],
+            };
+            let Some(values) =
+                crate::prompt::show_choices(hwnd, &request, false, false, &[(0, labels.clone())])
+            else {
+                return Ok(());
+            };
+            labels
+                .iter()
+                .position(|label| label == &values[0])
+                .ok_or("Choose an existing technical object")?
+        };
+        let target = &targets[selected];
         (
-            production::sheet_output(source, &fields)?,
-            "pdf",
-            "PDF label sheet",
-            "*.pdf",
+            Some(target.id),
+            crate::production::edit_technical_request(&target.element),
         )
     } else {
-        (
-            production::barcode_output(&fields)?,
-            "png",
-            "PNG barcode",
-            "*.png",
-        )
+        (None, crate::production::technical_request())
     };
-    if let Some(path) = dialog(hwnd, true, ext, name, pattern) {
-        if !path
-            .extension()
-            .is_some_and(|value| value.eq_ignore_ascii_case(ext))
-        {
-            return Err(format!("Choose a file name ending in .{ext}."));
-        }
-        suite42_core::write_new(&path, &output).map_err(|error| {
-            if error.kind() == std::io::ErrorKind::AlreadyExists {
-                "This file already exists. Choose a new name.".into()
-            } else {
-                format!("Could not save the file: {error}")
-            }
-        })?;
-    }
+    let Some(values) = crate::prompt::show_choices(
+        hwnd,
+        &request,
+        false,
+        false,
+        &crate::production::technical_choices(),
+    ) else {
+        return Ok(());
+    };
+    let raster = crate::TechnicalRaster::render(crate::production::technical_element(&values)?)?;
+    STATE.with(|state| {
+        state
+            .borrow_mut()
+            .as_mut()
+            .unwrap()
+            .app
+            .apply_technical_element(target, raster)
+    })?;
+    refresh();
     Ok(())
 }
 
@@ -1334,15 +2009,17 @@ unsafe fn pick_library_image(hwnd: HWND, directory: &Path) -> Result<Option<Path
 }
 
 unsafe fn mark_command(hwnd: HWND, id: u16) -> Result<(), String> {
-    let target = STATE.with(|state| {
+    let (supported, target, canvas) = STATE.with(|state| {
         let state = state.borrow();
         let app = &state.as_ref().unwrap().app;
-        let action = app.mark_file_action()?;
-        (id == IMPORT_MARK || app.command_state(action).enabled).then_some(action)
+        let target = app
+            .mark_file_action()
+            .filter(|&action| app.command_state(action).enabled);
+        (app.supports_marks(), target, app.mark_canvas_size())
     });
-    let Some(target) = target else {
+    if !supported || (id != IMPORT_MARK && target.is_none() && canvas.is_none()) {
         return Ok(());
-    };
+    }
     let directory = crate::marks::library_directory()?;
     if id == IMPORT_MARK {
         if let Some(source) = file_dialog(
@@ -1352,8 +2029,27 @@ unsafe fn mark_command(hwnd: HWND, id: u16) -> Result<(), String> {
             "PNG or JPEG image",
             "*.png;*.jpg;*.jpeg",
             Some("Import Your Signature or Stamp"),
+            None,
         ) {
-            crate::marks::import_image(&source, &directory)?;
+            let request = crate::InputRequest {
+                title: "Import Signature or Stamp",
+                fields: vec![("Remove white paper background (yes/no)", "no".into())],
+            };
+            let Some(values) = crate::prompt::show_choices(
+                hwnd,
+                &request,
+                false,
+                false,
+                &[(0, vec!["no".into(), "yes".into()])],
+            ) else {
+                return Ok(());
+            };
+            let cleanup = match values[0].trim().to_ascii_lowercase().as_str() {
+                "yes" => true,
+                "no" => false,
+                _ => return Err("Choose yes or no for background cleanup.".into()),
+            };
+            crate::marks::import_image_with_cleanup(&source, &directory, cleanup)?;
             msg(
                 hwnd,
                 "Saved to the shared signature and stamp library.",
@@ -1362,19 +2058,466 @@ unsafe fn mark_command(hwnd: HWND, id: u16) -> Result<(), String> {
         }
     } else if let Some(path) = pick_library_image(hwnd, &directory)? {
         let path = crate::marks::library_image(&path, &directory)?;
-        STATE.with(|state| {
+        if let Some(target) = target {
+            STATE.with(|state| {
+                state
+                    .borrow_mut()
+                    .as_mut()
+                    .unwrap()
+                    .app
+                    .file_action(target, &path)
+            })?;
+        } else if let Some((canvas_width, canvas_height)) = canvas {
+            let mark = crate::marks::read_image(&path)?;
+            let width = mark.width().min((canvas_width / 3).max(1));
+            let height = ((f64::from(width) * f64::from(mark.height()) / f64::from(mark.width()))
+                .round() as u32)
+                .clamp(1, canvas_height);
+            let request = crate::InputRequest {
+                title: "Place Signature or Stamp",
+                fields: vec![
+                    ("Left (pixels)", ((canvas_width - width) / 2).to_string()),
+                    ("Top (pixels)", ((canvas_height - height) / 2).to_string()),
+                    ("Width (pixels)", width.to_string()),
+                    ("Height (pixels)", height.to_string()),
+                ],
+            };
+            let Some(fields) = crate::prompt::show(hwnd, &request) else {
+                return Ok(());
+            };
+            let values = fields
+                .iter()
+                .map(|value| {
+                    value
+                        .trim()
+                        .parse::<u32>()
+                        .map_err(|_| "Enter whole pixel coordinates and dimensions.".to_string())
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            STATE.with(|state| {
+                let mut state = state.borrow_mut();
+                let app = &mut state.as_mut().unwrap().app;
+                if app.mark_canvas_size() != canvas {
+                    return Err("The target page changed while choosing the mark.".into());
+                }
+                app.place_mark(
+                    mark.width(),
+                    mark.height(),
+                    mark.as_raw(),
+                    [values[0], values[1], values[2], values[3]],
+                )
+            })?;
+        }
+    }
+    Ok(())
+}
+
+unsafe fn language_command(hwnd: HWND, index: usize) -> Result<(), String> {
+    let language = *crate::localization::LANGUAGES
+        .get(index)
+        .ok_or("Unknown UI language")?;
+    if language == crate::localization::current() || !confirm(hwnd) {
+        return Ok(());
+    }
+    EnableWindow(hwnd, 0);
+    let result = (|| -> Result<(), String> {
+        let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+        let path = STATE.with(|state| {
+            let state = state.borrow();
+            let state = state.as_ref().unwrap();
             state
-                .borrow_mut()
-                .as_mut()
-                .unwrap()
-                .app
-                .file_action(target, &path)
-        })?;
+                .session
+                .location()
+                .map(|location| location.path.clone())
+                .or_else(|| state.path.clone())
+        });
+        crate::localization::save(language)?;
+        let mut process = std::process::Command::new(executable);
+        process.arg("--language").arg(language.code).arg("--");
+        if let Some(path) = path {
+            process.arg(path);
+        }
+        process
+            .spawn()
+            .map_err(|error| format!("Could not restart this app: {error}"))?;
+        STATE.with(|state| state.borrow_mut().as_mut().unwrap().close_confirmed = true);
+        PostMessageW(hwnd, WM_CLOSE, 0, 0);
+        Ok(())
+    })();
+    if result.is_err() {
+        EnableWindow(hwnd, 1);
+    }
+    result
+}
+unsafe fn flush_deferred_commands() {
+    if REFRESHING.with(|refreshing| refreshing.get()) {
+        return;
+    }
+    let pending = STATE.with(|state| {
+        let mut state = state.try_borrow_mut().ok()?;
+        let state = state.as_mut()?;
+        Some((state.hwnd, std::mem::take(&mut state.deferred_commands)))
+    });
+    if let Some((hwnd, commands)) = pending {
+        for (id, notify) in commands {
+            PostMessageW(
+                hwnd,
+                WM_COMMAND,
+                usize::from(id) | (usize::from(notify) << 16),
+                0,
+            );
+        }
+    }
+}
+fn trace_command(stage: &str, id: u16, notify: u16) {
+    use std::io::Write;
+    static PATH: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
+    if let Some(path) =
+        PATH.get_or_init(|| std::env::var_os("OFF42_UI_TRACE_FILE").map(PathBuf::from))
+    {
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+        {
+            let _ = writeln!(
+                file,
+                "{} {stage} command={id} notify={notify} refreshing={}",
+                std::process::id(),
+                REFRESHING.with(|refreshing| refreshing.get())
+            );
+        }
+    }
+}
+thread_local! {
+    static PLAIN_EDIT_DEPTH:Cell<usize>=const{Cell::new(0)};
+    static PLAIN_EDIT_CHANGED:Cell<bool>=const{Cell::new(false)};
+}
+// Standard multiline EDIT emits deletion and insertion EN_CHANGE notifications for
+// a single replacement/paste. Deliver the final value once after the native operation.
+unsafe extern "system" fn plain_edit_proc(
+    h: HWND,
+    m: u32,
+    w: WPARAM,
+    l: LPARAM,
+    id: usize,
+    _data: usize,
+) -> LRESULT {
+    if m == WM_NCDESTROY {
+        RemoveWindowSubclass(h, Some(plain_edit_proc), id);
+    }
+    let mutation = matches!(
+        m,
+        WM_SETTEXT | WM_PASTE | WM_CUT | WM_CLEAR | WM_CHAR | WM_KEYDOWN | WM_UNDO | EM_REPLACESEL
+    );
+    if mutation {
+        PLAIN_EDIT_DEPTH.with(|depth| depth.set(depth.get() + 1));
+    }
+    let result = DefSubclassProc(h, m, w, l);
+    if mutation {
+        let outer = PLAIN_EDIT_DEPTH.with(|depth| {
+            depth.set(depth.get() - 1);
+            depth.get() == 0
+        });
+        if outer && PLAIN_EDIT_CHANGED.with(|changed| changed.replace(false)) {
+            command(GetParent(h), EDIT as u16, EN_CHANGE as u16);
+            flush_deferred_commands();
+        }
+    }
+    result
+}
+
+unsafe fn update_toolbar_command(id:u16,state:crate::CommandState){
+    let button=STATE.with(|slot|{
+        let slot=slot.borrow();let slot=slot.as_ref()?;
+        slot.toolbar.iter().find(|(key,_)|*key==id).map(|(_,button)|(*button,slot.app.toolbar_command_toggle(id)))
+    });
+    if let Some((button,toggle))=button{
+        EnableWindow(button,state.enabled as i32);
+        if toggle{SendMessageW(button,BM_SETCHECK,if state.checked{BST_CHECKED}else{BST_UNCHECKED}as usize,0);}
+    }
+}
+
+unsafe fn effective_command_state(id: u16, fallback: crate::CommandState) -> crate::CommandState {
+    let native = STATE.with(|slot| {
+        let state = slot.borrow();
+        let state = state.as_ref()?;
+        Some((
+            state.edit,
+            state.app.rich_format_command(id)?,
+            !state.app.text_readonly(),
+        ))
+    });
+    match native {
+        Some((edit, command, editable)) if !edit.is_null() => {
+            crate::rich_format::state(edit, command, editable && IsWindowVisible(edit) != 0)
+        }
+        _ => fallback,
+    }
+}
+
+unsafe fn native_rich_format(
+    hwnd: HWND,
+    edit: HWND,
+    command: crate::RichFormatCommand,
+) -> Result<(), String> {
+    let Some(format) = crate::rich_format::prepare(hwnd, edit, command)? else {
+        SetFocus(edit);
+        update_caption();
+        return Ok(());
+    };
+    let selection = crate::rich_edit::selection(edit);
+    let before = crate::rich_edit::extract(edit)?;
+    let previous = REFRESHING.with(|flag| flag.replace(true));
+    let result = (|| {
+        crate::rich_format::apply(edit, &format)?;
+        if format.affects_document(selection) {
+            let bytes = crate::rich_edit::extract(edit)?;
+            STATE.with(|slot| {
+                slot.borrow_mut()
+                    .as_mut()
+                    .unwrap()
+                    .app
+                    .edit_rich_text(&bytes, selection)
+            })?;
+        }
+        Ok(())
+    })();
+    if result.is_err() {
+        let _ = crate::rich_edit::load(edit, &before);
+        crate::rich_edit::set_selection(edit, selection);
+    }
+    REFRESHING.with(|flag| flag.set(previous));
+    flush_deferred_commands();
+    SetFocus(edit);
+    update_caption();
+    result
+}
+
+unsafe fn native_rich_replace(edit:HWND,range:(usize,usize),value:&str,expected:&[u16])->Result<(),String>{
+    if crate::proofing::raw_text(edit)?!=expected{return Err("The document changed before the replacement".into())}
+    let before=crate::rich_edit::extract(edit)?;let selection=crate::rich_edit::selection(edit);
+    let previous=REFRESHING.with(|flag|flag.replace(true));let mut prepared=false;
+    let result=(||{
+        let projection=STATE.with(|slot|slot.borrow_mut().as_mut().unwrap().app.prepare_rich_word(expected,range,value))?;prepared=true;
+        crate::rich_edit::load(edit,&projection)?;
+        let inserted:Vec<_>=value.encode_utf16().collect();let mut after=expected.to_vec();after.splice(range.0..range.1,inserted.iter().copied());
+        if crate::proofing::raw_text(edit)?!=after{return Err("The replacement could not be preserved".into())}
+        let caret=range.0+inserted.len();crate::rich_edit::set_selection(edit,(caret,caret));
+        STATE.with(|slot|{let mut slot=slot.borrow_mut();let app=&mut slot.as_mut().unwrap().app;app.finish_rich_word(true)?;app.set_rich_selection((caret,caret));Ok::<(),String>(())})?;prepared=false;
+        Ok(())
+    })();
+    if result.is_err(){
+        if prepared{let _=STATE.with(|slot|slot.borrow_mut().as_mut().unwrap().app.finish_rich_word(false));}
+        let _=crate::rich_edit::load(edit,&before);crate::rich_edit::set_selection(edit,selection);
+    }
+    REFRESHING.with(|flag|flag.set(previous));
+    if result.is_ok() {
+        schedule_rich_sidebar_refresh(GetParent(edit));
+    }
+    flush_deferred_commands();update_caption();result
+}
+
+const RICH_SIDEBAR_TIMER: usize = 43;
+
+unsafe fn schedule_rich_sidebar_refresh(hwnd: HWND) {
+    let live = STATE.with(|slot| {
+        let slot = slot.borrow();
+        slot.as_ref().is_some_and(|state| state.app.live_rich_sidebar() && state.panels.sidebar)
+    });
+    if live {
+        SetTimer(hwnd, RICH_SIDEBAR_TIMER, 200, None);
+    }
+}
+
+unsafe fn refresh_rich_sidebar() {
+    let Some((list, items)) = STATE.with(|slot| {
+        let slot = slot.borrow();
+        let state = slot.as_ref()?;
+        (state.app.live_rich_sidebar() && IsWindowVisible(state.list) != 0)
+            .then(|| (state.list, state.app.items()))
+    }) else {
+        return;
+    };
+    let previous = REFRESHING.with(|flag| flag.replace(true));
+    let top = SendMessageW(list, LB_GETTOPINDEX, 0, 0).max(0) as usize;
+    SendMessageW(list, WM_SETREDRAW, 0, 0);
+    SendMessageW(list, LB_RESETCONTENT, 0, 0);
+    for item in &items {
+        SendMessageW(list, LB_ADDSTRING, 0, wide(item).as_ptr() as isize);
+    }
+    SendMessageW(list, LB_SETTOPINDEX, top.min(items.len().saturating_sub(1)), 0);
+    SendMessageW(list, WM_SETREDRAW, 1, 0);
+    InvalidateRect(list, null(), 1);
+    REFRESHING.with(|flag| flag.set(previous));
+    flush_deferred_commands();
+}
+
+unsafe fn find_replace(hwnd: HWND, replace: bool) -> Result<(), String> {
+    use suite42_core::text_search::{Options, Search};
+
+    let Some(edit) = STATE.with(|slot| {
+        let slot = slot.borrow();
+        let state = slot.as_ref()?;
+        (state.app.supports_find_replace() && state.app.uses_rich_edit())
+            .then_some(state.edit)
+    }) else {
+        return Ok(());
+    };
+    let mut fields = vec![("Find", String::new())];
+    if replace {
+        fields.push(("Replace with", String::new()));
+    }
+    let options_start = fields.len();
+    fields.extend([
+        ("Match case", "No".into()),
+        ("Whole words", "No".into()),
+        ("Regular expression", "No".into()),
+        if replace {
+            ("Action", "Replace All".into())
+        } else {
+            ("Direction", "Next".into())
+        },
+    ]);
+    let mut choices: Vec<_> = (options_start..options_start + 3)
+        .map(|index| (index, vec!["No".into(), "Yes".into()]))
+        .collect();
+    choices.push((
+        options_start + 3,
+        if replace {
+            vec!["Replace All".into(), "Replace".into()]
+        } else {
+            vec!["Next".into(), "Previous".into()]
+        },
+    ));
+    let request = crate::InputRequest {
+        title: if replace { "Replace all" } else { "Find next" },
+        fields,
+    };
+    let Some(values) = crate::prompt::show_choices(hwnd, &request, false, false, &choices) else {
+        return Ok(());
+    };
+    let options = Options {
+        match_case: values[options_start] == "Yes",
+        whole_words: values[options_start + 1] == "Yes",
+        regex: values[options_start + 2] == "Yes",
+    };
+    let query = values[0].replace("\r\n", "\n").replace('\r', "\n");
+    let Some(search) = Search::new(&query, options).map_err(|error| error.to_string())? else {
+        return Ok(());
+    };
+    let action = &values[options_start + 3];
+    if replace {
+        if STATE.with(|slot| slot.borrow().as_ref().unwrap().app.text_readonly()) {
+            return Err("This document is read-only".into());
+        }
+        if action == "Replace All" {
+            let count = STATE.with(|slot| {
+                slot.borrow_mut().as_mut().unwrap().app.replace_all(&search, &values[1])
+            })?;
+            if count > 0 {
+                refresh();
+            }
+            msg(hwnd, &format!("Replaced {count} occurrence(s)."), MB_OK);
+            return Ok(());
+        }
+    }
+
+    let projection = |raw: &[u16]| {
+        String::from_utf16(raw)
+            .map(|text| text.replace('\r', "\n"))
+            .map_err(|_| "Invalid UTF-16 in editor text")
+    };
+    let raw = crate::proofing::raw_text_for_search(edit)?;
+    let mut selected = crate::rich_edit::selection(edit);
+    let mut text = projection(&raw)?;
+    let mut changed = false;
+    if replace {
+        if let Some(value) = search
+            .selected(&text, selected, &values[1])
+            .map_err(|error| error.to_string())?
+        {
+            let original = raw.get(selected.0..selected.1).ok_or("Invalid selection")?;
+            let inserted: Vec<_> = value.encode_utf16().collect();
+            if original != inserted {
+                native_rich_replace(edit, selected, &value, &raw)?;
+                changed = true;
+                text = projection(&crate::proofing::raw_text_for_search(edit)?)?;
+                selected = crate::rich_edit::selection(edit);
+            }
+        }
+    }
+    let result = search
+        .find(&text, selected, action == "Previous")
+        .map_err(|error| error.to_string())?;
+    SetFocus(edit);
+    if let Some(range) = result {
+        crate::rich_edit::set_selection(edit, range);
+        SendMessageW(edit, EM_SCROLLCARET, 0, 0);
+    } else if !changed {
+        msg(hwnd, "Text not found.", MB_OK);
     }
     Ok(())
 }
 
 unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
+    trace_command("received", id, notify);
+    if REFRESHING.with(|refreshing| refreshing.get()) {
+        // RichEdit/TSF can pump posted messages during a model refresh. Keep
+        // actual menu and toolbar clicks; ignore generated control notifications.
+        if id != EDIT as u16 && id != LIST as u16 && notify == 0 {
+            STATE.with(|state| {
+                if let Some(state) = state.borrow_mut().as_mut() {
+                    if state.deferred_commands.len() < 256 {
+                        state.deferred_commands.push((id, notify));
+                    }
+                }
+            });
+        }
+        return;
+    }
+    if id==EDIT as u16 && notify==EN_CHANGE as u16 && PLAIN_EDIT_DEPTH.with(|depth|depth.get()>0) {
+        PLAIN_EDIT_CHANGED.with(|changed|changed.set(true));
+        return;
+    }
+    // Control notifications are not app commands. In particular, RichEdit
+    // emits EN_UPDATE on focus/layout changes; treating ID 101 as an action
+    // reloads the editor, which emits another EN_UPDATE and starves modal UI.
+    if (id == EDIT as u16 && notify != EN_CHANGE as u16)
+        || (id == LIST as u16 && notify != LBN_SELCHANGE as u16)
+    {
+        return;
+    }
+    if id == CLEAR_RECENTS {
+        let app = STATE.with(|state| state.borrow().as_ref().unwrap().app.name());
+        if let Err(error) = crate::recents::clear(app) {
+            msg(hwnd, &error, MB_OK | MB_ICONERROR);
+        }
+        update_recent_menu();
+        return;
+    }
+    if (RECENT_FIRST..CLEAR_RECENTS).contains(&id) {
+        let path = STATE.with(|state| {
+            state
+                .borrow()
+                .as_ref()
+                .unwrap()
+                .recent_paths
+                .get(usize::from(id - RECENT_FIRST))
+                .cloned()
+        });
+        if let Some(path) = path {
+            open_paths(hwnd, vec![path]);
+        }
+        return;
+    }
+    if (LANGUAGE_FIRST..LANGUAGE_FIRST + crate::localization::LANGUAGES.len() as u16).contains(&id)
+    {
+        if let Err(error) = language_command(hwnd, usize::from(id - LANGUAGE_FIRST)) {
+            msg(hwnd, &error, MB_OK | MB_ICONERROR);
+        }
+        return;
+    }
     if id == TOOLBAR_MORE {
         let (button, items) = STATE.with(|s| {
             let s = s.borrow();
@@ -1396,6 +2539,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
         if !items.is_empty() {
             let menu = CreatePopupMenu();
             for (id, title, state) in items {
+                let state=effective_command_state(id,state);
                 let flags = MF_STRING
                     | if state.enabled { MF_ENABLED } else { MF_GRAYED }
                     | if state.checked {
@@ -1403,7 +2547,12 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                     } else {
                         MF_UNCHECKED
                     };
-                AppendMenuW(menu, flags, id as usize, wide(title).as_ptr());
+                AppendMenuW(
+                    menu,
+                    flags,
+                    id as usize,
+                    wide(&crate::localization::menu(title)).as_ptr(),
+                );
             }
             let mut r: RECT = zeroed();
             GetWindowRect(button, &mut r);
@@ -1423,12 +2572,68 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
         }
         return;
     }
-    if REFRESHING.with(|x| x.get()) {
+    if matches!(id,TOGGLE_SIDEBAR|TOGGLE_TOOLBAR|TOGGLE_STATUS|TOGGLE_RULERS){
+        STATE.with(|slot|{
+            let mut slot=slot.borrow_mut();let s=slot.as_mut().unwrap();if s.presentation_placement.is_some(){return}
+            match id{
+                TOGGLE_SIDEBAR if s.app.list_visible()=>s.panels.sidebar=!s.panels.sidebar,
+                TOGGLE_TOOLBAR=>s.panels.toolbar=!s.panels.toolbar,
+                TOGGLE_STATUS=>s.panels.status=!s.panels.status,
+                TOGGLE_RULERS if s.app.rich_ruler().is_some()=>s.panels.rulers=!s.panels.rulers,
+                _=>{}
+            }
+        });
+        let previous_focus=GetFocus();
+        layout(hwnd);sync_panel_menu();remember_window_layout(hwnd);
+        if previous_focus.is_null()||IsWindowVisible(previous_focus)==0{
+            let target=STATE.with(|slot|{let slot=slot.borrow();let s=slot.as_ref().unwrap();if IsWindowVisible(s.table)!=0{s.table}else if IsWindowVisible(s.edit)!=0{s.edit}else{s.canvas}});SetFocus(target);
+        }
+        DrawMenuBar(hwnd);return;
+    }
+    if id==CHECK_SPELLING{
+        let edit=STATE.with(|slot|{let slot=slot.borrow();let state=slot.as_ref().unwrap();(state.app.uses_rich_edit()&&!state.app.text_readonly()&&IsWindowVisible(state.edit)!=0&&state.async_open.is_none()).then_some(state.edit)});
+        if let Some(edit)=edit{if let Err(error)=crate::proofing::show(hwnd,edit,|range,value,expected|native_rich_replace(edit,range,value,expected)){msg(hwnd,&crate::localization::text(&error),MB_OK|MB_ICONERROR);}}
+        update_caption();return;
+    }
+    if id == TOGGLE_PROOFING {
+        STATE.with(|state| {
+            let state = state.borrow();
+            let state = state.as_ref().unwrap();
+            if state.app.uses_rich_edit() {
+                crate::rich_edit::set_proofing(
+                    state.edit,
+                    !crate::rich_edit::proofing_enabled(state.edit),
+                );
+            }
+        });
+        refresh();
+        return;
+    }
+    if matches!(
+        id,
+        CONFIGURE_CALIBRATION | TOGGLE_CALIBRATION | CALIBRATION_SHEET
+    ) {
+        if let Err(error) = calibration_command(hwnd, id) {
+            msg(hwnd, &error, MB_OK | MB_ICONERROR);
+        }
+        refresh();
         return;
     }
     if id == CANCEL_OPEN {
         cancel_pending_open();
         refresh();
+        return;
+    }
+    if id==RECOVER_DOCUMENT{
+        if let Err(error)=recover_document(hwnd){msg(hwnd,&error,MB_OK|MB_ICONERROR);}return;
+    }
+    if matches!(id, NEW | NEW_WINDOW) {
+        if id == NEW && !STATE.with(|s| s.borrow().as_ref().unwrap().app.supports_new()) {
+            return;
+        }
+        if let Err(error) = spawn_document_window(None) {
+            msg(hwnd, &error, MB_OK | MB_ICONERROR);
+        }
         return;
     }
     if id != LIST as u16 && (id != EDIT as u16 || notify == EN_CHANGE as u16) {
@@ -1452,6 +2657,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 msg(hwnd, &e, MB_OK | MB_ICONERROR);
                 refresh();
             } else {
+                schedule_rich_sidebar_refresh(hwnd);
                 update_caption();
             }
             return;
@@ -1467,12 +2673,13 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
             msg(hwnd, &e, MB_OK | MB_ICONERROR);
             refresh()
         } else {
-            let (table, grid, cell, list, items, selected) = STATE.with(|s| {
+            let (table, grid, sparse, cell, list, items, selected) = STATE.with(|s| {
                 let s = s.borrow();
                 let s = s.as_ref().unwrap();
                 (
                     s.table,
-                    s.app.table(),
+                    if s.app.uses_custom_grid(){None}else{s.app.table()},
+                    if s.app.uses_custom_grid(){s.app.sparse_table().or_else(||s.app.table().and_then(crate::SparseTable::from_dense))}else{None},
                     s.app.selected_cell(),
                     s.list,
                     s.app.items(),
@@ -1480,6 +2687,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 )
             });
             let _ = cell;
+            STATE.with(|s|s.borrow_mut().as_mut().unwrap().sparse_grid=sparse);
             update_table(table, grid.as_deref());
             if !items.is_empty() {
                 REFRESHING.with(|x| x.set(true));
@@ -1489,15 +2697,37 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 }
                 SendMessageW(list, LB_SETCURSEL, selected, 0);
                 REFRESHING.with(|x| x.set(false));
+                flush_deferred_commands();
             }
             update_caption()
         }
         return;
     }
     if id == LIST as u16 && notify == LBN_SELCHANGE as u16 {
-        let l = STATE.with(|s| s.borrow().as_ref().unwrap().list);
+        let (l, edit, rich_sidebar) = STATE.with(|s| {
+            let s = s.borrow();
+            let s = s.as_ref().unwrap();
+            (s.list, s.edit, s.app.live_rich_sidebar())
+        });
         let i = SendMessageW(l, LB_GETCURSEL, 0, 0);
         if i >= 0 {
+            if rich_sidebar {
+                let result = crate::proofing::raw_text_for_search(edit).and_then(|native| {
+                    STATE.with(|s| s.borrow().as_ref().unwrap().app.rich_sidebar_selection(i as usize, &native))
+                });
+                match result {
+                    Ok(Some(selection)) => {
+                        SetFocus(edit);
+                        crate::rich_edit::set_selection(edit, selection);
+                        SendMessageW(edit, EM_SCROLLCARET, 0, 0);
+                        STATE.with(|s| s.borrow_mut().as_mut().unwrap().app.set_rich_selection(selection));
+                        update_caption();
+                    }
+                    Ok(None) => {}
+                    Err(error) => { msg(hwnd, &error, MB_OK | MB_ICONERROR); }
+                }
+                return;
+            }
             STATE.with(|s| {
                 let mut s = s.borrow_mut();
                 let a = &mut s.as_mut().unwrap().app;
@@ -1513,28 +2743,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
         return;
     }
     match id {
-        NEW => {
-            if !STATE.with(|s| s.borrow().as_ref().unwrap().app.supports_new()) || !confirm(hwnd) {
-                return;
-            }
-            let r = STATE.with(|s| {
-                let mut s = s.borrow_mut();
-                let s = s.as_mut().unwrap();
-                let result = s.app.new_document();
-                if result.is_ok() {
-                    s.path = None;
-                    s.session = Default::default();
-                }
-                result
-            });
-            if let Err(e) = r {
-                msg(hwnd, &e, MB_OK | MB_ICONERROR);
-            }
-        }
         OPEN => {
-            if !STATE.with(|s| s.borrow().as_ref().unwrap().app.open_is_add()) && !confirm(hwnd) {
-                return;
-            }
             let (e, f, pattern) = STATE.with(|s| {
                 let s = s.borrow();
                 let a = &s.as_ref().unwrap().app;
@@ -1546,11 +2755,8 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
             } else {
                 format_dialog(hwnd, &formats, false).map(|v| v.0)
             };
-            if let Some(p) = selected {
-                let r = open_document_path(p);
-                if let Err(e) = r {
-                    msg(hwnd, &e, MB_OK | MB_ICONERROR);
-                }
+            if let Some(path) = selected {
+                open_paths(hwnd, vec![path]);
             }
         }
         SAVE => {
@@ -1564,67 +2770,13 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
             return;
         }
         FIND | REPLACE => {
-            if !STATE.with(|s| s.borrow().as_ref().unwrap().app.supports_find_replace()) {
-                return;
-            }
-            let req = if id == FIND {
-                crate::InputRequest {
-                    title: "Find next",
-                    fields: vec![("Find", String::new())],
-                }
-            } else {
-                crate::InputRequest {
-                    title: "Replace all",
-                    fields: vec![("Find", String::new()), ("Replace with", String::new())],
-                }
-            };
-            if let Some(values) = crate::prompt::show(hwnd, &req) {
-                if id == FIND {
-                    let edit = STATE.with(|s| s.borrow().as_ref().unwrap().edit);
-                    let mut end: u32 = 0;
-                    SendMessageW(edit, EM_GETSEL, 0, &mut end as *mut _ as isize);
-                    let result = STATE.with(|s| {
-                        s.borrow()
-                            .as_ref()
-                            .unwrap()
-                            .app
-                            .find_next(&values[0], end as usize)
-                    });
-                    match result {
-                        Ok(Some((start, end))) => {
-                            SetFocus(edit);
-                            SendMessageW(edit, EM_SETSEL, start, end as isize);
-                            SendMessageW(edit, EM_SCROLLCARET, 0, 0);
-                        }
-                        Ok(None) => {
-                            msg(hwnd, "Text not found.", MB_OK);
-                        }
-                        Err(e) => {
-                            msg(hwnd, &e, MB_OK | MB_ICONERROR);
-                        }
-                    }
-                    return;
-                }
-                let result = STATE.with(|s| {
-                    s.borrow_mut()
-                        .as_mut()
-                        .unwrap()
-                        .app
-                        .replace_all(&values[0], &values[1])
-                });
-                match result {
-                    Ok(n) => {
-                        refresh();
-                        msg(hwnd, &format!("Replaced {n} occurrence(s)."), MB_OK);
-                    }
-                    Err(e) => {
-                        msg(hwnd, &e, MB_OK | MB_ICONERROR);
-                    }
-                }
+            if let Err(error) = find_replace(hwnd, id == REPLACE) {
+                msg(hwnd, &error, MB_OK | MB_ICONERROR);
             }
             return;
         }
         ABOUT => {
+            trace_command("about_begin", id, notify);
             let text = STATE.with(|s| {
                 format!(
                     "{}\n\n{}",
@@ -1633,6 +2785,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 )
             });
             msg(hwnd, &text, MB_OK | MB_ICONINFORMATION);
+            trace_command("about_end", id, notify);
         }
         _ => {
             let (edit, rich) = STATE.with(|s| {
@@ -1652,10 +2805,21 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
             }
             if matches!(
                 id,
-                CREATE_LABEL_SHEET | CREATE_BARCODE | IMPORT_MARK | INSERT_MARK
+                CREATE_LABEL_SHEET
+                    | CREATE_BARCODE
+                    | IMPORT_MARK
+                    | INSERT_MARK
+                    | EXPORT_TECHNICAL
+                    | INSERT_TECHNICAL
+                    | EDIT_TECHNICAL
             ) {
                 let result = match id {
-                    CREATE_LABEL_SHEET | CREATE_BARCODE => production_command(hwnd, id),
+                    CREATE_LABEL_SHEET | CREATE_BARCODE | EXPORT_TECHNICAL => {
+                        production_command(hwnd, id)
+                    }
+                    INSERT_TECHNICAL | EDIT_TECHNICAL => {
+                        technical_command(hwnd, id == EDIT_TECHNICAL)
+                    }
                     _ => mark_command(hwnd, id),
                 };
                 if let Err(error) = result {
@@ -1675,11 +2839,45 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                     a.command_state(id).enabled,
                 )
             });
-            if !enabled {
+            if !effective_command_state(id,crate::CommandState{enabled,checked:false}).enabled {
+                return;
+            }
+            let native_format=STATE.with(|slot|slot.borrow().as_ref().unwrap().app.rich_format_command(id));
+            if let Some(format)=native_format{
+                if let Err(error)=native_rich_format(hwnd,edit,format){msg(hwnd,&error,MB_OK|MB_ICONERROR);}
                 return;
             }
             if let Some(a) = file_action {
-                if let Some(p) = dialog(hwnd, a.save, a.extension, a.format, a.pattern) {
+                let settings =
+                    STATE.with(|s| s.borrow().as_ref().unwrap().app.file_input_request(id));
+                let settings = if let Some(request) = settings {
+                    let choices = STATE.with(|s| s.borrow().as_ref().unwrap().app.input_choices(id));
+                    match crate::prompt::show_choices(hwnd, &request, false, false, &choices) {
+                        Some(values) => Some(values),
+                        None => return,
+                    }
+                } else {
+                    None
+                };
+                let a = if let Some(values) = &settings {
+                    match STATE.with(|s| {
+                        s.borrow().as_ref().unwrap().app.configured_file_action(id, values)
+                    }) {
+                        Ok(action) => action,
+                        Err(error) => {
+                            msg(hwnd, &error, MB_OK | MB_ICONWARNING);
+                            return;
+                        }
+                    }
+                } else {
+                    a
+                };
+                let suggestion = STATE.with(|s| {
+                    s.borrow().as_ref().unwrap().app.suggested_export_name(id)
+                });
+                if let Some(p) = file_dialog(
+                    hwnd, a.save, a.extension, a.format, a.pattern, None, suggestion.as_deref(),
+                ) {
                     let problem = if !a.save {
                         None
                     } else if p
@@ -1697,8 +2895,15 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                         msg(hwnd, &problem, MB_OK | MB_ICONWARNING);
                         return;
                     }
-                    let r =
-                        STATE.with(|s| s.borrow_mut().as_mut().unwrap().app.file_action(id, &p));
+                    let r = STATE.with(|s| {
+                        let mut state = s.borrow_mut();
+                        let app = &mut state.as_mut().unwrap().app;
+                        if let Some(values) = &settings {
+                            app.file_action_with_input(id, &p, values)
+                        } else {
+                            app.file_action(id, &p)
+                        }
+                    });
                     if let Err(e) = r {
                         msg(hwnd, &e, MB_OK | MB_ICONERROR);
                     }
@@ -1787,6 +2992,79 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 STATE.with(|s| s.borrow().as_ref().unwrap().app.dialog_request(id));
             if let Some(request) = dialog_request {
                 let result = match request {
+                    crate::DialogRequest::Confirmation{title,text}=>Some(crate::DialogResult::Confirmed(
+                        MessageBoxW(hwnd,wide(&text).as_ptr(),wide(&crate::localization::text(title)).as_ptr(),MB_YESNO|MB_ICONQUESTION)==IDYES
+                    )),
+                    crate::DialogRequest::BatchFolder{input,title}=>{
+                        match pick_multiple_files(hwnd,input){
+                            Ok(Some(inputs)) if !inputs.is_empty()=>pick_folder(hwnd,title).map(|output|crate::DialogResult::Files{inputs,output:output.into()}),
+                            Ok(_)=>None,Err(error)=>{msg(hwnd,&error,MB_OK|MB_ICONERROR);None}
+                        }
+                    },
+                    crate::DialogRequest::CombineFiles{input,output}=>{
+                        match pick_multiple_files(hwnd,input){
+                            Ok(Some(inputs))if !inputs.is_empty()=>{
+                                if let Some(path)=file_dialog(hwnd,true,output.extension,output.format,output.pattern,Some(output.title),None){
+                                    if path.exists(){msg(hwnd,"This file already exists; choose a new output file",MB_OK|MB_ICONWARNING);None}
+                                    else if path.extension().and_then(|e|e.to_str()).is_none_or(|e|!e.eq_ignore_ascii_case(output.extension)){msg(hwnd,&format!("Choose a file name ending in .{}",output.extension),MB_OK|MB_ICONWARNING);None}
+                                    else{Some(crate::DialogResult::Files{inputs,output:path})}
+                                }else{None}
+                            },Ok(_)=>None,Err(error)=>{msg(hwnd,&error,MB_OK|MB_ICONERROR);None}
+                        }
+                    },
+                    crate::DialogRequest::Report(report)=>{crate::report::show(hwnd,id,report);None},
+                    crate::DialogRequest::Information { title, text } => {
+                        MessageBoxW(hwnd,wide(&text).as_ptr(),wide(&crate::localization::text(title)).as_ptr(),MB_OK|MB_ICONINFORMATION);
+                        None
+                    }
+                    crate::DialogRequest::RichTextStatistics { title, mut text, describe } => {
+                        let (start, end) = crate::rich_edit::selection(edit);
+                        let (document_lines, selected_lines) = crate::rich_edit::layout_line_counts(edit, (start, end));
+                        let lines = crate::localization::text("Lines");
+                        text.push_str(&format!("\n{lines}: {document_lines}"));
+                        if start < end {
+                            let details = crate::proofing::raw_text_for_search(edit).ok()
+                                .and_then(|raw| raw.get(start..end).and_then(describe))
+                                .unwrap_or_else(|| crate::localization::text("Selection statistics unavailable"));
+                            text.push_str("\n\n");
+                            text.push_str(&details);
+                            if let Some(count) = selected_lines {
+                                text.push_str(&format!("\n{lines}: {count}"));
+                            }
+                        }
+                        MessageBoxW(hwnd, wide(&text).as_ptr(), wide(&crate::localization::text(title)).as_ptr(), MB_OK | MB_ICONINFORMATION);
+                        return;
+                    }
+                    crate::DialogRequest::GridChoices { values, checked } => {
+                        let grid = STATE.with(|slot| slot.borrow().as_ref().unwrap().table);
+                        let menu = CreatePopupMenu();
+                        if menu.is_null() {
+                            msg(hwnd, "Could not open the value list", MB_OK | MB_ICONERROR);
+                            return;
+                        }
+                        let added = values.iter().enumerate().all(|(index, value)| {
+                            let label = if value.is_empty() {
+                                crate::localization::text("(Blank)")
+                            } else {
+                                value.chars().map(|c| if c.is_control() { ' ' } else { c })
+                                    .collect::<String>().replace('&', "&&")
+                            };
+                            let flags = MF_STRING | if checked == Some(index) { MF_CHECKED } else { 0 };
+                            AppendMenuW(menu, flags, index + 1, wide(&label).as_ptr()) != 0
+                        });
+                        let anchor = crate::grid::choice_anchor(grid);
+                        let chosen = if added {
+                            TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY, anchor.x, anchor.y, 0, hwnd, null())
+                        } else {
+                            0
+                        };
+                        DestroyMenu(menu);
+                        if !added {
+                            msg(hwnd, "Could not open the value list", MB_OK | MB_ICONERROR);
+                        }
+                        (chosen as usize).checked_sub(1).and_then(|index| values.into_iter().nth(index))
+                            .map(crate::DialogResult::GridChoice)
+                    }
                     crate::DialogRequest::Color(c) => {
                         crate::dialogs::color(hwnd, c).map(crate::DialogResult::Color)
                     }
@@ -1827,10 +3105,11 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 let (multiline, password) = STATE.with(|s| {
                     let s = s.borrow();
                     let a = &s.as_ref().unwrap().app;
-                    (a.multiline_input(id), a.password_input(id))
+                    (a.input_multiline_fields(id), a.password_input(id))
                 });
+                let choices = STATE.with(|s| s.borrow().as_ref().unwrap().app.input_choices(id));
                 if let Some(mut values) =
-                    crate::prompt::show_options(hwnd, &req, multiline, password)
+                    crate::prompt::show_choices_for_fields(hwnd, &req, &multiline, password, &choices)
                 {
                     let r = STATE.with(|s| {
                         s.borrow_mut()
@@ -1936,6 +3215,13 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
         }
     }
 }
+unsafe fn sync_panel_menu(){
+    let (menu,items)=STATE.with(|slot|{let slot=slot.borrow();let s=slot.as_ref().unwrap();(s.menu,[(TOGGLE_SIDEBAR,s.app.list_visible(),s.panels.sidebar),(TOGGLE_TOOLBAR,!s.toolbar.is_empty(),s.panels.toolbar),(TOGGLE_STATUS,true,s.panels.status),(TOGGLE_RULERS,s.app.rich_ruler().is_some(),s.panels.rulers)])});
+    for (id,available,shown) in items{
+        EnableMenuItem(menu,id as u32,MF_BYCOMMAND|if available{MF_ENABLED}else{MF_GRAYED});
+        CheckMenuItem(menu,id as u32,MF_BYCOMMAND|if available&&shown{MF_CHECKED}else{MF_UNCHECKED});
+    }
+}
 unsafe fn update_caption() {
     let (h, status, menu, title, info, u, r, actions) = STATE.with(|s| {
         let s = s.borrow();
@@ -1950,15 +3236,11 @@ unsafe fn update_caption() {
                     .as_ref()
                     .and_then(|p| p.file_name())
                     .map(|x| x.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| "Untitled".into()),
-                if s.app.dirty() { " *" } else { "" },
+                    .unwrap_or_else(|| crate::localization::text("Untitled")),
+                if s.dirty() { " *" } else { "" },
                 s.app.name()
             ),
-            if s.async_open.is_some() {
-                format!("{} · Opening… (Esc to cancel)", s.app.status())
-            } else {
-                s.app.status()
-            },
+            s.status_text(),
             s.app.can_undo(),
             s.app.can_redo(),
             s.app
@@ -1966,6 +3248,12 @@ unsafe fn update_caption() {
                 .iter()
                 .chain(s.app.view_actions().iter())
                 .map(|&(id, _)| (id, s.app.command_state(id)))
+                .chain(
+                    s.app
+                        .file_actions()
+                        .iter()
+                        .map(|action| (action.id, s.app.command_state(action.id))),
+                )
                 .chain(
                     s.app
                         .command_specs()
@@ -1976,6 +3264,7 @@ unsafe fn update_caption() {
         )
     });
     for (id, state) in actions {
+        let state=effective_command_state(id,state);
         EnableMenuItem(
             menu,
             id as u32,
@@ -1991,18 +3280,7 @@ unsafe fn update_caption() {
                     MF_UNCHECKED
                 },
         );
-        STATE.with(|s| {
-            if let Some((_, button)) = s
-                .borrow()
-                .as_ref()
-                .unwrap()
-                .toolbar
-                .iter()
-                .find(|(key, _)| *key == id)
-            {
-                EnableWindow(*button, state.enabled as i32);
-            }
-        });
+        update_toolbar_command(id,state);
     }
     SetWindowTextW(h, wide(&title).as_ptr());
     SetWindowTextW(status, wide(&info).as_ptr());
@@ -2022,6 +3300,7 @@ unsafe fn update_caption() {
         CANCEL_OPEN as u32,
         MF_BYCOMMAND | if opening { MF_ENABLED } else { MF_GRAYED },
     );
+    sync_panel_menu();
     DrawMenuBar(h);
 }
 unsafe fn select_grid_cell(row: usize, col: Option<usize>) {
@@ -2043,11 +3322,17 @@ unsafe fn select_grid_cell(row: usize, col: Option<usize>) {
         let previous = REFRESHING.with(|x| x.replace(true));
         SetWindowTextW(edit, wide(&text).as_ptr());
         REFRESHING.with(|x| x.set(previous));
+        flush_deferred_commands();
         update_caption();
     }
 }
 unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT {
     match m {
+        WM_TIMER if w == RICH_SIDEBAR_TIMER => {
+            KillTimer(h, RICH_SIDEBAR_TIMER);
+            refresh_rich_sidebar();
+            0
+        }
         WM_TIMER if w == 42 => {
             poll_pending_open(h);
             if STATE.with(|s| s.borrow().as_ref().is_some_and(|s| s.async_open.is_some())) {
@@ -2058,9 +3343,11 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
                     .as_mut()
                     .is_some_and(|s| s.app.poll_background())
             });
+            poll_recovery();
             if changed {
                 refresh();
             }
+            presenter::sync();
             let interval = STATE.with(|s| {
                 s.borrow()
                     .as_ref()
@@ -2072,11 +3359,23 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
                     previous.set(interval);
                 }
             });
+            if !crate::report::is_open() && IsWindowEnabled(h)!=0{
+                let report=STATE.with(|s|s.borrow_mut().as_mut().and_then(|s|s.app.take_pending_report()));
+                if let Some((id,report))=report{crate::report::show(h,id,report);}
+            }
+            if !crate::report::is_open() && IsWindowEnabled(h)!=0{
+                let path=STATE.with(|s|s.borrow_mut().as_mut().and_then(|s|s.app.take_pending_new_window()));
+                if let Some(path)=path{if let Err(error)=spawn_document_window(Some(&path)){msg(h,&error,MB_OK|MB_ICONERROR);}}
+            }
+            if !crate::report::is_open() && IsWindowEnabled(h)!=0 {
+                let command=STATE.with(|s|s.borrow_mut().as_mut().and_then(|s|s.app.take_pending_command()));
+                if let Some(id)=command.filter(|id|crate::application_command_id(*id)||*id==CREATE_LABEL_SHEET) { PostMessageW(h,WM_COMMAND,id as usize,0); }
+            }
             sync_rulers(h);
             let pending = STATE.with(|s| {
                 s.borrow_mut()
                     .as_mut()
-                    .and_then(|s| s.app.take_pending_print_job())
+                    .and_then(|s| (!crate::report::is_open()&&IsWindowEnabled(h)!=0).then(||s.app.take_pending_print_job()).flatten())
             });
             if let Some(result) = pending {
                 match result {
@@ -2089,11 +3388,15 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
                         msg(h, &e, MB_OK | MB_ICONERROR);
                     }
                 }
+                update_caption();
             }
             0
         }
         WM_COMMAND => {
             let id = (w & 0xffff) as usize;
+            if presenter::command(id as u16, (w >> 16) as u16) {
+                return 0;
+            }
             if id != EDIT && !REFRESHING.with(|r| r.get()) {
                 let table = STATE.with(|s| {
                     s.borrow()
@@ -2107,11 +3410,19 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
                 }
             }
             command(h, (w & 0xffff) as u16, (w >> 16) as u16);
+            flush_deferred_commands();
             0
         }
+        WM_DRAWITEM if l != 0 && presenter::draw(&*(l as *const DRAWITEMSTRUCT)) => 1,
         WM_NOTIFY => {
             if !REFRESHING.with(|x| x.get()) && !l.eq(&0) {
                 let header = &*(l as *const NMHDR);
+                if header.idFrom==EDIT&&header.code==0x702 {
+                    let selection=crate::rich_edit::selection(header.hwndFrom);
+                    STATE.with(|slot|slot.borrow_mut().as_mut().unwrap().app.set_rich_selection(selection));
+                    update_caption();
+                    return 0;
+                }
                 if header.idFrom == TABLE {
                     if header.code == NM_CUSTOMDRAW {
                         let draw = &mut *(l as *mut NMLVCUSTOMDRAW);
@@ -2400,6 +3711,26 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
             }
             0
         }
+        WM_DROPFILES => {
+            let drop = w as windows_sys::Win32::UI::Shell::HDROP;
+            let count = DragQueryFileW(drop, u32::MAX, null_mut(), 0);
+            let mut paths = Vec::new();
+            for index in 0..count {
+                let length = DragQueryFileW(drop, index, null_mut(), 0);
+                let mut buffer = vec![0; length as usize + 1];
+                let copied = DragQueryFileW(drop, index, buffer.as_mut_ptr(), buffer.len() as u32);
+                if copied == length && copied != 0 {
+                    paths.push(PathBuf::from(OsString::from_wide(
+                        &buffer[..copied as usize],
+                    )));
+                }
+            }
+            DragFinish(drop);
+            if !paths.is_empty() {
+                open_paths(h, paths);
+            }
+            0
+        }
         WM_DPICHANGED => {
             let r = &*(l as *const RECT);
             SetWindowPos(
@@ -2414,6 +3745,19 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
             0
         }
         WM_CLOSE => {
+            let showing = STATE.with(|slot| {
+                let mut slot = slot.borrow_mut();
+                let Some(state) = slot.as_mut() else { return false };
+                if state.app.presentation_size().is_none() {
+                    return false;
+                }
+                state.app.end_presentation();
+                true
+            });
+            if showing {
+                refresh();
+                return 0;
+            }
             let table = STATE.with(|s| {
                 s.borrow()
                     .as_ref()
@@ -2424,8 +3768,16 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
                     return 0;
                 }
             }
-            if confirm(h) {
+            let confirmed = STATE.with(|state| {
+                state
+                    .borrow()
+                    .as_ref()
+                    .is_some_and(|state| state.close_confirmed)
+            });
+            if confirmed || confirm(h) {
                 cancel_pending_open();
+                remember_window_layout(h);
+                STATE.with(|slot|{if let Some(state)=slot.borrow_mut().as_mut(){state.clear_recovery();}});
                 DestroyWindow(h);
             }
             0
@@ -2439,10 +3791,35 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
     }
 }
 unsafe fn item(m: HMENU, id: u16, t: &str) {
-    AppendMenuW(m, MF_STRING, id as usize, wide(t).as_ptr());
+    AppendMenuW(
+        m,
+        MF_STRING,
+        id as usize,
+        wide(&crate::localization::menu(t)).as_ptr(),
+    );
 }
+struct ComApartment;
+impl Drop for ComApartment {
+    fn drop(&mut self) {
+        unsafe {
+            CoUninitialize();
+        }
+    }
+}
+
 pub fn run(app: Box<dyn App>) {
     unsafe {
+        let invalid=app.actions().iter().map(|a|a.0).chain(app.file_actions().iter().map(|a|a.id)).chain(app.view_actions().iter().map(|a|a.0)).find(|id|!crate::application_command_id(*id));
+        if let Some(id)=invalid{msg(null_mut(),&format!("Application command {id} conflicts with a native host identifier"),MB_OK|MB_ICONERROR);return;}
+        if CoInitializeEx(null(), COINIT_APARTMENTTHREADED as u32) < 0 {
+            msg(
+                null_mut(),
+                "Could not initialize Windows text and document services.",
+                MB_OK | MB_ICONERROR,
+            );
+            return;
+        }
+        let _apartment = ComApartment;
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         let instance = GetModuleHandleW(null());
         let class = wide("Suite42Native");
@@ -2470,39 +3847,112 @@ pub fn run(app: Box<dyn App>) {
         RegisterClassW(&cc);
         let bar = CreateMenu();
         let file = CreatePopupMenu();
+        let print_command=app.default_print_command();
         if app.supports_new() {
             item(file, NEW, "&New\tCtrl+N");
         }
+        item(file, NEW_WINDOW, "New &Window\tCtrl+Shift+N");
         item(file, OPEN, "&Open...\tCtrl+O");
+        let recent_menu = CreatePopupMenu();
+        AppendMenuW(
+            file,
+            MF_POPUP,
+            recent_menu as usize,
+            wide(&crate::localization::menu("Open Recent")).as_ptr(),
+        );
         item(file, CANCEL_OPEN, "Cancel opening\tEsc");
         item(file, SAVE, "&Save\tCtrl+S");
         item(file, SAVE_AS, "Save &As...\tCtrl+Shift+S");
+        if app.supports_recovery(){item(file,RECOVER_DOCUMENT,"Recover Unsaved Document…");}
+        if let Some(id)=print_command{item(file,id,"&Print…\tCtrl+P");}
         for a in app.file_actions() {
             item(file, a.id, a.title);
         }
+        let printing = CreatePopupMenu();
+        item(
+            printing,
+            TOGGLE_CALIBRATION,
+            "Use Saved Printer Calibration",
+        );
+        item(
+            printing,
+            CONFIGURE_CALIBRATION,
+            "Configure Printer Calibration…",
+        );
+        item(
+            printing,
+            CALIBRATION_SHEET,
+            "Export 100 mm Calibration Sheet…",
+        );
+        AppendMenuW(
+            file,
+            MF_POPUP,
+            printing as usize,
+            wide(&crate::localization::menu("Printer Calibration")).as_ptr(),
+        );
         item(file, EXIT, "E&xit");
-        AppendMenuW(bar, MF_POPUP, file as usize, wide("&File").as_ptr());
+        AppendMenuW(
+            bar,
+            MF_POPUP,
+            file as usize,
+            wide(&crate::localization::menu("&File")).as_ptr(),
+        );
         let editmenu = CreatePopupMenu();
         item(editmenu, UNDO, "&Undo\tCtrl+Z");
         item(editmenu, REDO, "&Redo\tCtrl+Y");
         if app.supports_find_replace() {
             item(editmenu, FIND, "&Find...\tCtrl+F");
-            item(editmenu, REPLACE, "&Replace All...\tCtrl+H");
+            item(editmenu, REPLACE, "&Replace...\tCtrl+H");
+        }
+        if app.uses_rich_edit() {
+            item(editmenu, TOGGLE_PROOFING, "Check Spelling as You Type");
+            item(editmenu,CHECK_SPELLING,"Check Spelling…");
         }
         for &(id, t) in app.actions() {
-            item(editmenu, id, t)
+            if Some(id)!=print_command{item(editmenu, id, t)}
         }
-        AppendMenuW(bar, MF_POPUP, editmenu as usize, wide("&Edit").as_ptr());
-        if !app.view_actions().is_empty() {
-            let view = CreatePopupMenu();
-            for &(id, title) in app.view_actions() {
-                item(view, id, title);
-            }
-            AppendMenuW(bar, MF_POPUP, view as usize, wide("&View").as_ptr());
+        AppendMenuW(
+            bar,
+            MF_POPUP,
+            editmenu as usize,
+            wide(&crate::localization::menu("&Edit")).as_ptr(),
+        );
+        let view = CreatePopupMenu();
+        for (id,title) in [(TOGGLE_SIDEBAR,"Show Sidebar"),(TOGGLE_TOOLBAR,"Show Toolbar"),(TOGGLE_STATUS,"Show Status Bar"),(TOGGLE_RULERS,"Show Rulers")]{item(view,id,title);}
+        AppendMenuW(view,MF_SEPARATOR,0,null());
+        for &(id, title) in app.view_actions() {
+            item(view, id, title);
         }
+        let languages = CreatePopupMenu();
+        for (index, language) in crate::localization::LANGUAGES.iter().enumerate() {
+            AppendMenuW(
+                languages,
+                MF_STRING
+                    | if *language == crate::localization::current() {
+                        MF_CHECKED
+                    } else {
+                        MF_UNCHECKED
+                    },
+                usize::from(LANGUAGE_FIRST) + index,
+                wide(language.name).as_ptr(),
+            );
+        }
+        AppendMenuW(
+            view,
+            MF_POPUP,
+            languages as usize,
+            wide(&crate::localization::menu("Language")).as_ptr(),
+        );
+        AppendMenuW(
+            bar,
+            MF_POPUP,
+            view as usize,
+            wide(&crate::localization::menu("&View")).as_ptr(),
+        );
         let specs = app.command_specs();
         let mut groups: Vec<(&str, HMENU)> = Vec::new();
         for spec in &specs {
+            if Some(spec.id)==print_command{continue;}
             let menu = if let Some((_, menu)) = groups.iter().find(|(name, _)| *name == spec.group)
             {
                 *menu
@@ -2517,7 +3967,7 @@ pub fn run(app: Box<dyn App>) {
             };
             item(menu, spec.id, &title);
         }
-        if app.supports_production() {
+        if app.supports_production() || app.supports_technical_elements() {
             let menu =
                 if let Some((_, menu)) = groups.iter().find(|(name, _)| *name == "Production") {
                     *menu
@@ -2526,13 +3976,27 @@ pub fn run(app: Box<dyn App>) {
                     groups.push(("Production", menu));
                     menu
                 };
-            item(menu, CREATE_BARCODE, "Create Barcode…");
-            item(menu, CREATE_LABEL_SHEET, "Create Label Sheet…");
+            if app.supports_production() {
+                item(menu, CREATE_BARCODE, "Create Barcode…");
+            }
+            item(menu, EXPORT_TECHNICAL, "Create Symbol or Code…");
+            if app.supports_production() {
+                item(menu, CREATE_LABEL_SHEET, "Create Label Sheet…");
+            }
+            if app.supports_technical_elements() {
+                item(menu, INSERT_TECHNICAL, "Insert Symbol or Code…");
+                item(menu, EDIT_TECHNICAL, "Edit Symbol or Code…");
+            }
         }
         for (name, menu) in groups {
-            AppendMenuW(bar, MF_POPUP, menu as usize, wide(name).as_ptr());
+            AppendMenuW(
+                bar,
+                MF_POPUP,
+                menu as usize,
+                wide(&crate::localization::menu(name)).as_ptr(),
+            );
         }
-        if app.mark_file_action().is_some() {
+        if app.supports_marks() {
             let menu = CreatePopupMenu();
             item(menu, IMPORT_MARK, "Import to Library…");
             item(menu, INSERT_MARK, "Insert from Library…");
@@ -2540,15 +4004,29 @@ pub fn run(app: Box<dyn App>) {
                 bar,
                 MF_POPUP,
                 menu as usize,
-                wide("Signatures && Stamps").as_ptr(),
+                wide(&crate::localization::menu("Signatures && Stamps")).as_ptr(),
             );
         }
         let help = CreatePopupMenu();
         item(help, ABOUT, "&About");
-        AppendMenuW(bar, MF_POPUP, help as usize, wide("&Help").as_ptr());
+        AppendMenuW(
+            bar,
+            MF_POPUP,
+            help as usize,
+            wide(&crate::localization::menu("&Help")).as_ptr(),
+        );
         STATE.with(|s| {
             *s.borrow_mut() = Some(State {
+                panels:crate::window_layout::load(app.name()).map(|layout|layout.panels).unwrap_or_default(),
                 app,
+                calibrate_print: false,
+                deferred_commands: Vec::new(),
+                close_confirmed: false,
+                recovery:None,
+                recovery_last:std::time::Instant::now(),
+                recovery_unsaved:false,
+                recovered_copy:None,
+                recovery_error:None,
                 path: None,
                 session: Default::default(),
                 async_open: None,
@@ -2559,13 +4037,17 @@ pub fn run(app: Box<dyn App>) {
                 canvas: null_mut(),
                 status: null_mut(),
                 menu: bar,
+                recent_menu,
+                recent_paths: Vec::new(),
                 grid_cache: None,
+                sparse_grid:None,
                 toolbar: Vec::new(),
                 toolbar_more: null_mut(),
                 ruler_horizontal: null_mut(),
                 ruler_vertical: null_mut(),
                 ruler_format: None,
-                fullscreen: None,
+                presentation_placement: None,
+                presenter: None,
             })
         });
         let h = CreateWindowExW(
@@ -2587,11 +4069,13 @@ pub fn run(app: Box<dyn App>) {
         }
         let mut toolbar = Vec::new();
         for spec in &specs {
+            if !STATE.with(|s|s.borrow().as_ref().unwrap().app.toolbar_command_visible(spec.id)) {continue;}
+            let toggle=STATE.with(|s|s.borrow().as_ref().unwrap().app.toolbar_command_toggle(spec.id));
             let button = CreateWindowExW(
                 0,
                 wide("BUTTON").as_ptr(),
-                wide(spec.title).as_ptr(),
-                WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+                wide(&crate::localization::text(spec.title)).as_ptr(),
+                WS_CHILD | WS_VISIBLE | WS_TABSTOP | if toggle{(BS_CHECKBOX|BS_PUSHLIKE)as u32}else{0},
                 0,
                 0,
                 0,
@@ -2679,6 +4163,11 @@ pub fn run(app: Box<dyn App>) {
             instance,
             null(),
         );
+        if !rich && SetWindowSubclass(edit,Some(plain_edit_proc),42,0)==0 {
+            msg(h,"Could not initialize the document editor",MB_OK|MB_ICONERROR);
+            DestroyWindow(h);
+            return;
+        }
         let canvas = CreateWindowExW(
             0,
             canvas_class.as_ptr(),
@@ -2697,6 +4186,7 @@ pub fn run(app: Box<dyn App>) {
         if rich {
             crate::rich_edit::disable_undo(edit);
             crate::rich_edit::notify_changes(edit);
+            crate::rich_edit::set_proofing(edit, true);
         }
         let status = CreateWindowExW(
             0,
@@ -2750,6 +4240,11 @@ pub fn run(app: Box<dyn App>) {
                 cmd: NEW,
             },
             ACCEL {
+                fVirt: FVIRTKEY | FCONTROL | FSHIFT,
+                key: b'N' as u16,
+                cmd: NEW_WINDOW,
+            },
+            ACCEL {
                 fVirt: FVIRTKEY | FCONTROL,
                 key: b'F' as u16,
                 cmd: FIND,
@@ -2785,7 +4280,9 @@ pub fn run(app: Box<dyn App>) {
                 cmd: REDO,
             },
         ];
+        if let Some(cmd)=print_command{acc.push(ACCEL{fVirt:FVIRTKEY|FCONTROL,key:b'P' as u16,cmd});}
         for spec in &specs {
+            if Some(spec.id)==print_command{continue;}
             if let Some(key) = spec.accelerator {
                 let parts: Vec<_> = key.split('+').collect();
                 if let Some(last) = parts.last() {
@@ -2810,9 +4307,21 @@ pub fn run(app: Box<dyn App>) {
             }
         }
         let a = CreateAcceleratorTableW(acc.as_ptr(), acc.len() as i32);
+        update_recent_menu();
         refresh();
         SetTimer(h, 42, 100, None);
-        ShowWindow(h, SW_SHOW);
+        restore_window_layout(h);
+        DragAcceptFiles(h, 1);
+        match crate::localization::launch_arguments(std::env::args_os().skip(1)) {
+            Ok(arguments) if !arguments.files.is_empty() => open_paths(h, arguments.files),
+            Ok(_) => {
+                let should_recover=STATE.with(|slot|{let slot=slot.borrow();let state=slot.as_ref().unwrap();state.app.supports_recovery()&&crate::recovery::directory().is_some_and(|root|!crate::recovery::copies(&root,state.app.name()).is_empty())});
+                if should_recover{PostMessageW(h,WM_COMMAND,RECOVER_DOCUMENT as usize,0);}
+            }
+            Err(error) => {
+                msg(h, &error, MB_OK | MB_ICONERROR);
+            }
+        }
         let mut m: MSG = zeroed();
         while GetMessageW(&mut m, null_mut(), 0, 0) > 0 {
             if m.message == WM_KEYDOWN
@@ -2844,16 +4353,82 @@ pub fn run(app: Box<dyn App>) {
                 refresh();
                 continue;
             }
-            if TranslateAcceleratorW(h, a, &m) == 0 && IsDialogMessageW(h, &m) == 0 {
+            let presenting = STATE.with(|slot| {
+                slot.borrow().as_ref().is_some_and(|s| s.presentation_placement.is_some())
+            });
+            let rehearsal_canvas = STATE.with(|slot| {
+                let slot = slot.borrow();
+                let state = slot.as_ref()?;
+                state.presenter.as_ref().map(|_| state.canvas)
+            });
+            if let Some(canvas) = rehearsal_canvas {
+                if m.message == WM_KEYDOWN && m.wParam == 27 && m.hwnd != canvas {
+                    SendMessageW(canvas, WM_KEYDOWN, m.wParam, m.lParam);
+                    continue;
+                }
+            }
+            let accelerator = if presenting { 0 } else { TranslateAcceleratorW(h, a, &m) };
+            let presenter_tab = rehearsal_canvas.is_some() && m.message == WM_KEYDOWN && m.wParam == 9;
+            let dialog = if (!presenting || presenter_tab) && accelerator == 0 {
+                IsDialogMessageW(h, &m)
+            } else {
+                0
+            };
+            if m.message == WM_COMMAND {
+                trace_command(
+                    if accelerator != 0 {
+                        "accelerator_processed"
+                    } else if dialog != 0 {
+                        "dialog_processed"
+                    } else {
+                        "dispatch"
+                    },
+                    m.wParam as u16,
+                    (m.wParam >> 16) as u16,
+                );
+            }
+            if accelerator == 0 && dialog == 0 {
                 TranslateMessage(&m);
                 DispatchMessageW(&m);
             }
         }
         DestroyAcceleratorTable(a);
+        // Flush normal-close cleanup before the process releases its recovery lock.
+        STATE.with(|slot|{slot.borrow_mut().take();});
     }
 }
 
 unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT {
+    if m == WM_SETCURSOR && (l as u16) == HTCLIENT as u16
+        && STATE.with(|slot| slot.borrow().as_ref().is_some_and(|state| state.app.canvas_cursor_hidden()))
+    {
+        SetCursor(null_mut());
+        return 1;
+    }
+    if m == WM_MOUSELEAVE {
+        if STATE.with(|slot| slot.borrow().as_ref().is_some_and(|state| state.app.canvas_tracks_hover())) {
+            let _ = STATE.with(|slot| slot.borrow_mut().as_mut().unwrap().app.canvas_event(crate::CanvasEvent::Cancel));
+            InvalidateRect(h, null(), 0);
+        }
+        return 0;
+    }
+    // SetCapture may deliver a move at the cursor's old position. Only moves
+    // that still carry MK_LBUTTON belong to the active pointer gesture.
+    const LEFT_BUTTON_DOWN: usize = 0x0001;
+    let hover_move = m == WM_MOUSEMOVE
+        && (w & LEFT_BUTTON_DOWN == 0 || !DRAGGING.with(|dragging| dragging.get()));
+    if hover_move {
+        if !STATE.with(|slot| slot.borrow().as_ref().is_some_and(|state| state.app.canvas_tracks_hover())) {
+            return 0;
+        }
+        let mut tracking = TRACKMOUSEEVENT {
+            cbSize: size_of::<TRACKMOUSEEVENT>() as u32,
+            dwFlags: TME_LEAVE,
+            hwndTrack: h,
+            dwHoverTime: 0,
+        };
+        TrackMouseEvent(&mut tracking);
+    }
     if m == WM_CAPTURECHANGED || m == WM_CANCELMODE {
         if DRAGGING.with(|d| d.replace(false)) {
             let _ = STATE.with(|s| {
@@ -2864,6 +4439,7 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                     .canvas_event(crate::CanvasEvent::Cancel)
             });
         }
+        update_caption();
         InvalidateRect(h, null(), 0);
         return 0;
     }
@@ -2884,11 +4460,19 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                 .app
                 .canvas_event(crate::CanvasEvent::Key {
                     code: w as u32,
-                    modifiers: 0,
+                    modifiers: if GetKeyState(VK_SHIFT as i32) < 0 { 2 } else { 0 }
+                        | if GetKeyState(VK_CONTROL as i32) < 0 { 1 } else { 0 },
                 })
         });
         if let Err(e) = result {
             msg(h, &e, MB_OK | MB_ICONERROR);
+        }
+        if w as u32==27&&DRAGGING.with(|dragging|dragging.get()){ReleaseCapture();}
+        let pending=STATE.with(|s|s.borrow_mut().as_mut().unwrap().app.take_pending_open());
+        if let Some(path)=pending {
+            let owner=GetAncestor(h,GA_ROOT);
+            if confirm(owner) {if let Err(e)=open_document_path(path){msg(owner,&e,MB_OK|MB_ICONERROR);}}
+            refresh();return 0;
         }
         if was_presenting {
             refresh();
@@ -2931,6 +4515,9 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
         let (image, zoom, scene, presentation) = STATE.with(|s| {
             let s = s.borrow();
             let a = &s.as_ref().unwrap().app;
+            if hover_move {
+                return (None, a.image_zoom(), Some(crate::CanvasScene::default()), a.presentation_size());
+            }
             (
                 a.image(),
                 a.image_zoom(),
@@ -2975,7 +4562,7 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                 if let Err(e) = result {
                     msg(h, &e, MB_OK | MB_ICONERROR);
                 }
-                if m == WM_LBUTTONDBLCLK
+                if (m == WM_LBUTTONUP && presentation.is_some()) || (m == WM_LBUTTONDBLCLK
                     && STATE.with(|s| {
                         s.borrow()
                             .as_ref()
@@ -2983,10 +4570,10 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                             .app
                             .inline_rich_rect()
                             .is_some()
-                    })
+                    }))
                 {
                     refresh();
-                } else {
+                } else if !hover_move {
                     update_caption();
                 }
                 InvalidateRect(h, null(), 0);
@@ -3009,15 +4596,24 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                             / scale,
                     };
                     let event = match m {
+                        WM_LBUTTONDBLCLK => crate::CanvasEvent::DoubleClick(point),
                         WM_LBUTTONDOWN => crate::CanvasEvent::PointerDown(point),
                         WM_LBUTTONUP => crate::CanvasEvent::PointerUp(point),
                         _ => crate::CanvasEvent::PointerMove(point),
                     };
-                    let result =
-                        STATE.with(|s| s.borrow_mut().as_mut().unwrap().app.canvas_event(event));
+                    let result = STATE.with(|s| {
+                        let mut slot = s.borrow_mut();
+                        let app = &mut slot.as_mut().unwrap().app;
+                        if m == WM_LBUTTONDOWN {
+                            let dpi = f64::from(GetDpiForWindow(h).max(1));
+                            app.set_image_pointer_scale(scale * 96.0 / dpi);
+                        }
+                        app.canvas_event(event)
+                    });
                     if let Err(e) = result {
                         msg(h, &e, MB_OK | MB_ICONERROR);
                     }
+                    update_caption();
                     InvalidateRect(h, null(), 0);
                 }
             }
@@ -3025,6 +4621,8 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
         if m == WM_LBUTTONUP {
             DRAGGING.with(|d| d.set(false));
             ReleaseCapture();
+            let command=STATE.with(|slot|slot.borrow_mut().as_mut().and_then(|state|state.app.take_pending_command()));
+            if let Some(id)=command.filter(|id|crate::application_command_id(*id)||*id==CREATE_LABEL_SHEET){PostMessageW(GetAncestor(h,GA_ROOT),WM_COMMAND,id as usize,0);}
         }
         return 0;
     }
@@ -3035,8 +4633,7 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
     let dc = BeginPaint(h, &mut ps);
     let mut rect: RECT = zeroed();
     GetClientRect(h, &mut rect);
-    FillRect(dc, &rect, (COLOR_WINDOW + 1) as HBRUSH);
-    let (image, zoom, scene, presentation) = STATE.with(|s| {
+    let (image, zoom, scene, presentation, white_background) = STATE.with(|s| {
         let s = s.borrow();
         let s = s.as_ref().unwrap();
         (
@@ -3044,8 +4641,15 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
             s.app.image_zoom(),
             s.app.canvas_scene(),
             s.app.presentation_size(),
+            s.app.presentation_white_background(),
         )
     });
+    if presentation.is_some() {
+        let brush = if white_background { WHITE_BRUSH } else { BLACK_BRUSH };
+        FillRect(dc, &rect, GetStockObject(brush) as HBRUSH);
+    } else {
+        FillRect(dc, &rect, (COLOR_WINDOW + 1) as HBRUSH);
+    }
     if let Some(scene) = scene {
         draw_scene(dc, &scene_for_canvas(h, scene, presentation));
     }
@@ -3093,6 +4697,19 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
                 DIB_RGB_COLORS,
                 SRCCOPY,
             );
+            let items = STATE.with(|slot| slot.borrow().as_ref().unwrap().app.image_overlay());
+            if !items.is_empty() {
+                draw_scene(dc, &crate::CanvasScene {
+                    viewport: crate::Viewport {
+                        zoom: scale,
+                        pan: crate::Point {
+                            x: f64::from((rect.right - dw) / 2),
+                            y: f64::from((rect.bottom - dh) / 2),
+                        },
+                    },
+                    items,
+                });
+            }
         }
     }
     EndPaint(h, &ps);
@@ -3111,7 +4728,7 @@ unsafe fn update_table(table: HWND, rows: Option<&[Vec<String>]>) {
                 s.grid_cache = rows.map(|v| v.to_vec())
             }
         });
-        if rows.is_some() {
+        if rows.is_some()||STATE.with(|s|s.borrow().as_ref().unwrap().sparse_grid.is_some()) {
             crate::grid::refresh(table)
         }
         return;
@@ -3177,6 +4794,7 @@ unsafe fn update_table(table: HWND, rows: Option<&[Vec<String>]>) {
         }
     }
     REFRESHING.with(|x| x.set(was_refreshing));
+    flush_deferred_commands();
 }
 
 unsafe fn populate_table(table: HWND, rows: &[Vec<String>]) {
@@ -3220,6 +4838,129 @@ unsafe fn populate_table(table: HWND, rows: &[Vec<String>]) {
 
 unsafe fn draw_scene(dc: HDC, scene: &crate::CanvasScene) {
     draw_scene_items(dc, scene.viewport, &scene.items);
+}
+
+/// Measures text at the same font scale as the scene renderer.
+pub struct SceneTextMeasurer {
+    dc: HDC,
+    font: HFONT,
+    previous: HGDIOBJ,
+}
+
+impl SceneTextMeasurer {
+    pub fn new(font: &crate::SceneFont, dpi: i32) -> Result<Self, String> {
+        unsafe {
+            let font = crate::rich_print::font(font, dpi)?;
+            let dc = CreateCompatibleDC(null_mut());
+            if dc.is_null() {
+                DeleteObject(font);
+                return Err("Could not create a text measurement context".into());
+            }
+            let previous = SelectObject(dc, font);
+            if previous.is_null() || previous as isize == -1 {
+                DeleteObject(font);
+                DeleteDC(dc);
+                return Err("Could not select the text measurement font".into());
+            }
+            Ok(Self { dc, font, previous })
+        }
+    }
+
+    /// Returns the number of UTF-16 units that fit and the full measured width in pixels.
+    pub fn fit(&self, text: &str, width: i32) -> Result<(usize, i32), String> {
+        let mut units: Vec<u16> = text.encode_utf16().collect();
+        let count = i32::try_from(units.len()).map_err(|_| "Text is too long to measure")?;
+        if count == 0 {
+            return Ok((0, 0));
+        }
+        units.push(0);
+        let mut fit = 0;
+        let mut size = SIZE { cx: 0, cy: 0 };
+        let ok = unsafe {
+            GetTextExtentExPointW(self.dc, units.as_ptr(), count, width, &mut fit, null_mut(), &mut size)
+        };
+        if ok == 0 || !(0..=count).contains(&fit) || size.cx < 0 {
+            return Err("Could not measure scene text".into());
+        }
+        Ok((fit as usize, size.cx))
+    }
+}
+
+impl Drop for SceneTextMeasurer {
+    fn drop(&mut self) {
+        unsafe {
+            SelectObject(self.dc, self.previous);
+            DeleteObject(self.font);
+            DeleteDC(self.dc);
+        }
+    }
+}
+
+/// Render a document scene against an opaque white background in a top-down RGB raster.
+pub fn render_scene_rgb(
+    mut scene: crate::CanvasScene,
+    logical_size: (f64, f64),
+    pixel_size: (u32, u32),
+) -> Result<Vec<u8>, String> {
+    let (width, height) = pixel_size;
+    let pixels = u64::from(width) * u64::from(height);
+    if width == 0 || height == 0 || pixels > 16_000_000
+        || ![logical_size.0, logical_size.1].iter().all(|value| value.is_finite() && *value > 0.0)
+    {
+        return Err("Invalid slide image size".into());
+    }
+    let zoom = (f64::from(width) / logical_size.0).min(f64::from(height) / logical_size.1);
+    if !zoom.is_finite() || zoom <= 0.0 {
+        return Err("Invalid scene scaling".into());
+    }
+    scene.viewport = crate::Viewport {
+        zoom,
+        pan: crate::Point {
+            x: (f64::from(width) - logical_size.0 * zoom) / 2.0,
+            y: (f64::from(height) - logical_size.1 * zoom) / 2.0,
+        },
+    };
+    unsafe {
+        let mut info: BITMAPINFO = zeroed();
+        info.bmiHeader.biSize = size_of::<BITMAPINFOHEADER>() as u32;
+        info.bmiHeader.biWidth = width as i32;
+        info.bmiHeader.biHeight = -(height as i32);
+        info.bmiHeader.biPlanes = 1;
+        info.bmiHeader.biBitCount = 32;
+        info.bmiHeader.biCompression = BI_RGB;
+        let dc = CreateCompatibleDC(null_mut());
+        if dc.is_null() {
+            return Err("Could not create an image rendering context".into());
+        }
+        let mut bits = null_mut();
+        let bitmap = CreateDIBSection(dc, &info, DIB_RGB_COLORS, &mut bits, null_mut(), 0);
+        let previous = if bitmap.is_null() { null_mut() } else { SelectObject(dc, bitmap) };
+        let output = if bits.is_null() || previous.is_null() || previous as isize == -1 {
+            Err("Could not allocate the slide image".into())
+        } else {
+            let bounds = RECT { left: 0, top: 0, right: width as i32, bottom: height as i32 };
+            FillRect(dc, &bounds, GetStockObject(WHITE_BRUSH) as HBRUSH);
+            let pan = scene.viewport.pan;
+            IntersectClipRect(dc, pan.x.round() as i32, pan.y.round() as i32,
+                (pan.x + logical_size.0 * zoom).round() as i32, (pan.y + logical_size.1 * zoom).round() as i32);
+            draw_scene(dc, &scene);
+            GdiFlush();
+            let bgra = std::slice::from_raw_parts(bits.cast::<u8>(), pixels as usize * 4);
+            let mut rgb = Vec::with_capacity(pixels as usize * 3);
+            for p in bgra.chunks_exact(4) {
+                rgb.extend_from_slice(&[p[2], p[1], p[0]]);
+            }
+            Ok(rgb)
+        };
+        if !previous.is_null() && previous as isize != -1 {
+            SelectObject(dc, previous);
+        }
+        if !bitmap.is_null() {
+            DeleteObject(bitmap);
+        }
+        DeleteDC(dc);
+        output
+    }
 }
 
 unsafe fn draw_scene_items(dc: HDC, viewport: crate::Viewport, items: &[crate::SceneItem]) {
@@ -3439,6 +5180,69 @@ unsafe fn draw_scene_items(dc: HDC, viewport: crate::Viewport, items: &[crate::S
                     y: y + height,
                 });
                 draw_rich_scene(dc, a, b, viewport.zoom, paragraphs);
+            }
+            SceneItem::VectorPath {
+                segments,
+                fill,
+                stroke,
+            } => {
+                if segments.is_empty() || (fill.is_none() && stroke.is_none()) {
+                    continue;
+                }
+                let saved = SaveDC(dc);
+                if saved == 0 {
+                    continue;
+                }
+                let brush = fill.map(|c| CreateSolidBrush(rgb(c)));
+                let pen = stroke.map(|c| CreatePen(PS_SOLID, 1, rgb(c)));
+                SelectObject(dc, brush.unwrap_or_else(|| GetStockObject(NULL_BRUSH)) as _);
+                SelectObject(dc, pen.unwrap_or_else(|| GetStockObject(NULL_PEN)) as _);
+                SetPolyFillMode(dc, ALTERNATE);
+                if BeginPath(dc) != 0 {
+                    for segment in segments {
+                        match segment {
+                            crate::PathSegment::Move(p) => {
+                                let p = cv(*p);
+                                MoveToEx(dc, p.x as i32, p.y as i32, null_mut());
+                            }
+                            crate::PathSegment::Line(p) => {
+                                let p = cv(*p);
+                                LineTo(dc, p.x as i32, p.y as i32);
+                            }
+                            crate::PathSegment::Cubic(a, b, c) => {
+                                let points = [*a, *b, *c].map(|p| {
+                                    let p = cv(p);
+                                    POINT {
+                                        x: p.x as i32,
+                                        y: p.y as i32,
+                                    }
+                                });
+                                PolyBezierTo(dc, points.as_ptr(), 3);
+                            }
+                            crate::PathSegment::Close => {
+                                CloseFigure(dc);
+                            }
+                        }
+                    }
+                    if EndPath(dc) != 0 {
+                        if fill.is_some() && stroke.is_some() {
+                            StrokeAndFillPath(dc);
+                        } else if fill.is_some() {
+                            FillPath(dc);
+                        } else {
+                            StrokePath(dc);
+                        }
+                    } else {
+                        AbortPath(dc);
+                    }
+                }
+                RestoreDC(dc, saved);
+                if let Some(brush) = brush {
+                    DeleteObject(brush as _);
+                }
+                if let Some(pen) = pen {
+                    DeleteObject(pen as _);
+                }
             }
             SceneItem::Path {
                 points,
@@ -3663,7 +5467,7 @@ unsafe fn draw_rich_scene(
 }
 
 /// Draw an RGBA raster over the existing destination using premultiplied alpha.
-unsafe fn draw_rgba(
+pub(super) unsafe fn draw_rgba(
     dc: HDC,
     x: f64,
     y: f64,
@@ -3745,13 +5549,195 @@ unsafe fn draw_rgba(
     DeleteDC(memory);
 }
 
+unsafe fn selected_printer_name(handle: HGLOBAL) -> Result<String, String> {
+    use windows_sys::Win32::System::Memory::{GlobalLock, GlobalSize, GlobalUnlock};
+    if handle.is_null() {
+        return Err("Printer identity is unavailable.".into());
+    }
+    let size = GlobalSize(handle);
+    let data = GlobalLock(handle);
+    if data.is_null() {
+        return Err("Could not read printer identity.".into());
+    }
+    let result = (|| {
+        if size < size_of::<DEVNAMES>() {
+            return Err("Invalid printer identity.".into());
+        }
+        let names = &*(data as *const DEVNAMES);
+        let start = usize::from(names.wDeviceOffset);
+        let units = std::slice::from_raw_parts(data as *const u16, size / 2);
+        let rest = units.get(start..).ok_or("Invalid printer name offset.")?;
+        let end = rest
+            .iter()
+            .position(|&value| value == 0)
+            .ok_or("Invalid printer name.")?;
+        String::from_utf16(&rest[..end]).map_err(|error| error.to_string())
+    })();
+    GlobalUnlock(handle);
+    result
+}
+
+unsafe fn printer_profile_key(name: &str, dc: HDC) -> Result<String, String> {
+    let (dx, dy) = (
+        GetDeviceCaps(dc, LOGPIXELSX as i32),
+        GetDeviceCaps(dc, LOGPIXELSY as i32),
+    );
+    let (w, h) = (
+        GetDeviceCaps(dc, PHYSICALWIDTH as i32),
+        GetDeviceCaps(dc, PHYSICALHEIGHT as i32),
+    );
+    if dx <= 0 || dy <= 0 || w <= 0 || h <= 0 {
+        return Err("Printer reported invalid paper dimensions.".into());
+    }
+    let width = (f64::from(w) * 25400.0 / f64::from(dx)).round() as i64;
+    let height = (f64::from(h) * 25400.0 / f64::from(dy)).round() as i64;
+    Ok(format!("{name}/{width}x{height}um"))
+}
+
+unsafe fn calibration_command(hwnd: HWND, id: u16) -> Result<(), String> {
+    if id == TOGGLE_CALIBRATION {
+        STATE.with(|state| {
+            let mut state = state.borrow_mut();
+            let state = state.as_mut().unwrap();
+            state.calibrate_print = !state.calibrate_print;
+        });
+        return Ok(());
+    }
+    if id == CALIBRATION_SHEET {
+        let bytes = label42::calibration_pdf()?;
+        if let Some(path) = dialog(hwnd, true, "pdf", "PDF calibration sheet", "*.pdf") {
+            if !path
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("pdf"))
+            {
+                return Err("Choose a file name ending in .pdf.".into());
+            }
+            suite42_core::write_new(&path, &bytes).map_err(|error| error.to_string())?;
+        }
+        return Ok(());
+    }
+    let mut chooser: PRINTDLGW = zeroed();
+    chooser.lStructSize = size_of::<PRINTDLGW>() as u32;
+    chooser.hwndOwner = hwnd;
+    chooser.Flags = PD_RETURNDC | PD_NOSELECTION | PD_NOPAGENUMS;
+    let accepted = PrintDlgW(&mut chooser) != 0;
+    let name = selected_printer_name(chooser.hDevNames);
+    let key = name
+        .as_ref()
+        .map_err(Clone::clone)
+        .and_then(|name| printer_profile_key(name, chooser.hDC));
+    if !chooser.hDevMode.is_null() {
+        GlobalFree(chooser.hDevMode);
+    }
+    if !chooser.hDevNames.is_null() {
+        GlobalFree(chooser.hDevNames);
+    }
+    if !chooser.hDC.is_null() {
+        DeleteDC(chooser.hDC);
+    }
+    if !accepted {
+        return Ok(());
+    }
+    let (name, key) = (name?, key?);
+    let root = crate::print_calibration::directory()?;
+    let value = crate::print_calibration::load(&root, &key)?.unwrap_or_default();
+    let request = crate::InputRequest {
+        title: "Printer Calibration",
+        fields: vec![
+            (
+                "Measured horizontal 100 mm line (mm)",
+                format!("{:.5}", 100.0 / value.scale_x),
+            ),
+            (
+                "Measured vertical 100 mm line (mm)",
+                format!("{:.5}", 100.0 / value.scale_y),
+            ),
+            (
+                "Horizontal offset (mm, right is positive)",
+                value.offset_x.to_string(),
+            ),
+            (
+                "Vertical offset (mm, down is positive)",
+                value.offset_y.to_string(),
+            ),
+        ],
+    };
+    let Some(fields) = crate::prompt::show(hwnd, &request) else {
+        return Ok(());
+    };
+    let values = fields
+        .iter()
+        .map(|value| {
+            value
+                .trim()
+                .parse::<f64>()
+                .map_err(|_| "Enter measurements in millimetres.".to_string())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let correction = crate::print_calibration::PrintCorrection::measured(
+        values[0], values[1], values[2], values[3],
+    )?;
+    crate::print_calibration::save(&root, &key, correction)?;
+    msg(hwnd, &format!("Calibration saved for {name}. Turn on Use Saved Printer Calibration to apply it when printing."), MB_OK | MB_ICONINFORMATION);
+    Ok(())
+}
+
+unsafe fn apply_rich_print_correction(
+    dc: HDC,
+    correction: crate::print_calibration::PrintCorrection,
+    physical: (i32, i32),
+    dpi: (i32, i32),
+) -> Result<i32, String> {
+    let saved = SaveDC(dc);
+    if saved == 0 {
+        return Err("Could not save print device state.".into());
+    }
+    if correction == crate::print_calibration::PrintCorrection::default() {
+        return Ok(saved);
+    }
+    let (x, y) = correction.device_origin((0, 0), physical, dpi);
+    let transform = XFORM {
+        eM11: correction.scale_x as f32,
+        eM12: 0.0,
+        eM21: 0.0,
+        eM22: correction.scale_y as f32,
+        eDx: x as f32,
+        eDy: y as f32,
+    };
+    if SetGraphicsMode(dc, GM_ADVANCED) == 0 || SetWorldTransform(dc, &transform) == 0 {
+        RestoreDC(dc, saved);
+        return Err("The printer does not support calibrated text output.".into());
+    }
+    Ok(saved)
+}
+
 /// Print explicit page coordinates against the selected printer's physical geometry.
-unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
+pub(super) unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
     use windows_sys::Win32::Storage::Xps::{
         AbortDoc, EndDoc, EndPage, StartDocW, StartPage, DOCINFOW,
     };
     let geometries: Vec<crate::PrintGeometry> = match job {
-        crate::PrintJob::Scenes(pages) => pages.iter().map(|p| p.geometry).collect(),
+        crate::PrintJob::ActualSizePdf(bytes) | crate::PrintJob::FitPdf(bytes) => {
+            let source = crate::pdfium::Document::open(
+                bytes.clone(),
+                &std::sync::atomic::AtomicBool::new(false),
+            )?;
+            (0..source.page_count())
+                .map(|index| {
+                    source.dimensions(index).map(|(w, h)| crate::PrintGeometry {
+                        width_twips: (w * 20.).round() as i32,
+                        height_twips: (h * 20.).round() as i32,
+                        margin_left_twips: 0,
+                        margin_right_twips: 0,
+                        margin_top_twips: 0,
+                        margin_bottom_twips: 0,
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?
+        }
+        crate::PrintJob::Scenes(pages) | crate::PrintJob::ActualSizeScenes(pages) => {
+            pages.iter().map(|p| p.geometry).collect()
+        }
         crate::PrintJob::RichText(g) => vec![g.geometry],
     };
     if geometries.is_empty() || geometries.iter().any(|g| !g.valid()) {
@@ -3760,9 +5746,45 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
     let mut dialog: PRINTDLGW = zeroed();
     dialog.lStructSize = size_of::<PRINTDLGW>() as u32;
     dialog.hwndOwner = hwnd;
-    dialog.Flags = PD_RETURNDC | PD_NOSELECTION | PD_NOPAGENUMS;
+    let pdf_job = matches!(
+        job,
+        crate::PrintJob::ActualSizePdf(_) | crate::PrintJob::FitPdf(_)
+    );
+    if pdf_job {
+        dialog.Flags = PD_RETURNDEFAULT;
+        let _ = PrintDlgW(&mut dialog);
+        // Label PDFs are A4. Change this job's default paper without changing system printer preferences.
+        if matches!(job, crate::PrintJob::ActualSizePdf(_))
+            && geometries.iter().all(|g| {
+                (g.width_twips - 11906).abs() <= 20 && (g.height_twips - 16838).abs() <= 20
+            })
+            && !dialog.hDevMode.is_null()
+            && GlobalSize(dialog.hDevMode) >= size_of::<DEVMODEW>()
+        {
+            let mode = GlobalLock(dialog.hDevMode).cast::<DEVMODEW>();
+            if !mode.is_null() {
+                if (*mode).dmSize as usize >= size_of::<DEVMODEW>() {
+                    (*mode).dmFields = ((*mode).dmFields & !(DM_PAPERLENGTH | DM_PAPERWIDTH))
+                        | DM_PAPERSIZE
+                        | DM_ORIENTATION;
+                    (*mode).Anonymous1.Anonymous1.dmPaperSize = DMPAPER_A4 as i16;
+                    (*mode).Anonymous1.Anonymous1.dmOrientation = DMORIENT_PORTRAIT as i16;
+                }
+                GlobalUnlock(dialog.hDevMode);
+            }
+        }
+        dialog.nMinPage = 1;
+        dialog.nMaxPage = geometries.len() as u16;
+        dialog.nFromPage = 1;
+        dialog.nToPage = dialog.nMaxPage;
+    }
+    dialog.Flags = PD_RETURNDC
+        | PD_NOSELECTION
+        | PD_USEDEVMODECOPIESANDCOLLATE
+        | if pdf_job { 0 } else { PD_NOPAGENUMS };
     dialog.nCopies = 1;
     let accepted = PrintDlgW(&mut dialog) != 0;
+    let printer_name = selected_printer_name(dialog.hDevNames);
     if !dialog.hDevMode.is_null() {
         GlobalFree(dialog.hDevMode);
     }
@@ -3770,6 +5792,10 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
         GlobalFree(dialog.hDevNames);
     }
     if !accepted {
+        let error = CommDlgExtendedError();
+        if error != 0 {
+            return Err(format!("Print dialog failed (Windows code {error})"));
+        }
         return Ok(());
     }
     let dc = dialog.hDC;
@@ -3793,6 +5819,22 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
         DeleteDC(dc);
         return Err("Printer reported invalid dimensions".into());
     }
+    let correction = if STATE.with(|state| state.borrow().as_ref().unwrap().calibrate_print) {
+        let result = printer_name.and_then(|name| {
+            let key = printer_profile_key(&name, dc)?;
+            crate::print_calibration::load(&crate::print_calibration::directory()?, &key)?
+                .ok_or_else(|| "No calibration is saved for this printer and paper. Configure it before enabling calibration.".into())
+        });
+        match result {
+            Ok(correction) => correction,
+            Err(error) => {
+                DeleteDC(dc);
+                return Err(error);
+            }
+        }
+    } else {
+        crate::print_calibration::PrintCorrection::default()
+    };
     let twips = |pixels: i32, dpi: i32| (i64::from(pixels) * 1440 / i64::from(dpi)) as i32;
     let paper = crate::PrintGeometry {
         width_twips: twips(width, dpi_x),
@@ -3819,10 +5861,32 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
         }
         _ => job,
     };
-    let title = wide("Suite42 document");
+    // Keep embedded fonts and PDF resources alive until EndDoc has finished spooling.
+    let pdf_document =
+        if let crate::PrintJob::ActualSizePdf(bytes) | crate::PrintJob::FitPdf(bytes) = job {
+            match crate::pdfium::Document::open(
+                bytes.clone(),
+                &std::sync::atomic::AtomicBool::new(false),
+            ) {
+                Ok(document) => Some(document),
+                Err(error) => {
+                    DeleteDC(dc);
+                    return Err(error);
+                }
+            }
+        } else {
+            None
+        };
+    let title = wide("off42 document");
+    let file_output = wide("FILE:");
     let info = DOCINFOW {
         cbSize: size_of::<DOCINFOW>() as i32,
         lpszDocName: title.as_ptr(),
+        lpszOutput: if dialog.Flags & PD_PRINTTOFILE != 0 {
+            file_output.as_ptr()
+        } else {
+            null()
+        },
         ..zeroed()
     };
     if StartDocW(dc, &info) <= 0 {
@@ -3830,7 +5894,45 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
         return Err("Could not start print job".into());
     }
     let result: Result<(), String> = (|| match job {
-        crate::PrintJob::Scenes(pages) => {
+        crate::PrintJob::ActualSizePdf(_) | crate::PrintJob::FitPdf(_) => {
+            let source = pdf_document
+                .as_ref()
+                .ok_or("PDF print document is unavailable")?;
+            let (first, last) = if dialog.Flags & PD_PAGENUMS != 0 {
+                (dialog.nFromPage as usize, dialog.nToPage as usize)
+            } else {
+                (1, source.page_count())
+            };
+            if first == 0 || last < first || last > source.page_count() {
+                return Err("Invalid PDF print page range".into());
+            }
+            for index in first - 1..last {
+                let (w, h) = source.dimensions(index)?;
+                let destination = crate::pdf_print_layout::destination(
+                    (w, h),
+                    (width, height),
+                    (dpi_x, dpi_y),
+                    (offset_x, offset_y),
+                    matches!(job, crate::PrintJob::FitPdf(_)),
+                    correction,
+                )?;
+                if StartPage(dc) <= 0 {
+                    return Err("Could not start PDF print page".into());
+                }
+                let saved = SaveDC(dc);
+                if saved == 0 {
+                    return Err("Could not save PDF print device state".into());
+                }
+                let painted = source.print_page(index, dc, destination);
+                RestoreDC(dc, saved);
+                painted?;
+                if EndPage(dc) <= 0 {
+                    return Err("Could not finish PDF print page".into());
+                }
+            }
+            Ok(())
+        }
+        crate::PrintJob::Scenes(pages) | crate::PrintJob::ActualSizeScenes(pages) => {
             for page in pages {
                 if StartPage(dc) <= 0 {
                     return Err("Could not start print page".into());
@@ -3858,14 +5960,19 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
                     f64::from(clip_w) * f64::from(dpi_x) / 72.0,
                     f64::from(clip_h) * f64::from(dpi_y) / 72.0,
                 );
-                let (scale, ox, oy) =
-                    crate::fit_print_content(content, (ox, oy), (print_w, print_h));
+                let (scale, ox, oy) = if matches!(job, crate::PrintJob::ActualSizeScenes(_)) {
+                    (1.0, ox, oy)
+                } else {
+                    crate::fit_print_content(content, (ox, oy), (print_w, print_h))
+                };
+                let (ox, oy) =
+                    correction.device_origin((ox, oy), (offset_x, offset_y), (dpi_x, dpi_y));
                 SetMapMode(dc, MM_ANISOTROPIC);
                 SetWindowExtEx(dc, 72_000, 72_000, null_mut());
                 SetViewportExtEx(
                     dc,
-                    (f64::from(dpi_x) * scale * 1000.0).round() as i32,
-                    (f64::from(dpi_y) * scale * 1000.0).round() as i32,
+                    (f64::from(dpi_x) * scale * correction.scale_x * 1000.0).round() as i32,
+                    (f64::from(dpi_y) * scale * correction.scale_y * 1000.0).round() as i32,
                     null_mut(),
                 );
                 SetViewportOrgEx(dc, ox, oy, null_mut());
@@ -3905,6 +6012,12 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
                         if StartPage(dc) <= 0 {
                             return Err("Could not start print page".into());
                         }
+                        let saved = apply_rich_print_correction(
+                            dc,
+                            correction,
+                            (offset_x, offset_y),
+                            (dpi_x, dpi_y),
+                        )?;
                         if crate::rich_print::body(edit, dc, job.geometry, (ox, oy), start) != end {
                             return Err("Print pagination changed while rendering".into());
                         }
@@ -3915,6 +6028,7 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
                             page,
                             pages.len(),
                         )?;
+                        RestoreDC(dc, saved);
                         if EndPage(dc) <= 0 {
                             return Err("Could not finish print page".into());
                         }
@@ -3925,6 +6039,12 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
                         if StartPage(dc) <= 0 {
                             return Err("Could not start print page".into());
                         }
+                        let saved = apply_rich_print_correction(
+                            dc,
+                            correction,
+                            (offset_x, offset_y),
+                            (dpi_x, dpi_y),
+                        )?;
                         crate::rich_notes::draw_page(
                             edit,
                             dc,
@@ -3934,6 +6054,7 @@ unsafe fn print_job(hwnd: HWND, job: &crate::PrintJob) -> Result<(), String> {
                             (ox, oy),
                             (offset_x, offset_y),
                         )?;
+                        RestoreDC(dc, saved);
                         if EndPage(dc) <= 0 {
                             return Err("Could not finish print page".into());
                         }
@@ -3969,26 +6090,35 @@ pub(super) fn grid_snapshot() -> Option<crate::grid::Snapshot> {
     STATE.with(|s| {
         let s = s.borrow();
         let s = s.as_ref()?;
-        let rows = s.grid_cache.as_ref()?.clone();
-        let cols = rows.first().map_or(0, Vec::len);
-        let widths = (0..cols)
-            .map(|c| s.app.grid_column_width(c) as i32)
-            .collect();
-        let heights = (0..rows.len())
-            .map(|r| s.app.grid_row_height(r) as i32)
-            .collect();
-        let labels = (0..rows.len()).map(|r| s.app.grid_row_label(r)).collect();
+        let rows=s.sparse_grid.clone().or_else(||s.grid_cache.clone().and_then(crate::SparseTable::from_dense))?;
+        let cols=rows.columns();
+        let (widths,heights)=s.app.grid_axes().unwrap_or_else(||(
+            crate::GridAxis::new(cols,0,(0..cols).map(|c|(c,s.app.grid_column_width(c))).collect()).unwrap(),
+            crate::GridAxis::new(rows.len(),0,(0..rows.len()).map(|r|(r,s.app.grid_row_height(r))).collect()).unwrap()
+        ));
         Some(crate::grid::Snapshot {
+            identity: s.app.grid_view_identity(),
             rows,
             widths,
             heights,
-            labels,
             selected: s.app.selected_cell(),
             range: s.app.grid_selection(),
             frozen: s.app.grid_frozen_panes(),
             readonly: s.app.text_readonly(),
             clipboard: s.app.grid_clipboard_commands(),
+            choice: s.app.grid_choice_command(),
+            pictures: s.app.grid_pictures(),
         })
+    })
+}
+pub(super) fn grid_row_label(row:usize)->String {
+    STATE.with(|s|s.borrow().as_ref().map_or_else(String::new,|s|s.app.grid_row_label(row)))
+}
+pub(super) fn grid_extend_view(row:usize,col:usize)->bool {
+    STATE.with(|state| {
+        let mut state=state.borrow_mut();let Some(state)=state.as_mut()else{return false};
+        if !state.app.extend_grid_view(row,col){return false}
+        state.sparse_grid=state.app.sparse_table();true
     })
 }
 pub(super) fn grid_style(row: usize, col: usize) -> Option<crate::GridCellStyle> {
@@ -4015,10 +6145,51 @@ pub(super) unsafe fn grid_select(row: usize, col: usize) {
 pub(super) unsafe fn grid_select_range(range: crate::GridRange, focus: (usize, usize)) {
     STATE.with(|s| {
         if let Some(s) = s.borrow_mut().as_mut() {
+            s.app.select_grid_picture(None);
             s.app.select_grid_range_with_focus(range, focus)
         }
     });
     refresh();
+}
+pub(super) unsafe fn grid_select_picture(id: Option<u64>) {
+    STATE.with(|state| {
+        if let Some(state) = state.borrow_mut().as_mut() {
+            state.app.select_grid_picture(id);
+        }
+    });
+    refresh();
+}
+pub(super) unsafe fn grid_move_picture(id: u64, dx: f64, dy: f64) {
+    let (hwnd, result) = STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        let state = state.as_mut().unwrap();
+        (state.hwnd, state.app.move_grid_picture(id, dx, dy))
+    });
+    if let Err(error) = result {
+        msg(hwnd, &error, MB_OK | MB_ICONERROR);
+    }
+    refresh();
+}
+pub(super) unsafe fn grid_picture_command(delete: bool) -> bool {
+    let target = STATE.with(|state| {
+        let state = state.borrow();
+        let state = state.as_ref()?;
+        if !state
+            .app
+            .grid_pictures()
+            .iter()
+            .any(|picture| picture.selected)
+        {
+            return None;
+        }
+        let commands = state.app.grid_picture_commands()?;
+        Some((state.hwnd, if delete { commands.1 } else { commands.0 }))
+    });
+    if let Some((hwnd, id)) = target {
+        command(hwnd, id, 0);
+        return true;
+    }
+    false
 }
 pub(super) unsafe fn grid_resize(row: bool, index: usize, pixels: u16) {
     cancel_pending_open();
@@ -4051,6 +6222,25 @@ pub(super) unsafe fn grid_commit(value: String) -> bool {
         }
         Err(e) => {
             msg(window, &e, MB_OK | MB_ICONERROR);
+            false
+        }
+    }
+}
+
+pub(super) unsafe fn report_event(owner: HWND, id: u16, event: crate::ReportEvent) -> bool {
+    let result = STATE.with(|s| {
+        s.borrow_mut()
+            .as_mut()
+            .ok_or_else(|| "Document is unavailable".to_string())
+            .and_then(|s| s.app.report_event(id, event))
+    });
+    match result {
+        Ok(()) => {
+            refresh();
+            true
+        }
+        Err(error) => {
+            msg(owner, &error, MB_OK | MB_ICONERROR);
             false
         }
     }

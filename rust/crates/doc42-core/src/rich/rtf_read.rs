@@ -425,6 +425,8 @@ impl Reader {
             "deff" => self.default_font = arg.ok_or_else(|| fail("default font"))?,
             "deflang" | "viewkind" | "viewscale" | "nouicompat" | "fet" => {}
             "lang" | "langfe" if self.projection => {}
+            "trgaph"|"trpaddl"|"trpaddr" if self.projection&&matches!(arg,Some(0|10))=>{},
+            "trpaddfl"|"trpaddfr" if self.projection&&arg==Some(3)=>{},
             "cf" | "highlight" => {
                 self.flush()?;
                 let n = usize::try_from(arg.ok_or_else(|| fail("color index"))?)
@@ -876,13 +878,10 @@ fn decode_inner(bytes: &[u8], projection: bool) -> Result<State, Error> {
                     if !r.runs.is_empty() || r.image_pending {
                         return Err(Error::Unsupported("picture mixed with text".into()));
                     }
+                    if !r.in_table { r.flush_table()?; }
                     let start = i - 1;
-                    let end = bytes[i..]
-                        .iter()
-                        .position(|b| *b == b'}')
-                        .map(|n| i + n + 1)
-                        .ok_or_else(|| fail("unterminated picture"))?;
-                    let image = super::rtf_picture::parse(&bytes[start..end], r.next_id)?;
+                    let end = super::rtf_picture::group_end(bytes,start)?;
+                    let image = if r.projection{super::rtf_picture::parse_projection(&bytes[start..end],r.next_id)?}else{super::rtf_picture::parse(&bytes[start..end], r.next_id)?};
                     r.next_id += 1;
                     r.blocks.push(Block::Image(image));
                     r.image_pending = true;
@@ -917,6 +916,12 @@ fn decode_inner(bytes: &[u8], projection: bool) -> Result<State, Error> {
             }
             b'}' => {
                 r.flush()?;
+                // RTF permits the final body paragraph to end at the root brace.
+                // Finish it while its destination and text style are still active.
+                if r.groups.len() == 1 && !r.in_table
+                    && (!r.runs.is_empty() || r.image_pending || r.blocks.is_empty()) {
+                    r.paragraph()?;
+                }
                 let ended = r.groups.pop().ok_or_else(|| fail("unbalanced RTF"))?;
                 if ended.font_table && r.groups.last().is_some_and(|g| !g.font_table) {
                     if let Some(font) = r.fonts.get(&r.default_font) {
@@ -1050,6 +1055,17 @@ fn decode_inner(bytes: &[u8], projection: bool) -> Result<State, Error> {
 mod tests {
     use super::*;
     #[test]
+    fn final_body_paragraph_does_not_require_par_control() {
+        for body in [br"{\rtf1\ansi Board 0007}".as_slice(), br"{\rtf1\ansi First\par Second}", br"{\rtf1\ansi}"] {
+            let doc = RichDocument::decode(body, Format::Rtf).unwrap();
+            let reopened = RichDocument::decode(&doc.encode(Format::Rtf).unwrap(), Format::Rtf).unwrap();
+            assert_eq!(doc.state().blocks, reopened.state().blocks);
+        }
+        let doc = RichDocument::decode(br"{\rtf1\ansi Board 0007}", Format::Rtf).unwrap();
+        let Block::Paragraph(paragraph) = &doc.state().blocks[0] else { panic!("paragraph expected"); };
+        assert_eq!(paragraph.runs.iter().map(|run| run.text.as_str()).collect::<String>(), "Board 0007");
+    }
+    #[test]
     fn font_charsets_decode_bytes_like_richedit_keyboard_layouts() {
         // RichEdit output after typing with Russian, English and Chinese layouts.
         let bytes = br"{\rtf1\ansi\ansicpg1252\deff0\nouicompat{\fonttbl{\f0\fnil\fcharset204 Arial;}{\f1\fnil Arial;}{\f2\fnil\fcharset134 SimSun;}}
@@ -1164,6 +1180,58 @@ mod tests {
         };
         assert_eq!((i.width_twips, i.height_twips), (1440, 720));
         assert_eq!(i.data, vec![137, 80, 78, 71, 13, 10, 26, 10, 0, 0]);
+    }
+    #[test]
+    fn a_picture_after_a_table_retains_body_order_and_guarded_text_edits(){
+        let bytes=br"{\rtf1\ansi Head\par \trowd\cellx2000\cellx4000\pard\intbl Cell\cell Other\cell\row \pard{\pict\pngblip\picwgoal240\pichgoal240 89504e470d0a1a0a0000}\par After\par}";
+        let mut document=RichDocument::decode(bytes,Format::Rtf).unwrap();
+        assert!(matches!(&document.state().blocks[..],[Block::Paragraph(_),Block::Table(_),Block::Image(_),Block::Paragraph(_)]));
+        let before=document.state().clone();
+        let view=String::from_utf8(document.rich_edit_projection().unwrap()).unwrap().replace("After","After \\b typed\\b0 ");
+        document.apply_rich_edit_projection(view.as_bytes(),(0,0)).unwrap();
+        assert!(matches!(&document.state().blocks[..],[Block::Paragraph(_),Block::Table(_),Block::Image(_),Block::Paragraph(_)]));
+        assert_eq!(document.state().blocks[1],before.blocks[1]);assert_eq!(document.state().blocks[2],before.blocks[2]);
+        document.undo();assert_eq!(document.state(),&before);
+    }
+    #[test]
+    fn actual_native_typing_retains_original_picture_bytes_table_and_history(){
+        let mut document=RichDocument::decode(include_bytes!("../../fixtures/native-rich-edit-picture.doc42"),Format::Project).unwrap();
+        let before=document.state().clone();
+        document.apply_rich_edit_projection(include_bytes!("../../fixtures/native-rich-edit-picture.rtf"),(0,0)).unwrap();
+        assert_eq!(document.state().blocks[1],before.blocks[1]);assert_eq!(document.state().blocks[2],before.blocks[2]);
+        assert!(document.state().blocks.iter().any(|block|matches!(block,Block::Paragraph(p)if p.runs.iter().any(|run|run.text.contains("typed")&&run.style.bold))));
+        let after=document.state().clone();document.undo();assert_eq!(document.state(),&before);document.redo();assert_eq!(document.state(),&after);
+    }
+    #[test]
+    fn native_typing_without_outline_metadata_retains_heading_level() {
+        let mut document = RichDocument::decode(
+            br"{\rtf1\ansi\pard\outlinelevel1 Existing heading\par\pard Body\par}",
+            Format::Rtf,
+        ).unwrap();
+        let before = document.state().clone();
+        document.apply_rich_edit_projection(
+            br"{\rtf1\ansi\pard Updated heading\par\pard Body\par}", (4, 4),
+        ).unwrap();
+        assert!(matches!(&document.state().blocks[..], [Block::Paragraph(heading), Block::Paragraph(body)]
+            if heading.style.outline_level == Some(1) && heading.runs[0].text == "Updated heading"
+                && body.style.outline_level.is_none()));
+        assert!(document.undo());
+        assert_eq!(document.state(), &before);
+    }
+    #[test]
+    fn native_projection_refuses_changed_picture_samples_and_nondefault_layout_properties(){
+        let source=include_bytes!("../../fixtures/native-rich-edit-picture.doc42");
+        let projection=include_bytes!("../../fixtures/native-rich-edit-picture.rtf");
+        for altered in[String::from_utf8_lossy(projection).replace("trgaph10","trgaph99"),String::from_utf8_lossy(projection).replace("{\\sn posv}{\\sv 1}","{\\sn posv}{\\sv 2}")]{
+            let mut document=RichDocument::decode(source,Format::Project).unwrap();let before=document.state().clone();
+            assert!(document.apply_rich_edit_projection(altered.as_bytes(),(0,0)).is_err());assert_eq!(document.state(),&before);assert!(!document.can_undo());
+        }
+        let mut parsed=decode_projection(projection).unwrap();
+        let image=parsed.blocks.iter_mut().find_map(|block|match block{Block::Image(image)=>Some(image),_=>None}).unwrap();
+        let mut bytes=Vec::new();use image::ImageEncoder;
+        image::codecs::png::PngEncoder::new(&mut bytes).write_image(&[1,2,3,255].repeat(4),2,2,image::ExtendedColorType::Rgba8).unwrap();image.data=bytes;
+        let altered=super::super::rtf::rtf_export(&parsed).unwrap();let mut document=RichDocument::decode(source,Format::Project).unwrap();let before=document.state().clone();
+        assert!(document.apply_rich_edit_projection(&altered,(0,0)).is_err());assert_eq!(document.state(),&before);assert!(!document.can_undo());
     }
     #[test]
     fn windows_rtf_header_colors_and_codepage() {

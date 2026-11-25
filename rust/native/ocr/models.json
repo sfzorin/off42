@@ -1,0 +1,147 @@
+{
+  "repository": "tesseract-ocr/tessdata_fast",
+  "revision": "87416418657359cb625c412a48b6e1d6d41c29bd",
+  "license_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+  "models": [
+    {
+      "tag": "en",
+      "code": "eng",
+      "name": "English",
+      "bytes": 4113088,
+      "sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"
+    },
+    {
+      "tag": "zh-Hans",
+      "code": "chi_sim",
+      "name": "Chinese (simplified)",
+      "bytes": 2469156,
+      "sha256": "a5fcb6f0db1e1d6d8522f39db4e848f05984669172e584e8d76b6b3141e1f730"
+    },
+    {
+      "tag": "zh-Hant",
+      "code": "chi_tra",
+      "name": "Chinese (traditional)",
+      "bytes": 2366642,
+      "sha256": "529c5b5797d64b126065cd55f2bb4c7fd7b15790798091b1ff259941a829330b"
+    },
+    {
+      "tag": "es",
+      "code": "spa",
+      "name": "Spanish",
+      "bytes": 2294433,
+      "sha256": "6f2e04d02774a18f01bed44b1111f2cd7f3ba7ac9dc4373cd3f898a40ea6b464"
+    },
+    {
+      "tag": "ar",
+      "code": "ara",
+      "name": "Arabic",
+      "bytes": 1432056,
+      "sha256": "e3206d3dc87fd50c24a0fb9f01838615911d25168f4e64415244b67d2bb3e729"
+    },
+    {
+      "tag": "fr",
+      "code": "fra",
+      "name": "French",
+      "bytes": 1130365,
+      "sha256": "ced037562e8c80c13122dece28dd477d399af80911a28791a66a63ac1e3445ca"
+    },
+    {
+      "tag": "pt",
+      "code": "por",
+      "name": "Portuguese",
+      "bytes": 1982756,
+      "sha256": "c4932b937207a9514b7514d518b931a99938c02a28a5a5a553f8599ed58b7deb"
+    },
+    {
+      "tag": "id",
+      "code": "ind",
+      "name": "Indonesian",
+      "bytes": 1122661,
+      "sha256": "69786901da87ab8766c1ea7fbb10b28f2110c14da3f6c8f2735df131fba95d88"
+    },
+    {
+      "tag": "ru",
+      "code": "rus",
+      "name": "Russian",
+      "bytes": 3861738,
+      "sha256": "e16e5e036cce1d9ec2b00063cf8b54472625b9e14d893a169e2b0dedeb4df225"
+    },
+    {
+      "tag": "de",
+      "code": "deu",
+      "name": "German",
+      "bytes": 1525436,
+      "sha256": "19d219bbb6672c869d20a9636c6816a81eb9a71796cb93ebe0cb1530e2cdb22d"
+    },
+    {
+      "tag": "ja",
+      "code": "jpn",
+      "name": "Japanese",
+      "bytes": 2471260,
+      "sha256": "1f5de9236d2e85f5fdf4b3c500f2d4926f8d9449f28f5394472d9e8d83b91b4d"
+    },
+    {
+      "tag": "vi",
+      "code": "vie",
+      "name": "Vietnamese",
+      "bytes": 531275,
+      "sha256": "79df64caf7bcfb2a27df5042ecb6121e196eada34da774956995747636d5bfa1"
+    },
+    {
+      "tag": "tr",
+      "code": "tur",
+      "name": "Turkish",
+      "bytes": 4550554,
+      "sha256": "7393381111e1152420fc4092cb44eef4237580d21b92bf30d7d221aad192c6b7"
+    },
+    {
+      "tag": "fil",
+      "code": "fil",
+      "name": "Filipino",
+      "bytes": 1841715,
+      "sha256": "2b17f68014ab44b88b5e2334ebcd0ce0090d9af7c6fbef6fab22e0bbd9a934dd"
+    },
+    {
+      "tag": "ko",
+      "code": "kor",
+      "name": "Korean",
+      "bytes": 1677415,
+      "sha256": "6b85e11d9bbf07863b97b3523b1b112844c43e713df8b66418a081fd1060b3b2"
+    },
+    {
+      "tag": "th",
+      "code": "tha",
+      "name": "Thai",
+      "bytes": 1072600,
+      "sha256": "294227cc2d1292b0acb28d61d4115c88252b96d466ca90b417cf4cf0c67bf07c"
+    },
+    {
+      "tag": "it",
+      "code": "ita",
+      "name": "Italian",
+      "bytes": 2701314,
+      "sha256": "b8f89e1e785118dac4d51ae042c029a64edb5c3ee42ef73027a6d412748d8827"
+    },
+    {
+      "tag": "pl",
+      "code": "pol",
+      "name": "Polish",
+      "bytes": 4765518,
+      "sha256": "c4476cdbc0e33d898d32345122b7be1cbf85ace15f920f06c7714756e1ef79b2"
+    },
+    {
+      "tag": "ms",
+      "code": "msa",
+      "name": "Malay",
+      "bytes": 1747801,
+      "sha256": "e41a3e5febfec50c90371eb1cbb17a48b10cad387900e3420b1f134c1b766cba"
+    },
+    {
+      "tag": "hu",
+      "code": "hun",
+      "name": "Hungarian",
+      "bytes": 5296273,
+      "sha256": "35067e7cfe102dcdc953f9a758fdfaa6296b17a1ee6d874ee780fa306430b9fb"
+    }
+  ]
+}

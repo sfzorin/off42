@@ -1,5 +1,7 @@
 //! Portable raster editor with bounded codecs and versioned image snapshots.
 mod exif_metadata;
+mod recovery;
+mod smart_lasso;
 use image::{ImageFormat, ImageReader, Limits};
 use std::{
     fmt,
@@ -234,6 +236,15 @@ pub enum AnimationLoop {
     Infinite,
 }
 pub struct SaveState(Raster);
+/// Immutable rendered pixels for background analysis; no encoding or document edit is involved.
+#[derive(Clone)]
+pub struct ImageSnapshot(Raster);
+impl ImageSnapshot {
+    pub fn width(&self) -> u32 { self.0.width }
+    pub fn height(&self) -> u32 { self.0.height }
+    pub fn pixels(&self) -> &[u8] { &self.0.pixels }
+}
+
 
 pub struct ImageDocument {
     exif: Option<exif_metadata::Metadata>,
@@ -1149,6 +1160,15 @@ impl ImageDocument {
     pub fn pixels(&self) -> &[u8] {
         &self.current.pixels
     }
+    pub fn refine_lasso(&self, trace: &[(u32, u32)], radius: f64) -> Option<Vec<(u32, u32)>> {
+        smart_lasso::refine(self, trace, radius)
+    }
+    pub fn capture_image(&self) -> ImageSnapshot { ImageSnapshot(self.current.clone()) }
+    pub fn matches_image(&self, source: &ImageSnapshot) -> bool {
+        self.current.width == source.0.width && self.current.height == source.0.height
+            && std::sync::Arc::ptr_eq(&self.current.pixels, &source.0.pixels)
+    }
+
     pub fn can_undo(&self) -> bool {
         !self.undo.is_empty()
     }
@@ -1657,6 +1677,60 @@ impl ImageDocument {
         self.apply_raster(Raster::new(self.width(), self.height(), pixels)?);
         Ok(())
     }
+    pub fn place_mark(
+        &mut self,
+        source_width: u32,
+        source_height: u32,
+        rgba: &[u8],
+        rect: [u32; 4],
+    ) -> Result<(), Error> {
+        let [x, y, width, height] = rect;
+        if source_width == 0
+            || source_height == 0
+            || u64::from(source_width) * u64::from(source_height) > 4_000_000
+            || rgba.len() as u64 != u64::from(source_width) * u64::from(source_height) * 4
+            || width == 0
+            || height == 0
+            || x.checked_add(width).is_none_or(|end| end > self.width())
+            || y.checked_add(height).is_none_or(|end| end > self.height())
+        {
+            return Err(Error::InvalidImage);
+        }
+        let source = image::RgbaImage::from_raw(source_width, source_height, rgba.to_vec())
+            .ok_or(Error::InvalidImage)?;
+        let next = if let Some(pixels) = &self.current.pixels16 {
+            let source = image::DynamicImage::ImageRgba8(source).into_rgba16();
+            let mark = image::imageops::resize(
+                &source,
+                width,
+                height,
+                image::imageops::FilterType::Triangle,
+            );
+            let mut canvas = image::ImageBuffer::<image::Rgba<u16>, Vec<u16>>::from_raw(
+                self.width(),
+                self.height(),
+                pixels.to_vec(),
+            )
+            .ok_or(Error::InvalidImage)?;
+            image::imageops::overlay(&mut canvas, &mark, i64::from(x), i64::from(y));
+            Raster::new16(self.width(), self.height(), canvas.into_raw())?
+        } else {
+            let mark = image::imageops::resize(
+                &source,
+                width,
+                height,
+                image::imageops::FilterType::Triangle,
+            );
+            let mut canvas =
+                image::RgbaImage::from_raw(self.width(), self.height(), self.pixels().to_vec())
+                    .ok_or(Error::InvalidImage)?;
+            image::imageops::overlay(&mut canvas, &mark, i64::from(x), i64::from(y));
+            Raster::new(self.width(), self.height(), canvas.into_raw())?
+        };
+        self.apply_raster(next);
+        Ok(())
+    }
+
     pub fn rotate_cw(&mut self) -> Result<(), Error> {
         self.rotate(6)
     }
@@ -2774,5 +2848,38 @@ mod tests {
                 if orientation >= 5 { (2, 3) } else { (3, 2) }
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod mark_tests {
+    use super::*;
+
+    #[test]
+    fn translucent_marks_preserve_untouched_16bit_samples_and_history() {
+        let original = Raster::new16(
+            2,
+            1,
+            vec![12345, 23456, 34567, 65535, 65535, 65535, 65535, 65535],
+        )
+        .unwrap();
+        let mut document = ImageDocument::from_rgba(2, 1, vec![255; 8], Some((300, 300))).unwrap();
+        document.current = original.clone();
+        document.saved = original.clone();
+        document
+            .place_mark(1, 1, &[255, 0, 0, 128], [1, 0, 1, 1])
+            .unwrap();
+        let high = document.current.pixels16.as_ref().unwrap();
+        assert_eq!(&high[..4], &original.pixels16.as_ref().unwrap()[..4]);
+        assert_eq!(high[4], 65535);
+        assert!(high[5] > 32000 && high[5] < 33000);
+        assert!(document.undo());
+        assert!(document.current == original);
+        assert!(document.redo());
+        let saved = document.current.clone();
+        assert!(document
+            .place_mark(1, 1, &[255, 0, 0, 128], [2, 0, 1, 1])
+            .is_err());
+        assert!(document.current == saved);
     }
 }

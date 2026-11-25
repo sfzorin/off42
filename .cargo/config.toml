@@ -1,0 +1,4 @@
+# Keep installed Windows apps independent of the Visual C++ Redistributable.
+# Use an explicit --target so host build scripts/proc macros keep their own flags.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

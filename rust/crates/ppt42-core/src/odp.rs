@@ -1,5 +1,7 @@
 //! OpenDocument Presentation package adapter for the supported slide object subset.
 use super::*;
+mod visibility;
+mod notes;
 use std::io::{Cursor, Read, Write};
 use std::{
     collections::{HashMap, HashSet},
@@ -14,12 +16,17 @@ struct ObjectSource {
     writable_cells: Vec<Vec<bool>>,
     text_editable: bool,
     rich_safe: bool,
+    outline_role: Option<OutlineRole>,
 }
 struct PageSource {
     slide_id: u64,
     objects: Vec<ObjectSource>,
     timing: SlideTiming,
     timing_editable: bool,
+    hidden: bool,
+    visibility_editable: bool,
+    notes: String,
+    notes_editable: bool,
 }
 pub struct Source {
     bytes: Vec<u8>,
@@ -27,11 +34,21 @@ pub struct Source {
     size_points: Option<(f64, f64)>,
 }
 impl Source {
+    pub fn outline_role(&self, slide: u64, object: u64) -> Option<OutlineRole> {
+        self.pages.iter().find(|entry| entry.slide_id == slide)?
+            .objects.iter().find(|entry| entry.object_id == object)?.outline_role
+    }
     pub fn can_edit_timing(&self, slide: u64) -> bool {
         self.pages
             .iter()
             .find(|p| p.slide_id == slide)
             .is_none_or(|p| p.timing_editable)
+    }
+    pub fn can_edit_visibility(&self, slide: u64) -> bool {
+        self.pages.iter().find(|p| p.slide_id == slide).is_none_or(|p| p.visibility_editable)
+    }
+    pub fn can_edit_notes(&self, slide: u64) -> bool {
+        self.pages.iter().find(|page| page.slide_id == slide).is_none_or(|page| page.notes_editable)
     }
     pub fn can_edit_rich(&self, slide: u64, object: u64) -> bool {
         self.pages
@@ -198,7 +215,7 @@ fn parse_timing(
         duration_ms,
     })
 }
-fn timing_style(name: &str, timing: SlideTiming) -> Result<String, String> {
+fn timing_style(name: &str, timing: SlideTiming, hidden: bool) -> Result<String, String> {
     let speed = match timing.duration_ms {
         250 => "fast",
         500 => "medium",
@@ -223,7 +240,8 @@ fn timing_style(name: &str, timing: SlideTiming) -> Result<String, String> {
         Transition::PushLeft => " smil:type=\"pushWipe\" smil:subtype=\"fromRight\"",
         Transition::Fade => " smil:type=\"fade\" smil:subtype=\"crossfade\"",
     };
-    Ok(format!("<style:style xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:presentation=\"urn:oasis:names:tc:opendocument:xmlns:presentation:1.0\" xmlns:smil=\"urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0\" style:name=\"{name}\" style:family=\"drawing-page\"><style:drawing-page-properties presentation:transition-speed=\"{speed}\"{advance}{transition}/></style:style>"))
+    let visibility = if hidden { " presentation:visibility=\"hidden\"" } else { "" };
+    Ok(format!("<style:style xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:presentation=\"urn:oasis:names:tc:opendocument:xmlns:presentation:1.0\" xmlns:smil=\"urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0\" style:name=\"{name}\" style:family=\"drawing-page\"><style:drawing-page-properties presentation:transition-speed=\"{speed}\"{advance}{transition}{visibility}/></style:style>"))
 }
 fn timing_name(xml: &str, slide_id: u64) -> Result<String, String> {
     (0..10000)
@@ -549,6 +567,11 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
     let content = zip_read(&mut z, "content.xml")?;
     let xml = std::str::from_utf8(&content).map_err(|e| e.to_string())?;
     let tree = roxmltree::Document::parse(xml).map_err(|e| e.to_string())?;
+    let styles = zip_read(&mut z, "styles.xml").ok();
+    let common = styles
+        .as_deref()
+        .and_then(|bytes| std::str::from_utf8(bytes).ok())
+        .and_then(|text| roxmltree::Document::parse(text).ok());
     let pages = tree
         .descendants()
         .filter(|n| {
@@ -570,6 +593,9 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
         let parsed_timing = parse_timing(*page, &tree);
         let timing = parsed_timing.unwrap_or_default();
         deck.set_timing(timing)?;
+        let (hidden, visibility_editable) = visibility::read(*page, common.as_ref());
+        deck.set_hidden(hidden)?;
+        let (notes, notes_editable) = notes::read(*page);
         let style_safe = attr(*page, "style-name").is_none_or(|name| {
             tree.descendants()
                 .find(|n| {
@@ -591,6 +617,7 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
                                         | "type"
                                         | "subtype"
                                         | "direction"
+                                        | "visibility"
                                 )
                             })
                     })
@@ -620,8 +647,9 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
                 continue;
             }
             let name = node.tag_name().name();
+            let preset = if name == "custom-shape" { match read_preset(node) { Ok(Some(p)) => Some(p), _ => continue } } else { None };
             let (kind, media, cells) = match name {
-                "rect" => (ObjectKind::Rectangle, Vec::new(), Vec::new()),
+                "rect" | "custom-shape" => (ObjectKind::Rectangle, Vec::new(), Vec::new()),
                 "ellipse" => (ObjectKind::Ellipse, Vec::new(), Vec::new()),
                 "line" => (ObjectKind::Line, Vec::new(), Vec::new()),
                 "frame" => {
@@ -741,6 +769,7 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
                 let id = *group_ids.entry(group.range().start).or_insert(object.id);
                 object.group_id = Some(id);
             }
+            object.preset = preset;
             object.x = x;
             object.y = y;
             object.width = width;
@@ -881,6 +910,12 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
                 text_editable,
                 rich_safe: !matches!(object.kind, ObjectKind::Picture | ObjectKind::Table)
                     && rich_edit_safe(node, &tree),
+                outline_role: node.attribute(("urn:oasis:names:tc:opendocument:xmlns:presentation:1.0", "class"))
+                    .map(|kind| match kind {
+                        "title" => OutlineRole::Title,
+                        "date-time" | "footer" | "header" | "page-number" => OutlineRole::Footer,
+                        _ => OutlineRole::Body,
+                    }),
             });
         }
         source_pages.push(PageSource {
@@ -888,13 +923,24 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
             objects: source_objects,
             timing,
             timing_editable: parsed_timing.is_some() && style_safe,
+            hidden,
+            visibility_editable,
+            notes,
+            notes_editable,
         });
+    }
+    for (index, page) in source_pages.iter_mut().enumerate().filter(|(_, page)| !page.notes.is_empty()) {
+        deck.select(index)?;
+        if deck.set_notes(&page.notes).is_err() {
+            page.notes.clear();
+            page.notes_editable = false;
+        }
     }
     deck.select(0)?;
     let state = deck.history.snapshot();
     deck.history = SnapshotHistory::new(state, HISTORY_LIMIT);
     let mut sizes = Vec::new();
-    for data in [Some(content.clone()), zip_read(&mut z, "styles.xml").ok()]
+    for data in [Some(content.clone()), styles]
         .into_iter()
         .flatten()
     {
@@ -941,7 +987,7 @@ pub fn export(deck: &Presentation) -> Result<Vec<u8>, String> {
     let mut media: Vec<(String, Vec<u8>, &str)> = Vec::new();
     for (si, slide) in deck.slides().iter().enumerate() {
         let timing_name = format!("suite42_page_{si}");
-        styles.push_str(&timing_style(&timing_name, slide.timing)?);
+        styles.push_str(&timing_style(&timing_name, slide.timing, slide.hidden)?);
         pages.push_str(&format!(
             "<draw:page draw:name=\"Slide {}\" draw:style-name=\"{}\" draw:master-page-name=\"Default\">",
             si + 1, timing_name
@@ -971,6 +1017,10 @@ pub fn export(deck: &Presentation) -> Result<Vec<u8>, String> {
             let geo = format!("draw:style-name=\"{name}\" {}", geometry_attrs(o));
             match o.kind {
                 ObjectKind::Rectangle | ObjectKind::Ellipse => {
+                    if let Some(preset) = &o.preset {
+                        target.push_str(&format!("<draw:custom-shape {geo}>{object_text}{}</draw:custom-shape>", preset_xml(preset, o.width, o.height)));
+                        continue;
+                    }
                     let tag = if o.kind == ObjectKind::Rectangle {
                         "rect"
                     } else {
@@ -1035,11 +1085,12 @@ pub fn export(deck: &Presentation) -> Result<Vec<u8>, String> {
                 pages.push_str(&format!("<draw:frame svg:x=\"35pt\" svg:y=\"{}pt\" svg:width=\"650pt\" svg:height=\"50pt\"><draw:text-box>{}</draw:text-box></draw:frame>",30+j*55,text(value)));
             }
         }
+        pages.push_str(&notes::generate(&slide.notes));
         pages.push_str("</draw:page>");
     }
     let ns="xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\" xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\" xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\" xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:svg=\"urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"";
     let content=format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><office:document-content {ns} office:version=\"1.2\"><office:automatic-styles>{styles}</office:automatic-styles><office:body><office:presentation>{pages}</office:presentation></office:body></office:document-content>");
-    let styles_doc=format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><office:document-styles {ns} xmlns:fo=\"urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0\" office:version=\"1.2\"><office:automatic-styles><style:page-layout style:name=\"pm1\"><style:page-layout-properties fo:page-width=\"10in\" fo:page-height=\"5.625in\" style:print-orientation=\"landscape\"/></style:page-layout></office:automatic-styles><office:master-styles><style:master-page style:name=\"Default\" style:page-layout-name=\"pm1\"/></office:master-styles></office:document-styles>");
+    let styles_doc=format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><office:document-styles {ns} xmlns:fo=\"urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0\" office:version=\"1.2\"><office:styles/><office:automatic-styles><style:page-layout style:name=\"pm1\"><style:page-layout-properties fo:page-width=\"10in\" fo:page-height=\"5.625in\" style:print-orientation=\"landscape\"/></style:page-layout></office:automatic-styles><office:master-styles><style:master-page style:name=\"Default\" style:page-layout-name=\"pm1\"/></office:master-styles></office:document-styles>");
     let mut manifest=String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?><manifest:manifest xmlns:manifest=\"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0\" manifest:version=\"1.2\"><manifest:file-entry manifest:full-path=\"/\" manifest:media-type=\"application/vnd.oasis.opendocument.presentation\"/><manifest:file-entry manifest:full-path=\"content.xml\" manifest:media-type=\"text/xml\"/><manifest:file-entry manifest:full-path=\"styles.xml\" manifest:media-type=\"text/xml\"/>");
     for (path, _, mime) in &media {
         manifest.push_str(&format!(
@@ -1537,7 +1588,8 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
                 .map(|v| format!(" draw:master-page-name=\"{}\"", esc(v)))
                 .unwrap_or_default();
             let timing_name = timing_name(original, slide.id)?;
-            extra_styles.push_str(&timing_style(&timing_name, slide.timing)?);
+            extra_styles.push_str(&timing_style(&timing_name, slide.timing, slide.hidden)?);
+            added.push_str(&notes::generate(&slide.notes));
             rendered_pages.push(format!("<draw:page xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\" draw:name=\"Suite42 {}\" draw:style-name=\"{timing_name}\"{master}>{added}</draw:page>",slide.id));
             continue;
         };
@@ -1545,28 +1597,25 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
         let page_node = source_nodes[index];
         let base = page_node.range().start;
         let mut patches = Vec::new();
-        if slide.timing != page.timing {
-            if !page.timing_editable {
+        let timing_changed = slide.timing != page.timing;
+        let visibility_changed = slide.hidden != page.hidden;
+        if timing_changed || visibility_changed {
+            if timing_changed && !page.timing_editable {
                 return Err("This ODP page style cannot be safely edited".into());
             }
-            let timing_name = timing_name(original, slide.id)?;
-            extra_styles.push_str(&timing_style(&timing_name, slide.timing)?);
-            if attr(page_node, "style-name").is_some() {
-                patch_attr(page_node, "style-name", timing_name, original, &mut patches)?;
+            if visibility_changed && !page.visibility_editable {
+                return Err("This ODP slide visibility cannot be safely edited".into());
+            }
+            let name = timing_name(original, slide.id)?;
+            let style = if timing_changed {
+                timing_style(&name, slide.timing, slide.hidden)?
             } else {
-                let start = page_node.range().start;
-                let end = original[start..].find('>').ok_or("Invalid ODP page")? + start;
-                let at = if original.as_bytes().get(end.wrapping_sub(1)) == Some(&b'/') {
-                    end - 1
-                } else {
-                    end
-                };
-                let ns = match page_node.lookup_namespace_uri(Some("draw")) {
-                    Some("urn:oasis:names:tc:opendocument:xmlns:drawing:1.0") => "",
-                    None => " xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\"",
-                    Some(_) => return Err("ODP draw namespace is incompatible".into()),
-                };
-                patches.push((at..at, format!("{ns} draw:style-name=\"{timing_name}\"")));
+                visibility::override_style(page_node, &name, slide.hidden, original)?
+            };
+            extra_styles.push_str(&style);
+            visibility::set_reference(page_node, &name, original, &mut patches)?;
+            if visibility_changed && !slide.hidden {
+                visibility::remove_legacy_hidden(page_node, &mut patches);
             }
         }
         if slide.id != page.slide_id && attr(page_node, "name").is_some() {
@@ -1612,6 +1661,11 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
                 || object.media != item.original.media
             {
                 return Err("Saving this ODP object formatting is not supported yet".into());
+            }
+            if object.preset != item.original.preset || (object.preset.is_some() && (object.width != item.original.width || object.height != item.original.height)) {
+                let geom = node.children().find(|n| n.is_element() && n.tag_name().name() == "enhanced-geometry").ok_or("ODP preset geometry missing")?;
+                let preset = object.preset.as_ref().ok_or("Cannot remove an ODP preset geometry")?;
+                patches.push((geom.range(), preset_xml(preset, object.width, object.height)));
             }
             if matches!(object.kind, ObjectKind::Line) {
                 let transformed = attr(node, "transform").is_some();
@@ -1811,6 +1865,12 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
                 }
             }
         }
+        if slide.notes != page.notes {
+            if !page.notes_editable {
+                return Err("This ODP speaker-notes layout cannot be safely edited".into());
+            }
+            added.push_str(&notes::patch(page_node, &slide.notes, original, &mut patches)?);
+        }
         patches.sort_by_key(|(r, _)| std::cmp::Reverse(r.start));
         let mut content = original[page_node.range()].to_owned();
         for (r, v) in patches {
@@ -1832,8 +1892,9 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
     if !extra_styles.is_empty() {
         let parsed = roxmltree::Document::parse(&content).map_err(|e| e.to_string())?;
         if let Some(styles) = parsed
-            .descendants()
-            .find(|n| n.is_element() && n.tag_name().name() == "automatic-styles")
+            .root_element()
+            .children()
+            .find(|n| n.has_tag_name(("urn:oasis:names:tc:opendocument:xmlns:office:1.0", "automatic-styles")))
         {
             let range = styles.range();
             drop(parsed);
@@ -1850,7 +1911,7 @@ pub fn export_overlay(deck: &Presentation, source: &Source) -> Result<Vec<u8>, S
             drop(parsed);
             content.insert_str(
                 body,
-                &format!("<office:automatic-styles>{extra_styles}</office:automatic-styles>"),
+                &format!("<office:automatic-styles xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\">{extra_styles}</office:automatic-styles>"),
             );
         }
     }
@@ -2043,6 +2104,9 @@ fn appended_object(
     let geo = format!("{ns} draw:style-name=\"{name}\" {}", geometry_attrs(o));
     Ok(match o.kind {
         ObjectKind::Rectangle | ObjectKind::Ellipse => {
+            if let Some(preset) = &o.preset {
+                return Ok(format!("<draw:custom-shape {geo}>{object_text}{}</draw:custom-shape>", preset_xml(preset, o.width, o.height)));
+            }
             let tag = if o.kind == ObjectKind::Rectangle {
                 "rect"
             } else {
@@ -2094,4 +2158,83 @@ fn appended_object(
             result
         }
     })
+}
+
+fn read_preset(node: roxmltree::Node<'_, '_>) -> Result<Option<geometry::Preset>, String> {
+    let Some(geo) = node
+        .children()
+        .find(|n| n.is_element() && n.tag_name().name() == "enhanced-geometry")
+    else {
+        return Ok(None);
+    };
+    let kind = attr(geo, "type").unwrap_or("");
+    let Some(name) = kind.strip_prefix("ooxml-") else {
+        return Ok(None);
+    };
+    if ["mirror-horizontal", "mirror-vertical"]
+        .iter()
+        .any(|key| matches!(attr(geo, key), Some("true" | "1")))
+    {
+        return Err("Mirrored preset unsupported".into());
+    }
+    let mut preset = geometry::Preset::new(name)?;
+    if let Some(exact) = geo.attribute(("urn:sfzorin:ppt42", "adjust")) {
+        for kv in exact.split(';').filter(|s| !s.is_empty()) {
+            let (name, v) = kv.split_once('=').ok_or("Invalid preset adjustment")?;
+            let value = v.parse().map_err(|_| "Invalid preset adjustment value")?;
+            if preset.adjustments.insert(name.into(), value).is_some() || !preset.valid() {
+                return Err("Invalid preset adjustments".into());
+            }
+        }
+    } else if let Some(mods) = attr(geo, "modifiers") {
+        let def = geometry::definition(name).ok_or("Unknown preset")?;
+        let values = mods.split_whitespace().collect::<Vec<_>>();
+        if values.len() > def.adjustments.len() {
+            return Err("Too many preset modifiers".into());
+        }
+        for ((name, _), value) in def.adjustments.iter().zip(values) {
+            let value: f64 = value.parse().map_err(|_| "Invalid preset modifier")?;
+            if !value.is_finite() || value < i32::MIN as f64 || value > i32::MAX as f64 {
+                return Err("Invalid preset modifier".into());
+            }
+            preset.adjustments.insert(name.clone(), value as i32);
+        }
+    }
+    Ok(Some(preset))
+}
+fn preset_xml(preset: &geometry::Preset, width: f64, height: f64) -> String {
+    use geometry::Segment;
+    let mut path = String::new();
+    let point = |p: geometry::Point| format!("{:.3} {:.3}", p.x * 100.0, p.y * 100.0);
+    for sub in preset.paths(width, height) {
+        for s in sub.segments {
+            path.push_str(&match s {
+                Segment::Move(p) => format!("M {} ", point(p)),
+                Segment::Line(p) => format!("L {} ", point(p)),
+                Segment::Cubic(a, b, c) => format!("C {} {} {} ", point(a), point(b), point(c)),
+                Segment::Close => "Z ".into(),
+            });
+        }
+        if sub.fill == geometry::Fill::None {
+            path.push_str("F ");
+        }
+        if !sub.stroke {
+            path.push_str("S ");
+        }
+        path.push_str("N ");
+    }
+    let def = geometry::definition(&preset.name).expect("Validated preset");
+    let modifiers = def
+        .adjustment_values(preset)
+        .iter()
+        .map(|v| format!("{v:.0}"))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let exact = preset
+        .adjustments
+        .iter()
+        .map(|(k, v)| format!("{k}={v}"))
+        .collect::<Vec<_>>()
+        .join(";");
+    format!("<draw:enhanced-geometry xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\" xmlns:svg=\"urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0\" xmlns:ppt42=\"urn:sfzorin:ppt42\" svg:viewBox=\"0 0 {:.3} {:.3}\" draw:type=\"ooxml-{}\" draw:modifiers=\"{modifiers}\" ppt42:prst=\"{}\" ppt42:adjust=\"{exact}\" draw:enhanced-path=\"{path}\"/>", width * 100.0, height * 100.0, preset.name, preset.name)
 }

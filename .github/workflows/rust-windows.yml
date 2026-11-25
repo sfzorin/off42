@@ -1,14 +1,59 @@
 name: Rust Windows
 on:
   push:
+    branches: ['main']
     tags: ['v*-windows-preview.*']
-    paths: ['rust/**', '.github/workflows/rust-windows.yml']
+    paths: ['rust/**', '.cargo/config.toml', '.github/workflows/rust-windows.yml']
   pull_request:
-    paths: ['rust/**', '.github/workflows/rust-windows.yml']
+    paths: ['rust/**', '.cargo/config.toml', '.github/workflows/rust-windows.yml']
   workflow_dispatch:
+    inputs:
+      quick_ui:
+        description: Build debug apps; with audit_only run focused OCR audits; never publishes a release
+        type: boolean
+        default: false
+      audit_languages:
+        description: Verify the twenty interface languages on a compatible build
+        type: boolean
+        default: false
+      audit_pages:
+        description: Verify PDF extraction and split exports on a compatible build
+        type: boolean
+        default: false
+      audit_host_commands:
+        description: Verify crop and drawing commands are separate from Save As
+        type: boolean
+        default: false
+      audit_engineering:
+        description: Verify engineering formulas through native editing and XLSX export
+        type: boolean
+        default: false
+      audit_only:
+        description: Run native GUI audits against the current Windows preview
+        type: boolean
+        default: false
+      audit_run_id:
+        description: Optional build run ID for native audits; empty audits the public preview
+        type: string
+        default: ''
+      audit_pictures:
+        description: Include spreadsheet picture UI checks on a compatible build artifact
+        type: boolean
+        default: false
+      audit_technical:
+        description: Include technical object insertion and editing checks on a compatible build artifact
+        type: boolean
+        default: false
+      audit_labels:
+        description: Include DOC table labels and remembered label settings on a compatible build
+        type: boolean
+        default: false
 jobs:
   windows:
+    if: inputs.audit_only != true
     runs-on: windows-latest
+    env:
+      CARGO_BUILD_TARGET: x86_64-pc-windows-msvc
     defaults:
       run:
         working-directory: rust
@@ -16,33 +61,82 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: ilammy/msvc-dev-cmd@v1
+      - uses: actions/cache/restore@v4
+        if: inputs.quick_ui == true
+        id: debug-cache
+        with:
+          path: |
+            ~/.cargo/registry
+            rust/target/debug
+            rust/target/x86_64-pc-windows-msvc/debug
+          key: windows-native-static-debug-${{ hashFiles('rust/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: windows-native-static-debug-${{ hashFiles('rust/Cargo.lock') }}-
+      - uses: actions/cache@v4
+        id: ocr-cache
+        with:
+          path: |
+            rust/build/ocr-sdk/lib
+            rust/build/ocr-sdk/licenses
+          key: windows-static-ocr-${{ hashFiles('rust/native/ocr/vcpkg.json', 'rust/native/ocr/CMakeLists.txt', 'rust/native/ocr/init.cpp', 'rust/scripts/build-ocr.ps1') }}
+      - name: Build pinned static OCR engine
+        if: steps.ocr-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: ./scripts/build-ocr.ps1
+      - name: Locate static OCR SDK
+        shell: pwsh
+        run: |
+          "OFF42_OCR_SDK=$((Resolve-Path build/ocr-sdk).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - uses: actions/cache@v4
+        with:
+          path: rust/build/off42/ocr
+          key: windows-ocr-models-${{ hashFiles('rust/native/ocr/models.json') }}
+      - name: Stage verified offline OCR models
+        shell: pwsh
+        run: |
+          python scripts/fetch-ocr-models.py build/off42
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "OFF42_OCR_DATA=$((Resolve-Path build/off42/ocr/tessdata).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force build/native-ui | Out-Null
+          "OFF42_AUDIT_OUTPUT=$((Resolve-Path build/native-ui).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Provision pinned PDFium for file-engine tests
+        if: inputs.quick_ui != true
         shell: pwsh
         run: |
           python scripts/fetch-pdfium.py build/test-pdfium
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          New-Item -ItemType Directory -Force target/debug/deps | Out-Null
-          Copy-Item build/test-pdfium/pdfium.dll target/debug/deps/pdfium.dll
+          New-Item -ItemType Directory -Force target/x86_64-pc-windows-msvc/debug/deps | Out-Null
+          Copy-Item build/test-pdfium/pdfium.dll target/x86_64-pc-windows-msvc/debug/deps/pdfium.dll
       - run: cargo test --locked --workspace
-      - name: Build six native executables with Windows visual styles
+        if: inputs.quick_ui != true
+      - name: Build six native executables
+        id: build
         shell: pwsh
+        env:
+          QUICK_UI: ${{ inputs.quick_ui }}
         run: |
+          if ($env:QUICK_UI -eq 'true') {
+            cargo build --locked -p img42 -p doc42 -p xls42 -p ppt42 -p pdf42 -p scn42
+            exit $LASTEXITCODE
+          }
           Push-Location scripts
           rc.exe /fo windows-app.res windows-app.rc
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Pop-Location
-          $env:RUSTFLAGS = "-C link-arg=$((Resolve-Path scripts/windows-app.res).Path)"
+          $env:RUSTFLAGS = "-C target-feature=+crt-static -C link-arg=$((Resolve-Path scripts/windows-app.res).Path)"
           cargo build --locked --release -p img42 -p doc42 -p xls42 -p ppt42 -p pdf42 -p scn42
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Stage PDFium runtime and licenses
         shell: pwsh
+        env:
+          QUICK_UI: ${{ inputs.quick_ui }}
         run: |
+          $profile = if ($env:QUICK_UI -eq 'true') { 'debug' } else { 'release' }
           New-Item -ItemType Directory -Force build/off42 | Out-Null
           python scripts/fetch-pdfium.py build/off42
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           foreach ($app in @('img42','doc42','xls42','ppt42','pdf42','scn42')) {
-            Copy-Item "target/release/$app.exe" "build/off42/$($app.ToUpper()).exe"
+            Copy-Item "target/x86_64-pc-windows-msvc/$profile/$app.exe" "build/off42/$($app.ToUpper()).exe"
           }
           cargo metadata --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc | Out-File -Encoding utf8 build/metadata.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -50,16 +144,54 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $rustLicenses = Join-Path (rustc --print sysroot) 'share/doc/rust/licenses'
           if (Test-Path $rustLicenses) { Copy-Item -Recurse $rustLicenses build/off42/licenses/rust-toolchain }
+          New-Item -ItemType Directory -Force build/off42/licenses/ocr/native | Out-Null
+          Copy-Item "$env:OFF42_OCR_SDK/licenses/*" build/off42/licenses/ocr/native/
           Copy-Item ../LICENSE build/off42/licenses/off42-LICENSE
           Copy-Item crates/doc42-layout-probe/fixtures/OFL.txt build/off42/licenses/NotoSans-OFL.txt
-          Compress-Archive -Path build/off42 -DestinationPath build/Suite42-windows-x64.zip
+          "Commit: $env:GITHUB_SHA`nProfile: $profile`nWorkflow: $env:GITHUB_RUN_ID" | Out-File -Encoding utf8 build/off42/BUILD-IDENTITY.txt
+          python scripts/audit-windows-runtime.py --bin-dir build/off42 --output build/runtime-dependencies.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path build/off42 -DestinationPath build/off42-windows-x64.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: Suite42-windows-x64
-          path: rust/build/Suite42-windows-x64.zip
+          name: off42-windows-x64
+          path: rust/build/off42-windows-x64.zip
+      - name: Test shared host and PDF/spreadsheet changes in quick builds
+        if: inputs.quick_ui == true
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force target/x86_64-pc-windows-msvc/debug/deps | Out-Null
+          Copy-Item build/off42/pdfium.dll target/x86_64-pc-windows-msvc/debug/deps/pdfium.dll
+          cargo test --locked -p suite42-core -p win42 -p pdf42-core -p pdf42 -p doc42-core -p doc42 -p xls42-core -p xls42 -p ppt42-core -p ppt42 -p scn42-core -p scn42 -p img42-core -p img42 -p label42 2>&1 | Tee-Object -FilePath build/native-ui/msvc-tests.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Record available Windows print devices
+        if: always()
+        timeout-minutes: 2
+        run: python scripts/audit-print-environment.py --output build/native-ui/printing-environment.json
+      - name: Audit native commands in the packaged apps
+        run: python scripts/audit-ui-windows.py --bin-dir build/off42 --output build/native-ui --extended --pictures --technical-objects --label-sources --languages --recents --page-exports --host-commands --engineering --text-exports --extended-formulas --multiwindow --window-layout --rich-search --preset-shapes --pdf-decorations --statistical-formulas --pdf-comparison --pdf-merge --pdf-batch-headers --array-formulas --ocr --label-artwork --label-preview --recovery --native-print
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-windows-ui-built
+          path: rust/build/native-ui
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-runtime-dependencies
+          path: rust/build/runtime-dependencies.json
+
+      - uses: actions/cache/save@v4
+        if: always() && inputs.quick_ui == true && steps.build.outcome == 'success' && steps.debug-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ~/.cargo/registry
+            rust/target/debug
+            rust/target/x86_64-pc-windows-msvc/debug
+          key: windows-native-static-debug-${{ hashFiles('rust/Cargo.lock') }}-${{ github.sha }}
 
   publish-preview:
-    if: startsWith(github.ref, 'refs/tags/') && contains(github.ref_name, '-windows-preview.')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && contains(github.ref_name, '-windows-preview.')
     needs: windows
     runs-on: ubuntu-latest
     permissions:
@@ -67,7 +199,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: Suite42-windows-x64
+          name: off42-windows-x64
       - name: Publish the tested ZIP
         env:
           GH_TOKEN: ${{ github.token }}
@@ -76,7 +208,7 @@ jobs:
         run: |
           set -euo pipefail
           asset="off42-${TAG#v}-x64.zip"
-          mv Suite42-windows-x64.zip "$asset"
+          mv off42-windows-x64.zip "$asset"
           unzip -tq "$asset"
           digest=$(sha256sum "$asset" | cut -d' ' -f1)
           cat > release-notes.md <<EOF
@@ -85,9 +217,9 @@ jobs:
           PDF42, DOC42 and XLS42 can export A4 label sheets and PNG barcodes in four formats.
           XLS42 can fill serial numbers with leading zeroes. PDF42, DOC42 and PPT42 share a local signature and stamp library.
 
-          Extract the entire ZIP and run the app you want. Keep \`pdfium.dll\` alongside \`PDF42.exe\`.
-          The executables are unsigned. If Windows reports a missing Visual C++ runtime, install the
-          [Microsoft Visual C++ Redistributable for x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/).
+          Extract the entire ZIP, including the \`ocr\` folder, and run the app you want. Keep \`pdfium.dll\` alongside \`PDF42.exe\`.
+          The executables are unsigned. The Visual C++ runtime is linked into the apps; a separate
+          Visual C++ Redistributable installation is not required. Native import checks are part of the build.
 
           [Windows build and automated tests]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$RUN_ID) · [Features and limits]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$TAG/rust/README.md)
 
@@ -95,3 +227,55 @@ jobs:
           EOF
           gh release create "$TAG" "$asset" --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease \
             --title "off42 ${TAG#v} (x64)" --notes-file release-notes.md
+
+  native-ui:
+    if: inputs.audit_only == true
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the current Windows preview
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUDIT_RUN_ID: ${{ inputs.audit_run_id }}
+        run: |
+          if ($env:AUDIT_RUN_ID) {
+            $artifacts = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:AUDIT_RUN_ID/artifacts" | ConvertFrom-Json
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $bundle = $artifacts.artifacts | Where-Object { $_.name -in @('off42-windows-x64', 'Suite42-windows-x64') } | Select-Object -First 1
+            if (-not $bundle) { throw 'No Windows application bundle found in this run' }
+            gh run download $env:AUDIT_RUN_ID --repo $env:GITHUB_REPOSITORY --name $bundle.name --dir build
+          } else {
+            gh release download v1.0.0-windows-preview.3 --repo $env:GITHUB_REPOSITORY --pattern '*-x64.zip' --dir build
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Expand-Archive build/*.zip -DestinationPath build/preview
+      - name: Audit native commands and generated files
+        env:
+          AUDIT_RUN_ID: ${{ inputs.audit_run_id }}
+          AUDIT_PICTURES: ${{ inputs.audit_pictures }}
+          AUDIT_TECHNICAL: ${{ inputs.audit_technical }}
+          AUDIT_LABELS: ${{ inputs.audit_labels }}
+          AUDIT_LANGUAGES: ${{ inputs.audit_languages }}
+          AUDIT_PAGES: ${{ inputs.audit_pages }}
+          AUDIT_HOST_COMMANDS: ${{ inputs.audit_host_commands }}
+          AUDIT_ENGINEERING: ${{ inputs.audit_engineering }}
+          QUICK_UI: ${{ inputs.quick_ui }}
+        shell: pwsh
+        run: |
+          $extra = @()
+          if ($env:AUDIT_RUN_ID) { $extra += '--extended' }
+          if ($env:QUICK_UI -eq 'true') { $extra += '--ocr-only' }
+          if ($env:AUDIT_PICTURES -eq 'true') { $extra += '--pictures' }
+          if ($env:AUDIT_TECHNICAL -eq 'true') { $extra += '--technical-objects' }
+          if ($env:AUDIT_LABELS -eq 'true') { $extra += @('--label-sources', '--label-preview') }
+          if ($env:AUDIT_LANGUAGES -eq 'true') { $extra += '--languages' }
+          if ($env:AUDIT_PAGES -eq 'true') { $extra += '--page-exports' }
+          if ($env:AUDIT_HOST_COMMANDS -eq 'true') { $extra += @('--host-commands', '--recovery', '--rich-search') }
+          if ($env:AUDIT_ENGINEERING -eq 'true') { $extra += '--engineering' }
+          python rust/scripts/audit-ui-windows.py --bin-dir build/preview/off42 --output build/native-ui @extra
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-windows-ui
+          path: build/native-ui

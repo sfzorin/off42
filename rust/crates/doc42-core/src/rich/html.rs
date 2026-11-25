@@ -142,6 +142,13 @@ fn css(s: &str, text: &mut TextStyle, para: &mut ParagraphStyle) -> Result<(), E
                     _ => return Err(err("HTML alignment")),
                 }
             }
+            "page-break-before" | "break-before" => {
+                para.page_break_before = match v {
+                    "always" | "page" => true,
+                    "auto" => false,
+                    _ => return Err(err("HTML page break")),
+                };
+            }
             "margin-left" => para.left_twips = (points(v)? * 20.0).round() as i32,
             "margin-right" => para.right_twips = (points(v)? * 20.0).round() as i32,
             "text-indent" => para.first_line_twips = (points(v)? * 20.0).round() as i32,
@@ -812,7 +819,6 @@ fn paragraph_markup(p: &Paragraph, tag: &str) -> Result<String, Error> {
         || !p.style.odt_extra.is_empty()
         || p.style.keep_with_next
         || p.style.keep_lines
-        || p.style.page_break_before
         || !p.style.tabs_twips.is_empty()
     {
         return Err(err("HTML paragraph style metadata"));
@@ -823,11 +829,14 @@ fn paragraph_markup(p: &Paragraph, tag: &str) -> Result<String, Error> {
         Alignment::Right => "right",
         Alignment::Justify => "justify",
     };
-    let line = if p.style.line_twips == 0 {
+    let mut line = if p.style.line_twips == 0 {
         String::new()
     } else {
         format!(";line-height:{}pt", p.style.line_twips as f64 / 20.0)
     };
+    if p.style.page_break_before {
+        line.push_str(";page-break-before:always");
+    }
     let mut out=format!("<{tag} style=\"text-align:{a};margin-left:{}pt;margin-right:{}pt;text-indent:{}pt;margin-top:{}pt;margin-bottom:{}pt{line}\">",p.style.left_twips as f64/20.0,p.style.right_twips as f64/20.0,p.style.first_line_twips as f64/20.0,p.style.before_twips as f64/20.0,p.style.after_twips as f64/20.0);
     for r in &p.runs {
         let content = format!(

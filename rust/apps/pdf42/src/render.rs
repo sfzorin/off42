@@ -155,7 +155,7 @@ pub fn print_async(
                 });
                 progress.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             }
-            Ok(win42::PrintJob::Scenes(out))
+            Ok(win42::PrintJob::ActualSizeScenes(out))
         })();
         let _ = tx.send(result);
     });

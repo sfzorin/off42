@@ -31,9 +31,13 @@ struct ProjectSheet {
     #[serde(default)]
     charts: Vec<Chart>,
     #[serde(default)]
+    images: Vec<SheetImage>,
+    #[serde(default)]
     pivots: Vec<Pivot>,
     #[serde(default)]
     tables: Vec<SpreadsheetTable>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    solver:Option<SolverModel>,
     #[serde(default)]
     view: SheetView,
     #[serde(default)]
@@ -83,8 +87,10 @@ impl Project {
                     validations: sh.validations.clone(),
                     conditional_formats: sh.conditional_formats.clone(),
                     charts: sh.charts.clone(),
+                    images: sh.images.clone(),
                     pivots: sh.pivots.clone(),
                     tables: sh.tables.clone(),
+                    solver:sh.solver.clone(),
                     view: sh.view.clone(),
                     filter: sh.filter.clone(),
                     print: sh.print.clone(),
@@ -146,9 +152,30 @@ impl Project {
             }
             s.validations = sh.validations;
             s.conditional_formats = sh.conditional_formats;
+            s.images = sh.images;
+            if s.images.len() > 1000
+                || s.images
+                    .iter()
+                    .any(|image| image.id >= state.next_id || !pictures::valid(image, &s))
+                || s.images
+                    .iter()
+                    .map(|image| image.id)
+                    .collect::<std::collections::HashSet<_>>()
+                    .len()
+                    != s.images.len()
+            {
+                return Err(Error::Invalid("invalid sheet pictures"));
+            }
+            for image in &s.images {
+                if pictures::validate_png(&image.data)? != (image.pixel_width, image.pixel_height) {
+                    return Err(Error::Invalid("Picture dimensions do not match its data"));
+                }
+            }
             s.charts = sh.charts;
             s.pivots = sh.pivots;
             s.tables = sh.tables;
+            if sh.solver.as_ref().is_some_and(|model|!solver::valid_model(model,s.rows,s.cols)){return Err(Error::Invalid("Invalid saved Solver model"));}
+            s.solver=sh.solver;
             s.view = sh.view;
             if sh
                 .filter
@@ -228,7 +255,15 @@ impl Project {
         }) {
             return Err(Error::Invalid("invalid chart or pivot"));
         }
-        if state.bytes() > MAX_TEXT
+        if !pictures::valid_budget(&state)
+            || state
+                .sheets
+                .iter()
+                .flat_map(|sheet| &sheet.images)
+                .map(|image| image.data.len())
+                .sum::<usize>()
+                > pictures::MAX_PICTURE_BYTES
+            || state.bytes() > MAX_TEXT
             || !state.sheets.iter().any(|s| s.id == state.active)
             || !state.selection.valid(state.sheet())
         {
@@ -257,6 +292,12 @@ pub(super) fn content_valid(c: &CellContent) -> bool {
         }
 }
 impl Workbook {
+    /// Preserve the original Office container when taking a readonly recovery copy.
+    pub fn recovery_bytes(&self)->Result<(String,Vec<u8>),Error>{
+        let format=self.external_format.as_deref().unwrap_or("xls42");
+        let bytes=match format{"xlsx"=>self.xlsx_bytes()?,"ods"=>self.ods_bytes()?,"xls42"=>self.project_bytes()?,_=>return Err(Error::Invalid("recovery format unavailable"))};
+        Ok((format.into(),bytes))
+    }
     pub fn capture_snapshot(&mut self, format: &str) -> Result<(u64, Vec<u8>), Error> {
         let bytes = match format {
             "xls42" => self.project_bytes()?,
@@ -438,5 +479,27 @@ mod tests {
         assert!(c.style(0, 0).unwrap().bold);
         assert_eq!(c.merges().len(), 1);
         assert!(c.csv_bytes().is_err());
+    }
+}
+
+#[cfg(test)]mod recovery_tests{
+    use super::*;
+    #[test]fn readonly_recovery_keeps_pending_save_identity_and_original_office_container(){
+        let mut original=Workbook::new(4,4).unwrap();original.set_cell(0,0,"BEFORE".into()).unwrap();
+        let(revision,_)=original.capture_snapshot("xls42").unwrap();original.set_cell(0,0,"AFTER".into()).unwrap();
+        let(kind,bytes)=original.recovery_bytes().unwrap();assert_eq!(kind,"xls42");assert_eq!(Workbook::from_project_bytes(&bytes).unwrap().cell(0,0),Some("AFTER"));
+        original.saved_snapshot(revision);assert!(original.is_dirty());original.undo();assert!(!original.is_dirty());
+        for format in["xlsx","ods"]{
+            let source=if format=="xlsx"{original.xlsx_bytes().unwrap()}else{original.ods_bytes().unwrap()};
+            let mut archive=zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+            let mut input=zip::ZipArchive::new(std::io::Cursor::new(source)).unwrap();
+            for index in 0..input.len(){let mut part=input.by_index(index).unwrap();let name=part.name().to_owned();archive.start_file(name,zip::write::SimpleFileOptions::default()).unwrap();std::io::copy(&mut part,&mut archive).unwrap();}
+            use std::io::Write;archive.start_file("private-unrelated-part.bin",zip::write::SimpleFileOptions::default()).unwrap();archive.write_all(b"OPAQUE-PART").unwrap();let source=archive.finish().unwrap().into_inner();
+            let mut imported=Workbook::from_office_bytes(&source,format).unwrap();imported.set_cell(0,0,"RECOVERED".into()).unwrap();let pending=imported.capture_snapshot(format).unwrap().0;
+            imported.set_cell(0,1,"LATEST".into()).unwrap();let(kind,bytes)=imported.recovery_bytes().unwrap();assert_eq!(kind,format);
+            let reopened=Workbook::from_office_bytes(&bytes,format).unwrap();assert_eq!(reopened.cell(0,0),Some("RECOVERED"));assert_eq!(reopened.cell(0,1),Some("LATEST"));
+            let mut result=zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();let mut opaque=String::new();result.by_name("private-unrelated-part.bin").unwrap().read_to_string(&mut opaque).unwrap();assert_eq!(opaque,"OPAQUE-PART");
+            imported.saved_snapshot(pending);assert!(imported.is_dirty());
+        }
     }
 }

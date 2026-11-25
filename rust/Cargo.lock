@@ -302,8 +302,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-link",
 ]
 
@@ -622,6 +624,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "suite42-core",
+ "unicode-segmentation",
  "zip 6.0.0",
 ]
 
@@ -1114,11 +1117,16 @@ dependencies = [
 name = "label42"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "datamatrix",
  "lopdf",
  "png 0.18.1",
+ "resvg",
  "rxing",
+ "serde",
+ "serde_json",
  "suite42-pdf-text",
+ "ttf-parser 0.21.1",
 ]
 
 [[package]]
@@ -1490,18 +1498,23 @@ dependencies = [
 name = "pdf42"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "doc42-core",
  "flate2",
  "image",
  "lopdf",
  "pdf42-core",
  "png 0.18.1",
  "scn42-core",
+ "serde_json",
  "suite42-core",
  "suite42-pdf-raster",
  "suite42-pdf-text",
  "tempfile",
+ "unicode-segmentation",
  "win42",
  "windows",
+ "windows-sys",
  "zip 6.0.0",
 ]
 
@@ -1613,7 +1626,11 @@ version = "0.1.0"
 dependencies = [
  "doc42-core",
  "image",
+ "lopdf",
  "ppt42-core",
+ "suite42-core",
+ "suite42-pdf-text",
+ "unicode-segmentation",
  "win42",
 ]
 
@@ -1987,8 +2004,12 @@ checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 name = "scn42"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "img42-core",
  "scn42-core",
+ "serde",
+ "serde_json",
+ "suite42-core",
  "suite42-pdf-raster",
  "tempfile",
  "win42",
@@ -1999,6 +2020,7 @@ dependencies = [
 name = "scn42-core"
 version = "0.1.0"
 dependencies = [
+ "image",
  "lopdf",
  "suite42-core",
  "suite42-pdf-text",
@@ -2234,6 +2256,7 @@ dependencies = [
 name = "suite42-core"
 version = "0.1.0"
 dependencies = [
+ "regex",
  "serde",
  "tempfile",
  "windows-sys",
@@ -2655,8 +2678,12 @@ checksum = "d4ca08e5ef825b65b056d9efbd95c8750683f0a6d0466d02e96dc2e4e360f3d2"
 name = "win42"
 version = "0.1.0"
 dependencies = [
+ "doc42-core",
  "image",
  "label42",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
  "suite42-core",
  "tempfile",
  "windows",
@@ -2792,6 +2819,9 @@ checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
 name = "xls42"
 version = "0.1.0"
 dependencies = [
+ "image",
+ "label42",
+ "serde_json",
  "win42",
  "xls42-core",
 ]
@@ -2800,9 +2830,14 @@ dependencies = [
 name = "xls42-core"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "calamine",
  "chrono",
  "csv",
+ "fastrand",
+ "image",
+ "libm",
+ "regex",
  "roxmltree",
  "rust_xlsxwriter",
  "serde",

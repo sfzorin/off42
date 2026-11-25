@@ -163,9 +163,10 @@ impl Workbook {
         Ok(self.history.apply(st))
     }
     pub fn visible_rows(&self) -> Vec<usize> {
-        let grid = self.display_grid();
-        self.visible_rows_from_grid(&grid)
+        let cells = self.display_cells();
+        self.visible_rows_from_cells(&cells)
     }
+    #[cfg(test)]
     pub fn visible_rows_from_grid(&self, grid: &[Vec<String>]) -> Vec<usize> {
         let s = self.history.current().sheet();
         let Some(f) = &s.filter else {
@@ -214,6 +215,43 @@ impl Workbook {
         for m in &s.merges {
             bottom = bottom.max(m.bottom);
             right = right.max(m.right)
+        }
+        for image in &s.images {
+            if s.view.hidden_rows.contains(&image.row)
+                || s.view.hidden_columns.contains(&image.column)
+            {
+                continue;
+            }
+            let mut extent = image.offset_x + image.width_points;
+            let mut col = image.column;
+            while col + 1 < s.cols {
+                let width = if s.view.hidden_columns.contains(&col) {
+                    0.0
+                } else {
+                    f64::from(*s.col_widths.get(&col).unwrap_or(&80)) * 0.75
+                };
+                if extent <= width {
+                    break;
+                }
+                extent -= width;
+                col += 1;
+            }
+            right = right.max(col);
+            let mut extent = image.offset_y + image.height_points;
+            let mut row = image.row;
+            while row + 1 < s.rows {
+                let height = if s.view.hidden_rows.contains(&row) {
+                    0.0
+                } else {
+                    f64::from(*s.row_heights.get(&row).unwrap_or(&20)) * 0.75
+                };
+                if extent <= height {
+                    break;
+                }
+                extent -= height;
+                row += 1;
+            }
+            bottom = bottom.max(row);
         }
         Range {
             top: 0,

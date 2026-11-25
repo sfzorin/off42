@@ -329,6 +329,9 @@ pub fn print_scene(data: &ChartData, width: f64, height: f64) -> CanvasScene {
                     }
                 }
             }
+            SceneItem::VectorPath { segments, .. } => {
+                for segment in segments { segment.map_points(|p| Point { x:p.x * scale, y:p.y * scale }); }
+            }
             SceneItem::Path { points, .. } => {
                 for p in points {
                     p.x *= scale;

@@ -5,6 +5,27 @@ use sha2::{Digest, Sha256};
 use std::io::{Cursor, Read, Write};
 const EXTRA: &str = "xls42/project.json";
 const LIMIT: usize = 64 * 1024 * 1024;
+mod pictures;
+mod formula_cache;
+mod filters;
+mod dynamic_arrays;
+mod sparse_import;
+mod sparse_ods;
+mod views;
+mod ods_formats;
+#[cfg(test)]
+mod literal_errors;
+mod validation_lists;
+fn xlsx_error(value:&str)->Result<&'static str,Error>{
+    const ERRORS:&[&str]=&["#DIV/0!","#N/A","#NAME?","#NULL!","#NUM!","#REF!","#VALUE!","#GETTING_DATA","#SPILL!","#CALC!","#FIELD!","#BLOCKED!","#CONNECT!","#UNKNOWN!","#BUSY!","#PYTHON!"];
+    ERRORS.iter().copied().find(|e|*e==value).ok_or(Error::Invalid("Unsupported literal XLSX error code"))
+}
+fn date_time(raw: &str) -> Result<chrono::NaiveDateTime, Error> {
+    chrono::NaiveDateTime::parse_from_str(raw, "%Y-%m-%dT%H:%M:%S%.f")
+        .ok()
+        .or_else(|| crate::display::parse_date(raw).and_then(|d| d.and_hms_opt(0, 0, 0)))
+        .ok_or(Error::Invalid("invalid date cell"))
+}
 fn format(s: &CellStyle) -> Format {
     let mut f = Format::new();
     if s.bold {
@@ -87,22 +108,175 @@ struct Embedded {
     digest: [u8; 32],
     project: Vec<u8>,
 }
+fn project_declaration(bytes: &[u8], format: &str, include: bool) -> Result<Vec<u8>, Error> {
+    let text =
+        std::str::from_utf8(bytes).map_err(|_| Error::Invalid("invalid Office declaration XML"))?;
+    let xml = roxmltree::Document::parse(text)
+        .map_err(|_| Error::Invalid("invalid Office declaration XML"))?;
+    let root = xml.root_element();
+    let (ns, element, attribute, value, fragment) = if format == "xlsx" {
+        ("http://schemas.openxmlformats.org/package/2006/content-types","Override","PartName",format!("/{EXTRA}"),format!("<Override xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\" PartName=\"/{EXTRA}\" ContentType=\"application/json\"/>"))
+    } else {
+        ("urn:oasis:names:tc:opendocument:xmlns:manifest:1.0","file-entry","full-path",EXTRA.to_owned(),format!("<manifest:file-entry xmlns:manifest=\"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0\" manifest:full-path=\"{EXTRA}\" manifest:media-type=\"application/json\"/>"))
+    };
+    if root.tag_name().namespace() != Some(ns)
+        || root.tag_name().name()
+            != if format == "xlsx" {
+                "Types"
+            } else {
+                "manifest"
+            }
+    {
+        return Err(Error::Invalid("invalid Office declaration namespace"));
+    }
+    let mut old=root.children().filter(|n|n.is_element()&&n.tag_name().name()==element&&n.tag_name().namespace()==Some(ns)).filter(|n|if format=="xlsx"{n.attribute(attribute)}else{n.attribute((ns,attribute))}==Some(value.as_str())).map(|n|n.range()).collect::<Vec<_>>();
+    let mut text = text.to_owned();
+    old.sort_by_key(|r| std::cmp::Reverse(r.start));
+    for range in old {
+        text.replace_range(range, "");
+    }
+    if !include {
+        return Ok(text.into_bytes());
+    }
+    let xml = roxmltree::Document::parse(&text)
+        .map_err(|_| Error::Invalid("invalid Office declaration XML"))?;
+    let root = xml.root_element();
+    let range = root.range();
+    if let Some(end) = text[range.clone()].rfind("</") {
+        text.insert_str(range.start + end, &fragment);
+    } else {
+        let end = range.end - 2;
+        if &text[end..range.end] != "/>" {
+            return Err(Error::Invalid("invalid Office declaration element"));
+        }
+        let name = text[range.start + 1..end]
+            .split_whitespace()
+            .next()
+            .ok_or(Error::Invalid("invalid Office declaration element"))?
+            .to_owned();
+        text.replace_range(end..range.end, &format!(">{fragment}</{name}>"));
+    }
+    Ok(text.into_bytes())
+}
+fn repair_missing_project_manifest(bytes: &[u8]) -> Result<std::borrow::Cow<'_, [u8]>, Error> {
+    let mut archive = zip::ZipArchive::new(Cursor::new(bytes))
+        .map_err(|_| Error::Invalid("invalid ODS archive"))?;
+    if archive.file_names().any(|name| name == EXTRA) {
+        return Ok(std::borrow::Cow::Borrowed(bytes));
+    }
+    let mut manifest = Vec::new();
+    match archive.by_name("META-INF/manifest.xml") {
+        Ok(entry) => {
+            entry
+                .take(16 * 1024 * 1024 + 1)
+                .read_to_end(&mut manifest)?;
+        }
+        Err(_) => return Ok(std::borrow::Cow::Borrowed(bytes)),
+    }
+    if manifest.len() > 16 * 1024 * 1024 {
+        return Err(Error::Limit);
+    }
+    let repaired = project_declaration(&manifest, "ods", false)?;
+    if repaired == manifest {
+        return Ok(std::borrow::Cow::Borrowed(bytes));
+    }
+    // An editor may drop the optional native snapshot but leave its private manifest entry.
+    // Drop only that dangling entry in the working copy; all document and unknown parts remain intact.
+    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    for index in 0..archive.len() {
+        let entry = archive
+            .by_index(index)
+            .map_err(|_| Error::Invalid("invalid ODS entry"))?;
+        if entry.name() == "META-INF/manifest.xml" {
+            writer
+                .start_file(
+                    "META-INF/manifest.xml",
+                    zip::write::SimpleFileOptions::default()
+                        .compression_method(entry.compression()),
+                )
+                .map_err(|_| Error::Invalid("cannot repair ODS manifest"))?;
+            writer.write_all(&repaired)?;
+        } else {
+            writer
+                .raw_copy_file(entry)
+                .map_err(|_| Error::Invalid("cannot preserve ODS entry"))?;
+        }
+    }
+    Ok(std::borrow::Cow::Owned(
+        writer
+            .finish()
+            .map_err(|_| Error::Invalid("cannot repair ODS container"))?
+            .into_inner(),
+    ))
+}
 fn embed(bytes: Vec<u8>, format: &str, project: Vec<u8>) -> Result<Vec<u8>, Error> {
     if bytes.len() > LIMIT {
         return Err(Error::Limit);
     }
-    let sum = digest(
-        &mut zip::ZipArchive::new(Cursor::new(bytes.as_slice()))
-            .map_err(|_| Error::Invalid("invalid Office archive"))?,
-    )?;
+    let declaration = match format {
+        "xlsx" => "[Content_Types].xml",
+        "ods" => "META-INF/manifest.xml",
+        _ => return Err(Error::Invalid("invalid Office format")),
+    };
+    // Rebuild the container, declaring the JSON part in the standard package metadata.
+    // LibreOffice rejects an appended container; ODF also requires the extra part in its manifest.
+    let mut source = zip::ZipArchive::new(Cursor::new(bytes))
+        .map_err(|_| Error::Invalid("invalid Office archive"))?;
+    let mut base = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    let mut declared = false;
+    for index in 0..source.len() {
+        let mut entry = source
+            .by_index(index)
+            .map_err(|_| Error::Invalid("invalid Office archive"))?;
+        if entry.name() == EXTRA {
+            continue;
+        }
+        if entry.name() == declaration {
+            let mut xml = Vec::new();
+            (&mut entry)
+                .take(16 * 1024 * 1024 + 1)
+                .read_to_end(&mut xml)?;
+            if xml.len() > 16 * 1024 * 1024 {
+                return Err(Error::Limit);
+            }
+            let xml = project_declaration(&xml, format, true)?;
+            base.start_file(
+                declaration,
+                zip::write::SimpleFileOptions::default().compression_method(entry.compression()),
+            )
+            .map_err(|_| Error::Invalid("cannot write Office declaration"))?;
+            base.write_all(&xml)?;
+            declared = true;
+        } else {
+            base.raw_copy_file(entry)
+                .map_err(|_| Error::Invalid("cannot preserve Office part"))?;
+        }
+    }
+    if !declared {
+        return Err(Error::Invalid("Office package declaration is missing"));
+    }
+    let base = base
+        .finish()
+        .map_err(|_| Error::Invalid("cannot finish Office archive"))?
+        .into_inner();
+    let mut source = zip::ZipArchive::new(Cursor::new(base.as_slice()))
+        .map_err(|_| Error::Invalid("invalid Office archive"))?;
     let payload = serde_json::to_vec(&Embedded {
         format: format.into(),
-        digest: sum,
+        digest: digest(&mut source)?,
         project,
     })
     .map_err(|_| Error::Invalid("cannot encode project"))?;
-    let mut writer = zip::ZipWriter::new_append(Cursor::new(bytes))
-        .map_err(|_| Error::Invalid("invalid Office archive"))?;
+    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    for index in 0..source.len() {
+        writer
+            .raw_copy_file(
+                source
+                    .by_index(index)
+                    .map_err(|_| Error::Invalid("invalid Office archive"))?,
+            )
+            .map_err(|_| Error::Invalid("cannot preserve Office part"))?;
+    }
     writer
         .start_file(EXTRA, zip::write::SimpleFileOptions::default())
         .map_err(|_| Error::Invalid("cannot write Office metadata"))?;
@@ -116,6 +290,7 @@ fn embed(bytes: Vec<u8>, format: &str, project: Vec<u8>) -> Result<Vec<u8>, Erro
     }
     Ok(bytes)
 }
+
 impl Workbook {
     pub fn xlsx_bytes(&self) -> Result<Vec<u8>, Error> {
         self.require_editable()?;
@@ -123,24 +298,18 @@ impl Workbook {
             return self.patch_external("xlsx");
         }
         let state = self.history.current();
-        if state
-            .sheets
-            .iter()
-            .flat_map(|s| s.cells.values())
-            .any(|c| matches!(c.text, CellContent::Date(_) | CellContent::Error(_)))
-        {
-            return Err(Error::Invalid(
-                "XLSX export of date and error cells is unsupported",
-            ));
-        }
+        for sheet in &state.sheets{for range in &sheet.merges{range.bounded_operation()?;}}
         if state.styles.iter().any(|s| s.borders & !15 != 0) {
             return Err(Error::Invalid("unsupported border style"));
         }
         let formats: Vec<_> = state.styles.iter().map(format).collect();
         let mut book = Xlsx::new();
         let recalc_time = chrono::Local::now().naive_local();
-        for sheet in &state.sheets {
+        let mut typed_results: BTreeMap<usize, BTreeMap<(usize, usize), formula::Value>> =
+            BTreeMap::new();
+        for (sheet_index, sheet) in state.sheets.iter().enumerate() {
             let ws = book.add_worksheet();
+            ws.set_active(sheet.id==state.active);
             ws.set_name(&sheet.name)
                 .map_err(|_| Error::Invalid("invalid XLSX sheet name"))?;
             if sheet.view.frozen_rows != 0 || sheet.view.frozen_columns != 0 {
@@ -166,7 +335,8 @@ impl Workbook {
                 ws.set_row_height_pixels(r as u32, h as u32)
                     .map_err(|_| Error::Invalid("invalid row height"))?;
             }
-            for (&c, &w) in &sheet.col_widths {
+            for c in 0..sheet.cols {
+                let w = *sheet.col_widths.get(&c).unwrap_or(&80);
                 ws.set_column_width_pixels(c as u16, w as u32)
                     .map_err(|_| Error::Invalid("invalid column width"))?;
             }
@@ -193,12 +363,19 @@ impl Workbook {
                 external_format: None,
                 external_cache: BTreeMap::new(),
             };
-            let grid = formula::display_grid_at(&eval, recalc_time);
+            let calculation = formula::calculation_at(&eval, recalc_time);
+            let results = &calculation.values;
+            typed_results.insert(sheet_index + 1, results.clone());
             for (&(r, c), cell) in &sheet.cells {
                 let (r, c) = (r as u32, c as u16);
                 let f = &formats[cell.style];
                 match &cell.text {
                     CellContent::Text(t) => ws.write_string_with_format(r, c, t.raw(), f),
+                    CellContent::Error(t)=>{
+                        let error=xlsx_error(t.raw())?;
+                        typed_results.get_mut(&(sheet_index+1)).unwrap().insert((r as usize,c as usize),formula::Value::Error(error));
+                        ws.write_string_with_format(r,c,error,f)
+                    },
                     CellContent::Number(t) => ws.write_number_with_format(
                         r,
                         c,
@@ -210,23 +387,77 @@ impl Workbook {
                     CellContent::Boolean(t) => {
                         ws.write_boolean_with_format(r, c, t.raw().eq_ignore_ascii_case("true"), f)
                     }
-                    CellContent::Formula(t) => {
-                        let value = &grid[r as usize][c as usize];
-                        let value = if value.starts_with('#') {
-                            "#N/A"
-                        } else {
-                            value.as_str()
-                        };
-                        ws.write_formula_with_format(
-                            r,
-                            c,
-                            Formula::new(t.raw()).set_result(value),
-                            f,
-                        )
+                    CellContent::Date(t) => {
+                        let value=crate::display::workbook_parse_serial(self,t.raw()).ok_or(Error::Invalid("invalid date cell"))?;
+                        let date_format=if state.styles[cell.style].number_format.is_empty(){f.clone().set_num_format(if t.raw().contains('T'){"yyyy-mm-dd hh:mm:ss"}else{"yyyy-mm-dd"})}else{f.clone()};
+                        ws.write_number_with_format(r,c,value,&date_format)
                     }
-                    _ => unreachable!(),
+                    CellContent::Formula(t) => {
+                        let value = match results
+                            .get(&(r as usize, c as usize))
+                            .ok_or(Error::Invalid("Missing formula result"))?
+                        {
+                            formula::Value::Array(_) => {
+                                return Err(Error::Invalid("Unresolved array cache"))
+                            }
+                            formula::Value::Number(value) => value.to_string(),
+                            formula::Value::Boolean(value) => {
+                                if *value {
+                                    "TRUE".into()
+                                } else {
+                                    "FALSE".into()
+                                }
+                            }
+                            formula::Value::Text(value) => value.clone(),
+                            formula::Value::Error(value) => match *value {
+                                "#DIV/0!" | "#N/A" | "#NAME?" | "#NULL!" | "#NUM!" | "#REF!"
+                                | "#VALUE!" => (*value).into(),
+                                "#CYCLE!" => "#REF!".into(),
+                                "#ERROR!" => "#NAME?".into(),
+                                "#LIMIT!" => "#NUM!".into(),
+                                _ => "#N/A".into(),
+                            },
+                        };
+                        if let Some(range) = calculation.spills.get(&(r as usize, c as usize)) {
+                            ws.write_dynamic_array_formula_with_format(
+                                r,
+                                c,
+                                range.bottom as u32,
+                                range.right as u16,
+                                Formula::new(formula::canonical_input(t.raw()).as_ref()).set_result(value),
+                                f,
+                            )
+                        } else {
+                            ws.write_formula_with_format(
+                                r,
+                                c,
+                                Formula::new(formula::canonical_input(t.raw()).as_ref()).set_result(value),
+                                f,
+                            )
+                        }
+                    }
                 }
                 .map_err(|_| Error::Invalid("cannot encode XLSX cell"))?;
+            }
+            for (&(row, col), value) in results {
+                if matches!(
+                    sheet.cells.get(&(row, col)).map(|c| &c.text),
+                    Some(CellContent::Formula(_))
+                ) {
+                    continue;
+                }
+                let f = &formats[sheet.cells.get(&(row, col)).map_or(0, |cell| cell.style)];
+                let (r, c) = (row as u32, col as u16);
+                match value {
+                    formula::Value::Number(n) => ws.write_number_with_format(r, c, *n, f),
+                    formula::Value::Boolean(b) => ws.write_boolean_with_format(r, c, *b, f),
+                    formula::Value::Text(s) => ws.write_string_with_format(r, c, s, f),
+                    formula::Value::Error(e) => ws.write_string_with_format(r, c, *e, f),
+                    formula::Value::Array(_) => {
+                        return Err(Error::Invalid("Unresolved spill value"))
+                    }
+                }
+                .map_err(|_| Error::Invalid("Cannot encode spilled value"))?;
             }
             for table in &sheet.tables {
                 use rust_xlsxwriter::{Table, TableColumn, TableFunction};
@@ -271,12 +502,13 @@ impl Workbook {
                     .replace('?', "~?");
                 let condition = FilterCondition::new()
                     .add_custom_filter(FilterCriteria::Contains, escaped.as_str());
+                ws.filter_automatic_off();
                 ws.filter_column(filter.column as u16, &condition)
                     .map_err(|_| Error::Invalid("cannot encode XLSX filter"))?;
-                let grid = eval.display_grid_at(recalc_time);
+                let cells = eval.display_cells_with(&calculation);
                 let needle = filter.contains.to_lowercase();
                 for row in r.top + 1..=r.bottom {
-                    if !grid[row][filter.column].to_lowercase().contains(&needle) {
+                    if !cells.get(&(row,filter.column)).map_or("",String::as_str).to_lowercase().contains(&needle) {
                         ws.set_row_hidden(row as u32)
                             .map_err(|_| Error::Invalid("cannot hide filtered row"))?;
                     }
@@ -369,6 +601,30 @@ impl Workbook {
                 ws.insert_chart(chart.anchor_row as u32, chart.anchor_col as u16, &xchart)
                     .map_err(|_| Error::Invalid("cannot encode XLSX chart"))?;
             }
+            for picture in &sheet.images {
+                if picture.offset_x < 0.0 || picture.offset_y < 0.0 {
+                    return Err(Error::Invalid(
+                        "Negative picture offsets are not supported in XLSX",
+                    ));
+                }
+                let image = rust_xlsxwriter::Image::new_from_buffer(&picture.data)
+                    .map_err(|_| Error::Invalid("Invalid picture data"))?
+                    .set_scale_to_size(
+                        picture.width_points / 0.75,
+                        picture.height_points / 0.75,
+                        false,
+                    )
+                    .set_alt_text(&picture.description)
+                    .set_object_movement(rust_xlsxwriter::ObjectMovement::MoveButDontSizeWithCells);
+                ws.insert_image_with_offset(
+                    picture.row as u32,
+                    picture.column as u16,
+                    &image,
+                    (picture.offset_x / 0.75).round() as u32,
+                    (picture.offset_y / 0.75).round() as u32,
+                )
+                .map_err(|_| Error::Invalid("Could not encode XLSX picture"))?;
+            }
             for rule in &sheet.validations {
                 use rust_xlsxwriter::{DataValidation as XValidation, DataValidationRule};
                 let validation = match &rule.kind {
@@ -383,6 +639,15 @@ impl Workbook {
                         XValidation::new().allow_list_strings(values).map_err(|_| {
                             Error::Invalid("XLSX validation list exceeds Excel limits")
                         })?
+                    }
+                    ValidationKind::ListRange { source } => {
+                        let mut address = String::new();
+                        write_a1_endpoint(&mut address, source.top + 1, source.left + 1, true, true);
+                        if source.top != source.bottom || source.left != source.right {
+                            address.push(':');
+                            write_a1_endpoint(&mut address, source.bottom + 1, source.right + 1, true, true);
+                        }
+                        XValidation::new().allow_list_formula(rust_xlsxwriter::Formula::new(address))
                     }
                 }
                 .ignore_blank(rule.allow_blank);
@@ -449,12 +714,13 @@ impl Workbook {
         let bytes = book
             .save_to_buffer()
             .map_err(|_| Error::Invalid("cannot encode XLSX"))?;
+        let bytes = formula_cache::patch_results(bytes, &typed_results)?;
         let bytes = if state.date_1904 {
             set_generated_xlsx_1904(&bytes)?
         } else {
             bytes
         };
-        embed(bytes, "xlsx", self.project_bytes()?)
+        embed(solver::files::patch(&bytes,"xlsx",None,state)?, "xlsx", self.project_bytes()?)
     }
     pub fn open_office(path: &Path, kind: &str) -> Result<Self, Error> {
         let mut bytes = Vec::new();
@@ -537,21 +803,18 @@ fn add_ods_database_ranges(bytes: &[u8], state: &State) -> Result<Vec<u8>, Error
         .map(|n| prefix(&content[n.range()]))
         .unwrap_or("table:");
     let mut items = String::new();
+    let mut names:std::collections::BTreeSet<_>=state.sheets.iter().flat_map(|s|s.tables.iter().map(|t|t.name.to_lowercase())).collect();
     for sheet in &state.sheets {
+        let mut included=false;
         for table in &sheet.tables {
-            let sheet_name = sheet.name.replace('\'', "''");
-            let r = table.range;
-            let target = format!(
-                "'{}'.$${}${}:'{}'.$${}${}",
-                sheet_name,
-                col_name(r.left),
-                r.top + 1,
-                sheet_name,
-                col_name(r.right),
-                r.bottom + 1
-            )
-            .replace("$$", "$");
-            items.push_str(&format!("<{prefix}database-range {prefix}name=\"{}\" {prefix}target-range-address=\"{}\" {prefix}contains-header=\"true\" {prefix}display-filter-buttons=\"true\"/>", escape_xml(&table.name), escape_xml(&target)));
+            let filter=sheet.filter.as_ref().filter(|f|f.range==table.range);
+            included|=filter.is_some();
+            items.push_str(&filters::database_range(prefix,&table.name,&sheet.name,table.range,filter));
+        }
+        if let Some(filter)=sheet.filter.as_ref().filter(|_|!included) {
+            let mut name=format!("off42Filter{}",sheet.id);
+            while !names.insert(name.to_lowercase()){name.push('_');}
+            items.push_str(&filters::database_range(prefix,&name,&sheet.name,filter.range,Some(filter)));
         }
     }
     let insert = spreadsheet
@@ -560,11 +823,10 @@ fn add_ods_database_ranges(bytes: &[u8], state: &State) -> Result<Vec<u8>, Error
         .map(|n| n.range().end)
         .max()
         .ok_or(Error::Invalid("Missing ODS sheets"))?;
+    let existing=spreadsheet.children().find(|n|n.has_tag_name("database-ranges")).map(|n|n.range());
     let mut content = content.clone();
-    content.insert_str(
-        insert,
-        &format!("<{prefix}database-ranges>{items}</{prefix}database-ranges>"),
-    );
+    let replacement=format!("<{prefix}database-ranges>{items}</{prefix}database-ranges>");
+    if let Some(range)=existing{content.replace_range(range,&replacement);}else{content.insert_str(insert,&replacement);}
     let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
     for index in 0..archive.len() {
         let file = archive
@@ -593,6 +855,34 @@ fn add_ods_database_ranges(bytes: &[u8], state: &State) -> Result<Vec<u8>, Error
         .map_err(|_| Error::Invalid("Cannot write ODS"))?
         .into_inner())
 }
+// Excel's compatibility prefixes belong to function tokens in the package, not user-facing formula text.
+fn xlsx_formula_to_a1(input:&str)->String {
+    let input=input.strip_prefix('=').unwrap_or(input);let bytes=input.as_bytes();let mut out=String::from("=");
+    let (mut i,mut quoted,mut sheet_quoted)=(0,false,false);
+    while i<bytes.len(){
+        if bytes[i]==b'"' && !sheet_quoted {
+            out.push('"');i+=1;
+            if quoted && bytes.get(i)==Some(&b'"'){out.push('"');i+=1;}else{quoted=!quoted;}
+            continue;
+        }
+        if bytes[i]==b'\'' && !quoted {
+            out.push('\'');i+=1;
+            if sheet_quoted && bytes.get(i)==Some(&b'\''){out.push('\'');i+=1;}else{sheet_quoted=!sheet_quoted;}
+            continue;
+        }
+        if !quoted && !sheet_quoted && (bytes[i].is_ascii_alphabetic()||bytes[i]==b'_') {
+            let start=i;while bytes.get(i).is_some_and(|c|c.is_ascii_alphanumeric()||matches!(c,b'_'|b'.')){i+=1;}
+            let mut next=i;while bytes.get(next).is_some_and(u8::is_ascii_whitespace){next+=1;}
+            let mut name=&input[start..i];
+            if bytes.get(next)==Some(&b'('){
+                while name.as_bytes().get(..6).is_some_and(|p|p.eq_ignore_ascii_case(b"_xlfn.")||p.eq_ignore_ascii_case(b"_xlws.")){name=&name[6..];}
+            }
+            out.push_str(name);continue;
+        }
+        let ch=input[i..].chars().next().unwrap();out.push(ch);i+=ch.len_utf8();
+    }
+    out
+}
 fn ods_formula_to_a1(input: &str) -> Option<String> {
     let input = input
         .strip_prefix("=of:=")
@@ -602,6 +892,7 @@ fn ods_formula_to_a1(input: &str) -> Option<String> {
     let mut i = 0;
     let b = input.as_bytes();
     let mut in_string = false;
+    let mut array_depth = 0usize;
     while i < b.len() {
         if b[i] == b'"' {
             out.push('"');
@@ -614,10 +905,45 @@ fn ods_formula_to_a1(input: &str) -> Option<String> {
             }
             continue;
         }
+        if !in_string && (b[i].is_ascii_alphabetic() || b[i] == b'_') {
+            let mut end = i;
+            while b
+                .get(end)
+                .is_some_and(|c| c.is_ascii_alphanumeric() || matches!(*c, b'_' | b'.'))
+            {
+                end += 1;
+            }
+            let mut next = end;
+            while b.get(next).is_some_and(u8::is_ascii_whitespace) {
+                next += 1;
+            }
+            if b.get(next) == Some(&b'(') {
+                let name = input[i..end].to_ascii_uppercase();
+                let converted = match name.as_str() {
+                    "FDIST" => "F.DIST",
+                    "FINV" => "F.INV",
+                    "SKEWP" => "SKEW.P",
+                    name => name
+                        .strip_prefix("COM.MICROSOFT.")
+                        .or_else(|| name.strip_prefix("ORG.OPENOFFICE."))
+                        .or_else(|| name.strip_prefix("ORG.LIBREOFFICE."))
+                        .or_else(|| name.strip_prefix("LEGACY."))
+                        .or_else(|| name.strip_prefix("_XLFN."))
+                        .unwrap_or(name),
+                };
+                out.push_str(converted);
+                out.push_str(&input[end..next]);
+                i = next;
+                continue;
+            }
+        }
         if !in_string && b[i] == b'[' {
             let end = input[i + 1..].find(']')? + i + 1;
             let range = &input[i + 1..end];
-            let mut parts = range.split(':');
+            let operands=range.split(':').collect::<Vec<_>>();
+            let cells=operands.iter().map(|part|part.rfind('.').map(|dot|&part[dot+1..])).collect::<Option<Vec<_>>>()?;
+            let axis=if cells.len()==2 {parse_axis_range(&format!("{}:{}",cells[0],cells[1]),0).is_some_and(|(_,a,b,_,_,rows)|a<if rows{MAX_ROWS}else{MAX_COLS}&&b<if rows{MAX_ROWS}else{MAX_COLS})}else{false};
+            let mut parts = operands.into_iter();
             for (index, part) in parts.by_ref().enumerate() {
                 if index > 1 {
                     return None;
@@ -628,9 +954,7 @@ fn ods_formula_to_a1(input: &str) -> Option<String> {
                 let dot = part.rfind('.')?;
                 let sheet = &part[..dot];
                 let cell = &part[dot + 1..];
-                if parse_a1_endpoint(cell, 0).is_none_or(|v| v.0 != cell.len()) {
-                    return None;
-                }
+                if !axis&&parse_a1_endpoint(cell, 0).is_none_or(|v| v.0 != cell.len()) {return None;}
                 if !sheet.is_empty() && sheet != "$" {
                     out.push_str(sheet.trim_start_matches('$'));
                     out.push('!');
@@ -638,6 +962,26 @@ fn ods_formula_to_a1(input: &str) -> Option<String> {
                 out.push_str(cell);
             }
             i = end + 1;
+            continue;
+        }
+        if !in_string && b[i] == b'{' {
+            array_depth += 1;
+            out.push('{');
+            i += 1;
+            continue;
+        }
+        if !in_string && b[i] == b'}' {
+            if array_depth == 0 {
+                return None;
+            }
+            array_depth -= 1;
+            out.push('}');
+            i += 1;
+            continue;
+        }
+        if !in_string && array_depth > 0 && b[i] == b'|' {
+            out.push(';');
+            i += 1;
             continue;
         }
         if !in_string && b[i] == b';' {
@@ -649,13 +993,68 @@ fn ods_formula_to_a1(input: &str) -> Option<String> {
         out.push(ch);
         i += ch.len_utf8();
     }
+    if array_depth != 0 {
+        return None;
+    }
     Some(out)
 }
+fn ods_function_name(mut name: &str) -> String {
+    while let Some(rest) = name
+        .strip_prefix("_XLFN.")
+        .or_else(|| name.strip_prefix("_XLWS."))
+    {
+        name = rest;
+    }
+    match name {
+        "F.DIST" => "FDIST".into(),
+        "F.INV" => "FINV".into(),
+        "SKEW.P" => "SKEWP".into(),
+        "FDIST" | "FINV" | "NORMSDIST" | "NORMSINV" | "TDIST" | "CHIDIST" | "CHIINV" => {
+            format!("LEGACY.{name}")
+        }
+        _ if name.contains('.')
+            || matches!(
+                name,
+                "MAXIFS"
+                    | "MINIFS"
+                    | "IFS"
+                    | "SWITCH"
+                    | "XLOOKUP"
+                    | "XMATCH"
+                    | "FILTER"
+                    | "SORT"
+                    | "SORTBY"
+                    | "UNIQUE"
+                    | "SEQUENCE"
+                    | "RANDARRAY"
+                    | "LET"
+                    | "CONCAT"
+                    | "TEXTJOIN"
+                    | "CEILING"
+                    | "FLOOR"
+                    | "AGGREGATE"
+                    | "TEXTBEFORE"
+                    | "TEXTAFTER"
+                    | "NUMBERVALUE"
+                    | "BITAND"
+                    | "BITOR"
+                    | "BITXOR"
+                    | "BITLSHIFT"
+                    | "BITRSHIFT"
+            ) =>
+        {
+            format!("COM.MICROSOFT.{name}")
+        }
+        _ => name.into(),
+    }
+}
 fn ods_formula(input: &str) -> Result<String, Error> {
+    let normalized=formula::canonical_input(input);let input=normalized.as_ref();
     let b = input.as_bytes();
     let mut out = String::from("of:");
     let mut i = 0;
     let mut quoted = false;
+    let mut array_depth = 0usize;
     while i < b.len() {
         if b[i] == b'"' {
             quoted = !quoted;
@@ -668,6 +1067,31 @@ fn ods_formula(input: &str) -> Result<String, Error> {
             out.push(c);
             i += c.len_utf8();
             continue;
+        }
+        // OpenFormula 1.3 section 5.12 constant errors must be consumed before sheet-reference tokens.
+        if b[i]==b'#'{if let Some(error)=formula::error_prefix(&input[i..]){out.push_str(error);i+=error.len();continue;}}
+        if b[i] == b'{' {
+            array_depth += 1;
+            out.push('{');
+            i += 1;
+            continue;
+        }
+        if b[i] == b'}' {
+            if array_depth == 0 {
+                return Err(Error::Invalid("Invalid array formula"));
+            }
+            array_depth -= 1;
+            out.push('}');
+            i += 1;
+            continue;
+        }
+        if array_depth > 0 && b[i] == b';' {
+            out.push('|');
+            i += 1;
+            continue;
+        }
+        if let Some((end,_,_,_,_,_))=parse_axis_range(input,i).filter(|(_,a,b,_,_,rows)|*a<if *rows{MAX_ROWS}else{MAX_COLS}&&*b<if *rows{MAX_ROWS}else{MAX_COLS}) {
+            let raw=&input[i..end];let (left,right)=raw.split_once(':').unwrap();out.push_str(&format!("[.{left}:.{right}]"));i=end;continue;
         }
         if b[i] == b'\'' || b[i].is_ascii_alphabetic() || b[i] == b'_' {
             let start = i;
@@ -697,6 +1121,10 @@ fn ods_formula(input: &str) -> Result<String, Error> {
             }
             if b.get(j) == Some(&b'!') {
                 let ref_start = j + 1;
+                if let Some((end,_,_,_,_,_))=parse_axis_range(input,ref_start) {
+                    let (left,right)=input[ref_start..end].split_once(':').unwrap();out.push_str(&format!("['{}'.{left}:.{right}]",name.replace('\'',"''")));i=end;continue;
+                }
+
                 let (mut end, _, _, _, _) = parse_a1_endpoint(input, ref_start)
                     .ok_or(Error::Invalid("Unsupported ODS sheet reference"))?;
                 out.push_str("['");
@@ -713,6 +1141,16 @@ fn ods_formula(input: &str) -> Result<String, Error> {
                 }
                 out.push(']');
                 i = end;
+                continue;
+            }
+            let mut next = j;
+            while b.get(next).is_some_and(u8::is_ascii_whitespace) {
+                next += 1;
+            }
+            if b.get(next) == Some(&b'(') {
+                out.push_str(&ods_function_name(&name.to_ascii_uppercase()));
+                out.push_str(&input[j..next]);
+                i = next;
                 continue;
             }
         }
@@ -779,6 +1217,9 @@ fn ods_formula(input: &str) -> Result<String, Error> {
     if quoted {
         return Err(Error::Invalid("invalid formula"));
     }
+    if array_depth != 0 {
+        return Err(Error::Invalid("Invalid array formula"));
+    }
     Ok(out)
 }
 impl Workbook {
@@ -793,6 +1234,7 @@ impl Workbook {
             CellStyle as OdsStyle, Length, Sheet, WorkBook,
         };
         let state = self.history.current();
+        for sheet in &state.sheets{for range in &sheet.merges{range.bounded_operation()?;}}
         let recalc_time = chrono::Local::now().naive_local();
         if state.date_1904 {
             return Err(Error::Invalid(
@@ -809,7 +1251,7 @@ impl Workbook {
                     cells = cells.saturating_add(
                         (range.bottom - range.top + 1).saturating_mul(range.right - range.left + 1),
                     );
-                    if cells > MAX_ROWS * MAX_COLS {
+                    if cells > MAX_OPERATION_CELLS {
                         return Err(Error::Limit);
                     }
                     for row in range.top..=range.bottom {
@@ -891,10 +1333,10 @@ impl Workbook {
         if state
             .sheets
             .iter()
-            .any(|s| s.filter.is_some() || s.print != PrintSettings::default())
+            .any(|s| s.print != PrintSettings::default())
         {
             return Err(Error::Invalid(
-                "ODS export of filter or print settings is not yet supported",
+                "ODS export of print settings is not yet supported",
             ));
         }
         if state
@@ -917,17 +1359,15 @@ impl Workbook {
         }
         if state.sheets.iter().any(|s| {
             s.protected
-                || s.cells
-                    .values()
-                    .any(|c| matches!(c.text, CellContent::Date(_) | CellContent::Error(_)))
         }) || state
             .styles
             .iter()
-            .any(|s| s.borders & !15 != 0 || !s.number_format.is_empty())
+            .any(|s| s.borders & !15 != 0 || !ods_formats::supported(&s.number_format))
         {
-            return Err(Error::Invalid("ODS export of protection, dates, errors, unknown borders or number formats is unsupported"));
+            return Err(Error::Invalid("ODS export of protection, unknown borders or number formats is unsupported"));
         }
         let mut book = WorkBook::default();
+        book.config_mut().active_table=state.sheet().name.clone();
         let mut styles = Vec::new();
         for (i, s) in state.styles.iter().enumerate() {
             let mut st = OdsStyle::new_empty();
@@ -1002,11 +1442,22 @@ impl Workbook {
                 external_format: None,
                 external_cache: BTreeMap::new(),
             };
-            let grid = formula::display_grid_at(&eval, recalc_time);
+            let calculation = formula::calculation_at(&eval, recalc_time);
+            let results = &calculation.values;
+            if let Some(filter) = &sh.filter {
+                for row in formula::filter_hidden_rows_at(&eval, recalc_time, filter) {
+                    if !sh.view.hidden_rows.contains(&row) {
+                        sheet.set_row_visible(
+                            row as u32,
+                            spreadsheet_ods::sheet::Visibility::Filtered,
+                        );
+                    }
+                }
+            }
             for (&(r, c), cell) in &sh.cells {
                 let (r, c) = (r as u32, c as u32);
                 match &cell.text {
-                    CellContent::Text(t) => sheet.set_value(r, c, t.raw()),
+                    CellContent::Text(t) | CellContent::Error(t) => sheet.set_value(r, c, t.raw()),
                     CellContent::Number(t) => sheet.set_value(
                         r,
                         c,
@@ -1017,21 +1468,81 @@ impl Workbook {
                     CellContent::Boolean(t) => {
                         sheet.set_value(r, c, t.raw().eq_ignore_ascii_case("true"))
                     }
+                    CellContent::Date(t)=>sheet.set_value(r,c,date_time(t.raw())?),
                     CellContent::Formula(t) => {
-                        if let Ok(n) = grid[r as usize][c as usize].parse::<f64>() {
-                            sheet.set_value(r, c, n)
+                        match results
+                            .get(&(r as usize, c as usize))
+                            .ok_or(Error::Invalid("Missing formula result"))?
+                        {
+                            formula::Value::Array(_) => {
+                                return Err(Error::Invalid("Unresolved array cache"))
+                            }
+                            formula::Value::Number(value) => sheet.set_value(r, c, *value),
+                            formula::Value::Boolean(value) => sheet.set_value(r, c, *value),
+                            formula::Value::Text(value) => sheet.set_value(r, c, value.clone()),
+                            formula::Value::Error(value) => {
+                                sheet.set_value(r, c, (*value).to_owned())
+                            }
                         }
                         sheet.set_formula(r, c, ods_formula(t.raw())?)
                     }
-                    _ => unreachable!(),
                 }
                 sheet.set_cellstyle(r, c, &styles[cell.style]);
+            }
+            for (&(row, col), value) in results {
+                if matches!(
+                    sh.cells.get(&(row, col)).map(|c| &c.text),
+                    Some(CellContent::Formula(_))
+                ) {
+                    continue;
+                }
+                let (r, c) = (row as u32, col as u32);
+                match value {
+                    formula::Value::Number(n) => sheet.set_value(r, c, *n),
+                    formula::Value::Boolean(b) => sheet.set_value(r, c, *b),
+                    formula::Value::Text(s) => sheet.set_value(r, c, s.clone()),
+                    formula::Value::Error(e) => sheet.set_value(r, c, (*e).to_owned()),
+                    formula::Value::Array(_) => {
+                        return Err(Error::Invalid("Unresolved spill value"))
+                    }
+                }
+                let style = sh.cells.get(&(row, col)).map_or(0, |cell| cell.style);
+                sheet.set_cellstyle(r, c, &styles[style]);
+            }
+            for (&(r, c), range) in &calculation.spills {
+                sheet.set_matrix_row_span(
+                    r as u32,
+                    c as u32,
+                    (range.bottom - range.top + 1) as u32,
+                );
+                sheet.set_matrix_col_span(
+                    r as u32,
+                    c as u32,
+                    (range.right - range.left + 1) as u32,
+                );
+            }
+            for picture in &sh.images {
+                let mut frame = spreadsheet_ods::draw::DrawFrame::new();
+                frame.set_draw_name(format!("off42-picture-{}", picture.id));
+                frame.set_desc(&picture.description);
+                frame.set_width(Length::Pt(picture.width_points));
+                frame.set_height(Length::Pt(picture.height_points));
+                frame.svg_x(Length::Pt(picture.offset_x));
+                frame.svg_y(Length::Pt(picture.offset_y));
+                let mut image = spreadsheet_ods::draw::DrawImage::new();
+                image.set_binary(&picture.data);
+                frame.push_content(spreadsheet_ods::draw::DrawFrameContent::Image(image));
+                sheet.add_draw_frame(picture.row as u32, picture.column as u32, frame);
             }
             book.push_sheet(sheet);
         }
         let bytes = spreadsheet_ods::write_ods_buf(&mut book, Vec::new())
             .map_err(|_| Error::Invalid("cannot encode ODS"))?;
-        embed(bytes, "ods", self.project_bytes()?)
+        let bytes=ods_formats::patch_native(&bytes,&state.styles)?;
+        let errors=state.sheets.iter().map(|s|s.cells.iter().filter_map(|(&p,c)|matches!(c.text,CellContent::Error(_)).then_some((p,Some(c.clone())))).collect()).collect::<Vec<_>>();
+        let bytes=if errors.iter().any(|s:&Vec<_>|!s.is_empty()){dynamic_arrays::patch_ods_inputs(&bytes,&errors,state)?}else{bytes};
+        let bytes=if state.sheets.iter().any(|s|s.filter.is_some()){add_ods_database_ranges(&bytes,state)?}else{bytes};
+        embed(solver::files::patch(&bytes,"ods",None,state)?, "ods", self.project_bytes()?)
     }
 }
 
@@ -1103,9 +1614,21 @@ mod tests {
 }
 
 impl Workbook {
-    fn from_external_office(bytes: &[u8], kind: &str) -> Result<Self, Error> {
+    pub(crate) fn from_external_office(bytes: &[u8], kind: &str) -> Result<Self, Error> {
+        let repaired = if kind == "ods" {
+            repair_missing_project_manifest(bytes)?
+        } else {
+            std::borrow::Cow::Borrowed(bytes)
+        };
+        let bytes = repaired.as_ref();
         use calamine::{Data, Reader};
-        let mut source = calamine::open_workbook_auto_from_rs(Cursor::new(bytes))
+        let (reader_bytes, modern_errors) = dynamic_arrays::working_copy(bytes, kind)?;
+        let (sheets,cache)=if kind=="xlsx" {
+            sparse_import::xlsx(reader_bytes.as_ref(),&modern_errors)?
+        }else if kind=="ods" {
+            sparse_ods::ods(bytes)?
+        }else{
+        let mut source = calamine::open_workbook_auto_from_rs(Cursor::new(reader_bytes.as_ref()))
             .map_err(|_| Error::Invalid("unsupported or invalid spreadsheet"))?;
         let names = source.sheet_names().to_vec();
         if names.is_empty() || names.len() > MAX_SHEETS {
@@ -1150,7 +1673,12 @@ impl Workbook {
                     Data::DateTimeIso(v) | Data::DurationIso(v) => {
                         CellContent::Date(TextValue::from_raw(v.clone()))
                     }
-                    Data::Error(v) => CellContent::Error(TextValue::from_raw(v.to_string())),
+                    Data::Error(v) => CellContent::Error(TextValue::from_raw(
+                        modern_errors
+                            .get(&(sheet.name.clone(), r, c))
+                            .cloned()
+                            .unwrap_or_else(|| v.to_string()),
+                    )),
                 };
                 total = total.checked_add(val.raw().len()).ok_or(Error::Limit)?;
                 if total > MAX_TEXT {
@@ -1178,10 +1706,8 @@ impl Workbook {
                             format!("={formula}")
                         }
                     })
-                } else if formula.starts_with('=') {
-                    formula.clone()
                 } else {
-                    format!("={formula}")
+                    xlsx_formula_to_a1(formula)
                 };
                 total = total.checked_add(text.len()).ok_or(Error::Limit)?;
                 if total > MAX_TEXT {
@@ -1197,6 +1723,8 @@ impl Workbook {
             }
             sheets.push(sheet);
         }
+            (sheets,cache)
+        };
         let mut state = State {
             next_id: sheets.len() as u64 + 1,
             sheets,
@@ -1224,6 +1752,12 @@ impl Workbook {
             }
             import_xlsx_layout(bytes, &mut state)?;
         }
+        solver::files::import(bytes, kind, &mut state)?;
+        dynamic_arrays::import(bytes, kind, &mut state)?;
+        pictures::import(bytes, kind, &mut state)?;
+        if kind == "xlsx" {
+            filters::separate_xlsx_hidden(&mut state);
+        }
         Ok(Self {
             history: SnapshotHistory::new(state.clone(), 8),
             snapshots: BTreeMap::new(),
@@ -1238,8 +1772,10 @@ impl Workbook {
 
 fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
     use spreadsheet_ods::Length;
+    let number_formats=ods_formats::imported(bytes)?;
     let book = spreadsheet_ods::read_ods_buf(bytes)
         .map_err(|_| Error::Invalid("cannot parse ODS layout"))?;
+    if let Some(name)=views::ods_active(bytes)?{if let Some(sheet)=state.sheets.iter().find(|s|s.name==name){state.active=sheet.id;}}
     let mut archive =
         zip::ZipArchive::new(Cursor::new(bytes)).map_err(|_| Error::Invalid("invalid ODS"))?;
     let xml_content =
@@ -1262,9 +1798,11 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
             sheet.protected = protected;
         }
     }
+    filters::import_ods(&document,state)?;
     if book.num_sheets() != state.sheets.len() {
         return Err(Error::Invalid("inconsistent ODS sheets"));
     }
+    let mut layout_budget=0usize;
     for i in 0..state.sheets.len() {
         let source = book.sheet(i);
         let sheet = &mut state.sheets[i];
@@ -1289,7 +1827,8 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
             }
         }
         for row in 0..sheet.rows {
-            if source.row_visible(row as u32) != spreadsheet_ods::sheet::Visibility::Visible {
+            if source.row_visible(row as u32) == spreadsheet_ods::sheet::Visibility::Collapsed
+                || source.row_visible(row as u32)==spreadsheet_ods::sheet::Visibility::Filtered && sheet.filter.is_none() {
                 sheet.view.hidden_rows.insert(row);
             }
         }
@@ -1312,10 +1851,10 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
                 }
             }
         }
-        for r in 0..sheet.rows {
-            for c in 0..sheet.cols {
-                let rs = source.row_span(r as u32, c as u32) as usize;
-                let cs = source.col_span(r as u32, c as u32) as usize;
+        let table=sparse_ods::tables(&document).nth(i).ok_or(Error::Invalid("missing ODS layout table"))?;
+        sparse_ods::visit(table,&mut layout_budget,|r,c,node| {
+                let rs=node.attribute((sparse_ods::TABLE,"number-rows-spanned")).unwrap_or("1").parse::<usize>().map_err(|_|Error::Invalid("invalid ODS row span"))?;
+                let cs=node.attribute((sparse_ods::TABLE,"number-columns-spanned")).unwrap_or("1").parse::<usize>().map_err(|_|Error::Invalid("invalid ODS column span"))?;
                 if rs > 1 || cs > 1 {
                     let m = Range {
                         top: r,
@@ -1327,9 +1866,10 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
                         sheet.merges.push(m)
                     }
                 }
-                if let Some(reference) = source.cellstyle(r as u32, c as u32) {
-                    if let Some(style) = book.cellstyle(reference.as_ref()) {
+                if let Some(reference) = node.attribute((sparse_ods::TABLE,"style-name")) {
+                    if let Some(style) = book.cellstyle(reference) {
                         let mut out = CellStyle::default();
+                        out.number_format=number_formats.get(reference).cloned().unwrap_or_default();
                         for (key, value) in style.textstyle().iter() {
                             match key.as_ref() {
                                 "fo:font-weight" => out.bold = value == "bold",
@@ -1398,11 +1938,12 @@ fn import_ods_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
                         }
                     }
                 }
-            }
-        }
+            Ok(())
+        })?;
     }
     Ok(())
 }
+
 fn parse_rgb(s: &str) -> Option<u32> {
     let s = s.strip_prefix('#')?;
     if s.len() != 6 {
@@ -1788,6 +2329,13 @@ fn import_xlsx_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
                 let n = index("numFmtId");
                 style.number_format = numberformats.get(&n).cloned().unwrap_or_else(|| {
                     match n {
+                        1 => "0",
+                        2 => "0.00",
+                        3 => "#,##0",
+                        4 => "#,##0.00",
+                        9 => "0%",
+                        10 => "0.00%",
+                        11 => "0.00E+00",
                         14 => "mm-dd-yy",
                         15 => "d-mmm-yy",
                         16 => "d-mmm",
@@ -1805,6 +2353,7 @@ fn import_xlsx_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
             }
         }
     }
+    if let Some(sheet)=workbook.descendants().find(|n|n.has_tag_name("workbookView")).and_then(|n|n.attribute("activeTab")).and_then(|s|s.parse::<usize>().ok()).and_then(|i|state.sheets.get(i)){state.active=sheet.id;}
     let sheet_nodes: Vec<_> = workbook
         .descendants()
         .filter(|n| n.has_tag_name("sheet"))
@@ -1830,6 +2379,17 @@ fn import_xlsx_layout(bytes: &[u8], state: &mut State) -> Result<(), Error> {
             continue;
         };
         let d = xml(&text)?;
+        if let Some(range) = d
+            .descendants()
+            .find(|n| n.has_tag_name("dimension"))
+            .and_then(|n| n.attribute("ref"))
+            .and_then(dynamic_arrays::range)
+        {
+            sheet.rows = sheet.rows.max(range.bottom + 1);
+            sheet.cols = sheet.cols.max(range.right + 1);
+        }
+        filters::import_xlsx(&d, sheet)?;
+        validation_lists::import_xlsx(&d, sheet);
         if let Some(pane) = d.descendants().find(|n| {
             n.has_tag_name("pane") && matches!(n.attribute("state"), Some("frozen" | "frozenSplit"))
         }) {
@@ -2105,7 +2665,7 @@ fn changed_cells(
             }
         };
         if (!allow_geometry && a.name != b.name)
-            || (!allow_geometry && (a.rows != b.rows || a.cols != b.cols))
+            || (!allow_geometry && (a.rows > b.rows || a.cols > b.cols))
             || (!allow_geometry && (a.row_heights != b.row_heights || a.col_widths != b.col_widths))
             || a.protected != b.protected
             || a.filter != b.filter
@@ -2158,6 +2718,15 @@ impl Workbook {
         patch_xlsx(bytes, old, state, &changes, &renames).map(|_| ())
     }
     fn patch_external(&self, kind: &str) -> Result<Vec<u8>, Error> {
+        let mut output = self.patch_external_cells(kind)?;
+        if let Some(old) = &self.external_baseline {
+            output = pictures::patch(&output, kind, old, self.history.current())?;
+            output = solver::files::patch(&output,kind,Some(old),self.history.current())?;
+            output = views::patch(&output,kind,old,self.history.current())?;
+        }
+        Ok(output)
+    }
+    fn patch_external_cells(&self, kind: &str) -> Result<Vec<u8>, Error> {
         if self.external_format.as_deref() != Some(kind) {
             return Err(Error::Invalid(
                 "Conversion would discard unsupported Office content; save in the original format",
@@ -2185,7 +2754,7 @@ impl Workbook {
                     .zip(&self.history.current().sheets)
                     .any(|(a, b)| a.id != b.id || a.name != b.name))
         {
-            return patch_ods_structure(bytes, old, self.history.current());
+            return patch_ods_structure(bytes, old, self.history.current()).and_then(|bytes|formula_cache::refresh_external(bytes,self,kind));
         }
         let renames = sheet_renames(old, self.history.current())?;
         let changes = changed_cells(
@@ -2217,7 +2786,7 @@ impl Workbook {
             "xlsx" => patch_xlsx(bytes, old, self.history.current(), &changes, &renames),
             "ods" => patch_ods(bytes, old, self.history.current(), &changes),
             _ => Err(Error::Invalid("This Office format cannot yet be edited")),
-        }
+        }.and_then(|bytes|formula_cache::refresh_external(bytes,self,kind))
     }
 }
 fn patch_ods_structure(bytes: &[u8], old: &State, current: &State) -> Result<Vec<u8>, Error> {
@@ -2233,6 +2802,7 @@ fn patch_ods_structure(bytes: &[u8], old: &State, current: &State) -> Result<Vec
     if current.sheets.iter().any(|sheet| sheet.source_structure) {
         if d.descendants().any(|n| {
             n.is_element()
+                && !solver::files::owned_ods_names(n,old)
                 && (matches!(
                     n.tag_name().name(),
                     "named-expressions"
@@ -2687,14 +3257,31 @@ fn patch_ods(
     current: &State,
     changes: &[Vec<((usize, usize), Option<Cell>)>],
 ) -> Result<Vec<u8>, Error> {
+    // A value-only edit can preserve every unedited XML node directly, including rich text and metadata.
+    // Layout/style/filter/structural edits keep their existing stronger reconstruction checks.
+    let mut shape=current.clone();shape.selection=old.selection;
+    if shape.sheets.len()==old.sheets.len() {
+        for (after,before)in shape.sheets.iter_mut().zip(&old.sheets){
+            after.cells=before.cells.clone();
+            // Growing blank allocation does not shift references or alter existing XML geometry.
+            if after.rows>=before.rows&&after.cols>=before.cols&&!after.source_structure {
+                after.rows=before.rows;after.cols=before.cols;
+            }
+        }
+        let styles_unchanged=changes.iter().enumerate().all(|(i,cells)|cells.iter().all(|(p,c)|old.sheets[i].cells.get(p).map_or(0,|c|c.style)==c.as_ref().map_or(0,|c|c.style)));
+        if &shape==old&&styles_unchanged&&current.sheets.iter().all(|s|s.filter.is_none()) {
+            return dynamic_arrays::patch_ods_inputs(bytes,changes,current);
+        }
+    }
     use spreadsheet_ods::Value;
     let mut book = spreadsheet_ods::read_ods_buf(bytes)
         .map_err(|_| Error::Invalid("cannot read original ODS"))?;
+    let filtered=filters::hidden_rows(current);
     let view_changed = old
         .sheets
         .iter()
         .zip(&current.sheets)
-        .any(|(before, after)| before.view != after.view);
+        .any(|(before, after)| before.view != after.view) || !filtered.is_empty();
     for (i, (before, after)) in old.sheets.iter().zip(&current.sheets).enumerate() {
         for row in before
             .view
@@ -2745,22 +3332,14 @@ fn patch_ods(
         if !after.source_structure {
             continue;
         }
-        style_scan = style_scan.saturating_add(before.rows.saturating_mul(before.cols));
-        if style_scan > 1_000_000 {
-            return Err(Error::Limit);
-        }
-        let mut styles = Vec::new();
-        for row in 0..before.rows {
-            for col in 0..before.cols {
-                if let Some(reference) = book.sheet(i).cellstyle(row as u32, col as u32).cloned() {
-                    let id = before.cells.get(&(row, col)).map_or(0, |c| c.style);
-                    styles.push((
-                        (row, col),
-                        shift_ods_cell(row, col, &after.source_edits),
-                        reference,
-                        id,
-                    ));
-                }
+        style_scan = style_scan.saturating_add(book.sheet(i).cell_count());
+        if style_scan>1_000_000{return Err(Error::Limit)}
+        let mut styles=Vec::new();
+        for ((row,col),cell) in book.sheet(i).iter(){
+            let (row,col)=(row as usize,col as usize);
+            if let Some(reference)=cell.style().cloned(){
+                let id=before.cells.get(&(row,col)).map_or(0,|c|c.style);
+                styles.push(((row,col),shift_ods_cell(row,col,&after.source_edits),reference,id));
             }
         }
         for ((row, col), _, _, _) in &styles {
@@ -2854,20 +3433,32 @@ fn patch_ods(
                 Some(CellContent::Boolean(v)) => {
                     sheet.set_value(r, c, v.raw().eq_ignore_ascii_case("true"))
                 }
+                Some(CellContent::Date(v))=>sheet.set_value(r,c,date_time(v.raw())?),
                 Some(CellContent::Formula(v)) => {
                     sheet.set_value(r, c, Value::Empty);
                     sheet.set_formula(r, c, ods_formula(v.raw())?)
                 }
                 _ => {
                     return Err(Error::Invalid(
-                        "editing dates and errors in ODS is unsupported",
+                        "editing error cells in ODS is unsupported",
                     ))
                 }
             }
         }
     }
+    for (i,sheet) in current.sheets.iter().enumerate() {
+        if let Some(filter)=&sheet.filter {
+            for row in filter.range.top+1..=filter.range.bottom {
+                let visibility=if sheet.view.hidden_rows.contains(&row){spreadsheet_ods::sheet::Visibility::Collapsed}
+                    else if filtered.get(&sheet.id).is_some_and(|rows|rows.contains(&row)){spreadsheet_ods::sheet::Visibility::Filtered}
+                    else{spreadsheet_ods::sheet::Visibility::Visible};
+                book.sheet_mut(i).set_row_visible(row as u32,visibility);
+            }
+        }
+    }
     let generated = spreadsheet_ods::write_ods_buf(&mut book, Vec::new())
         .map_err(|_| Error::Invalid("cannot write ODS without loss"))?;
+    let generated = dynamic_arrays::preserve_ods_defaults(bytes, generated, changes, old, current)?;
     verify_ods_untouched_styles(bytes, &generated, changes, old, current)?;
     let mut original =
         zip::ZipArchive::new(Cursor::new(bytes)).map_err(|_| Error::Invalid("invalid ODS"))?;
@@ -2879,6 +3470,7 @@ fn patch_ods(
     let after = zip_text(&mut generated_zip, "content.xml")?
         .ok_or(Error::Invalid("missing generated ODS content"))?;
     let after = preserve_ods_auto_styles(&before, &after)?;
+    let after = pictures::preserve_odf_drawings(&before, &after, current)?;
     verify_ods_opaque_content(&before, &after, view_changed)?;
     if view_changed {
         let parsed = spreadsheet_ods::read_ods_buf(&generated)
@@ -2887,6 +3479,13 @@ fn patch_ods(
             .map_err(|_| Error::Invalid("Invalid ODS source"))?;
         for (i, sheet) in current.sheets.iter().enumerate() {
             for row in 0..sheet.rows {
+                if sheet.filter.as_ref().is_some_and(|f|row>f.range.top && row<=f.range.bottom) {
+                    let expected=if sheet.view.hidden_rows.contains(&row){spreadsheet_ods::sheet::Visibility::Collapsed}
+                        else if filtered.get(&sheet.id).is_some_and(|rows|rows.contains(&row)){spreadsheet_ods::sheet::Visibility::Filtered}
+                        else{spreadsheet_ods::sheet::Visibility::Visible};
+                    if parsed.sheet(i).row_visible(row as u32)!=expected {return Err(Error::Invalid("ODS filtered row visibility could not be preserved"));}
+                    continue;
+                }
                 let hidden = parsed.sheet(i).row_visible(row as u32)
                     != spreadsheet_ods::sheet::Visibility::Visible;
                 if old.sheets[i].view.hidden_rows.contains(&row)
@@ -3027,16 +3626,14 @@ fn cell_xml(
                 "0"
             }
         )),
+        CellContent::Date(_)=>out.push_str(&format!(" t=\"d\"><{prefix}v>{}</{prefix}v></{prefix}c>",date_time(raw)?.format("%Y-%m-%dT%H:%M:%S%.f"))),
         CellContent::Formula(_) => out.push_str(&format!(
             "><{prefix}f>{}</{prefix}f></{prefix}c>",
-            escape_xml(
-                raw.strip_prefix('=')
-                    .ok_or(Error::Invalid("invalid formula"))?
-            )
+            escape_xml(formula::canonical_input(raw.strip_prefix('=').ok_or(Error::Invalid("invalid formula"))?).as_ref())
         )),
         _ => {
             return Err(Error::Invalid(
-                "editing dates or errors in XLSX is unsupported",
+                "editing error cells in XLSX is unsupported",
             ))
         }
     }
@@ -3099,16 +3696,24 @@ fn patch_row(
                 }
                 continue;
             }
+            let dynamic = node.attribute("cm").is_some()
+                && old.cells.get(&(*r, *c)).is_some_and(|c| {
+                    matches!(c.text, CellContent::Formula(_))
+                        && formula::is_dynamic_formula(c.text.raw())
+                })
+                && !old.protected_formula_ranges.iter().any(|range| {
+                    *r >= range.top && *r <= range.bottom && *c >= range.left && *c <= range.right
+                });
             if node
                 .attributes()
-                .any(|a| !matches!(a.name(), "r" | "s" | "t"))
+                .any(|a| !matches!(a.name(), "r" | "s" | "t") && !(dynamic && a.name() == "cm"))
                 || node
                     .children()
                     .any(|n| n.is_element() && !matches!(n.tag_name().name(), "v" | "f" | "is"))
-                || node
-                    .children()
-                    .filter(|n| n.has_tag_name("f"))
-                    .any(|n| n.attributes().len() > 0)
+                || node.children().filter(|n| n.has_tag_name("f")).any(|n| {
+                    n.attributes()
+                        .any(|a| !dynamic || !matches!(a.name(), "t" | "ref"))
+                })
                 || node
                     .children()
                     .filter(|n| n.has_tag_name("is"))
@@ -4354,6 +4959,7 @@ fn patch_xlsx(
             "Save and reopen before reusing a renamed source sheet name",
         ));
     }
+    let filtered=filters::hidden_rows(current);
     let mut archive =
         zip::ZipArchive::new(Cursor::new(bytes)).map_err(|_| Error::Invalid("invalid XLSX"))?;
     let workbook = zip_text(&mut archive, "xl/workbook.xml")?
@@ -4502,6 +5108,7 @@ fn patch_xlsx(
             &mut style_doc,
             &mut style_cache,
         )?;
+        let patched=if let Some(rows)=filtered.get(&current_sheet.id){filters::patch_xlsx_visibility(&patched,current_sheet,rows)?}else{patched};
         replacements.insert(path.to_owned(), patched);
     }
     let table_headers_changed = old.sheets.iter().any(|source| {
@@ -5070,8 +5677,10 @@ fn verify_ods_untouched_styles(
                 "ODS style grid exceeds safe preservation limits",
             ));
         }
-        for r in 0..rows {
-            for c in 0..cols {
+        let coordinates=a.sheet(i).iter().map(|(p,_)|p).chain(b.sheet(i).iter().map(|(p,_)|p)).collect::<std::collections::BTreeSet<_>>();
+        if coordinates.len()>1_000_000{return Err(Error::Limit)}
+        for (r,c) in coordinates {
+            let (r,c)=(r as usize,c as usize);
                 let merge_changed = sheet
                     .merges
                     .iter()
@@ -5102,7 +5711,6 @@ fn verify_ods_untouched_styles(
                         "ODS rewriting changed an unedited cell style",
                     ));
                 }
-            }
         }
     }
     Ok(())
@@ -5948,8 +6556,12 @@ mod external_reorder_regression {
             .find(|n| n.has_tag_name("definedName") && n.attribute("name") == Some("LocalValue"))
             .unwrap();
         assert_eq!(local.attribute("localSheetId"), Some("0"));
-        let reopened = Workbook::from_office_bytes(&saved, "xlsx").unwrap();
+        let mut reopened = Workbook::from_office_bytes(&saved, "xlsx").unwrap();
         assert_eq!(reopened.sheets()[0].1, "Second");
+        // Reordering a different sheet keeps First active, including when the source omitted activeTab=0.
+        assert_eq!(reopened.sheets().iter().find(|s|s.0==reopened.active_sheet()).unwrap().1,"First");
+        assert_eq!(reopened.cell(0,0),Some("alpha"));
+        reopened.select_sheet(reopened.sheets()[0].0).unwrap();
         assert_eq!(reopened.cell(0, 0), Some("beta"));
         book.undo();
         assert_eq!(book.sheets()[0].1, "First");
@@ -7032,5 +7644,147 @@ mod external_sheet_structure_regression {
         assert!(book.sheets().iter().any(|s| s.0 == second));
         book.redo();
         assert!(!book.sheets().iter().any(|s| s.0 == second));
+    }
+}
+
+#[cfg(test)]
+mod statistical_formula_names {
+    use super::*;
+    #[test]
+    fn odf_function_names_keep_tails_and_quoted_text_distinct() {
+        for (excel, odf) in [
+            ("=F.DIST(1,5,8,TRUE)", "of:=FDIST(1;5;8;TRUE)"),
+            ("=FDIST(1,5,8)", "of:=LEGACY.FDIST(1;5;8)"),
+            ("=F.INV(0.5,5,8)", "of:=FINV(0.5;5;8)"),
+            ("=FINV(0.5,5,8)", "of:=LEGACY.FINV(0.5;5;8)"),
+            ("=STDEV.S(A1:A3)", "of:=COM.MICROSOFT.STDEV.S([.A1:.A3])"),
+            (
+                "=NORM.S.INV(1e-100)",
+                "of:=COM.MICROSOFT.NORM.S.INV(1e-100)",
+            ),
+        ] {
+            assert_eq!(ods_formula(excel).unwrap(), odf);
+            assert_eq!(ods_formula_to_a1(odf).unwrap(), excel);
+        }
+        assert_eq!(
+            ods_formula("=_xlfn.NORM.DIST(1,0,1,TRUE)").unwrap(),
+            "of:=COM.MICROSOFT.NORM.DIST(1;0;1;TRUE)"
+        );
+        let text = "=\"FDIST( COM.MICROSOFT.STDEV.S(\"";
+        assert_eq!(
+            ods_formula_to_a1(&ods_formula(text).unwrap()).unwrap(),
+            text
+        );
+    }
+}
+
+#[cfg(test)]
+mod project_package_registration {
+    use super::*;
+    #[test]
+    fn project_snapshot_is_registered_once_and_reembedding_preserves_other_parts(){
+        let mut book=Workbook::new(3,3).unwrap();book.set_cell(0,0,"=SUM(1,2)".into()).unwrap();
+        for kind in ["xlsx","ods"]{
+            let bytes=if kind=="xlsx"{book.xlsx_bytes()}else{book.ods_bytes()}.unwrap();
+            let rebuilt=embed(bytes,kind,book.project_bytes().unwrap()).unwrap();let mut archive=zip::ZipArchive::new(Cursor::new(rebuilt.as_slice())).unwrap();
+            assert_eq!(archive.file_names().filter(|n|*n==EXTRA).count(),1);
+            let name=if kind=="xlsx"{"[Content_Types].xml"}else{"META-INF/manifest.xml"};let mut text=String::new();archive.by_name(name).unwrap().read_to_string(&mut text).unwrap();let xml=roxmltree::Document::parse(&text).unwrap();
+            let entries=xml.descendants().filter(|n|n.is_element()&&if kind=="xlsx"{n.attribute("PartName")==Some("/xls42/project.json")}else{n.attribute(("urn:oasis:names:tc:opendocument:xmlns:manifest:1.0","full-path"))==Some(EXTRA)}).count();assert_eq!(entries,1);
+            let restored=Workbook::from_office_bytes(&rebuilt,kind).unwrap();assert_eq!(restored.display_grid(),book.display_grid());assert_eq!(restored.cell(0,0),book.cell(0,0));
+        }
+    }
+}
+
+#[cfg(test)]
+mod calendar_finance_packages {
+    use super::*;
+    fn external(bytes: Vec<u8>, kind: &str) -> Workbook {
+        let mut input = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        for i in 0..input.len() {
+            let entry = input.by_index(i).unwrap();
+            if entry.name() != EXTRA {
+                out.raw_copy_file(entry).unwrap();
+            }
+        }
+        Workbook::from_office_bytes(&out.finish().unwrap().into_inner(), kind).unwrap()
+    }
+    #[test]
+    fn entered_dates_and_finance_recalculate_after_external_save_and_reopen() {
+        let mut b = Workbook::new(12, 8).unwrap();
+        for (i, v) in ["2024-12-20", "2024-12-25", "2025-01-01"]
+            .iter()
+            .enumerate()
+        {
+            b.set_cell(i, 0, (*v).into()).unwrap();
+        }
+        for (i, v) in ["-100", "0", "121"].iter().enumerate() {
+            b.set_cell(i, 1, (*v).into()).unwrap();
+        }
+        for (i, f) in [
+            "=WORKDAY(A1,5,A2:A3)",
+            "=NETWORKDAYS(A1,A3,A2:A3)",
+            "=IRR(B1:B3)",
+            "=XNPV(.1,B1:B3,A1:A3)",
+            "=EOMONTH(A1,1)",
+        ]
+        .iter()
+        .enumerate()
+        {
+            b.set_cell(i, 2, (*f).into()).unwrap();
+        }
+        let before = b.display_grid();
+        assert_eq!(before[0][2], "45656");
+        for kind in ["xlsx", "ods"] {
+            let bytes = if kind == "xlsx" {
+                b.xlsx_bytes()
+            } else {
+                b.ods_bytes()
+            }
+            .unwrap();
+            let mut doc = external(bytes, kind);
+            assert_eq!(doc.display_grid()[0][2], before[0][2]);
+            assert!(matches!(doc.content(0, 0), Some(CellContent::Date(_))));
+            doc.set_cell_editor_text(0, 0, "2024-12-19".into()).unwrap();
+            doc.set_cell(2, 1, "144".into()).unwrap();
+            let changed = doc.display_grid();
+            assert_eq!(changed[0][2], "45653");
+            let irr = changed[2][2].parse::<f64>().unwrap();
+            assert!((irr - 0.2).abs() < 1e-10);
+            let saved = if kind == "xlsx" {
+                doc.xlsx_bytes()
+            } else {
+                doc.ods_bytes()
+            }
+            .unwrap();
+            let reopened = external(saved, kind);
+            assert_eq!(reopened.display_grid()[0][2], changed[0][2]);
+            assert_eq!(reopened.display_grid()[2][2], changed[2][2]);
+            doc.undo();
+            doc.undo();
+            assert_eq!(doc.display_grid()[0][2], before[0][2]);
+            doc.redo();
+            doc.redo();
+            assert_eq!(doc.display_grid()[0][2], changed[0][2]);
+        }
+    }
+}
+
+#[cfg(test)]
+mod array_formula_delimiters {
+    use super::*;
+    #[test]
+    fn openformula_arrays_have_distinct_row_column_and_argument_separators() {
+        for (formula, odf) in [
+            ("=MMULT({1,2;3,4},{5;6})", "of:=MMULT({1;2|3;4};{5|6})"),
+            ("=SUM({1,2,3}*2)", "of:=SUM({1;2;3}*2)"),
+            (
+                "=TEXTJOIN(\",\",TRUE,{\"a;b\",\"c|d\"})",
+                "of:=COM.MICROSOFT.TEXTJOIN(\",\";TRUE;{\"a;b\";\"c|d\"})",
+            ),
+        ] {
+            assert_eq!(ods_formula(formula).unwrap(), odf);
+            assert_eq!(ods_formula_to_a1(odf).as_deref(), Some(formula));
+        }
     }
 }

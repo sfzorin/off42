@@ -1,0 +1,357 @@
+{
+  "source_sha256": "ad29823005d4dcca6199b00661dc763dc449d6b5b28d088fac7f81cb7e01c81a",
+  "cases": [
+    {
+      "changes": [
+        {
+          "added": [
+            "20k"
+          ],
+          "page": 0,
+          "removed": [
+            "10k"
+          ]
+        },
+        {
+          "added": [],
+          "page": 1,
+          "removed": [
+            "REMOVE",
+            "THIS"
+          ]
+        },
+        {
+          "added": [
+            "ADDED",
+            "PAGE"
+          ],
+          "page": 2,
+          "removed": []
+        }
+      ],
+      "name": "electrical values",
+      "new": [
+        "BOARD uses 20k resistor",
+        "",
+        "ADDED PAGE"
+      ],
+      "new_words": [
+        [
+          "BOARD",
+          "uses",
+          "20k",
+          "resistor"
+        ],
+        [],
+        [
+          "ADDED",
+          "PAGE"
+        ]
+      ],
+      "old": [
+        "BOARD uses 10k resistor",
+        "REMOVE THIS"
+      ],
+      "old_words": [
+        [
+          "BOARD",
+          "uses",
+          "10k",
+          "resistor"
+        ],
+        [
+          "REMOVE",
+          "THIS"
+        ]
+      ]
+    },
+    {
+      "changes": [],
+      "name": "punctuation",
+      "new": [
+        "Power stage R1 R2 0603!"
+      ],
+      "new_words": [
+        [
+          "Power",
+          "stage",
+          "R1",
+          "R2",
+          "0603"
+        ]
+      ],
+      "old": [
+        "Power-stage: R1, R2; 0603."
+      ],
+      "old_words": [
+        [
+          "Power",
+          "stage",
+          "R1",
+          "R2",
+          "0603"
+        ]
+      ]
+    },
+    {
+      "changes": [
+        {
+          "added": [
+            "сборке"
+          ],
+          "page": 0,
+          "removed": [
+            "проверке"
+          ]
+        }
+      ],
+      "name": "Cyrillic",
+      "new": [
+        "Плата готова к сборке"
+      ],
+      "new_words": [
+        [
+          "Плата",
+          "готова",
+          "к",
+          "сборке"
+        ]
+      ],
+      "old": [
+        "Плата готова к проверке"
+      ],
+      "old_words": [
+        [
+          "Плата",
+          "готова",
+          "к",
+          "проверке"
+        ]
+      ]
+    },
+    {
+      "changes": [
+        {
+          "added": [
+            "للإنتاج"
+          ],
+          "page": 0,
+          "removed": [
+            "للاختبار"
+          ]
+        }
+      ],
+      "name": "Arabic",
+      "new": [
+        "لوحة جديدة للإنتاج"
+      ],
+      "new_words": [
+        [
+          "لوحة",
+          "جديدة",
+          "للإنتاج"
+        ]
+      ],
+      "old": [
+        "لوحة جديدة للاختبار"
+      ],
+      "old_words": [
+        [
+          "لوحة",
+          "جديدة",
+          "للاختبار"
+        ]
+      ]
+    },
+    {
+      "changes": [
+        {
+          "added": [
+            "3V"
+          ],
+          "page": 0,
+          "removed": [
+            "5V"
+          ]
+        }
+      ],
+      "name": "Greek",
+      "new": [
+        "Τάση 3V και ρεύμα 2A"
+      ],
+      "new_words": [
+        [
+          "Τάση",
+          "3V",
+          "και",
+          "ρεύμα",
+          "2A"
+        ]
+      ],
+      "old": [
+        "Τάση 5V και ρεύμα 2A"
+      ],
+      "old_words": [
+        [
+          "Τάση",
+          "5V",
+          "και",
+          "ρεύμα",
+          "2A"
+        ]
+      ]
+    },
+    {
+      "changes": [
+        {
+          "added": [
+            "tamamlandı"
+          ],
+          "page": 0,
+          "removed": [
+            "hazır"
+          ]
+        }
+      ],
+      "name": "Turkish",
+      "new": [
+        "Yeni devre kartı tamamlandı"
+      ],
+      "new_words": [
+        [
+          "Yeni",
+          "devre",
+          "kartı",
+          "tamamlandı"
+        ]
+      ],
+      "old": [
+        "Yeni devre kartı hazır"
+      ],
+      "old_words": [
+        [
+          "Yeni",
+          "devre",
+          "kartı",
+          "hazır"
+        ]
+      ]
+    },
+    {
+      "changes": [
+        {
+          "added": [],
+          "page": 0,
+          "removed": [
+            "b"
+          ]
+        },
+        {
+          "added": [
+            "b"
+          ],
+          "page": 0,
+          "removed": []
+        }
+      ],
+      "name": "repeated words",
+      "new": [
+        "a a b c"
+      ],
+      "new_words": [
+        [
+          "a",
+          "a",
+          "b",
+          "c"
+        ]
+      ],
+      "old": [
+        "a b a c"
+      ],
+      "old_words": [
+        [
+          "a",
+          "b",
+          "a",
+          "c"
+        ]
+      ]
+    },
+    {
+      "changes": [
+        {
+          "added": [
+            "middle"
+          ],
+          "page": 0,
+          "removed": []
+        }
+      ],
+      "name": "insertions",
+      "new": [
+        "first middle last"
+      ],
+      "new_words": [
+        [
+          "first",
+          "middle",
+          "last"
+        ]
+      ],
+      "old": [
+        "first last"
+      ],
+      "old_words": [
+        [
+          "first",
+          "last"
+        ]
+      ]
+    },
+    {
+      "changes": [],
+      "name": "empty inputs",
+      "new": [
+        ""
+      ],
+      "new_words": [
+        []
+      ],
+      "old": [
+        "",
+        ""
+      ],
+      "old_words": [
+        [],
+        []
+      ]
+    },
+    {
+      "changes": [],
+      "name": "Unicode and spacing",
+      "new": [
+        "café Ω é\nUSB"
+      ],
+      "new_words": [
+        [
+          "café",
+          "Ω",
+          "é",
+          "USB"
+        ]
+      ],
+      "old": [
+        "café Ω  é 😀\nUSB"
+      ],
+      "old_words": [
+        [
+          "café",
+          "Ω",
+          "é",
+          "USB"
+        ]
+      ]
+    }
+  ]
+}

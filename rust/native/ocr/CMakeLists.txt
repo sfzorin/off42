@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.24)
+project(off42_ocr LANGUAGES CXX)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
+find_package(Tesseract CONFIG REQUIRED)
+add_library(off42_ocr STATIC init.cpp)
+target_compile_features(off42_ocr PRIVATE cxx_std_17)
+target_link_libraries(off42_ocr PRIVATE Tesseract::libtesseract)
+install(TARGETS off42_ocr ARCHIVE DESTINATION lib)

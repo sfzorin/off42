@@ -46,6 +46,23 @@ fn acquire_sta(parent: usize, byte_budget: usize, page_budget: usize) -> Result<
             }
         }
         let _apartment = Apartment;
+        // Explicit audit fixture: exercise the same STA/WIC/result path without a physical device.
+        // Normal launches never enter this branch. A file barrier makes delayed/canceled callbacks deterministic.
+        if std::env::var_os("OFF42_AUDIT_OUTPUT").is_some(){
+            if let Some(path)=std::env::var_os("OFF42_WIA_AUDIT_IMAGE"){
+                if let Some(release)=std::env::var_os("OFF42_WIA_AUDIT_RELEASE"){
+                    let release=std::path::PathBuf::from(release);let deadline=std::time::Instant::now()+std::time::Duration::from_secs(30);
+                    while !release.is_file(){
+                        if std::time::Instant::now()>=deadline{return Err("Virtual WIA audit fixture timed out".into());}
+                        std::thread::sleep(std::time::Duration::from_millis(20));
+                    }
+                    use std::io::Read;
+                    let mut mode=Vec::new();std::fs::File::open(release).map_err(|error|error.to_string())?.take(32).read_to_end(&mut mode).map_err(|error|error.to_string())?;
+                    if mode.starts_with(b"cancel"){return Ok(Vec::new());}
+                }
+                return decode_frames(path.to_str().ok_or("Invalid virtual scanner fixture path")?,byte_budget,page_budget);
+            }
+        }
         let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
         let manager: IWiaDevMgr2 = CoCreateInstance(&WiaDevMgr2, None, CLSCTX_LOCAL_SERVER)
             .map_err(|e| format!("WIA unavailable: {e}"))?;

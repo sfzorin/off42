@@ -7,6 +7,7 @@ use std::{
     path::Path,
 };
 use suite42_core::{write_new, SnapshotHistory, TextValue};
+pub mod geometry;
 pub mod odp;
 pub mod pptx;
 const MAX_SLIDES: usize = 200;
@@ -14,6 +15,14 @@ const MAX_TEXT: usize = 32_768;
 const MAX_FILE: u64 = 512 * 1024;
 const MAX_MEDIA_FILE: u64 = 64 * 1024 * 1024;
 const HISTORY_LIMIT: usize = 10;
+
+fn xml_name_end(node: roxmltree::Node<'_, '_>, source: &str) -> Result<usize, String> {
+    let start = node.range().start + 1;
+    source[start..node.range().end]
+        .find(|ch: char| ch.is_ascii_whitespace() || matches!(ch, '/' | '>'))
+        .map(|offset| start + offset)
+        .ok_or_else(|| "Invalid XML element name".into())
+}
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Slide {
@@ -32,6 +41,102 @@ pub struct Slide {
     next_object_id: u64,
     #[serde(default)]
     pub timing: SlideTiming,
+    #[serde(default, skip_serializing_if = "is_visible")]
+    pub hidden: bool,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub notes: String,
+}
+fn is_visible(hidden: &bool) -> bool {
+    !hidden
+}
+fn valid_notes(notes: &str) -> bool {
+    notes.len() <= MAX_TEXT && notes.chars().all(|ch| {
+        matches!(ch, '\t' | '\n') || (ch >= ' ' && !matches!(ch, '\u{fffe}' | '\u{ffff}'))
+    })
+}
+
+#[cfg(test)]
+mod speaker_notes_tests {
+    use super::*;
+    use std::io::{Cursor, Read};
+    use zip::ZipArchive;
+
+    fn entry(bytes: &[u8], path: &str) -> Vec<u8> {
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut contents = Vec::new();
+        archive.by_name(path).unwrap().read_to_end(&mut contents).unwrap();
+        contents
+    }
+
+    #[test]
+    fn notes_follow_slide_identity_and_roundtrip_project_and_standard_office_parts() {
+        let first = "  Образец 42\n\nX < 9\tkeep  space";
+        let second = "Slide two";
+        let mut deck = Presentation::new();
+        deck.set_notes(first).unwrap();
+        deck.add().unwrap();
+        deck.set_notes(second).unwrap();
+        let (project, _) = deck.save_snapshot().unwrap();
+        let source: Deck = serde_json::from_slice(&project).unwrap();
+        assert_eq!(source.slides[0].notes, first);
+        assert_eq!(source.slides[1].notes, second);
+
+        let pptx = pptx::export_new(&deck).unwrap();
+        let odf = odp::export(&deck).unwrap();
+        let (mut opened_pptx, pptx_source) = pptx::import(&pptx).unwrap();
+        let (mut opened_odf, odf_source) = odp::import_with_source(&odf).unwrap();
+        for opened in [&mut opened_pptx, &mut opened_odf] {
+            assert_eq!(opened.slides()[0].notes, first);
+            assert_eq!(opened.slides()[1].notes, second);
+            assert!(opened.slides()[0].objects.is_empty());
+            opened.select(1).unwrap();
+            opened.set_notes("Revised\r\nline").unwrap();
+            assert_eq!(opened.slides()[1].notes, "Revised\nline");
+            assert!(opened.undo());
+            assert_eq!(opened.slides()[1].notes, second);
+            assert!(opened.redo());
+        }
+        assert!(pptx_source.can_edit_notes(opened_pptx.slides()[1].id));
+        assert!(odf_source.can_edit_notes(opened_odf.slides()[1].id));
+        let updated = pptx::export(&opened_pptx, &pptx_source).unwrap();
+        assert_eq!(
+            entry(&updated, "ppt/notesSlides/notesSlide1.xml"),
+            entry(&pptx, "ppt/notesSlides/notesSlide1.xml"),
+        );
+        assert_eq!(
+            entry(&updated, "ppt/notesSlides/_rels/notesSlide2.xml.rels"),
+            entry(&pptx, "ppt/notesSlides/_rels/notesSlide2.xml.rels"),
+        );
+        assert_eq!(pptx::import(&updated).unwrap().0.slides()[1].notes, "Revised\nline");
+        let updated_odf = odp::export_overlay(&opened_odf, &odf_source).unwrap();
+        assert_eq!(entry(&updated_odf, "styles.xml"), entry(&odf, "styles.xml"));
+        let reopened = odp::import(&updated_odf).unwrap();
+        assert_eq!(reopened.slides()[0].notes, first);
+        assert_eq!(reopened.slides()[1].notes, "Revised\nline");
+    }
+
+    #[test]
+    fn notes_can_be_added_to_imported_slides_with_and_without_a_master() {
+        let original = pptx::export_new(&Presentation::new()).unwrap();
+        let (mut deck, source) = pptx::import(&original).unwrap();
+        assert!(source.can_edit_notes(deck.slides()[0].id));
+        deck.set_notes("First note in this file").unwrap();
+        deck.add().unwrap();
+        let once = pptx::export(&deck, &source).unwrap();
+        assert_eq!(entry(&once, "ppt/slides/slide1.xml"), entry(&original, "ppt/slides/slide1.xml"));
+        assert_eq!(entry(&once, "ppt/theme/theme1.xml"), entry(&original, "ppt/theme/theme1.xml"));
+        let (mut deck, source) = pptx::import(&once).unwrap();
+        assert_eq!(deck.slides()[0].notes, "First note in this file");
+        assert!(source.can_edit_notes(deck.slides()[1].id));
+        deck.select(1).unwrap();
+        deck.set_notes("Use the same master").unwrap();
+        let twice = pptx::export(&deck, &source).unwrap();
+        assert_eq!(entry(&once, "ppt/presentation.xml"), entry(&twice, "ppt/presentation.xml"));
+        assert_eq!(entry(&once, "ppt/notesSlides/off42_1.xml"), entry(&twice, "ppt/notesSlides/off42_1.xml"));
+        let reopened = pptx::import(&twice).unwrap().0;
+        assert_eq!(reopened.slides()[0].notes, "First note in this file");
+        assert_eq!(reopened.slides()[1].notes, "Use the same master");
+    }
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Transition {
@@ -71,6 +176,8 @@ pub struct SlideObject {
     #[serde(default)]
     pub rotation_degrees: f64,
     pub kind: ObjectKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preset: Option<geometry::Preset>,
     pub fill: [u8; 3],
     pub stroke: [u8; 3],
     #[serde(default = "enabled", skip_serializing_if = "is_enabled")]
@@ -147,6 +254,12 @@ pub enum ObjectKind {
     Picture,
     Table,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OutlineRole {
+    Title,
+    Body,
+    Footer,
+}
 #[derive(Clone, Copy, Debug)]
 pub enum ObjectAlignment {
     Left,
@@ -173,6 +286,8 @@ impl Slide {
             objects: Vec::new(),
             next_object_id: 1,
             timing: SlideTiming::default(),
+            hidden: false,
+            notes: String::new(),
         }
     }
     fn edited(&self, title: &str, body: &str) -> Self {
@@ -188,6 +303,8 @@ impl Slide {
             objects: self.objects.clone(),
             next_object_id: self.next_object_id,
             timing: self.timing,
+            hidden: self.hidden,
+            notes: self.notes.clone(),
         }
     }
 }
@@ -211,6 +328,7 @@ impl Deck {
                     && ids.insert(s.id)
                     && s.title.len() <= MAX_TEXT
                     && s.body.len() <= MAX_TEXT
+                    && valid_notes(&s.notes)
                     && s.title_text.policy_consistent()
                     && s.body_text.policy_consistent()
                     && s.title_text.raw() == s.title
@@ -226,6 +344,7 @@ impl Deck {
                                 o.id > 0
                                     && o.id < s.next_object_id
                                     && object_ids.insert(o.id)
+                                    && o.preset.as_ref().is_none_or(|p| matches!(o.kind, ObjectKind::Rectangle) && p.valid())
                                     && o.x.is_finite()
                                     && o.y.is_finite()
                                     && o.width.is_finite()
@@ -320,6 +439,8 @@ impl Presentation {
             ),
         }
     }
+    /// Independent current state for readonly exports, with no live history mutations.
+    pub fn snapshot_copy(&self)->Self{Self{history:SnapshotHistory::new(self.history.snapshot(),HISTORY_LIMIT)}}
     pub fn slides(&self) -> &[Slide] {
         &self.history.current().deck.slides
     }
@@ -359,6 +480,36 @@ impl Presentation {
         self.history.apply(state);
         Ok(())
     }
+    pub fn set_hidden(&mut self, hidden: bool) -> Result<(), String> {
+        let current = self.current();
+        if self.slides()[current].hidden == hidden {
+            return Ok(());
+        }
+        let mut state = self.history.snapshot();
+        state.deck.slides[current].hidden = hidden;
+        if !state.deck.valid() {
+            return Err("Presentation exceeds size limit".into());
+        }
+        self.history.apply(state);
+        Ok(())
+    }
+    pub fn set_notes(&mut self, notes: &str) -> Result<(), String> {
+        if notes.len() > MAX_TEXT * 2 {
+            return Err("Speaker notes exceed the size limit".into());
+        }
+        let notes = notes.replace("\r\n", "\n").replace('\r', "\n");
+        if !valid_notes(&notes) {
+            return Err("Invalid or oversized speaker notes".into());
+        }
+        let current = self.current();
+        let mut state = self.history.snapshot();
+        state.deck.slides[current].notes = notes;
+        if !state.deck.valid() {
+            return Err("Presentation exceeds size limit".into());
+        }
+        self.history.apply(state);
+        Ok(())
+    }
     /// Import raw text and establish line-ending policy for the selected slide.
     pub fn edit_raw(&mut self, title: String, body: String) -> Result<(), String> {
         let mut state = self.history.current().clone();
@@ -367,10 +518,14 @@ impl Presentation {
         let objects = state.deck.slides[index].objects.clone();
         let next_object_id = state.deck.slides[index].next_object_id;
         let timing = state.deck.slides[index].timing;
+        let hidden = state.deck.slides[index].hidden;
+        let notes = state.deck.slides[index].notes.clone();
         state.deck.slides[index] = Slide::new(id, title, body);
         state.deck.slides[index].objects = objects;
         state.deck.slides[index].next_object_id = next_object_id;
         state.deck.slides[index].timing = timing;
+        state.deck.slides[index].hidden = hidden;
+        state.deck.slides[index].notes = notes;
         if !state.deck.valid() {
             return Err("invalid slide text or deck exceeds size limit".into());
         }
@@ -385,6 +540,28 @@ impl Presentation {
             return Err("Empty image".into());
         }
         self.insert_content(ObjectKind::Picture, String::new(), bytes, Vec::new())
+    }
+    pub fn insert_picture_sized(
+        &mut self,
+        bytes: Vec<u8>,
+        width: f64,
+        height: f64,
+    ) -> Result<u64, String> {
+        if bytes.is_empty()
+            || !width.is_finite()
+            || !height.is_finite()
+            || width <= 0.0
+            || height <= 0.0
+        {
+            return Err("Invalid picture dimensions".into());
+        }
+        self.insert_content_sized(
+            ObjectKind::Picture,
+            String::new(),
+            bytes,
+            Vec::new(),
+            [width, height],
+        )
     }
     pub fn insert_table(&mut self, rows: usize, columns: usize) -> Result<u64, String> {
         if rows == 0 || columns == 0 || rows > 100 || columns > 100 {
@@ -404,6 +581,40 @@ impl Presentation {
         media: Vec<u8>,
         cells: Vec<Vec<String>>,
     ) -> Result<u64, String> {
+        self.insert_content_sized(kind, text, media, cells, [180.0, 90.0])
+    }
+    fn insert_content_sized(
+        &mut self,
+        kind: ObjectKind,
+        text: String,
+        media: Vec<u8>,
+        cells: Vec<Vec<String>>,
+        size: [f64; 2],
+    ) -> Result<u64, String> {
+        self.insert_content_geometry(kind, text, media, cells, size, None)
+    }
+    pub fn insert_preset(&mut self, preset: geometry::Preset) -> Result<u64, String> {
+        if !preset.valid() {
+            return Err("Invalid preset shape".into());
+        }
+        self.insert_content_geometry(
+            ObjectKind::Rectangle,
+            String::new(),
+            Vec::new(),
+            Vec::new(),
+            [180.0, 90.0],
+            Some(preset),
+        )
+    }
+    fn insert_content_geometry(
+        &mut self,
+        kind: ObjectKind,
+        text: String,
+        media: Vec<u8>,
+        cells: Vec<Vec<String>>,
+        size: [f64; 2],
+        preset: Option<geometry::Preset>,
+    ) -> Result<u64, String> {
         let mut state = self.history.current().clone();
         let slide = &mut state.deck.slides[self.current()];
         let id = slide.next_object_id;
@@ -413,10 +624,11 @@ impl Presentation {
             group_id: None,
             x: 100.0,
             y: 120.0,
-            width: 180.0,
-            height: 90.0,
+            width: size[0],
+            height: size[1],
             rotation_degrees: 0.0,
             kind,
+            preset,
             fill: [220, 230, 245],
             stroke: [40, 70, 110],
             fill_visible: true,
@@ -1235,5 +1447,109 @@ mod tests {
         fs::remove_file(path).unwrap();
         assert!(p.delete().is_ok());
         assert!(p.delete().is_err());
+    }
+}
+
+#[cfg(test)]
+mod preset_tests {
+    use super::*;
+    #[test]
+    fn preset_catalog_roundtrips_project_and_office_formats() {
+        let mut deck = Presentation::new();
+        for d in geometry::catalog() {
+            let mut preset = geometry::Preset::new(&d.name).unwrap();
+            for (name, value) in &d.adjustments {
+                preset
+                    .adjustments
+                    .insert(name.clone(), (*value as f64 * 0.8) as i32);
+            }
+            deck.insert_preset(preset).unwrap();
+        }
+        let (bytes, _) = deck.save_snapshot().unwrap();
+        // Project has exact identity and adjustment persistence.
+        let path =
+            std::env::temp_dir().join(format!("off42-preset-project-{}.json", std::process::id()));
+        std::fs::write(&path, &bytes).unwrap();
+        let reopened = Presentation::open(&path).unwrap();
+        std::fs::remove_file(path).unwrap();
+        assert_eq!(reopened.slides(), deck.slides());
+        for bytes in [
+            pptx::export_new(&deck).unwrap(),
+            odp::export(&deck).unwrap(),
+        ] {
+            let imported = if let Ok((d, _)) = pptx::import(&bytes) {
+                d
+            } else {
+                odp::import(&bytes).unwrap()
+            };
+            assert_eq!(imported.slides()[0].objects.len(), 187);
+            for (source, actual) in deck.slides()[0]
+                .objects
+                .iter()
+                .zip(&imported.slides()[0].objects)
+            {
+                let p = source.preset.as_ref().unwrap();
+                if matches!(p.name.as_str(), "rect" | "ellipse" | "line") && actual.preset.is_none()
+                {
+                    continue;
+                }
+                assert_eq!(source.preset, actual.preset, "{}", p.name);
+                assert!((source.width - actual.width).abs() < 0.001);
+                assert!((source.height - actual.height).abs() < 0.001);
+            }
+        }
+    }
+    #[test]
+    fn changed_preset_geometry_and_adjustments_survive_source_overlays() {
+        let mut deck = Presentation::new();
+        let id = deck
+            .insert_preset(geometry::Preset::new("roundRect").unwrap())
+            .unwrap();
+        for (pptx_format, bytes) in [
+            (true, pptx::export_new(&deck).unwrap()),
+            (false, odp::export(&deck).unwrap()),
+        ] {
+            let (mut doc, pptx_source, odp_source) = if pptx_format {
+                let (d, s) = pptx::import(&bytes).unwrap();
+                (d, Some(s), None)
+            } else {
+                let (d, s) = odp::import_with_source(&bytes).unwrap();
+                (d, None, Some(s))
+            };
+            let old = doc.slides()[0].objects[0].clone();
+            let mut object = old.clone();
+            object.width = 90.0;
+            object.height = 180.0;
+            object.rotation_degrees = 25.0;
+            object.preset = Some(geometry::Preset::new("star5").unwrap());
+            object
+                .preset
+                .as_mut()
+                .unwrap()
+                .adjustments
+                .insert("adj".into(), 25000);
+            doc.update_object(object.clone()).unwrap();
+            assert!(doc.undo());
+            assert_eq!(doc.slides()[0].objects[0], old);
+            assert!(doc.redo());
+            let bytes = if let Some(s) = &pptx_source {
+                pptx::export(&doc, s).unwrap()
+            } else {
+                odp::export_overlay(&doc, odp_source.as_ref().unwrap()).unwrap()
+            };
+            let actual = if pptx_format {
+                pptx::import(&bytes).unwrap().0
+            } else {
+                odp::import(&bytes).unwrap()
+            };
+            let actual = &actual.slides()[0].objects[0];
+            assert_eq!(actual.preset, object.preset);
+            assert!((actual.width - 90.0).abs() < 0.001);
+            assert!((actual.height - 180.0).abs() < 0.001);
+            assert!((actual.rotation_degrees - 25.0).abs() < 0.001);
+            assert!((actual.x - object.x).abs() < 0.001);
+            assert!((actual.y - object.y).abs() < 0.001);
+        }
+        assert_eq!(deck.slides()[0].objects[0].id, id);
     }
 }

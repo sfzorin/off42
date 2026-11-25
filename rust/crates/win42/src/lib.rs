@@ -1,5 +1,79 @@
+pub mod ocr;
+pub mod recovery;
+mod grid_axis;
+pub use grid_axis::GridAxis;
+mod sparse_table;
+pub use sparse_table::SparseTable;
+mod system_font;
+pub use system_font::program as system_font_program;
+#[cfg(any(windows,test))]
+mod proofing;
+#[cfg(any(windows,test))]
+mod pdf_print_layout;
+#[cfg(windows)]
+pub mod pdfium;
+#[cfg(windows)]
+mod pdf_preview;
+pub mod localization;
+pub use label42::{Format as BarcodeFormat, TechnicalElement};
 use std::path::{Path, PathBuf};
+pub struct TechnicalTarget {
+    pub id: u64,
+    pub title: String,
+    pub element: TechnicalElement,
+}
+impl TechnicalTarget {
+    pub fn new(id: u64, element: TechnicalElement) -> Self {
+        let title = element
+            .symbol_id
+            .as_deref()
+            .and_then(|id| label42::symbols().iter().find(|symbol| symbol.id == id))
+            .map(|symbol| symbol.title.to_owned())
+            .unwrap_or_else(|| {
+                element
+                    .value
+                    .chars()
+                    .take(80)
+                    .map(|c| if c.is_control() { ' ' } else { c })
+                    .collect()
+            });
+        Self { id, title, element }
+    }
+}
+pub struct TechnicalRaster {
+    pub element: TechnicalElement,
+    pub png: Vec<u8>,
+    pub width_points: f64,
+    pub height_points: f64,
+    pub pixel_width: u32,
+    pub pixel_height: u32,
+    pub rgba: std::sync::Arc<[u8]>,
+    pub vector: label42::TechnicalVector,
+}
+impl TechnicalRaster {
+    pub fn render(element: TechnicalElement) -> Result<Self, String> {
+        let vector = element.vector()?;
+        let png = element.png()?;
+        let decoded = image::load_from_memory(&png)
+            .map_err(|e| e.to_string())?
+            .into_rgba8();
+        let width_points = vector.width_points;
+        let height_points = vector.height_points;
+        Ok(Self {
+            element,
+            png,
+            width_points,
+            height_points,
+            pixel_width: decoded.width(),
+            pixel_height: decoded.height(),
+            rgba: decoded.into_raw().into(),
+            vector,
+        })
+    }
+}
 
+/// Application commands must not overlap host menus or native control notifications.
+pub fn application_command_id(id:u16)->bool{(10..62000).contains(&id)&&!(100..=102).contains(&id)}
 pub fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(Some(0)).collect()
 }
@@ -9,7 +83,7 @@ pub struct InputRequest {
     pub title: &'static str,
     pub fields: Vec<(&'static str, String)>,
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct FileAction {
     pub id: u16,
     pub title: &'static str,
@@ -19,8 +93,17 @@ pub struct FileAction {
     pub pattern: &'static str,
 }
 
+/// Shared host action requested after a document gesture has released mouse capture.
+pub const CREATE_LABEL_SHEET_COMMAND: u16 = 65518;
+
 pub enum LabelSource {
     Text(String),
+    /// Keep other source choices usable if an individual artwork capture fails.
+    Unavailable(String),
+    /// Independent single-page PDF; optional region is in its unrotated PDF coordinates.
+    PdfArtwork { bytes:Vec<u8>, region:Option<[f64;4]> },
+    /// Encoded PNG/JPEG; decode only the source actually selected for label generation.
+    PictureArtwork { bytes:Vec<u8>, width_points:f64, height_points:f64 },
     /// Original one-based row number and rendered values from the selected columns.
     Rows(Vec<(usize, Vec<String>)>),
 }
@@ -29,7 +112,12 @@ pub enum LabelSource {
 pub trait App {
     /// Native top-level window handle, when a Windows host is available.
     fn set_native_window(&mut self, _window: usize) {}
-    /// Poll completed background work on the UI thread; return true when the view changed.
+    /// Continue a command after its settings dialog has closed.
+    fn take_pending_command(&mut self) -> Option<u16> {
+        None
+    }
+    /// Open a completed, explicitly requested output in a separate process/window.
+    fn take_pending_new_window(&mut self)->Option<std::path::PathBuf>{None}
     /// Request an ordinary document replacement after an app command.
     fn take_pending_open(&mut self) -> Option<PathBuf> {
         None
@@ -113,12 +201,24 @@ pub trait App {
     fn open_formats(&self) -> Vec<FileFormat> {
         vec![]
     }
+    /// Readonly backup encoding; never marks a user revision as saved.
+    fn recovery_snapshot(&self)->Result<Option<recovery::Snapshot>,String>{Ok(None)}
+    fn supports_recovery(&self)->bool{false}
+    /// Private journal encodings need not appear in normal Open/Save dialogs.
+    fn recovery_extensions(&self)->&'static[&'static str]{&[]}
     fn save_formats(&self) -> Vec<FileFormat> {
         vec![]
     }
     fn command_specs(&self) -> Vec<CommandSpec> {
         vec![]
     }
+    /// Keep less frequent menu commands out of the primary toolbar.
+    fn toolbar_command_visible(&self, _id:u16)->bool {true}
+    fn toolbar_command_toggle(&self,id:u16)->bool{
+        use RichFormatCommand::*;
+        matches!(self.rich_format_command(id),Some(Bold|Italic|Underline|AlignLeft|AlignCenter|AlignRight|Justify))
+    }
+
     fn command_state(&self, id: u16) -> CommandState {
         CommandState {
             enabled: self.enabled(id),
@@ -128,7 +228,17 @@ pub trait App {
     fn canvas_scene(&self) -> Option<CanvasScene> {
         None
     }
+    fn set_image_pointer_scale(&mut self, _dip_per_pixel: f64) {}
+    fn image_overlay(&self) -> Vec<SceneItem> {
+        Vec::new()
+    }
     fn canvas_pointer_modifiers(&self) -> bool {
+        false
+    }
+    fn canvas_tracks_hover(&self) -> bool {
+        false
+    }
+    fn canvas_cursor_hidden(&self) -> bool {
         false
     }
     /// A RichEdit overlay in canvas document coordinates; None uses normal layout.
@@ -138,10 +248,23 @@ pub trait App {
     fn finish_inline_rich(&mut self, _commit: bool) -> Result<(), String> {
         Ok(())
     }
-    /// Logical scene dimensions while presenting fullscreen, or None in editing mode.
+    /// Logical scene dimensions while presenting, or None in editing mode.
     fn presentation_size(&self) -> Option<(f64, f64)> {
         None
     }
+    fn presentation_fullscreen(&self) -> bool {
+        true
+    }
+    fn presentation_white_background(&self) -> bool {
+        false
+    }
+    fn presenter_view(&self) -> Option<PresenterView<'_>> {
+        None
+    }
+    fn presenter_preview(&self, _index: usize) -> Option<CanvasScene> {
+        None
+    }
+    fn end_presentation(&mut self) {}
     /// Consumed only after an explicit application command.
     fn take_external_url(&mut self) -> Option<String> {
         None
@@ -165,12 +288,81 @@ pub trait App {
     fn supports_production(&self) -> bool {
         false
     }
+    fn supports_technical_elements(&self) -> bool {
+        false
+    }
+    fn can_insert_technical_element(&self) -> bool {
+        self.supports_technical_elements()
+    }
+    fn technical_targets(&self) -> Vec<TechnicalTarget> {
+        Vec::new()
+    }
+    fn selected_technical_target(&self) -> Option<u64> {
+        None
+    }
+    fn apply_technical_element(
+        &mut self,
+        _id: Option<u64>,
+        _raster: TechnicalRaster,
+    ) -> Result<(), String> {
+        Err("Technical elements are unavailable".into())
+    }
+    /// Consume a one-shot immutable source selected by an explicit document gesture.
+    fn take_label_source_override(&mut self) -> Result<Option<LabelSource>, String> {
+        Ok(None)
+    }
+    fn label_sources(&self) -> Result<Vec<(String, LabelSource)>, String> {
+        Ok(vec![("Document".into(), self.label_source()?)])
+    }
+    /// Width available to an independently rendered native rich-text selection, in twips.
+    fn label_rich_selection_width(&self)->Option<u32>{None}
     fn label_source(&self) -> Result<LabelSource, String> {
         Ok(LabelSource::Text(String::new()))
+    }
+    fn supports_marks(&self) -> bool {
+        self.mark_file_action().is_some()
+    }
+    fn mark_canvas_size(&self) -> Option<(u32, u32)> {
+        None
+    }
+    fn place_mark(
+        &mut self,
+        _width: u32,
+        _height: u32,
+        _rgba: &[u8],
+        _rect: [u32; 4],
+    ) -> Result<(), String> {
+        Err("Image marks are unavailable in this document.".into())
     }
     /// Existing import action that can insert a saved PNG signature or stamp.
     fn mark_file_action(&self) -> Option<u16> {
         None
+    }
+    /// Optional export settings collected without changing the document. Both
+    /// this prompt and the file picker must succeed before dispatch with values.
+    fn file_input_request(&self, _id: u16) -> Option<InputRequest> {
+        None
+    }
+    /// Optional filename stem for an export picker. The user can edit it.
+    fn suggested_export_name(&self, _id: u16) -> Option<String> {
+        None
+    }
+    /// Resolve the export filter after collecting settings and before showing
+    /// the picker. This does not mutate the document or start an operation.
+    fn configured_file_action(&self, id: u16, _values: &[String]) -> Result<FileAction, String> {
+        self.file_actions()
+            .iter()
+            .find(|action| action.id == id)
+            .copied()
+            .ok_or_else(|| "Unsupported file action".into())
+    }
+    fn file_action_with_input(
+        &mut self,
+        _id: u16,
+        _path: &Path,
+        _values: &[String],
+    ) -> Result<(), String> {
+        Err("Unsupported file action settings".into())
     }
     fn file_action(&mut self, _id: u16, _path: &Path) -> Result<(), String> {
         Err("Unsupported file action".into())
@@ -190,9 +382,15 @@ pub trait App {
     fn rich_preview(&self, _id: u16) -> Option<RichPrint> {
         None
     }
+    /// Ordinary document printing, shared by File > Print and Ctrl+P.
+    fn default_print_command(&self)->Option<u16>{None}
+    /// Use the native selection and insertion-point formatting rules for this command.
+    fn rich_format_command(&self, _id: u16) -> Option<RichFormatCommand> { None }
     fn print_job(&self, _id: u16) -> Option<PrintJob> {
         None
     }
+    fn take_pending_report(&mut self)->Option<(u16,ReportRequest)>{None}
+    fn report_event(&mut self,_id:u16,_event:ReportEvent)->Result<(),String>{Err("Report action unavailable".into())}
     fn dialog_request(&self, _id: u16) -> Option<DialogRequest> {
         None
     }
@@ -202,6 +400,10 @@ pub trait App {
     /// Use a multiline first field in the native input dialog.
     fn multiline_input(&self, _id: u16) -> bool {
         false
+    }
+    /// Multiline fields in the native input dialog; existing first-field forms retain their behavior.
+    fn input_multiline_fields(&self, id:u16)->Vec<usize> {
+        if self.multiline_input(id) { vec![0] } else { vec![] }
     }
     /// Mask the first native input field and clear the returned buffers after dispatch.
     fn password_input(&self, _id: u16) -> bool {
@@ -214,24 +416,33 @@ pub trait App {
     fn input_request(&self, _id: u16) -> Option<InputRequest> {
         None
     }
+    /// Stable original values for native translated choice fields.
+    fn input_choices(&self, _id: u16) -> Vec<(usize, Vec<String>)> {
+        vec![]
+    }
     fn input_action(&mut self, _id: u16, _values: &[String]) -> Result<(), String> {
         Err("Unsupported input action".into())
     }
     fn supports_find_replace(&self) -> bool {
         false
     }
-    fn find_next(
-        &self,
-        _query: &str,
-        _start_utf16: usize,
-    ) -> Result<Option<(usize, usize)>, String> {
-        Err("Find unavailable".into())
-    }
-    fn replace_all(&mut self, _query: &str, _replacement: &str) -> Result<usize, String> {
+    fn replace_all(
+        &mut self,
+        _search: &suite42_core::text_search::Search,
+        _replacement: &str,
+    ) -> Result<usize, String> {
         Err("Replace unavailable".into())
     }
     fn view_actions(&self) -> &'static [(u16, &'static str)] {
         &[]
+    }
+    fn live_rich_sidebar(&self) -> bool {
+        false
+    }
+    fn rich_sidebar_selection(
+        &self, _index: usize, _native: &[u16],
+    ) -> Result<Option<(usize, usize)>, String> {
+        Ok(None)
     }
     fn items(&self) -> Vec<String>;
     fn text(&self) -> String;
@@ -250,6 +461,12 @@ pub trait App {
     fn open_is_add(&self) -> bool {
         false
     }
+    fn opens_as_import(&self, _path: &Path) -> bool {
+        self.open_is_add()
+    }
+    fn import_open(&mut self, path: &Path) -> Result<(), String> {
+        self.open(path)
+    }
     fn selected(&self) -> usize {
         0
     }
@@ -260,6 +477,7 @@ pub trait App {
     fn uses_custom_grid(&self) -> bool {
         false
     }
+    fn grid_axes(&self) -> Option<(GridAxis,GridAxis)> {None}
     fn grid_column_width(&self, _column: usize) -> u16 {
         80
     }
@@ -275,7 +493,14 @@ pub trait App {
     fn grid_row_label(&self, row: usize) -> String {
         (row + 1).to_string()
     }
+    /// Request more blank viewport space near an edge; this must not mutate document data/history.
+    fn extend_grid_view(&mut self, _visible_row: usize, _column: usize) -> bool { false }
+    /// Document and sheet identity, independent of focused cell coordinates and ordinary edits.
+    fn grid_view_identity(&self) -> (u64,u64) { (0,0) }
     fn grid_clipboard_commands(&self) -> Option<(u16, u16)> {
+        None
+    }
+    fn grid_choice_command(&self) -> Option<u16> {
         None
     }
     /// Sheet names and selected index for grid-based applications.
@@ -293,9 +518,21 @@ pub trait App {
     fn select_grid_range_with_focus(&mut self, range: GridRange, _focus: (usize, usize)) {
         self.select_grid_range(range)
     }
+    fn grid_pictures(&self) -> Vec<GridPicture> {
+        Vec::new()
+    }
+    fn select_grid_picture(&mut self, _id: Option<u64>) {}
+    fn move_grid_picture(&mut self, _id: u64, _dx: f64, _dy: f64) -> Result<(), String> {
+        Err("Picture movement unavailable".into())
+    }
+    fn grid_picture_commands(&self) -> Option<(u16, u16)> {
+        None
+    }
     fn grid_cell_style(&self, _row: usize, _column: usize) -> Option<GridCellStyle> {
         None
     }
+    /// Preferred immutable text projection for the custom grid; avoids allocating empty worksheet cells.
+    fn sparse_table(&self)->Option<SparseTable>{None}
     fn table(&self) -> Option<Vec<Vec<String>>> {
         None
     }
@@ -335,6 +572,12 @@ pub trait App {
     ) -> Result<(), String> {
         Err("Rich text editing unavailable".into())
     }
+    /// Prepare a word correction without importing native fallback fonts or changing live document history.
+    fn prepare_rich_word(&mut self,_native:&[u16],_range:(usize,usize),_replacement:&str)->Result<Vec<u8>,String>{
+        Err("Word correction unavailable".into())
+    }
+    /// Commit only after the host loads and validates the prepared projection; false discards it.
+    fn finish_rich_word(&mut self,_commit:bool)->Result<(),String>{Err("Word correction unavailable".into())}
     fn set_rich_selection(&mut self, _selection_utf16: (usize, usize)) {}
     /// Selection captured by the document history, restored after Undo or Redo.
     /// Select an app-requested rich-text range after a command refresh.
@@ -359,21 +602,37 @@ mod grid;
 #[cfg(any(windows, test))]
 mod grid_geometry;
 #[cfg(any(windows, test))]
+mod label_preferences;
+#[cfg(any(windows, test))]
 mod marks;
+#[cfg(any(windows, test))]
+mod recents;
+#[cfg(any(windows, test))]
+mod window_layout;
 #[cfg(windows)]
 mod native;
+#[cfg(windows)]
+pub use native::{render_scene_rgb, SceneTextMeasurer};
+#[cfg(windows)]
+mod report;
 #[cfg(any(windows, test))]
 mod note_pagination;
-#[cfg(windows)]
+#[cfg(any(windows, test))]
+mod print_calibration;
+#[cfg(any(windows, test))]
 mod production;
 #[cfg(windows)]
 mod prompt;
 #[cfg(windows)]
 mod rich_edit;
 #[cfg(windows)]
+mod rich_format;
+#[cfg(windows)]
 mod rich_notes;
 #[cfg(windows)]
 mod rich_preview;
+#[cfg(windows)]
+mod rich_artwork;
 #[cfg(windows)]
 mod rich_print;
 #[cfg(windows)]
@@ -712,6 +971,11 @@ pub enum SceneItem {
         height: f64,
         paragraphs: Vec<SceneParagraph>,
     },
+    VectorPath {
+        segments: Vec<PathSegment>,
+        fill: Option<[u8; 3]>,
+        stroke: Option<[u8; 3]>,
+    },
     Path {
         points: Vec<Point>,
         color: [u8; 3],
@@ -734,6 +998,27 @@ pub enum SceneItem {
         pixel_height: u32,
         rgba: Vec<u8>,
     },
+}
+/// Curves remain vectors at screen and printer resolution. Compound paths use even-odd filling.
+#[derive(Clone, Debug)]
+pub enum PathSegment {
+    Move(Point),
+    Line(Point),
+    Cubic(Point, Point, Point),
+    Close,
+}
+impl PathSegment {
+    pub fn map_points(&mut self, mut f: impl FnMut(Point) -> Point) {
+        match self {
+            Self::Move(p) | Self::Line(p) => *p = f(*p),
+            Self::Cubic(a, b, c) => {
+                *a = f(*a);
+                *b = f(*b);
+                *c = f(*c);
+            }
+            Self::Close => {}
+        }
+    }
 }
 #[derive(Clone, Debug)]
 pub struct SceneFont {
@@ -898,13 +1183,26 @@ pub struct RichPrint {
 }
 #[derive(Clone, Debug)]
 pub enum PrintJob {
+    /// Reuse immutable PDF bytes, rendering each page directly to the selected printer DC.
+    ActualSizePdf(std::sync::Arc<[u8]>),
+    /// Center on the physical sheet and shrink oversized pages, retaining native PDF paths.
+    FitPdf(std::sync::Arc<[u8]>),
     Scenes(Vec<PrintPage>),
+    ActualSizeScenes(Vec<PrintPage>),
     RichText(RichPrint),
 }
 #[derive(Clone, Debug, Default)]
 pub struct CanvasScene {
     pub viewport: Viewport,
     pub items: Vec<SceneItem>,
+}
+
+pub struct PresenterView<'a> {
+    pub position: usize,
+    pub total: usize,
+    pub elapsed_seconds: u64,
+    pub notes: &'a str,
+    pub next: Option<usize>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -914,6 +1212,21 @@ pub struct GridRange {
     pub bottom: usize,
     pub right: usize,
 }
+#[derive(Clone)]
+pub struct GridPicture {
+    pub selected: bool,
+    pub id: u64,
+    pub row: usize,
+    pub column: usize,
+    pub offset_x: f64,
+    pub offset_y: f64,
+    pub width: f64,
+    pub height: f64,
+    pub pixel_width: u32,
+    pub pixel_height: u32,
+    pub rgba: std::sync::Arc<[u8]>,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct GridCellStyle {
     pub foreground: Option<[u8; 3]>,
@@ -933,14 +1246,52 @@ pub struct FontChoice {
     pub underline: bool,
     pub color: [u8; 3],
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RichFormatCommand { Bold, Italic, Underline, Font, Color, AlignLeft, AlignCenter, AlignRight, Justify }
+#[derive(Clone, Debug)]
+pub struct ReportRequest {
+    pub title: String,
+    pub summary: String,
+    pub columns: Vec<&'static str>,
+    pub column_colors: Vec<Option<[u8; 3]>>,
+    pub rows: Vec<Vec<String>>,
+    pub highlight_controls: bool,
+    pub compact_first_column: bool,
+    pub allow_keep: bool,
+    pub keeping: bool,
+}
+#[derive(Clone, Copy, Debug)]
+pub enum ReportEvent {
+    Select(usize),
+    Keep(bool),
+    Clear,
+    Closed { keep: bool },
+}
 #[derive(Clone, Debug)]
 pub enum DialogRequest {
+    Confirmation { title: &'static str, text: String },
+    Report(ReportRequest),
+    CombineFiles{input:FileAction,output:FileAction},
+    BatchFolder {
+        input: FileAction,
+        title: &'static str,
+    },
+    Information { title: &'static str, text: String },
+    RichTextStatistics {
+        title: &'static str,
+        text: String,
+        describe: fn(&[u16]) -> Option<String>,
+    },
+    GridChoices { values: Vec<String>, checked: Option<usize> },
     Color([u8; 3]),
     Font,
     PageSetup(PageMargins),
 }
 #[derive(Clone, Debug)]
 pub enum DialogResult {
+    Confirmed(bool),
+    GridChoice(String),
+    Files{inputs:Vec<std::path::PathBuf>,output:std::path::PathBuf},
     Color([u8; 3]),
     Font(FontChoice),
     PageSetup(PageMargins),
@@ -972,4 +1323,65 @@ pub struct PageMargins {
     pub bottom: i32,
     pub paper_width: i32,
     pub paper_height: i32,
+}
+
+#[cfg(test)]
+mod app_command_namespace_tests{
+    #[test]
+    fn host_menus_and_control_notifications_are_reserved(){
+        for id in[0,1,4,9,100,101,102,62000,64000,65507]{assert!(!super::application_command_id(id),"{id}");}
+        for id in[10,18,97,110,111,200,360]{assert!(super::application_command_id(id),"{id}");}
+    }
+}
+
+/// Explorer's natural filename ordering for numbered PDF batches.
+pub fn logical_file_order(a: &std::ffi::OsStr, b: &std::ffi::OsStr) -> std::cmp::Ordering {
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        let a: Vec<_> = a.encode_wide().chain(Some(0)).collect();
+        let b: Vec<_> = b.encode_wide().chain(Some(0)).collect();
+        return unsafe { windows_sys::Win32::UI::Shell::StrCmpLogicalW(a.as_ptr(), b.as_ptr()) }
+            .cmp(&0);
+    }
+    #[cfg(not(windows))]
+    {
+        // Portable test runner: compare digit runs without fixed-width integer overflow.
+        let (a, b) = (
+            a.to_string_lossy().to_lowercase(),
+            b.to_string_lossy().to_lowercase(),
+        );
+        let (a, b) = (a.as_bytes(), b.as_bytes());
+        let (mut i, mut j) = (0, 0);
+        while i < a.len() && j < b.len() {
+            if a[i].is_ascii_digit() && b[j].is_ascii_digit() {
+                let (start, end) = (i, j);
+                while i < a.len() && a[i].is_ascii_digit() {
+                    i += 1;
+                }
+                while j < b.len() && b[j].is_ascii_digit() {
+                    j += 1;
+                }
+                let (mut x, mut y) = (start, end);
+                while x < i && a[x] == b'0' {
+                    x += 1;
+                }
+                while y < j && b[y] == b'0' {
+                    y += 1;
+                }
+                let order = (i - x).cmp(&(j - y)).then_with(|| a[x..i].cmp(&b[y..j]));
+                if !order.is_eq() {
+                    return order;
+                }
+            } else {
+                let order = a[i].cmp(&b[j]);
+                if !order.is_eq() {
+                    return order;
+                }
+                i += 1;
+                j += 1;
+            }
+        }
+        (a.len() - i).cmp(&(b.len() - j))
+    }
 }

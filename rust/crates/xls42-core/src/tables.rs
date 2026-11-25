@@ -149,7 +149,7 @@ impl Workbook {
         let Some(baseline) = self.external_baseline.as_ref() else {
             return Ok(());
         };
-        if self.external_format.as_deref() != Some("xlsx") {
+        if !matches!(self.external_format.as_deref(), Some("xlsx" | "ods")) {
             return Ok(());
         }
         for source in &baseline.sheets {

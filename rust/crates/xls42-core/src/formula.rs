@@ -1,4 +1,23 @@
 //! Small, bounded spreadsheet expression evaluator. Raw cells remain authoritative.
+mod arrays;
+mod calendar;
+mod references;
+mod summaries;
+mod distributions;
+mod engineering;
+mod finance;
+mod math;
+mod information;
+mod statistics;
+mod text;
+mod units;
+mod sparse_ranges;
+mod conditional_ranges;
+mod axis_references;
+mod localized;
+mod localized_aliases;
+pub(super) fn canonical_input(raw:&str)->std::borrow::Cow<'_,str>{localized::canonical(raw)}
+pub(super) fn error_prefix(input:&str)->Option<&'static str>{information::ERRORS.iter().copied().find(|error|input.starts_with(error))}
 use crate::{CellContent, SheetId, Workbook};
 use std::collections::{HashMap, HashSet};
 
@@ -7,15 +26,17 @@ const MAX_STEPS: usize = 1_000_000;
 const MAX_FORMULA: usize = 4096;
 
 #[derive(Clone, Debug, PartialEq)]
-enum Value {
+pub(super) enum Value {
+    Array(std::sync::Arc<arrays::Grid>),
     Number(f64),
     Text(String),
     Boolean(bool),
     Error(&'static str),
 }
 impl Value {
-    fn display(self) -> String {
+    pub(super) fn display(self) -> String {
         match self {
+            Self::Array(m) => m.at(0, 0).display(),
             Self::Number(0.0) => "0".into(),
             Self::Number(n) => n.to_string(),
             Self::Text(s) => s,
@@ -36,9 +57,29 @@ struct Eval<'a> {
     visiting: HashSet<(SheetId, usize, usize)>,
     steps: usize,
     text_bytes: usize,
+    argument_text_bytes: usize,
     now: chrono::NaiveDateTime,
+    spills: std::collections::BTreeMap<(SheetId, usize, usize), Value>,
+    spill_ranges: std::collections::BTreeMap<(SheetId, usize, usize), crate::Range>,
+    spills_done: HashSet<SheetId>,
+    spills_scanning: HashSet<SheetId>,
 }
-impl Eval<'_> {
+impl<'a> Eval<'a> {
+    fn new(book: &'a Workbook, now: chrono::NaiveDateTime) -> Self {
+        Self {
+            book,
+            cache: HashMap::new(),
+            visiting: HashSet::new(),
+            steps: 0,
+            text_bytes: 0,
+            argument_text_bytes: 0,
+            now,
+            spills: std::collections::BTreeMap::new(),
+            spill_ranges: std::collections::BTreeMap::new(),
+            spills_done: HashSet::new(),
+            spills_scanning: HashSet::new(),
+        }
+    }
     fn raw(&self, sheet: SheetId, row: usize, col: usize) -> Option<&str> {
         let s = self
             .book
@@ -47,7 +88,7 @@ impl Eval<'_> {
             .sheets
             .iter()
             .find(|s| s.id == sheet)?;
-        if row >= s.rows || col >= s.cols {
+        if row >= crate::MAX_ROWS || col >= crate::MAX_COLS {
             return None;
         }
         Some(s.cells.get(&(row, col)).map_or("", |c| c.text.raw()))
@@ -62,6 +103,26 @@ impl Eval<'_> {
             .find(|s| s.id == sheet)?;
         s.cells.get(&(row, col)).map(|c| &c.text)
     }
+    fn display_for_filter(
+        &mut self,
+        sheet: SheetId,
+        row: usize,
+        col: usize,
+        depth: usize,
+    ) -> String {
+        let (value, blank) = self.range_value(sheet, row, col, depth);
+        if blank {
+            return String::new();
+        }
+        let mut text = match self.content(sheet, row, col) {
+            Some(CellContent::Text(v) | CellContent::Number(v) | CellContent::Date(v)) => {
+                v.raw().to_owned()
+            }
+            _ => value.clone().display(),
+        };
+        crate::display::format_cell(self.book, sheet, row, col, Some(&value), &mut text);
+        text
+    }
     fn range_cell(
         &mut self,
         sheet: SheetId,
@@ -70,9 +131,21 @@ impl Eval<'_> {
         depth: usize,
     ) -> Option<Value> {
         self.raw(sheet, row, col)?;
+        self.ensure_spills(sheet, depth);
+        if let Some(value) = self.spills.get(&(sheet, row, col)) {
+            return match value {
+                Value::Number(_) | Value::Error(_) => Some(value.clone()),
+                _ => None,
+            };
+        }
         if !matches!(
             self.content(sheet, row, col),
-            Some(CellContent::Number(_) | CellContent::Date(_) | CellContent::Formula(_))
+            Some(
+                CellContent::Number(_)
+                    | CellContent::Date(_)
+                    | CellContent::Formula(_)
+                    | CellContent::Error(_)
+            )
         ) {
             return None;
         }
@@ -83,6 +156,10 @@ impl Eval<'_> {
             return Value::Error("#REF!");
         }
         let key = (sheet, row, col);
+        if self.raw(sheet, row, col) == Some("") {
+            self.ensure_spills(sheet, depth);
+            return self.spills.get(&key).cloned().unwrap_or(Value::Number(0.0));
+        }
         if let Some(v) = self.cache.get(&key) {
             return v.clone();
         }
@@ -96,7 +173,8 @@ impl Eval<'_> {
         self.visiting.insert(key);
         let raw = self.raw(sheet, row, col).unwrap().to_owned();
         let v = if matches!(self.content(sheet, row, col), Some(CellContent::Formula(_))) {
-            let expr = raw.strip_prefix('=').unwrap();
+            let normalized=localized::canonical(&raw);
+            let expr = normalized.strip_prefix('=').unwrap();
             if expr.len() > MAX_FORMULA {
                 Value::Error("#LIMIT!")
             } else {
@@ -106,6 +184,8 @@ impl Eval<'_> {
                     eval: self,
                     depth,
                     sheet,
+                    origin: (row, col),
+                    locals: HashMap::new(),
                 };
                 let result = p.comparison();
                 p.space();
@@ -129,10 +209,22 @@ impl Eval<'_> {
                 Some(v) => finite(v),
                 None => Value::Error("#VALUE!"),
             }
+        } else if matches!(self.content(sheet, row, col), Some(CellContent::Error(_))) {
+            Value::Error(
+                information::ERRORS
+                    .iter()
+                    .copied()
+                    .find(|e| *e == raw)
+                    .unwrap_or("#VALUE!"),
+            )
         } else if matches!(self.content(sheet, row, col), Some(CellContent::Boolean(_))) {
             Value::Boolean(raw.eq_ignore_ascii_case("true"))
         } else {
             Value::Text(raw.clone())
+        };
+        let v = match v {
+            Value::Array(m) => self.finish_array(sheet, row, col, &raw, m),
+            v => v,
         };
         self.visiting.remove(&key);
         let v = match v {
@@ -158,6 +250,8 @@ struct Parser<'a, 'b> {
     eval: &'a mut Eval<'b>,
     depth: usize,
     sheet: SheetId,
+    origin: (usize, usize),
+    locals: HashMap<String, Value>,
 }
 impl Parser<'_, '_> {
     fn space(&mut self) {
@@ -199,42 +293,26 @@ impl Parser<'_, '_> {
         };
         self.pos += len;
         let right = self.expr();
-        let ordering = match (left, right) {
-            (Value::Error(e), _) | (_, Value::Error(e)) => return Value::Error(e),
-            (Value::Number(a), Value::Number(b)) => a.partial_cmp(&b),
-            (Value::Text(a), Value::Text(b)) => Some(a.to_lowercase().cmp(&b.to_lowercase())),
-            (Value::Boolean(a), Value::Boolean(b)) => Some(a.cmp(&b)),
-            _ => return Value::Error("#VALUE!"),
-        };
-        let Some(order) = ordering else {
-            return Value::Error("#NUM!");
-        };
-        let yes = match op {
-            0 => order != std::cmp::Ordering::Greater,
-            1 => order != std::cmp::Ordering::Less,
-            2 => order != std::cmp::Ordering::Equal,
-            3 => order == std::cmp::Ordering::Equal,
-            4 => order == std::cmp::Ordering::Less,
-            _ => order == std::cmp::Ordering::Greater,
-        };
-        Value::Boolean(yes)
+        if matches!(left, Value::Array(_)) || matches!(right, Value::Array(_)) {
+            arrays::broadcast(&[left, right], &mut self.eval.steps, |v| {
+                compare_scalar(v[0].clone(), v[1].clone(), op)
+            })
+        } else {
+            compare_scalar(left, right, op)
+        }
     }
+
     fn expr(&mut self) -> Value {
         let mut v = self.additive();
         while self.take(b'&') {
             let right = self.additive();
-            v = match (v, right) {
-                (Value::Error(e), _) | (_, Value::Error(e)) => Value::Error(e),
-                (a, b) => {
-                    let a = a.display();
-                    let b = b.display();
-                    if a.len().saturating_add(b.len()) > crate::MAX_TEXT {
-                        Value::Error("#LIMIT!")
-                    } else {
-                        Value::Text(a + &b)
-                    }
-                }
-            }
+            v = if matches!(v, Value::Array(_)) || matches!(right, Value::Array(_)) {
+                arrays::broadcast(&[v, right], &mut self.eval.steps, |v| {
+                    concat_scalar(v[0].clone(), v[1].clone())
+                })
+            } else {
+                concat_scalar(v, right)
+            };
         }
         v
     }
@@ -243,10 +321,10 @@ impl Parser<'_, '_> {
         loop {
             if self.take(b'+') {
                 let r = self.term();
-                v = calc(v, r, b'+');
+                v = self.binary(v, r, b'+');
             } else if self.take(b'-') {
                 let r = self.term();
-                v = calc(v, r, b'-');
+                v = self.binary(v, r, b'-');
             } else {
                 return v;
             }
@@ -257,10 +335,10 @@ impl Parser<'_, '_> {
         loop {
             if self.take(b'*') {
                 let r = self.unary();
-                v = calc(v, r, b'*');
+                v = self.binary(v, r, b'*');
             } else if self.take(b'/') {
                 let r = self.unary();
-                v = calc(v, r, b'/');
+                v = self.binary(v, r, b'/');
             } else {
                 return v;
             }
@@ -281,6 +359,11 @@ impl Parser<'_, '_> {
             let v = self.unary();
             self.depth -= 1;
             match v {
+                Value::Array(m) => {
+                    arrays::broadcast(&[Value::Array(m)], &mut self.eval.steps, |values| {
+                        calc(Value::Number(0.0), values[0].clone(), b'-')
+                    })
+                }
                 Value::Number(n) => Value::Number(-n),
                 Value::Boolean(v) => Value::Number(if v { -1.0 } else { 0.0 }),
                 Value::Error(e) => Value::Error(e),
@@ -291,18 +374,24 @@ impl Parser<'_, '_> {
         }
     }
     fn power(&mut self) -> Value {
-        let left = self.primary();
+        let mut left = self.primary();
+        while self.take(b'%') {
+            left = self.binary(left, Value::Number(100.0), b'/');
+        }
         if self.take(b'^') {
             self.depth += 1;
             let right = self.unary();
             self.depth -= 1;
-            calc(left, right, b'^')
+            self.binary(left, right, b'^')
         } else {
             left
         }
     }
     fn primary(&mut self) -> Value {
         self.space();
+        if self.take(b'{') {
+            return self.array_literal();
+        }
         if self.take(b'(') {
             self.depth += 1;
             let v = self.comparison();
@@ -339,11 +428,74 @@ impl Parser<'_, '_> {
             }
             return Value::Text(result);
         }
-        if self.input[self.pos..].starts_with(b"#REF!") {
-            self.pos += 5;
-            return Value::Error("#REF!");
+        for error in information::ERRORS {
+            if self.input[self.pos..].starts_with(error.as_bytes()) {
+                self.pos += error.len();
+                return Value::Error(error);
+            }
         }
         let start = self.pos;
+        let tail = std::str::from_utf8(&self.input[start..]).unwrap_or("");
+        let end = tail
+            .char_indices()
+            .take_while(|(_, c)| c.is_alphanumeric() || matches!(c, '_' | '.'))
+            .last()
+            .map(|(i, c)| start + i + c.len_utf8())
+            .unwrap_or(start);
+        if end > start {
+            if let Some(value) = self.locals.get(
+                &std::str::from_utf8(&self.input[start..end])
+                    .unwrap()
+                    .to_uppercase(),
+            ) {
+                self.pos = end;
+                return value.clone();
+            }
+        }
+        // Function names can contain digits and Excel compatibility prefixes.
+        // Recognize the complete token followed by '(' before trying A1 references.
+        if self
+            .input
+            .get(start)
+            .is_some_and(|b| b.is_ascii_alphabetic() || *b == b'_')
+        {
+            let mut end = start;
+            while self
+                .input
+                .get(end)
+                .is_some_and(|b| b.is_ascii_alphanumeric() || *b == b'_' || *b == b'.')
+            {
+                end += 1;
+            }
+            let mut next = end;
+            while self.input.get(next).is_some_and(u8::is_ascii_whitespace) {
+                next += 1;
+            }
+            if self.input.get(next) == Some(&b'(') {
+                let mut name = std::str::from_utf8(&self.input[start..end])
+                    .unwrap_or("")
+                    .to_ascii_uppercase();
+                loop {
+                    if let Some(tail) = name
+                        .strip_prefix("_XLFN.")
+                        .or_else(|| name.strip_prefix("_XLWS."))
+                    {
+                        name = tail.to_owned();
+                    } else {
+                        break;
+                    }
+                }
+                self.pos = next + 1;
+                return self.named_call(&name);
+            }
+        }
+        let reference_start = self.pos;
+        if let Some(range) = self.read_range() {
+            if range.1 != range.3 || range.2 != range.4 {
+                return self.array_range(range);
+            }
+        }
+        self.pos = reference_start;
         if let Some((sheet, row, col)) = self.read_qualified_ref() {
             return self.eval.cell(sheet, row, col, self.depth + 1);
         }
@@ -388,15 +540,7 @@ impl Parser<'_, '_> {
                     _ => Value::Error("#ERROR!"),
                 };
             }
-            self.depth += 1;
-            if matches!(name.as_str(), "IF" | "IFERROR" | "IFNA" | "AND" | "OR") {
-                let value = self.lazy_conditional(&name);
-                self.depth -= 1;
-                return value;
-            }
-            let value = self.function(&name);
-            self.depth -= 1;
-            return value;
+            return self.named_call(&name);
         }
         while self
             .input
@@ -408,6 +552,19 @@ impl Parser<'_, '_> {
         if start == self.pos {
             return Value::Error("#ERROR!");
         }
+        if matches!(self.input.get(self.pos), Some(b'e' | b'E')) {
+            self.pos += 1;
+            if matches!(self.input.get(self.pos), Some(b'+' | b'-')) {
+                self.pos += 1;
+            }
+            let exponent_start = self.pos;
+            while self.input.get(self.pos).is_some_and(u8::is_ascii_digit) {
+                self.pos += 1;
+            }
+            if self.pos == exponent_start {
+                return Value::Error("#ERROR!");
+            }
+        }
         match std::str::from_utf8(&self.input[start..self.pos])
             .ok()
             .and_then(|s| s.parse::<f64>().ok())
@@ -416,26 +573,82 @@ impl Parser<'_, '_> {
             None => Value::Error("#ERROR!"),
         }
     }
+    fn named_call(&mut self, name: &str) -> Value {
+        self.depth += 1;
+        let value = if self.depth > MAX_DEPTH {
+            Value::Error("#LIMIT!")
+        } else if matches!(
+            name,
+            "IF" | "IFERROR" | "IFNA" | "IFS" | "SWITCH" | "CHOOSE" | "LET"
+        ) {
+            self.lazy_conditional(name)
+        } else {
+            self.function(name)
+        };
+        self.depth -= 1;
+        value
+    }
     fn function(&mut self, name: &str) -> Value {
+        if name=="INDEX" {
+            let start=self.pos;
+            let reference=self.read_range().is_some()&&self.take(b',');
+            self.pos=start;
+            if reference{return self.reference_value(name)}
+        }
+        if arrays::handles(name) {
+            return self.array_function(name);
+        }
+        if matches!(name, "SUBTOTAL" | "AGGREGATE") {
+            return self.summary(name);
+        }
+        if references::handles(name) {
+            return self.reference_value(name);
+        }
+        if matches!(name, "XMATCH" | "HLOOKUP") {
+            return self.extended_lookup(name);
+        }
         if self.depth > MAX_DEPTH {
             return Value::Error("#LIMIT!");
+        }
+        if name=="COUNTBLANK"{if let Some(value)=self.count_blank_reference(){return value;}}
+        if text::handles(name)
+            || statistics::handles(name)
+            || distributions::handles(name)
+            || finance::handles(name)
+            || calendar::handles(name)
+            || information::scalar_handles(name)
+        {
+            return self.extended_text_function(name);
+        }
+        if matches!(name, "TRUE" | "FALSE") {
+            return if self.take(b')') {
+                Value::Boolean(name == "TRUE")
+            } else {
+                Value::Error("#ERROR!")
+            };
+        }
+        if information::reference_handles(name) {
+            return self.reference_information(name);
         }
         if name == "LOOKUP" {
             return self.lookup();
         }
-        if name == "NPV" {
-            return self.npv();
-        }
         if name == "XLOOKUP" {
             return self.xlookup();
         }
-        if matches!(name, "COUNTIFS" | "SUMIFS" | "AVERAGEIF" | "AVERAGEIFS") {
+        if matches!(
+            name,
+            "COUNTIFS" | "SUMIFS" | "AVERAGEIF" | "AVERAGEIFS" | "MAXIFS" | "MINIFS"
+        ) {
             return self.conditional_aggregate(name);
+        }
+        if engineering::handles(name) {
+            return self.text_function(name);
         }
         if matches!(name, "ISBLANK" | "ISNUMBER" | "ISTEXT" | "ISERROR" | "ISNA") {
             return self.type_predicate(name);
         }
-        if matches!(name, "COUNTIF" | "SUMIF" | "INDEX" | "MATCH" | "VLOOKUP") {
+        if matches!(name, "COUNTIF" | "SUMIF" | "MATCH" | "VLOOKUP") {
             return self.range_function(name);
         }
         if matches!(
@@ -447,8 +660,6 @@ impl Parser<'_, '_> {
                 | "LEFT"
                 | "RIGHT"
                 | "MID"
-                | "CONCAT"
-                | "CONCATENATE"
                 | "EXACT"
                 | "VALUE"
                 | "DATEVALUE"
@@ -460,43 +671,84 @@ impl Parser<'_, '_> {
             name,
             "SUM" | "AVERAGE" | "MIN" | "MAX" | "COUNT" | "COUNTA" | "PRODUCT"
         );
+        let mut array_arguments = Vec::new();
+        let mut first_error = None;
+        let mut argument_count = 0usize;
         let mut values = Vec::new();
         let mut nonempty = 0usize;
         if !self.take(b')') {
             loop {
+                argument_count += 1;
                 let start = self.pos;
-                let range = if aggregate { self.read_range() } else { None };
+                let range = if aggregate || math::aggregate(name) {
+                    self.read_range()
+                } else {
+                    None
+                };
                 self.space();
                 if let Some((sheet, top, left, bottom, right)) =
                     range.filter(|_| matches!(self.input.get(self.pos), Some(b',' | b')')))
                 {
-                    for r in top..=bottom {
-                        for c in left..=right {
-                            self.eval.steps += 1;
-                            if self.eval.steps > MAX_STEPS {
-                                return Value::Error("#LIMIT!");
-                            }
-                            if !self.eval.raw(sheet, r, c).unwrap_or("").is_empty() {
-                                nonempty += 1;
-                            }
-                            match self.eval.range_cell(sheet, r, c, self.depth + 1) {
-                                Some(Value::Number(n)) => values.push(n),
-                                Some(Value::Error(e)) if name != "COUNT" && name != "COUNTA" => {
-                                    return Value::Error(e)
-                                }
-                                _ => {}
-                            }
+                    let coordinates=match self.eval.occupied_range(sheet,top,left,bottom,right,self.depth+1){Ok(v)=>v,Err(e)=>return Value::Error(e)};
+                    for (r,c)in coordinates {
+                        nonempty+=1;
+                        match self.eval.range_cell(sheet,r,c,self.depth+1){
+                            Some(Value::Number(n))=>values.push(n),
+                            Some(Value::Error(e))if name!="COUNT"&&name!="COUNTA"=>return Value::Error(e),
+                            _=>{}
                         }
                     }
                 } else {
                     self.pos = start;
-                    match self.comparison() {
+                    let operand = self.comparison();
+                    if !self.charge_argument_text(&operand) {
+                        return Value::Error("#LIMIT!");
+                    }
+                    array_arguments.push(operand.clone());
+                    match operand {
+                        Value::Array(m) => {
+                            if arrays::charge(&mut self.eval.steps, m.values.len()).is_err() {
+                                return Value::Error("#LIMIT!");
+                            }
+                            for (i, value) in m.values.iter().enumerate() {
+                                if m.blanks[i] {
+                                    continue;
+                                }
+                                nonempty += 1;
+                                match value {
+                                    Value::Number(n) => values.push(*n),
+                                    Value::Error(e) if !matches!(name, "COUNT" | "COUNTA") => {
+                                        return Value::Error(e)
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
                         Value::Number(n) => {
                             values.push(n);
                             nonempty += 1
                         }
-                        Value::Error(e) => return Value::Error(e),
-                        Value::Text(_) | Value::Boolean(_) => return Value::Error("#VALUE!"),
+                        Value::Error(e) if aggregate || math::aggregate(name) => {
+                            return Value::Error(e)
+                        }
+                        Value::Error(e) => {
+                            first_error.get_or_insert(e);
+                        }
+                        Value::Boolean(value) => {
+                            values.push(f64::from(value));
+                            nonempty += 1;
+                        }
+                        Value::Text(_) if name == "COUNTA" => nonempty += 1,
+                        Value::Text(value) => match value.trim().parse::<f64>() {
+                            Ok(number) if number.is_finite() => {
+                                values.push(number);
+                                nonempty += 1;
+                            }
+                            _ if name == "COUNT" => {}
+                            _ => {
+                                first_error.get_or_insert("#VALUE!");
+                            }
+                        },
                     }
                 }
                 if self.take(b')') {
@@ -509,6 +761,51 @@ impl Parser<'_, '_> {
                     return Value::Error("#LIMIT!");
                 }
             }
+        }
+        if !aggregate
+            && !math::aggregate(name)
+            && array_arguments.iter().any(|v| matches!(v, Value::Array(_)))
+        {
+            if math::handles(name)
+                || matches!(
+                    name,
+                    "DATE"
+                        | "YEAR"
+                        | "MONTH"
+                        | "DAY"
+                        | "TIME"
+                        | "CEILING"
+                        | "FLOOR"
+                        | "ABS"
+                        | "SQRT"
+                        | "SIN"
+                        | "COS"
+                        | "TAN"
+                        | "EXP"
+                        | "LOG10"
+                        | "RADIANS"
+                        | "DEGREES"
+                        | "POWER"
+                        | "MOD"
+                        | "LOG"
+                        | "ROUND"
+                        | "ROUNDUP"
+                        | "ROUNDDOWN"
+                        | "FACT"
+                        | "LN"
+                        | "INT"
+                        | "SIGN"
+                )
+            {
+                return self.lift_scalar(name, &array_arguments);
+            }
+            return Value::Error("#ERROR!");
+        }
+        if let Some(e) = first_error {
+            return Value::Error(e);
+        }
+        if math::handles(name) {
+            return math::call(name, &values, argument_count);
         }
         if aggregate {
             return match name {
@@ -623,28 +920,6 @@ impl Parser<'_, '_> {
                     (number / magnitude).floor() * magnitude
                 })
             }
-            "PMT" if (3..=5).contains(&values.len()) => {
-                let (rate, periods, present) = (values[0], values[1], values[2]);
-                let future = values.get(3).copied().unwrap_or(0.0);
-                let due = values.get(4).copied().unwrap_or(0.0);
-                if periods == 0.0 {
-                    return Value::Error("#DIV/0!");
-                }
-                if due != 0.0 && due != 1.0 {
-                    return Value::Error("#NUM!");
-                }
-                if rate == 0.0 {
-                    finite(-(present + future) / periods)
-                } else {
-                    let growth = (1.0 + rate).powf(periods);
-                    let denominator = (1.0 + rate * due) * (growth - 1.0);
-                    if denominator == 0.0 {
-                        Value::Error("#DIV/0!")
-                    } else {
-                        finite(-rate * (future + present * growth) / denominator)
-                    }
-                }
-            }
             "PI" if values.is_empty() => finite(std::f64::consts::PI),
             "ABS" if one => finite(values[0].abs()),
             "SQRT" if one && values[0] >= 0.0 => finite(values[0].sqrt()),
@@ -657,7 +932,6 @@ impl Parser<'_, '_> {
             "LOG10" if one => Value::Error("#NUM!"),
             "RADIANS" if one => finite(values[0].to_radians()),
             "DEGREES" if one => finite(values[0].to_degrees()),
-            "TRUNC" if one => finite(values[0].trunc()),
             "POWER" if values.len() == 2 => finite(values[0].powf(values[1])),
             "MOD" if values.len() == 2 && values[1] == 0.0 => Value::Error("#DIV/0!"),
             "MOD" if values.len() == 2 => {
@@ -766,10 +1040,19 @@ impl Parser<'_, '_> {
     }
     fn read_range(&mut self) -> Option<(SheetId, usize, usize, usize, usize)> {
         let start = self.pos;
+        if let Some(result) = self.computed_range() {
+            if let Ok(range) = result {
+                return Some(range);
+            }
+            self.pos = start;
+            return None;
+        }
+        self.pos = start;
         if let Some(range) = self.read_table_range() {
             return Some(range);
         }
         self.pos = start;
+        if let Some(range)=self.read_whole_axis_range(){return Some(range)}
         let first = self.read_any_ref(self.sheet)?;
         let last = if self.take(b':') {
             self.read_any_ref(first.0)?
@@ -779,7 +1062,7 @@ impl Parser<'_, '_> {
         if first.0 != last.0 || first.1 > last.1 || first.2 > last.2 {
             return None;
         }
-        let sheet = self
+        let _sheet = self
             .eval
             .book
             .history
@@ -787,7 +1070,7 @@ impl Parser<'_, '_> {
             .sheets
             .iter()
             .find(|s| s.id == first.0)?;
-        if last.1 >= sheet.rows || last.2 >= sheet.cols {
+        if last.1 >= crate::MAX_ROWS || last.2 >= crate::MAX_COLS {
             return None;
         }
         Some((first.0, first.1, first.2, last.1, last.2))
@@ -859,73 +1142,7 @@ impl Parser<'_, '_> {
             Value::Error("#N/A")
         }
     }
-    fn npv(&mut self) -> Value {
-        let rate = match self.comparison() {
-            Value::Number(n) => n,
-            Value::Error(e) => return Value::Error(e),
-            _ => return Value::Error("#VALUE!"),
-        };
-        if rate == -1.0 {
-            return Value::Error("#DIV/0!");
-        }
-        if !self.take(b',') {
-            return Value::Error("#ERROR!");
-        }
-        let mut period = 0i32;
-        let mut total = 0.0;
-        loop {
-            let start = self.pos;
-            if let Some(range) = self.read_range() {
-                self.space();
-                if matches!(self.input.get(self.pos), Some(b',' | b')')) {
-                    for row in range.1..=range.3 {
-                        for col in range.2..=range.4 {
-                            self.eval.steps += 1;
-                            if self.eval.steps > MAX_STEPS {
-                                return Value::Error("#LIMIT!");
-                            }
-                            match self.eval.range_cell(range.0, row, col, self.depth + 1) {
-                                Some(Value::Number(value)) => {
-                                    period += 1;
-                                    total += value / (1.0 + rate).powi(period);
-                                }
-                                Some(Value::Error(e)) => return Value::Error(e),
-                                _ => {}
-                            }
-                        }
-                    }
-                } else {
-                    self.pos = start;
-                    let value = self.comparison();
-                    match value {
-                        Value::Number(n) => {
-                            period += 1;
-                            total += n / (1.0 + rate).powi(period);
-                        }
-                        Value::Error(e) => return Value::Error(e),
-                        _ => return Value::Error("#VALUE!"),
-                    }
-                }
-            } else {
-                self.pos = start;
-                match self.comparison() {
-                    Value::Number(n) => {
-                        period += 1;
-                        total += n / (1.0 + rate).powi(period);
-                    }
-                    Value::Error(e) => return Value::Error(e),
-                    _ => return Value::Error("#VALUE!"),
-                }
-            }
-            if self.take(b')') {
-                break;
-            }
-            if !self.take(b',') {
-                return Value::Error("#ERROR!");
-            }
-        }
-        finite(total)
-    }
+
     fn xlookup(&mut self) -> Value {
         let needle = self.comparison();
         if matches!(needle, Value::Error(_)) {
@@ -952,8 +1169,8 @@ impl Parser<'_, '_> {
         } else {
             lookup.4 - lookup.2 + 1
         };
-        if vertical && (result.2 != result.4 || result.3 - result.1 + 1 != length)
-            || !vertical && (result.1 != result.3 || result.4 - result.2 + 1 != length)
+        if vertical && result.3 - result.1 + 1 != length
+            || !vertical && result.4 - result.2 + 1 != length
         {
             return Value::Error("#VALUE!");
         }
@@ -982,9 +1199,9 @@ impl Parser<'_, '_> {
                 }
                 if !quoted && !sheet_quoted {
                     match ch {
-                        b'(' => nesting += 1,
+                        b'(' | b'{' => nesting += 1,
                         b')' if nesting == 0 => break,
-                        b')' => nesting -= 1,
+                        b')' | b'}' if nesting > 0 => nesting -= 1,
                         b',' if nesting == 0 => break,
                         _ => {}
                     }
@@ -1050,12 +1267,7 @@ impl Parser<'_, '_> {
                 || mode == 2
                     && matches!((&needle, &value), (Value::Text(pattern), Value::Text(text)) if wildcard(pattern, text));
             if equal {
-                return self.eval.cell(
-                    result.0,
-                    result.1 + if vertical { index } else { 0 },
-                    result.2 + if vertical { 0 } else { index },
-                    self.depth + 1,
-                );
+                return self.lookup_result(result, index, vertical);
             }
             if mode == -1 || mode == 1 {
                 let valid = lookup_order(&value, &needle).is_some_and(|o| {
@@ -1080,12 +1292,7 @@ impl Parser<'_, '_> {
             }
         }
         if let Some((index, _)) = best {
-            return self.eval.cell(
-                result.0,
-                result.1 + if vertical { index } else { 0 },
-                result.2 + if vertical { 0 } else { index },
-                self.depth + 1,
-            );
+            return self.lookup_result(result, index, vertical);
         }
         if let Some(input) = fallback.filter(|input| !input.iter().all(u8::is_ascii_whitespace)) {
             let mut p = Parser {
@@ -1094,6 +1301,8 @@ impl Parser<'_, '_> {
                 eval: self.eval,
                 depth: self.depth,
                 sheet: self.sheet,
+                origin: self.origin,
+                locals: self.locals.clone(),
             };
             let value = p.comparison();
             p.space();
@@ -1114,7 +1323,11 @@ impl Parser<'_, '_> {
                     if self.eval.raw(sheet, row, col).is_none() {
                         return Value::Error("#REF!");
                     }
-                    return Value::Boolean(self.eval.content(sheet, row, col).is_none());
+                    self.eval.ensure_spills(sheet, self.depth + 1);
+                    return Value::Boolean(
+                        self.eval.raw(sheet, row, col) == Some("")
+                            && !self.eval.spills.contains_key(&(sheet, row, col)),
+                    );
                 }
             }
             self.pos = start;
@@ -1133,7 +1346,7 @@ impl Parser<'_, '_> {
         })
     }
     fn conditional_aggregate(&mut self, name: &str) -> Value {
-        let aggregate = if matches!(name, "SUMIFS" | "AVERAGEIFS") {
+        let aggregate = if matches!(name, "SUMIFS" | "AVERAGEIFS" | "MAXIFS" | "MINIFS") {
             let Some(range) = self.read_range() else {
                 return Value::Error("#REF!");
             };
@@ -1182,7 +1395,10 @@ impl Parser<'_, '_> {
             if !self.take(b')') {
                 return Value::Error("#ERROR!");
             }
-            Some(selected)
+            match conditional_ranges::aligned_target(selected, criteria[0].0) {
+                Ok(target) => Some(target),
+                Err(e) => return Value::Error(e),
+            }
         } else {
             aggregate
         };
@@ -1196,64 +1412,7 @@ impl Parser<'_, '_> {
         {
             return Value::Error("#VALUE!");
         }
-        let mut sum = 0.0;
-        let mut count = 0usize;
-        for row in 0..height {
-            for col in 0..width {
-                let mut matched = true;
-                for (range, criterion) in &criteria {
-                    self.eval.steps = self.eval.steps.saturating_add(1);
-                    if self.eval.steps > MAX_STEPS {
-                        return Value::Error("#LIMIT!");
-                    }
-                    let r = range.1 + row;
-                    let c = range.2 + col;
-                    let raw = self.eval.raw(range.0, r, c).unwrap_or("").to_owned();
-                    let value = self.eval.cell(range.0, r, c, self.depth + 1);
-                    if let Value::Text(spec) = criterion {
-                        if spec.contains(['*', '?', '~']) {
-                            self.eval.steps = self
-                                .eval
-                                .steps
-                                .saturating_add(spec.len().saturating_mul(raw.len()));
-                            if self.eval.steps > MAX_STEPS {
-                                return Value::Error("#LIMIT!");
-                            }
-                        }
-                    }
-                    if !criterion_matches(&value, &raw, criterion) {
-                        matched = false;
-                        break;
-                    }
-                }
-                if !matched {
-                    continue;
-                }
-                if let Some(target) = aggregate {
-                    match self.eval.range_cell(
-                        target.0,
-                        target.1 + row,
-                        target.2 + col,
-                        self.depth + 1,
-                    ) {
-                        Some(Value::Number(n)) => {
-                            sum += n;
-                            count += 1;
-                        }
-                        Some(Value::Error(e)) => return Value::Error(e),
-                        _ => {}
-                    }
-                } else {
-                    count += 1;
-                }
-            }
-        }
-        match name {
-            "COUNTIFS" => finite(count as f64),
-            "SUMIFS" => finite(sum),
-            _ if count == 0 => Value::Error("#DIV/0!"),
-            _ => finite(sum / count as f64),
-        }
+        self.sparse_conditional(name, &criteria, aggregate)
     }
     fn range_function(&mut self, name: &str) -> Value {
         if name == "COUNTIF" || name == "SUMIF" {
@@ -1278,83 +1437,15 @@ impl Parser<'_, '_> {
             if !self.take(b')') {
                 return Value::Error("#ERROR!");
             }
-            let mut total = 0.0;
-            for r in range.1..=range.3 {
-                for c in range.2..=range.4 {
-                    self.eval.steps += 1;
-                    if self.eval.steps > MAX_STEPS {
-                        return Value::Error("#LIMIT!");
-                    }
-                    let raw = self.eval.raw(range.0, r, c).unwrap_or("").to_owned();
-                    let value = self.eval.cell(range.0, r, c, self.depth + 1);
-                    if let Value::Text(spec) = &criterion {
-                        if spec.contains(['*', '?', '~']) {
-                            let len = match &value {
-                                Value::Text(t) => t.len(),
-                                _ => raw.len(),
-                            };
-                            self.eval.steps = self
-                                .eval
-                                .steps
-                                .saturating_add(spec.len().saturating_mul(len));
-                            if self.eval.steps > MAX_STEPS {
-                                return Value::Error("#LIMIT!");
-                            }
-                        }
-                    }
-                    if criterion_matches(&value, &raw, &criterion) {
-                        if name == "COUNTIF" {
-                            total += 1.0
-                        } else {
-                            let target = sum_range.unwrap_or(range);
-                            let rr = target.1 + r - range.1;
-                            let cc = target.2 + c - range.2;
-                            if self.eval.raw(target.0, rr, cc).is_none() {
-                                return Value::Error("#REF!");
-                            }
-                            match self.eval.cell(target.0, rr, cc, self.depth + 1) {
-                                Value::Number(v) => total += v,
-                                Value::Error(e) => return Value::Error(e),
-                                _ => {}
-                            }
-                        }
-                    }
+            let target = if name == "SUMIF" {
+                match conditional_ranges::aligned_target(sum_range.unwrap_or(range), range) {
+                    Ok(target) => Some(target),
+                    Err(e) => return Value::Error(e),
                 }
-            }
-            return finite(total);
-        }
-        if name == "INDEX" {
-            let Some(range) = self.read_range() else {
-                return Value::Error("#REF!");
-            };
-            if !self.take(b',') {
-                return Value::Error("#ERROR!");
-            }
-            let row = self.comparison();
-            let col = if self.take(b',') {
-                self.comparison()
             } else {
-                Value::Number(1.0)
+                None
             };
-            if !self.take(b')') {
-                return Value::Error("#ERROR!");
-            }
-            let (Value::Number(r), Value::Number(c)) = (row, col) else {
-                return Value::Error("#VALUE!");
-            };
-            if r < 1.0
-                || c < 1.0
-                || r.trunc() > (range.3 - range.1 + 1) as f64
-                || c.trunc() > (range.4 - range.2 + 1) as f64
-            {
-                return Value::Error("#REF!");
-            }
-            let rr = range.1 + r.trunc() as usize - 1;
-            let cc = range.2 + c.trunc() as usize - 1;
-            if rr > range.3 || cc > range.4 {
-                return Value::Error("#REF!");
-            }
-            return self.eval.cell(range.0, rr, cc, self.depth + 1);
+            return self.sparse_conditional(name, &[(range, criterion)], target);
         }
         let needle = self.comparison();
         if let Value::Error(_) = needle {
@@ -1481,13 +1572,127 @@ impl Parser<'_, '_> {
             Value::Error("#N/A")
         }
     }
+    fn extended_text_function(&mut self, name: &str) -> Value {
+        let mut args = Vec::new();
+        if self.take(b')') {
+            return self.call_extended(name, &args);
+        }
+        loop {
+            self.space();
+            if matches!(self.input.get(self.pos), Some(b',' | b')')) {
+                args.push(text::Arg::Missing);
+            } else {
+                let start = self.pos;
+                let range = if statistics::handles(name)
+                    || distributions::handles(name)
+                    || finance::handles(name)
+                    || calendar::handles(name)
+                    || information::scalar_handles(name)
+                    || matches!(name, "TEXTJOIN" | "CONCAT" | "CONCATENATE")
+                {
+                    self.read_range()
+                } else {
+                    None
+                };
+                self.space();
+                if let Some((sheet, top, left, bottom, right)) =
+                    range.filter(|_| matches!(self.input.get(self.pos), Some(b',' | b')')))
+                {
+                    let mut values = Vec::new();
+                    let mut blanks = Vec::new();
+                    for row in top..=bottom {
+                        for col in left..=right {
+                            self.eval.steps += 1;
+                            if self.eval.steps > MAX_STEPS || values.len() >= 100_000 {
+                                return Value::Error("#LIMIT!");
+                            }
+                            let Some(_) = self.eval.raw(sheet, row, col) else {
+                                return Value::Error("#REF!");
+                            };
+                            let (value, blank) =
+                                self.eval.range_value(sheet, row, col, self.depth + 1);
+                            blanks.push(blank);
+                            if !self.charge_argument_text(&value) {
+                                return Value::Error("#LIMIT!");
+                            }
+                            values.push(value);
+                        }
+                    }
+                    args.push(text::Arg::Range(values, blanks));
+                } else {
+                    self.pos = start;
+                    // A directly referenced blank cell remains blank for text aggregation.
+                    let reference_start = self.pos;
+                    let reference = self.read_any_ref(self.sheet);
+                    self.space();
+                    let blank = reference
+                        .filter(|_| matches!(self.input.get(self.pos), Some(b',' | b')')))
+                        .is_some_and(|(sheet, row, col)| {
+                            self.eval.ensure_spills(sheet, self.depth + 1);
+                            self.eval.raw(sheet, row, col) == Some("")
+                                && !self.eval.spills.contains_key(&(sheet, row, col))
+                        });
+                    if blank {
+                        args.push(text::Arg::Scalar(Value::Text(String::new())));
+                    } else {
+                        self.pos = reference_start;
+                        let value = self.comparison();
+                        if !self.charge_argument_text(&value) {
+                            return Value::Error("#LIMIT!");
+                        }
+                        if let Value::Array(m) = value {
+                            if name == "TYPE" {
+                                args.push(text::Arg::Scalar(Value::Array(m)));
+                            } else {
+                                args.push(text::Arg::Range(m.values.clone(), m.blanks.clone()));
+                            }
+                        } else {
+                            args.push(text::Arg::Scalar(value));
+                        }
+                    }
+                }
+            }
+            if self.take(b')') {
+                break;
+            }
+            if !self.take(b',') || args.len() >= 1024 {
+                return Value::Error("#ERROR!");
+            }
+        }
+        self.call_extended(name, &args)
+    }
+    fn charge_argument_text(&mut self, value: &Value) -> bool {
+        if let Value::Array(m) = value {
+            return m.values.iter().all(|v| self.charge_argument_text(v));
+        }
+        if let Value::Text(text) = value {
+            self.eval.argument_text_bytes =
+                self.eval.argument_text_bytes.saturating_add(text.len());
+        }
+        self.eval.argument_text_bytes <= crate::MAX_TEXT * 2
+    }
+    fn call_extended(&mut self, name: &str, args: &[text::Arg]) -> Value {
+        if information::scalar_handles(name) {
+            information::call(name, args)
+        } else if statistics::handles(name) {
+            statistics::call(name, args)
+        } else if calendar::handles(name) {
+            calendar::call(name, args, self.eval.book, &mut self.eval.steps)
+        } else if finance::handles(name) {
+            finance::call(name, args, &mut self.eval.steps)
+        } else if distributions::handles(name) {
+            distributions::call(name, args, &mut self.eval.steps)
+        } else {
+            text::call(name, args)
+        }
+    }
     fn text_function(&mut self, name: &str) -> Value {
         let mut args = Vec::new();
         if !self.take(b')') {
             loop {
                 let v = self.comparison();
-                if let Value::Error(_) = v {
-                    return v;
+                if !self.charge_argument_text(&v) {
+                    return Value::Error("#LIMIT!");
                 }
                 args.push(v);
                 if self.take(b')') {
@@ -1497,6 +1702,15 @@ impl Parser<'_, '_> {
                     return Value::Error("#ERROR!");
                 }
             }
+        }
+        if args.iter().any(|v| matches!(v, Value::Array(_))) {
+            return self.lift_scalar(name, &args);
+        }
+        if let Some(error) = args.iter().find(|v| matches!(v, Value::Error(_))) {
+            return error.clone();
+        }
+        if engineering::handles(name) {
+            return engineering::call(name, &args);
         }
         let string = |n: usize| args.get(n).cloned().map(Value::display);
         let number = |n: usize, default: usize| -> Option<usize> {
@@ -1562,17 +1776,6 @@ impl Parser<'_, '_> {
                     .collect::<Vec<_>>()
                     .join(" "),
             ),
-            "CONCAT" | "CONCATENATE" => {
-                let mut out = String::new();
-                for arg in args {
-                    let v = arg.display();
-                    if out.len().saturating_add(v.len()) > crate::MAX_TEXT {
-                        return Value::Error("#LIMIT!");
-                    }
-                    out.push_str(&v)
-                }
-                Value::Text(out)
-            }
             "EXACT" if args.len() == 2 => Value::Boolean(string(0) == string(1)),
             "LEFT" | "RIGHT" if (1..=2).contains(&args.len()) => {
                 let Some(count) = number(1, 1) else {
@@ -1602,7 +1805,7 @@ impl Parser<'_, '_> {
             other => other,
         }
     }
-    fn read_qualified_ref(&mut self) -> Option<(SheetId, usize, usize)> {
+    fn read_sheet_qualifier(&mut self) -> Option<SheetId> {
         self.space();
         let start = self.pos;
         let name = if self.input.get(self.pos) == Some(&b'\'') {
@@ -1652,17 +1855,17 @@ impl Parser<'_, '_> {
             .current()
             .sheets
             .iter()
-            .find(|s| s.name.eq_ignore_ascii_case(&name))
+            .find(|s| s.name.eq_ignore_ascii_case(&name)||s.name.to_lowercase()==name.to_lowercase())
             .map(|s| s.id);
         let Some(id) = id else {
             self.pos = start;
             return None;
         };
-        let Some((r, c)) = self.read_ref() else {
-            self.pos = start;
-            return None;
-        };
-        Some((id, r, c))
+        Some(id)
+    }
+    fn read_qualified_ref(&mut self)->Option<(SheetId,usize,usize)>{
+        let start=self.pos;let id=self.read_sheet_qualifier()?;
+        if let Some((r,c))=self.read_ref(){Some((id,r,c))}else{self.pos=start;None}
     }
     fn read_any_ref(&mut self, default: SheetId) -> Option<(SheetId, usize, usize)> {
         let start = self.pos;
@@ -1696,13 +1899,13 @@ impl Parser<'_, '_> {
                 sheet_quoted = !sheet_quoted;
             } else if !quoted && !sheet_quoted {
                 match ch {
-                    b'(' => level += 1,
+                    b'(' | b'{' => level += 1,
                     b')' if level == 0 => {
                         segments.push(&self.input[part..i]);
                         self.pos = i + 1;
                         break;
                     }
-                    b')' => level -= 1,
+                    b')' | b'}' if level > 0 => level -= 1,
                     b',' if level == 0 => {
                         segments.push(&self.input[part..i]);
                         part = i + 1
@@ -1715,19 +1918,26 @@ impl Parser<'_, '_> {
         if self.pos == start {
             return Value::Error("#ERROR!");
         }
-        if (name == "IF" && segments.len() != 3)
+        if (name == "IF" && !(1..=3).contains(&segments.len()))
             || (matches!(name, "IFERROR" | "IFNA") && segments.len() != 2)
-            || ((name == "AND" || name == "OR") && segments.is_empty())
+            || (name == "IFS" && (segments.len() < 2 || segments.len() % 2 != 0))
+            || (name == "SWITCH" && segments.len() < 3)
+            || (name == "CHOOSE" && segments.len() < 2)
         {
             return Value::Error("#ERROR!");
         }
         let eval_arg = |this: &mut Self, idx: usize| {
+            if segments[idx].iter().all(u8::is_ascii_whitespace) {
+                return Value::Number(0.0);
+            }
             let mut p = Parser {
                 input: segments[idx],
                 pos: 0,
                 eval: this.eval,
                 depth: this.depth,
                 sheet: this.sheet,
+                origin: this.origin,
+                locals: this.locals.clone(),
             };
             let v = p.comparison();
             p.space();
@@ -1737,26 +1947,100 @@ impl Parser<'_, '_> {
                 v
             }
         };
-        if name == "AND" || name == "OR" {
-            for i in 0..segments.len() {
-                let value = eval_arg(self, i);
-                let truth = match value {
-                    Value::Number(v) => v != 0.0,
-                    Value::Boolean(v) => v,
-                    Value::Error(e) => return Value::Error(e),
-                    _ => return Value::Error("#VALUE!"),
-                };
-                if name == "AND" && !truth {
-                    return Value::Boolean(false);
+        if name == "LET" {
+            if segments.len() < 3 || segments.len() % 2 == 0 {
+                return Value::Error("#VALUE!");
+            }
+            let previous = self.locals.clone();
+            let result = (|| {
+                for i in (0..segments.len() - 1).step_by(2) {
+                    let name = std::str::from_utf8(segments[i])
+                        .unwrap_or("")
+                        .trim()
+                        .to_uppercase();
+                    let mut chars = name.chars();
+                    if !chars.next().is_some_and(|c| c.is_alphabetic() || c == '_')
+                        || !chars.all(|c| c.is_alphanumeric() || matches!(c, '_' | '.'))
+                        || matches!(name.as_str(), "R" | "C")
+                        || reference(name.as_bytes())
+                            .is_some_and(|(r, c)| r < 1_048_576 && c < 16384)
+                    {
+                        return Value::Error("#VALUE!");
+                    }
+                    let value = eval_arg(self, i + 1);
+                    if !self.charge_argument_text(&value) {
+                        return Value::Error("#LIMIT!");
+                    }
+                    self.locals.insert(name, value);
                 }
-                if name == "OR" && truth {
-                    return Value::Boolean(true);
+                eval_arg(self, segments.len() - 1)
+            })();
+            self.locals = previous;
+            return result;
+        }
+        if name == "IFS" {
+            for i in (0..segments.len()).step_by(2) {
+                match information::truth(eval_arg(self, i)) {
+                    Ok(true) => return eval_arg(self, i + 1),
+                    Ok(false) => {}
+                    Err(e) => return Value::Error(e),
                 }
             }
-            return Value::Boolean(name == "AND");
+            return Value::Error("#N/A");
+        }
+        if name == "SWITCH" {
+            let value = eval_arg(self, 0);
+            if let Value::Error(_) = value {
+                return value;
+            }
+            let mut i = 1;
+            while i + 1 < segments.len() {
+                let candidate = eval_arg(self, i);
+                if let Value::Error(_) = candidate {
+                    return candidate;
+                }
+                if lookup_equal(&value, &candidate) {
+                    return eval_arg(self, i + 1);
+                }
+                i += 2;
+            }
+            return if i < segments.len() {
+                eval_arg(self, i)
+            } else {
+                Value::Error("#N/A")
+            };
+        }
+        if name == "CHOOSE" {
+            let value = eval_arg(self, 0);
+            let idx = match statistics::number(Some(&text::Arg::Scalar(value)), None) {
+                Ok(v) => v.trunc(),
+                Err(e) => return Value::Error(e),
+            };
+            return if idx >= 1.0 && idx < (segments.len() as f64) {
+                eval_arg(self, idx as usize)
+            } else {
+                Value::Error("#VALUE!")
+            };
         }
         let first = eval_arg(self, 0);
         if matches!(name, "IFERROR" | "IFNA") {
+            if let Value::Array(m) = &first {
+                let needs_fallback = m
+                    .values
+                    .iter()
+                    .any(|v| matches!(v,Value::Error(e)if name=="IFERROR"||*e=="#N/A"));
+                if !needs_fallback {
+                    return first;
+                }
+                let fallback = eval_arg(self, 1);
+                return arrays::broadcast(&[first, fallback], &mut self.eval.steps, |v| {
+                    if matches!(&v[0],Value::Error(e)if name=="IFERROR"||*e=="#N/A") {
+                        v[1].clone()
+                    } else {
+                        v[0].clone()
+                    }
+                });
+            }
             if matches!(first, Value::Error(_))
                 && (name == "IFERROR" || first == Value::Error("#N/A"))
             {
@@ -1765,14 +2049,47 @@ impl Parser<'_, '_> {
                 first
             }
         } else {
-            match first {
-                Value::Number(n) => eval_arg(self, if n != 0.0 { 1 } else { 2 }),
-                Value::Boolean(v) => eval_arg(self, if v { 1 } else { 2 }),
-                Value::Text(_) => Value::Error("#VALUE!"),
-                e => e,
+            if let Value::Array(m) = &first {
+                let yes = m
+                    .values
+                    .iter()
+                    .any(|v| information::truth(v.clone()) == Ok(true));
+                let no = m
+                    .values
+                    .iter()
+                    .any(|v| information::truth(v.clone()) == Ok(false));
+                let then = if yes && segments.len() > 1 {
+                    eval_arg(self, 1)
+                } else {
+                    Value::Boolean(true)
+                };
+                let other = if no && segments.len() > 2 {
+                    eval_arg(self, 2)
+                } else {
+                    Value::Boolean(false)
+                };
+                return arrays::broadcast(&[first, then, other], &mut self.eval.steps, |v| {
+                    match information::truth(v[0].clone()) {
+                        Ok(true) => v[1].clone(),
+                        Ok(false) => v[2].clone(),
+                        Err(e) => Value::Error(e),
+                    }
+                });
+            }
+            match information::truth(first) {
+                Ok(truth) => {
+                    let index = if truth { 1 } else { 2 };
+                    if index < segments.len() {
+                        eval_arg(self, index)
+                    } else {
+                        Value::Boolean(truth)
+                    }
+                }
+                Err(e) => Value::Error(e),
             }
         }
     }
+
     fn read_ref(&mut self) -> Option<(usize, usize)> {
         self.space();
         let start = self.pos;
@@ -1806,7 +2123,7 @@ fn lookup_order(a: &Value, b: &Value) -> Option<std::cmp::Ordering> {
 fn lookup_equal(a: &Value, b: &Value) -> bool {
     match (a, b) {
         (Value::Number(a), Value::Number(b)) => a == b,
-        (Value::Text(a), Value::Text(b)) => a.eq_ignore_ascii_case(b),
+        (Value::Text(a), Value::Text(b)) => a.to_lowercase()==b.to_lowercase(),
         (Value::Boolean(a), Value::Boolean(b)) => a == b,
         _ => false,
     }
@@ -1846,7 +2163,7 @@ fn wildcard(pattern: &str, value: &str) -> bool {
 fn format_formula_number(book: &Workbook, value: f64, format: &str) -> Option<String> {
     let format = format.trim().to_ascii_lowercase();
     if format == "general" {
-        return Some(value.to_string());
+        return Some(crate::display::general(value));
     }
     if matches!(
         format.as_str(),
@@ -1872,24 +2189,9 @@ fn format_formula_number(book: &Workbook, value: f64, format: &str) -> Option<St
             _ => date.format("%-d-%b-%y").to_string(),
         });
     }
-    let (pattern, percent) = format
-        .strip_suffix('%')
-        .map_or((format.as_str(), false), |s| (s, true));
-    let decimals = match pattern {
-        "0" => 0,
-        "0.0" => 1,
-        "0.00" => 2,
-        "0.000" => 3,
-        _ => return None,
-    };
-    Some(format!(
-        "{:.*}{}",
-        decimals,
-        if percent { value * 100.0 } else { value },
-        if percent { "%" } else { "" }
-    ))
+    crate::display::number_pattern(value, format.as_str())
 }
-fn criterion_matches(value: &Value, raw: &str, criterion: &Value) -> bool {
+fn criterion_matches(value: &Value, physically_blank: bool, criterion: &Value) -> bool {
     let Value::Text(spec) = criterion else {
         return lookup_equal(value, criterion);
     };
@@ -1909,11 +2211,8 @@ fn criterion_matches(value: &Value, raw: &str, criterion: &Value) -> bool {
         (5, spec.as_str())
     };
     if body.is_empty() && (op == 5 || op == 2) {
-        return if op == 5 {
-            raw.is_empty()
-        } else {
-            !raw.is_empty()
-        };
+        let blank = physically_blank || matches!(value, Value::Text(s) if s.is_empty());
+        return if op == 5 { blank } else { !blank };
     }
     let ordering = if let Ok(n) = body.parse::<f64>() {
         if let Value::Number(v) = value {
@@ -2004,27 +2303,89 @@ fn calc(a: Value, b: Value, op: u8) -> Value {
     }
 }
 
-pub(crate) fn display_grid(book: &Workbook) -> Vec<Vec<String>> {
-    display_grid_at(book, chrono::Local::now().naive_local())
+pub(super) struct Calculation {
+    pub values: std::collections::BTreeMap<(usize, usize), Value>,
+    pub spills: std::collections::BTreeMap<(usize, usize), crate::Range>,
 }
+pub(super) fn typed_cells_at(book:&Workbook,cells:impl IntoIterator<Item=(usize,usize)>,now:chrono::NaiveDateTime)->Result<Calculation,&'static str>{
+    let sheet=book.active_sheet();let mut eval=Eval::new(book,now);eval.ensure_spills(sheet,0);
+    let mut values=std::collections::BTreeMap::new();
+    for(row,col)in cells{
+        if eval.steps>=MAX_STEPS{return Err("Sort calculation exceeds the evaluation budget")}
+        let value=eval.cell(sheet,row,col,0);if matches!(value,Value::Error("#LIMIT!")){return Err("Sort calculation exceeds the evaluation budget")}
+        values.insert((row,col),value);
+    }
+    values.extend(eval.spills.into_iter().filter(|((s,_,_),_)|*s==sheet).map(|((_,r,c),v)|((r,c),v)));
+    let spills=eval.spill_ranges.into_iter().filter(|((s,_,_),_)|*s==sheet).map(|((_,r,c),v)|((r,c),v)).collect();
+    Ok(Calculation{values,spills})
+}
+pub(super) fn numeric_cell_at(book:&Workbook,cell:(usize,usize),now:chrono::NaiveDateTime)->Result<f64,&'static str>{
+    let mut eval=Eval::new(book,now);
+    match eval.cell(book.active_sheet(),cell.0,cell.1,0){
+        Value::Number(value)if value.is_finite()=>Ok(value),
+        Value::Error(error)=>Err(error),_=>Err("The formula must return a finite number"),
+    }
+}
+pub(super) fn optimization_values_at(book:&Workbook,cells:&[(usize,usize)],now:chrono::NaiveDateTime)->Option<Vec<f64>>{
+    let mut eval=Eval::new(book,now);
+    cells.iter().map(|&(row,col)|match eval.cell(book.active_sheet(),row,col,0){
+        Value::Number(value)if value.is_finite()=>Some(value),Value::Boolean(value)=>Some(if value{1.}else{0.}),_=>None,
+    }).collect()
+}
+pub(super) fn calculation_at(book: &Workbook, now: chrono::NaiveDateTime) -> Calculation {
+    let sheet = book.active_sheet();
+    let mut eval = Eval::new(book, now);
+    eval.ensure_spills(sheet, 0);
+    let mut values: std::collections::BTreeMap<_, _> = book
+        .history
+        .current()
+        .sheet()
+        .cells
+        .iter()
+        .filter(|(_, c)| matches!(c.text, CellContent::Formula(_)))
+        .map(|(&(r, c), _)| ((r, c), eval.cell(sheet, r, c, 0)))
+        .collect();
+    values.extend(
+        eval.spills
+            .into_iter()
+            .filter(|((s, _, _), _)| *s == sheet)
+            .map(|((_, r, c), v)| ((r, c), v)),
+    );
+    let spills = eval
+        .spill_ranges
+        .into_iter()
+        .filter(|((s, _, _), _)| *s == sheet)
+        .map(|((_, r, c), range)| ((r, c), range))
+        .collect();
+    Calculation { values, spills }
+}
+
+#[cfg(test)]
 pub(crate) fn display_grid_at(book: &Workbook, now: chrono::NaiveDateTime) -> Vec<Vec<String>> {
-    let mut eval = Eval {
-        book,
-        cache: HashMap::new(),
-        visiting: HashSet::new(),
-        steps: 0,
-        text_bytes: 0,
-        now,
-    };
+    let calculation = calculation_at(book, now);
+    display_grid_with_calculation(book, &calculation)
+}
+#[cfg(test)]
+fn display_grid_with_calculation(
+    book: &Workbook,
+    calculation: &Calculation,
+) -> Vec<Vec<String>> {
     (0..book.rows())
         .map(|r| {
             (0..book.cols())
                 .map(|c| {
-                    let raw = book.cell(r, c).unwrap();
-                    if matches!(book.content(r, c), Some(CellContent::Formula(_))) {
-                        eval.cell(book.active_sheet(), r, c, 0).display()
-                    } else {
-                        raw.to_owned()
+                    if let Some(value) = calculation.values.get(&(r, c)) {
+                        return value.clone().display();
+                    }
+                    match book.content(r, c) {
+                        Some(CellContent::Boolean(v)) => {
+                            if v.raw().eq_ignore_ascii_case("true") {
+                                "TRUE".into()
+                            } else {
+                                "FALSE".into()
+                            }
+                        }
+                        _ => book.cell(r, c).unwrap().to_owned(),
                     }
                 })
                 .collect()
@@ -2033,14 +2394,7 @@ pub(crate) fn display_grid_at(book: &Workbook, now: chrono::NaiveDateTime) -> Ve
 }
 
 pub(crate) fn display_cell(book: &Workbook, row: usize, col: usize) -> String {
-    let mut eval = Eval {
-        book,
-        cache: HashMap::new(),
-        visiting: HashSet::new(),
-        steps: 0,
-        text_bytes: 0,
-        now: chrono::Local::now().naive_local(),
-    };
+    let mut eval = Eval::new(book, chrono::Local::now().naive_local());
     eval.cell(book.active_sheet(), row, col, 0).display()
 }
 
@@ -2140,4 +2494,63 @@ mod common_formula_regression {
             assert_eq!(book.display_grid()[row][0], expected, "{formula}");
         }
     }
+}
+
+/// Filter exclusions use one bounded evaluator and clock, rather than materializing a full display grid.
+pub(super) fn filter_hidden_rows_at(
+    book: &Workbook,
+    now: chrono::NaiveDateTime,
+    filter: &crate::SheetFilter,
+) -> std::collections::BTreeSet<usize> {
+    let mut eval = Eval::new(book, now);
+    let needle = filter.contains.to_lowercase();
+    (filter.range.top + 1..=filter.range.bottom)
+        .filter(|r| {
+            !eval
+                .display_for_filter(book.active_sheet(), *r, filter.column, 0)
+                .to_lowercase()
+                .contains(&needle)
+        })
+        .collect()
+}
+
+fn compare_scalar(left: Value, right: Value, op: u8) -> Value {
+    let ordering = match (left, right) {
+        (Value::Error(e), _) | (_, Value::Error(e)) => return Value::Error(e),
+        (Value::Number(a), Value::Number(b)) => a.partial_cmp(&b),
+        (Value::Text(a), Value::Text(b)) => Some(a.to_lowercase().cmp(&b.to_lowercase())),
+        (Value::Boolean(a), Value::Boolean(b)) => Some(a.cmp(&b)),
+        _ => return Value::Error("#VALUE!"),
+    };
+    let Some(order) = ordering else {
+        return Value::Error("#NUM!");
+    };
+    let yes = match op {
+        0 => order != std::cmp::Ordering::Greater,
+        1 => order != std::cmp::Ordering::Less,
+        2 => order != std::cmp::Ordering::Equal,
+        3 => order == std::cmp::Ordering::Equal,
+        4 => order == std::cmp::Ordering::Less,
+        _ => order == std::cmp::Ordering::Greater,
+    };
+    Value::Boolean(yes)
+}
+
+fn concat_scalar(a: Value, b: Value) -> Value {
+    match (a, b) {
+        (Value::Error(e), _) | (_, Value::Error(e)) => Value::Error(e),
+        (a, b) => {
+            let a = a.display();
+            let b = b.display();
+            if a.len().saturating_add(b.len()) > crate::MAX_TEXT {
+                Value::Error("#LIMIT!")
+            } else {
+                Value::Text(a + &b)
+            }
+        }
+    }
+}
+
+pub(super) fn is_dynamic_formula(raw: &str) -> bool {
+    arrays::dynamic_formula(raw)
 }

@@ -1,5 +1,8 @@
 //! Image-page workflow with project/PDF export and optional external Tesseract OCR.
-use lopdf::{dictionary, Document, Object, Stream};
+mod pdf_export;
+pub use pdf_export::{PdfExportOptions, PdfRaster};
+#[cfg(test)]
+use lopdf::Document;
 use std::sync::Arc;
 use std::{io::Read, path::Path};
 use suite42_core::write_new;
@@ -10,14 +13,7 @@ const MAX_BYTES: usize = 224 * 1024 * 1024;
 const MAX_OCR_BYTES: usize = 64 * 1024 * 1024;
 const MAX_DOCUMENT_PAYLOAD: usize = 256 * 1024 * 1024 - 64 * 1024;
 const MAX_RETAINED_BYTES: usize = 512 * 1024 * 1024;
-#[derive(Clone, Debug, PartialEq)]
-pub struct OcrWord {
-    pub text: String,
-    pub x: u32,
-    pub y: u32,
-    pub width: u32,
-    pub height: u32,
-}
+pub use suite42_core::ocr::Word as OcrWord;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Page {
     pub id: u64,
@@ -190,6 +186,54 @@ impl ScanDocument {
                 .saturating_sub(overhead),
         );
         (bytes, MAX_PAGES.saturating_sub(self.pages().len()))
+    }
+    /// A replacement can reuse the target page's current-document allocation and slot.
+    pub fn replacement_capacity(&self, target: u64) -> Result<(usize, usize), String> {
+        if !self.pages().iter().any(|page| page.id == target) {
+            return Err("The page to rescan is no longer in the project".into());
+        }
+        let candidate = Self {
+            history: PageHistory::new(
+                self.pages()
+                    .iter()
+                    .filter(|page| page.id != target)
+                    .cloned()
+                    .collect(),
+                0,
+            ),
+            next_id: self.next_id,
+        };
+        Ok(candidate.acquisition_capacity())
+    }
+    /// Replace the captured page identity with the first acquired image; append additional
+    /// feeder images, matching the macOS rescan workflow. Validate the whole batch first.
+    pub fn replace_acquired_page(
+        &mut self,
+        target: u64,
+        images: Vec<(u32, u32, Vec<u8>, u32, u32)>,
+    ) -> Result<usize, String> {
+        let index = self
+            .pages()
+            .iter()
+            .position(|page| page.id == target)
+            .ok_or("The page to rescan is no longer in the project")?;
+        if images.is_empty() {
+            return Ok(index);
+        }
+        let mut pages = self.pages().to_vec();
+        pages.remove(index);
+        let appended = pages.len();
+        let mut candidate = Self {
+            history: PageHistory::new(pages, 0),
+            next_id: self.next_id,
+        };
+        candidate.add_pages_with_dpi(images)?;
+        let mut pages = candidate.pages().to_vec();
+        let first = pages.remove(appended);
+        pages.insert(index, first);
+        self.next_id = candidate.next_id;
+        self.history.apply(pages);
+        Ok(index)
     }
 
     pub fn add_rgba(&mut self, width: u32, height: u32, pixels: Vec<u8>) -> Result<(), String> {
@@ -525,6 +569,49 @@ impl ScanDocument {
         doc.history = PageHistory::new(doc.pages().to_vec(), 5);
         Ok(doc)
     }
+    pub fn place_mark(
+        &mut self,
+        index: usize,
+        source_width: u32,
+        source_height: u32,
+        rgba: &[u8],
+        rect: [u32; 4],
+    ) -> Result<(), String> {
+        let page = self.pages().get(index).ok_or("page index out of range")?;
+        let [x, y, width, height] = rect;
+        if source_width == 0
+            || source_height == 0
+            || u64::from(source_width) * u64::from(source_height) > 4_000_000
+            || rgba.len() as u64 != u64::from(source_width) * u64::from(source_height) * 4
+            || width == 0
+            || height == 0
+            || x.checked_add(width).is_none_or(|end| end > page.width)
+            || y.checked_add(height).is_none_or(|end| end > page.height)
+        {
+            return Err("Place the mark entirely inside the page.".into());
+        }
+        let source = image::RgbaImage::from_raw(source_width, source_height, rgba.to_vec())
+            .ok_or("Invalid mark image.")?;
+        let mark = image::imageops::resize(
+            &source,
+            width,
+            height,
+            image::imageops::FilterType::Triangle,
+        );
+        let mut canvas = image::RgbaImage::from_raw(page.width, page.height, page.pixels.to_vec())
+            .ok_or("Invalid page pixels.")?;
+        image::imageops::overlay(&mut canvas, &mark, i64::from(x), i64::from(y));
+        if canvas.as_raw() == page.pixels.as_ref() {
+            return Ok(());
+        }
+        let mut pages = self.pages().to_vec();
+        pages[index].pixels = canvas.into_raw().into();
+        pages[index].words = Arc::from([]);
+        pages[index].ocr_language.clear();
+        self.history.apply(pages);
+        Ok(())
+    }
+
     pub fn flip(&mut self, index: usize, horizontal: bool) -> Result<(), String> {
         let mut pages = self.pages().to_vec();
         let page = pages.get_mut(index).ok_or("page index out of range")?;
@@ -965,88 +1052,7 @@ impl ScanDocument {
         }
         Ok(words)
     }
-    pub fn export_pdf(&self, path: &Path) -> Result<(), String> {
-        self.export_pdf_compressed(path, false)
-    }
-    pub fn export_pdf_compressed(&self, path: &Path, compressed: bool) -> Result<(), String> {
-        if self.pages().is_empty() {
-            return Err("cannot export an empty scan".into());
-        }
-        let mut doc = Document::with_version("1.5");
-        let text: String = self
-            .pages()
-            .iter()
-            .flat_map(|p| p.words.iter())
-            .map(|w| w.text.as_str())
-            .collect();
-        // Image-only scans need no font; OCR text gets a glyph subset.
-        let embedded = if text.is_empty() {
-            None
-        } else {
-            Some(suite42_pdf_text::PdfFont::embed_subset(&mut doc, &text)?)
-        };
-        let pages_id = doc.new_object_id();
-        let mut kids = Vec::new();
-        for page in self.pages() {
-            let mut rgb = Vec::with_capacity(page.pixels.len() / 4 * 3);
-            for p in page.pixels.as_chunks::<4>().0 {
-                let a = p[3] as u32;
-                for &c in &p[..3] {
-                    rgb.push(((c as u32 * a + 255 * (255 - a) + 127) / 255) as u8)
-                }
-            }
-            let image=doc.add_object(Stream::new(dictionary!{"Type"=>"XObject","Subtype"=>"Image","Width"=>page.width as i64,"Height"=>page.height as i64,"ColorSpace"=>"DeviceRGB","BitsPerComponent"=>8},rgb));
-            let w = page.width as f32 * 72.0 / page.dpi_x as f32;
-            let h = page.height as f32 * 72.0 / page.dpi_y as f32;
-            let mut commands = format!("q {w} 0 0 {h} 0 0 cm /Im0 Do Q\n");
-            let font = embedded.as_ref().filter(|_| !page.words.is_empty());
-            if let Some(font) = font {
-                let chars = &font.chars;
-                for word in page.words.iter() {
-                    let x = word.x as f32 * 72.0 / page.dpi_x as f32;
-                    let y = (page.height - word.y - word.height) as f32 * 72.0 / page.dpi_y as f32;
-                    let size = word.height as f32 * 72.0 / page.dpi_y as f32;
-                    let hex: String = word
-                        .text
-                        .chars()
-                        .map(|c| format!("{:04X}", chars[&c].0))
-                        .collect();
-                    let advance: u32 = word.text.chars().map(|c| chars[&c].2).sum();
-                    let target = word.width as f32 * 72.0 / page.dpi_x as f32;
-                    let scale = if advance == 0 {
-                        100.0
-                    } else {
-                        target * 100000.0 / (advance as f32 * size)
-                    };
-                    commands.push_str(&format!(
-                        "BT /F1 {size} Tf {scale} Tz 3 Tr 1 0 0 1 {x} {y} Tm <{hex}> Tj ET\n"
-                    ));
-                }
-            }
-            let content = doc.add_object(Stream::new(dictionary! {}, commands.into_bytes()));
-            let mut resources = dictionary! {"XObject"=>dictionary!{"Im0"=>image}};
-            if let Some(font) = font {
-                resources.set("Font", dictionary! {"F1"=>font.id});
-            }
-            let id=doc.add_object(dictionary!{"Type"=>"Page","Parent"=>pages_id,"MediaBox"=>vec![0.into(),0.into(),w.into(),h.into()],"Resources"=>resources,"Contents"=>content});
-            kids.push(Object::Reference(id));
-        }
-        doc.objects.insert(
-            pages_id,
-            Object::Dictionary(
-                dictionary! {"Type"=>"Pages","Count"=>kids.len() as i64,"Kids"=>kids},
-            ),
-        );
-        let catalog = doc.add_object(dictionary! {"Type"=>"Catalog","Pages"=>pages_id});
-        doc.trailer.set("Root", catalog);
-        if compressed {
-            doc.compress();
-        }
-        let mut bytes = Vec::new();
-        doc.save_to(&mut bytes).map_err(|e| e.to_string())?;
-        write_new(path, &bytes).map_err(|e| e.to_string())?;
-        Ok(())
-    }
+
 }
 #[cfg(test)]
 mod tests {
@@ -1526,5 +1532,162 @@ mod tests {
         assert!(d.is_dirty());
         assert!(d.undo());
         assert!(d.is_dirty());
+    }
+}
+
+#[cfg(test)]
+mod mark_tests {
+    use super::*;
+
+    #[test]
+    fn marks_clear_stale_ocr_and_restore_it_with_pixels_on_undo() {
+        let mut document = ScanDocument::new();
+        document.add_rgba(4, 4, vec![255; 64]).unwrap();
+        let source = document.pages()[0].clone();
+        document
+            .apply_ocr(
+                0,
+                &source,
+                vec![OcrWord {
+                    text: "Board".into(),
+                    x: 0,
+                    y: 0,
+                    width: 2,
+                    height: 1,
+                }],
+            )
+            .unwrap();
+        let before = document.pages()[0].clone();
+        document
+            .place_mark(0, 1, 1, &[0, 0, 255, 128], [1, 1, 2, 2])
+            .unwrap();
+        assert!(document.pages()[0].words.is_empty());
+        assert_eq!(&document.pages()[0].pixels[..4], &[255; 4]);
+        assert!(document.undo());
+        assert_eq!(document.pages()[0], before);
+        assert!(document.redo());
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("marked.scn42");
+        document.save_project(&path).unwrap();
+        let reopened = ScanDocument::open_project(&path).unwrap();
+        assert_eq!(reopened.pages(), document.pages());
+    }
+}
+
+#[cfg(test)]
+mod rescan_tests {
+    use super::*;
+    fn document() -> ScanDocument {
+        let mut doc = ScanDocument::new();
+        doc.add_pages_with_dpi(vec![
+            (1, 1, vec![1, 2, 3, 255], 150, 150),
+            (1, 1, vec![4, 5, 6, 255], 200, 300),
+            (1, 1, vec![7, 8, 9, 255], 600, 600),
+        ])
+        .unwrap();
+        let source = doc.pages()[1].clone();
+        doc.apply_ocr(
+            1,
+            &source,
+            vec![OcrWord {
+                text: "old OCR".into(),
+                x: 0,
+                y: 0,
+                width: 1,
+                height: 1,
+            }],
+        )
+        .unwrap();
+        let (_, state) = doc.save_snapshot();
+        doc.mark_saved_snapshot(state);
+        doc
+    }
+    #[test]
+    fn rescan_retains_other_pages_and_replaces_target_with_new_samples_and_identity_in_one_undo_step(
+    ) {
+        let mut doc = document();
+        let before = doc.pages().to_vec();
+        let index = doc
+            .replace_acquired_page(
+                before[1].id,
+                vec![
+                    (1, 2, vec![10, 20, 30, 255, 40, 50, 60, 255], 300, 600),
+                    (2, 1, vec![70, 80, 90, 255, 100, 110, 120, 255], 150, 150),
+                ],
+            )
+            .unwrap();
+        assert_eq!(index, 1);
+        assert_eq!(doc.pages().len(), 4);
+        assert_eq!(doc.pages()[0], before[0]);
+        assert_eq!(doc.pages()[2], before[2]);
+        let page = &doc.pages()[1];
+        assert_eq!(
+            (page.width, page.height, page.dpi_x, page.dpi_y),
+            (1, 2, 300, 600)
+        );
+        assert!(page.words.is_empty());
+        assert_ne!(page.id, before[1].id);
+        let after = doc.pages().to_vec();
+        assert!(doc.is_dirty());
+        doc.undo();
+        assert_eq!(doc.pages(), before);
+        assert!(!doc.is_dirty());
+        doc.redo();
+        assert_eq!(doc.pages(), after);
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("rescan.scn42");
+        doc.save_project(&path).unwrap();
+        assert_eq!(ScanDocument::open_project(&path).unwrap().pages(), after);
+    }
+    #[test]
+    fn missing_target_empty_or_invalid_batch_never_changes_the_document_or_identity_counter() {
+        let mut doc = document();
+        let before = doc.pages().to_vec();
+        let id = doc.next_id;
+        let target = before[1].id;
+        assert_eq!(doc.replace_acquired_page(target, vec![]).unwrap(), 1);
+        assert_eq!(doc.pages(), before);
+        assert!(doc
+            .replace_acquired_page(
+                target,
+                vec![(1, 1, vec![255; 4], 150, 150), (1, 1, vec![255; 4], 0, 150)]
+            )
+            .is_err());
+        assert_eq!(doc.pages(), before);
+        assert_eq!(doc.next_id, id);
+        assert!(!doc.is_dirty());
+        doc.delete(1).unwrap();
+        let deleted = doc.pages().to_vec();
+        assert!(doc
+            .replace_acquired_page(target, vec![(1, 1, vec![255; 4], 150, 150)])
+            .is_err());
+        assert_eq!(doc.pages(), deleted);
+        assert_eq!(doc.next_id, id);
+    }
+    #[test]
+    fn a_full_document_can_rescan_one_page_without_an_extra_slot() {
+        let mut doc = ScanDocument::new();
+        for _ in 0..MAX_PAGES {
+            doc.add_rgba(1, 1, vec![255; 4]).unwrap();
+        }
+        assert_eq!(doc.acquisition_capacity().1, 0);
+        let target = doc.pages()[10].id;
+        assert_eq!(doc.replacement_capacity(target).unwrap().1, 1);
+        let before = doc.pages().to_vec();
+        assert!(doc
+            .replace_acquired_page(
+                target,
+                vec![
+                    (1, 1, vec![1, 2, 3, 255], 150, 150),
+                    (1, 1, vec![4, 5, 6, 255], 150, 150)
+                ]
+            )
+            .is_err());
+        assert_eq!(doc.pages(), before);
+        doc.replace_acquired_page(target, vec![(1, 1, vec![1, 2, 3, 255], 150, 150)])
+            .unwrap();
+        assert_eq!(doc.pages().len(), MAX_PAGES);
+        doc.undo();
+        assert_eq!(doc.pages(), before);
     }
 }

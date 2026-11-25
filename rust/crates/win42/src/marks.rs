@@ -19,7 +19,7 @@ pub fn library_directory() -> Result<PathBuf, String> {
     Ok(directory)
 }
 
-pub fn import_image(source: &Path, directory: &Path) -> Result<PathBuf, String> {
+pub(crate) fn read_image(source: &Path) -> Result<image::RgbaImage, String> {
     let mut bytes = Vec::new();
     File::open(source)
         .and_then(|file| file.take(MAX_BYTES as u64 + 1).read_to_end(&mut bytes))
@@ -53,6 +53,30 @@ pub fn import_image(source: &Path, directory: &Path) -> Result<PathBuf, String> 
         .decode()
         .map_err(|e| format!("Invalid image: {e}"))?
         .into_rgba8();
+    Ok(image)
+}
+
+pub fn import_image_with_cleanup(
+    source: &Path,
+    directory: &Path,
+    remove_white: bool,
+) -> Result<PathBuf, String> {
+    let mut image = read_image(source)?;
+    if remove_white {
+        for pixel in image.pixels_mut() {
+            let white = pixel.0[..3].iter().copied().min().unwrap();
+            let coverage = u32::from(255 - white);
+            if coverage == 0 {
+                pixel.0 = [0; 4];
+            } else {
+                for channel in &mut pixel.0[..3] {
+                    *channel =
+                        ((u32::from(*channel - white) * 255 + coverage / 2) / coverage) as u8;
+                }
+                pixel.0[3] = ((u32::from(pixel.0[3]) * coverage + 127) / 255) as u8;
+            }
+        }
+    }
     let mut png = Cursor::new(Vec::new());
     image
         .write_to(&mut png, image::ImageFormat::Png)
@@ -108,6 +132,28 @@ mod tests {
     use super::*;
 
     #[test]
+    fn white_cleanup_removes_paper_and_preserves_ink_on_a_white_background() {
+        let temp = tempfile::tempdir().unwrap();
+        let input = temp.path().join("paper.png");
+        let original = image::RgbaImage::from_raw(
+            3,
+            1,
+            vec![255, 255, 255, 255, 0, 0, 0, 255, 40, 80, 200, 255],
+        )
+        .unwrap();
+        original.save(&input).unwrap();
+        let output = import_image_with_cleanup(&input, temp.path(), true).unwrap();
+        let mark = read_image(&output).unwrap();
+        assert_eq!(mark.get_pixel(0, 0).0, [0; 4]);
+        assert_eq!(mark.get_pixel(1, 0).0, [0, 0, 0, 255]);
+        let mut white = image::RgbaImage::from_pixel(3, 1, image::Rgba([255; 4]));
+        image::imageops::overlay(&mut white, &mark, 0, 0);
+        for (actual, expected) in white.as_raw().iter().zip(original.as_raw()) {
+            assert!(actual.abs_diff(*expected) <= 1);
+        }
+    }
+
+    #[test]
     fn imports_a_reusable_copy_preserving_transparency_and_existing_entries() {
         let temp = tempfile::tempdir().unwrap();
         let source = temp.path().join("Example.png");
@@ -115,8 +161,8 @@ mod tests {
         fs::create_dir(&directory).unwrap();
         let rgba = image::RgbaImage::from_pixel(3, 2, image::Rgba([12, 32, 85, 100]));
         rgba.save(&source).unwrap();
-        let first = import_image(&source, &directory).unwrap();
-        let second = import_image(&source, &directory).unwrap();
+        let first = import_image_with_cleanup(&source, &directory, false).unwrap();
+        let second = import_image_with_cleanup(&source, &directory, false).unwrap();
         assert_ne!(first, second);
         fs::remove_file(&source).unwrap();
         for entry in [first, second] {
@@ -132,7 +178,7 @@ mod tests {
         fs::create_dir(&directory).unwrap();
         let source = temp.path().join("Not an image.png");
         fs::write(&source, b"not an image").unwrap();
-        assert!(import_image(&source, &directory).is_err());
+        assert!(import_image_with_cleanup(&source, &directory, false).is_err());
         assert!(library_image(&source, &directory).is_err());
         assert_eq!(fs::read_dir(directory).unwrap().count(), 0);
     }

@@ -796,6 +796,7 @@ impl Reader<'_> {
             let fields = std::mem::take(&mut self.pending_fields);
             let comments = std::mem::take(&mut self.pending_comments);
             let notes = std::mem::take(&mut self.pending_notes);
+            let bookmarks = std::mem::take(&mut self.pending_bookmarks);
             let old_marks = self.comment_marks.len();
             let old_fields = self.state.fields.len();
             let old_notes = self.state.footnotes.len();
@@ -821,6 +822,7 @@ impl Reader<'_> {
             self.pending_fields = fields;
             self.pending_comments = comments;
             self.pending_notes = notes;
+            self.pending_bookmarks = bookmarks;
             self.pending_notes.push((
                 out.iter().map(|r| r.text.len()).sum(),
                 paragraphs,
@@ -2801,7 +2803,7 @@ mod tests {
     #[test]
     fn external_odt_note_preserves_class_citation_and_text() {
         let content = format!(
-            r#"<office:document-content xmlns:office="{O}" xmlns:text="{T}"><office:body><office:text><text:p>Hello<text:note text:id="ftn1" text:note-class="endnote"><text:note-citation>i</text:note-citation><text:note-body><text:p>External note</text:p></text:note-body></text:note></text:p></office:text></office:body></office:document-content>"#
+            r#"<office:document-content xmlns:office="{O}" xmlns:text="{T}"><office:body><office:text><text:p><text:bookmark-start text:name="BodyRange"/>Hello<text:note text:id="ftn1" text:note-class="endnote"><text:note-citation>i</text:note-citation><text:note-body><text:p>External note</text:p></text:note-body></text:note><text:bookmark-end text:name="BodyRange"/></text:p></office:text></office:body></office:document-content>"#
         );
         let styles = format!("<office:document-styles {NS}><office:automatic-styles><style:page-layout style:name=\"P\"><style:page-layout-properties/></style:page-layout></office:automatic-styles><office:master-styles><style:master-page style:name=\"Standard\" style:page-layout-name=\"P\"/></office:master-styles></office:document-styles>");
         let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
@@ -2814,6 +2816,11 @@ mod tests {
             zip.write_all(data).unwrap();
         }
         let doc = RichDocument::decode(&zip.finish().unwrap().into_inner(), Format::Odt).unwrap();
+        let Block::Paragraph(body) = &doc.state().blocks[0] else { panic!() };
+        let bookmark = &doc.state().bookmarks[0];
+        assert_eq!((bookmark.start.paragraph,bookmark.end.paragraph),(body.id,body.id));
+        assert_eq!((bookmark.start.offset,bookmark.end.offset),(0,5));
+        assert_eq!(doc.state().footnotes[0].at.paragraph,body.id);
         assert!(doc.state().footnotes[0].endnote);
         assert_eq!(doc.state().footnotes[0].citation.as_deref(), Some("i"));
         assert_eq!(doc.state().footnotes[0].at.offset, 5);

@@ -1,19 +1,53 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
+mod export_naming;
+mod history;
 mod ocr_batch;
 mod ocr_settings;
 mod pdf_import;
 mod wia;
 mod windows_ocr;
-use scn42_core::ScanDocument;
+use scn42_core::{PdfExportOptions, PdfRaster, ScanDocument};
 use std::path::Path;
+const PDF_RASTERS: [(&str, PdfRaster); 4] = [
+    ("Best quality (lossless)", PdfRaster::Lossless),
+    ("High (300 dpi)", PdfRaster::Jpeg { dpi: 300, quality: 82 }),
+    ("Balanced (200 dpi)", PdfRaster::Jpeg { dpi: 200, quality: 68 }),
+    ("Smallest (150 dpi)", PdfRaster::Jpeg { dpi: 150, quality: 50 }),
+];
+const EXPORT_PDF_PAGES: u16 = 40;
+const SCAN_HISTORY: u16 = 41;
+const CLEAR_SCAN_HISTORY: u16 = 42;
+const EXPORT_PAGE_IMAGES: u16 = 43;
+const EXPORT_NAMING: u16 = 44;
+const HISTORY_ACTIONS: [&str; 2] = ["Open in New Window", "Remove from History"];
+const IMAGE_FORMATS: [&str; 2] = ["PNG", "JPEG"];
+
+fn page_image(page: &scn42_core::Page) -> Result<img42_core::ImageDocument, String> {
+    img42_core::ImageDocument::from_rgba(
+        page.width,
+        page.height,
+        page.pixels.to_vec(),
+        Some((page.dpi_x, page.dpi_y)),
+    ).map_err(|error| error.to_string())
+}
+
+fn image_extension(values: &[String]) -> Result<&'static str, String> {
+    match values {
+        [format] if format == IMAGE_FORMATS[0] => Ok("png"),
+        [format] if format == IMAGE_FORMATS[1] => Ok("jpg"),
+        _ => Err("Choose PNG or JPEG".into()),
+    }
+}
 struct Scn {
     pending: Option<(u64, scn42_core::SaveState)>,
+    pending_history_open: Option<std::path::PathBuf>,
     next_save: u64,
     doc: ScanDocument,
     index: usize,
     window: usize,
     generation: u64,
     scan: Option<std::sync::mpsc::Receiver<wia::ResultMessage>>,
+    scan_target:Option<u64>,
     scan_status: String,
     pdf_import: Option<(
         pdf_import::Receiver,
@@ -24,7 +58,7 @@ struct Scn {
     pdf_last: u32,
     pdf_dpi: u32,
     jpeg_quality: u8,
-    compress_pdf: bool,
+    pdf_export: PdfExportOptions,
     tesseract_path: String,
     ocr_language: String,
     language_discovery: Option<std::sync::mpsc::Receiver<Result<String, String>>>,
@@ -38,6 +72,14 @@ struct Scn {
     )>,
 }
 impl Scn {
+    fn remember_exports(&mut self, exports: &[(&Path, usize)]) {
+        if let Err(error) = export_naming::advance() {
+            self.scan_status = format!("Saved scan. Could not update the export counter: {error}");
+        }
+        if let Err(error) = history::record(exports) {
+            self.scan_status = format!("Saved scan. Could not update scan history: {error}");
+        }
+    }
     fn invalidate_ocr(&self) {
         if let Some((_, cancel, _, _)) = &self.ocr {
             cancel.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -45,6 +87,53 @@ impl Scn {
     }
 }
 impl win42::App for Scn {
+    fn take_pending_new_window(&mut self) -> Option<std::path::PathBuf> {
+        self.pending_history_open.take()
+    }
+    fn view_actions(&self) -> &'static [(u16, &'static str)] {
+        &[(SCAN_HISTORY, "Scan History…"), (CLEAR_SCAN_HISTORY, "Clear Scan History…")]
+    }
+    fn dialog_request(&self, id: u16) -> Option<win42::DialogRequest> {
+        match id {
+            SCAN_HISTORY if history::load().is_empty() => Some(win42::DialogRequest::Information {
+                title: "Scan History",
+                text: win42::localization::text("Saved scans appear here."),
+            }),
+            CLEAR_SCAN_HISTORY => Some(win42::DialogRequest::Confirmation {
+                title: "Clear Scan History",
+                text: win42::localization::text("Clear the scan history? Exported files will be kept."),
+            }),
+            _ => None,
+        }
+    }
+    fn dialog_result(&mut self, id: u16, result: win42::DialogResult) -> Result<(), String> {
+        match (id, result) {
+            (CLEAR_SCAN_HISTORY, win42::DialogResult::Confirmed(true)) => history::clear(),
+            (CLEAR_SCAN_HISTORY, win42::DialogResult::Confirmed(false)) => Ok(()),
+            _ => Err("Unknown scan history action".into()),
+        }
+    }
+    fn supports_marks(&self) -> bool {
+        true
+    }
+    fn mark_canvas_size(&self) -> Option<(u32, u32)> {
+        self.doc
+            .pages()
+            .get(self.index)
+            .map(|page| (page.width, page.height))
+    }
+    fn place_mark(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        rect: [u32; 4],
+    ) -> Result<(), String> {
+        self.doc.place_mark(self.index, width, height, rgba, rect)?;
+        self.invalidate_ocr();
+        self.generation = self.generation.wrapping_add(1);
+        Ok(())
+    }
     fn take_pending_print_job(&mut self) -> Option<Result<win42::PrintJob, String>> {
         let result = self
             .print_pending
@@ -144,6 +233,7 @@ impl win42::App for Scn {
             return false;
         };
         self.scan = None;
+        let target=self.scan_target.take();
         if generation != self.generation {
             self.scan_status = "Scan result discarded because the project changed".into();
             return true;
@@ -152,11 +242,11 @@ impl win42::App for Scn {
             Ok(pages) if pages.is_empty() => {
                 self.scan_status = "Scan cancelled or no pages acquired".into()
             }
-            Ok(pages) => match self.doc.add_pages_with_dpi(pages) {
-                Ok(()) => {
+            Ok(pages) => match if let Some(target)=target{self.doc.replace_acquired_page(target,pages)}else{self.doc.add_pages_with_dpi(pages).map(|()|self.doc.pages().len()-1)} {
+                Ok(index) => {
                     self.invalidate_ocr();
                     self.generation = self.generation.wrapping_add(1);
-                    self.index = self.doc.pages().len() - 1;
+                    self.index = index;
                     self.scan_status = "Pages acquired".into();
                 }
                 Err(e) => self.scan_status = e,
@@ -164,6 +254,10 @@ impl win42::App for Scn {
             Err(e) => self.scan_status = e,
         }
         true
+    }
+    fn supports_recovery(&self)->bool{true}
+    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
+        Ok(Some(win42::recovery::Snapshot::new("scn42",(&self.doc).save_snapshot().0)))
     }
     fn save_formats(&self) -> Vec<win42::FileFormat> {
         vec![win42::FileFormat {
@@ -192,6 +286,7 @@ impl win42::App for Scn {
         }
     }
 
+    fn default_print_command(&self)->Option<u16>{Some(27)}
     fn name(&self) -> &'static str {
         "SCN42"
     }
@@ -202,7 +297,25 @@ impl win42::App for Scn {
         "SCN42 project"
     }
     fn open_filter(&self) -> String {
-        "*.scn42".into()
+        "*.scn42;*.pdf;*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp;*.svg".into()
+    }
+    fn opens_as_import(&self, path: &Path) -> bool {
+        path.extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| {
+                [
+                    "pdf", "png", "jpg", "jpeg", "bmp", "tif", "tiff", "gif", "webp", "svg",
+                ]
+                .iter()
+                .any(|format| ext.eq_ignore_ascii_case(format))
+            })
+    }
+    fn import_open(&mut self, path: &Path) -> Result<(), String> {
+        let pdf = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("pdf"));
+        self.file_action(if pdf { 33 } else { 20 }, path)
     }
     fn supports_new(&self) -> bool {
         true
@@ -265,6 +378,22 @@ impl win42::App for Scn {
                 pattern: "*.jpg;*.jpeg",
             },
             win42::FileAction {
+                id: EXPORT_PAGE_IMAGES,
+                title: "Export Pages as Images…",
+                save: true,
+                extension: "png",
+                format: "PNG filename prefix",
+                pattern: "*.png",
+            },
+            win42::FileAction {
+                id: EXPORT_PDF_PAGES,
+                title: "Export one PDF per page…",
+                save: true,
+                extension: "pdf",
+                format: "PDF filename prefix",
+                pattern: "*.pdf",
+            },
+            win42::FileAction {
                 id: 21,
                 title: "&Export PDF...",
                 save: true,
@@ -273,6 +402,60 @@ impl win42::App for Scn {
                 pattern: "*.pdf",
             },
         ]
+    }
+    fn file_input_request(&self, id: u16) -> Option<win42::InputRequest> {
+        (id == EXPORT_PAGE_IMAGES).then(|| win42::InputRequest {
+            title: "Export Pages as Images",
+            fields: vec![("Format", IMAGE_FORMATS[0].into())],
+        })
+    }
+    fn suggested_export_name(&self, id: u16) -> Option<String> {
+        let index = match id {
+            31 | 32 => self.index,
+            21 | 30 | EXPORT_PDF_PAGES | EXPORT_PAGE_IMAGES => 0,
+            _ => return None,
+        };
+        Some(export_naming::load().suggest(self.doc.pages().get(index)))
+    }
+    fn configured_file_action(&self, id: u16, values: &[String]) -> Result<win42::FileAction, String> {
+        let action = self.file_actions().iter().find(|action| action.id == id)
+            .copied().ok_or("Unsupported file action")?;
+        if id == EXPORT_PAGE_IMAGES && image_extension(values)? == "jpg" {
+            return Ok(win42::FileAction {
+                extension: "jpg", format: "JPEG filename prefix", pattern: "*.jpg", ..action
+            });
+        }
+        Ok(action)
+    }
+    fn file_action_with_input(&mut self, id: u16, path: &Path, values: &[String]) -> Result<(), String> {
+        if id != EXPORT_PAGE_IMAGES {
+            return self.file_action(id, path);
+        }
+        let extension = image_extension(values)?;
+        if !path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case(extension)) {
+            return Err("The image filename does not match the selected format".into());
+        }
+        let pages = self.doc.pages();
+        if pages.is_empty() {
+            return Err("No pages to export".into());
+        }
+        let stem = path.file_stem().ok_or("Missing image filename prefix")?;
+        let paths = if pages.len() == 1 {
+            vec![path.to_path_buf()]
+        } else {
+            (1..=pages.len()).map(|number| {
+                let mut name = stem.to_os_string();
+                name.push(format!("-{number:03}.{extension}"));
+                path.with_file_name(name)
+            }).collect()
+        };
+        let format = if extension == "jpg" { "jpeg" } else { extension };
+        let paths = suite42_core::publish_new_files(paths, "Scan image", |index| {
+            page_image(&pages[index])?.save_snapshot_format_quality(format, self.jpeg_quality)
+                .map(|(bytes, _)| bytes).map_err(|error| error.to_string())
+        })?;
+        self.remember_exports(&paths.iter().map(|path| (path.as_path(), 1)).collect::<Vec<_>>());
+        Ok(())
     }
     fn file_action(&mut self, id: u16, p: &Path) -> Result<(), String> {
         if id == 20 {
@@ -328,15 +511,7 @@ impl win42::App for Scn {
                 }
                 let images: Vec<_> = pages
                     .iter()
-                    .map(|page| {
-                        img42_core::ImageDocument::from_rgba(
-                            page.width,
-                            page.height,
-                            page.pixels.to_vec(),
-                            Some((page.dpi_x, page.dpi_y)),
-                        )
-                        .map_err(|e| e.to_string())
-                    })
+                    .map(|page| page_image(page))
                     .collect::<Result<_, _>>()?;
                 let bytes = if id == 30 {
                     let refs: Vec<_> = images.iter().collect();
@@ -352,15 +527,21 @@ impl win42::App for Scn {
                         .map_err(|e| e.to_string())?
                         .0
                 };
-                use std::io::Write;
-                let mut file = std::fs::OpenOptions::new()
-                    .write(true)
-                    .create_new(true)
-                    .open(p)
-                    .map_err(|e| e.to_string())?;
-                file.write_all(&bytes).map_err(|e| e.to_string())
+                suite42_core::write_new(p, &bytes).map_err(|error| error.to_string())?;
+                self.remember_exports(&[(p, pages.len())]);
+                Ok(())
             }
-            21 => self.doc.export_pdf_compressed(p, self.compress_pdf),
+            21 => {
+                self.doc.export_pdf_with_options(p, self.pdf_export)?;
+                self.remember_exports(&[(p, self.doc.pages().len())]);
+                Ok(())
+            }
+            EXPORT_PDF_PAGES => {
+                let files = self.doc.export_pdf_page_files(p, self.pdf_export)?;
+                self.scan_status = format!("Exported {} PDF files", files.len());
+                self.remember_exports(&files.iter().map(|file| (file.as_path(), 1)).collect::<Vec<_>>());
+                Ok(())
+            }
             22 => {
                 use std::io::Write;
                 let text = self.doc.recognized_text();
@@ -386,10 +567,11 @@ impl win42::App for Scn {
             (17, "Clean &Black and White"),
             (18, "&Crop Page..."),
             (19, "From &Scanner..."),
+            (39,"Rescan Page"),
             (23, "Recognize &Text..."),
             (24, "Cancel Recognition"),
             (37, "Recognize page range..."),
-            (38, "Recognize using Windows OCR..."),
+            (38, "Recognize using Built-in OCR..."),
             (25, "Find Installed OCR Languages..."),
             (26, "Page Resolution..."),
             (27, "Print all pages..."),
@@ -398,9 +580,23 @@ impl win42::App for Scn {
             (34, "PDF import settings..."),
             (35, "Cancel PDF import"),
             (36, "Export quality settings..."),
+            (EXPORT_NAMING, "Export Name Template…"),
         ]
     }
     fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+        if id == EXPORT_NAMING {
+            return Some(win42::InputRequest {
+                title: "File Name",
+                fields: vec![("Template (YYYY-MM-DD, HH-mm, {n}, {title})", export_naming::load().template)],
+            });
+        }
+        if id == SCAN_HISTORY {
+            let entries = history::load();
+            return Some(win42::InputRequest {
+                title: "Scan History",
+                fields: vec![("Saved scan", entries.first()?.label(0)), ("Action", HISTORY_ACTIONS[0].into())],
+            });
+        }
         if id == 36 {
             return Some(win42::InputRequest {
                 title: "Export quality and compression",
@@ -408,8 +604,12 @@ impl win42::App for Scn {
                     ("JPEG quality (1–100)", self.jpeg_quality.to_string()),
                     (
                         "Compress PDF streams (1 yes, 0 no)",
-                        (self.compress_pdf as u8).to_string(),
+                        (self.pdf_export.compress_streams as u8).to_string(),
                     ),
+                    ("PDF image quality", PDF_RASTERS.iter()
+                        .find(|(_, raster)| *raster == self.pdf_export.raster)
+                        .map_or(PDF_RASTERS[0].0, |(label, _)| *label).into()),
+                    ("Searchable text (OCR)", if self.pdf_export.searchable { "Yes" } else { "No" }.into()),
                 ],
             });
         }
@@ -431,9 +631,9 @@ impl win42::App for Scn {
         }
         if id == 38 {
             return Some(win42::InputRequest {
-                title: "Windows OCR (large pages are scaled; installed language required)",
+                title: "Built-in OCR (offline; up to 3 languages)",
                 fields: vec![
-                    ("Language tag (auto, en-US, ru-RU...)", "auto".into()),
+                    ("Language (auto, en-US, eng+rus...)", "auto".into()),
                     ("First page (1-based)", "1".into()),
                     ("Last page (0 = all)", "0".into()),
                 ],
@@ -509,20 +709,63 @@ impl win42::App for Scn {
             ],
         })
     }
-    fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
-        if id == 36 {
-            let nums: Vec<u32> = values
-                .iter()
-                .map(|v| v.parse::<u32>().map_err(|_| "Enter integers"))
-                .collect::<Result<_, _>>()?;
-            if let [q, c] = nums.as_slice() {
-                if (1..=100).contains(q) && *c <= 1 {
-                    self.jpeg_quality = *q as u8;
-                    self.compress_pdf = *c == 1;
-                    return Ok(());
-                }
+    fn input_choices(&self, id: u16) -> Vec<(usize, Vec<String>)> {
+        if id == EXPORT_PAGE_IMAGES {
+            return vec![(0, IMAGE_FORMATS.map(str::to_owned).to_vec())];
+        }
+        if id == SCAN_HISTORY {
+            let entries = history::load();
+            if entries.is_empty() {
+                return Vec::new();
             }
-            return Err("Invalid export settings".into());
+            return vec![(0, entries.iter().enumerate().map(|(index, entry)| entry.label(index)).collect()),
+                        (1, HISTORY_ACTIONS.map(str::to_owned).to_vec())];
+        }
+        if id != 36 {
+            return Vec::new();
+        }
+        vec![
+            (2, PDF_RASTERS.iter().map(|(title, _)| (*title).into()).collect()),
+            (3, vec!["Yes".into(), "No".into()]),
+        ]
+    }
+    fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
+        if id == EXPORT_NAMING {
+            let [template] = values else { return Err("Enter a filename template".into()) };
+            return export_naming::set_template(template);
+        }
+        if id == SCAN_HISTORY {
+            let [selected, action] = values else { return Ok(()) };
+            let entry = history::load().into_iter().enumerate().find(|(index, entry)| entry.label(*index) == *selected)
+                .map(|(_, entry)| entry).ok_or("Scan history changed. Open the list again.")?;
+            return match action.as_str() {
+                "Open in New Window" if entry.path.is_file() && self.opens_as_import(&entry.path) => {
+                    self.pending_history_open = Some(entry.path);
+                    Ok(())
+                }
+                "Open in New Window" => Err("The exported scan is unavailable".into()),
+                "Remove from History" => history::remove(&entry.path),
+                _ => Err("Choose a scan history action".into()),
+            };
+        }
+        if id == 36 {
+            let [jpeg, compress, preset, searchable] = values else {
+                return Err("Invalid export settings".into());
+            };
+            let jpeg = jpeg.parse::<u8>().ok().filter(|quality| (1..=100).contains(quality))
+                .ok_or("Invalid JPEG quality")?;
+            let raster = PDF_RASTERS.iter().find(|(label, _)| *label == preset)
+                .ok_or("Choose a PDF image quality")?.1;
+            if !matches!(compress.as_str(), "0" | "1") || !matches!(searchable.as_str(), "Yes" | "No") {
+                return Err("Invalid export settings".into());
+            }
+            self.jpeg_quality = jpeg;
+            self.pdf_export = PdfExportOptions {
+                raster,
+                searchable: searchable == "Yes",
+                compress_streams: compress == "1",
+            };
+            return Ok(());
         }
         if id == 34 {
             let nums: Vec<u32> = values
@@ -709,7 +952,7 @@ impl win42::App for Scn {
         self.index
     }
     fn text(&self) -> String {
-        "Import PNG, JPEG or BMP images to add pages. Use From Scanner on Windows or import images. Text export uses an installed Tesseract executable.".into()
+        "Scan pages or import images. Recognize text to create searchable PDF documents.".into()
     }
     fn text_readonly(&self) -> bool {
         true
@@ -762,8 +1005,9 @@ impl win42::App for Scn {
     fn enabled(&self, id: u16) -> bool {
         let n = self.doc.pages().len();
         match id {
-            10 | 11 | 14 | 15 | 16 | 17 | 18 | 21 | 22 => n > 0,
+            10 | 11 | 14 | 15 | 16 | 17 | 18 | 21 | 22 | EXPORT_PDF_PAGES | EXPORT_PAGE_IMAGES => n > 0,
             19 => self.scan.is_none(),
+            39=>n>0&&self.scan.is_none()&&self.ocr.is_none()&&self.pdf_import.is_none(),
             23 | 37 => n > 0 && self.ocr.is_none(),
             38 => cfg!(windows) && n > 0 && self.ocr.is_none(),
             24 => self.ocr.is_some(),
@@ -872,13 +1116,15 @@ impl win42::App for Scn {
                 }
                 self.scan_status = "Cancelling recognition…".into();
             }
-            19 => {
-                self.invalidate_ocr();
-                self.generation = self.generation.wrapping_add(1);
-                let (byte_budget, page_budget) = self.doc.acquisition_capacity();
+            19|39 => {
+                let target=if id==39{Some(self.doc.pages().get(self.index).ok_or("Select a page to rescan")?.id)}else{None};
+                let (byte_budget, page_budget) = if let Some(target)=target{self.doc.replacement_capacity(target)?}else{self.doc.acquisition_capacity()};
                 if byte_budget == 0 || page_budget == 0 {
                     return Err("Document is at the acquisition limit".into());
                 }
+                self.invalidate_ocr();
+                self.generation = self.generation.wrapping_add(1);
+                self.scan_target=target;
                 self.scan = Some(wia::start(
                     self.generation,
                     self.window,
@@ -905,19 +1151,21 @@ fn main() {
     let settings = ocr_settings::load();
     win42::run(Box::new(Scn {
         pending: None,
+        pending_history_open: None,
         next_save: 0,
         doc: ScanDocument::new(),
         index: 0,
         window: 0,
         generation: 0,
         scan: None,
+        scan_target:None,
         scan_status: String::new(),
         pdf_import: None,
         pdf_first: 1,
         pdf_last: 0,
         pdf_dpi: 150,
         jpeg_quality: 90,
-        compress_pdf: true,
+        pdf_export: PdfExportOptions::default(),
         tesseract_path: settings.executable,
         ocr_language: settings.language,
         language_discovery: None,
@@ -935,19 +1183,21 @@ mod tests {
         for reopen in [false, true] {
             let mut app = Scn {
                 pending: None,
+                pending_history_open: None,
                 next_save: 0,
                 doc: ScanDocument::new(),
                 index: 0,
                 window: 0,
                 generation: 1,
                 scan: None,
+                scan_target:None,
                 scan_status: String::new(),
                 pdf_import: None,
                 pdf_first: 1,
                 pdf_last: 0,
                 pdf_dpi: 150,
                 jpeg_quality: 90,
-                compress_pdf: true,
+                pdf_export: PdfExportOptions::default(),
                 tesseract_path: "tesseract".into(),
                 ocr_language: "eng".into(),
                 language_discovery: None,
@@ -991,19 +1241,21 @@ mod tests {
     fn deleted_page_cancels_running_batch_and_discards_all_results() {
         let mut app = Scn {
             pending: None,
+            pending_history_open: None,
             next_save: 0,
             doc: ScanDocument::new(),
             index: 0,
             window: 0,
             generation: 1,
             scan: None,
+            scan_target:None,
             scan_status: String::new(),
             pdf_import: None,
             pdf_first: 1,
             pdf_last: 0,
             pdf_dpi: 150,
             jpeg_quality: 90,
-            compress_pdf: true,
+            pdf_export: PdfExportOptions::default(),
             tesseract_path: "tesseract".into(),
             ocr_language: "eng".into(),
             language_discovery: None,
@@ -1048,19 +1300,21 @@ mod tests {
         std::fs::create_dir(&dir).unwrap();
         let mut app = Scn {
             pending: None,
+            pending_history_open: None,
             next_save: 0,
             doc: ScanDocument::new(),
             index: 0,
             window: 0,
             generation: 0,
             scan: None,
+            scan_target:None,
             scan_status: String::new(),
             pdf_import: None,
             pdf_first: 1,
             pdf_last: 0,
             pdf_dpi: 150,
             jpeg_quality: 90,
-            compress_pdf: true,
+            pdf_export: PdfExportOptions::default(),
             tesseract_path: "tesseract".into(),
             ocr_language: "eng".into(),
             language_discovery: None,
@@ -1092,19 +1346,21 @@ mod tests {
     fn stale_acquisition_does_not_mutate_new_project() {
         let mut a = Scn {
             pending: None,
+            pending_history_open: None,
             next_save: 0,
             doc: ScanDocument::new(),
             index: 0,
             window: 0,
             generation: 1,
             scan: None,
+            scan_target:None,
             scan_status: String::new(),
             pdf_import: None,
             pdf_first: 1,
             pdf_last: 0,
             pdf_dpi: 150,
             jpeg_quality: 90,
-            compress_pdf: true,
+            pdf_export: PdfExportOptions::default(),
             tesseract_path: "tesseract".into(),
             ocr_language: "eng".into(),
             language_discovery: None,
@@ -1124,19 +1380,21 @@ mod tests {
     fn stale_pdf_import_cannot_modify_new_project() {
         let mut app = Scn {
             pending: None,
+            pending_history_open: None,
             next_save: 0,
             doc: ScanDocument::new(),
             index: 0,
             window: 0,
             generation: 1,
             scan: None,
+            scan_target:None,
             scan_status: String::new(),
             pdf_import: None,
             pdf_first: 1,
             pdf_last: 0,
             pdf_dpi: 150,
             jpeg_quality: 90,
-            compress_pdf: true,
+            pdf_export: PdfExportOptions::default(),
             tesseract_path: "tesseract".into(),
             ocr_language: "eng".into(),
             language_discovery: None,
@@ -1158,19 +1416,21 @@ mod tests {
     fn boundary_commands_match_actions() {
         let mut a = Scn {
             pending: None,
+            pending_history_open: None,
             next_save: 0,
             doc: ScanDocument::new(),
             index: 0,
             window: 0,
             generation: 0,
             scan: None,
+            scan_target:None,
             scan_status: String::new(),
             pdf_import: None,
             pdf_first: 1,
             pdf_last: 0,
             pdf_dpi: 150,
             jpeg_quality: 90,
-            compress_pdf: true,
+            pdf_export: PdfExportOptions::default(),
             tesseract_path: "tesseract".into(),
             ocr_language: "eng".into(),
             language_discovery: None,
@@ -1193,5 +1453,112 @@ mod tests {
         a.action(13).unwrap();
         assert!(a.enabled(12));
         assert!(!a.enabled(13));
+    }
+}
+
+#[cfg(test)]
+mod rescan_tests {
+    use super::*;
+    use win42::App;
+    fn app() -> Scn {
+        let mut app = Scn {
+            pending: None,
+            pending_history_open: None,
+            next_save: 0,
+            doc: ScanDocument::new(),
+            index: 1,
+            window: 0,
+            generation: 17,
+            scan: None,
+            scan_target: None,
+            scan_status: String::new(),
+            pdf_import: None,
+            pdf_first: 1,
+            pdf_last: 0,
+            pdf_dpi: 150,
+            jpeg_quality: 90,
+            pdf_export: PdfExportOptions::default(),
+            tesseract_path: String::new(),
+            ocr_language: "eng".into(),
+            language_discovery: None,
+            print_pending: None,
+            ocr_displayed: 0,
+            ocr: None,
+        };
+        for value in [10, 20, 30] {
+            app.doc
+                .add_rgba(1, 1, vec![value, value, value, 255])
+                .unwrap();
+        }
+        let (_, state) = app.doc.save_snapshot();
+        app.doc.mark_saved_snapshot(state);
+        app
+    }
+    #[test]
+    fn acquired_result_targets_the_captured_page_and_cannot_start_a_second_rescan() {
+        let mut app = app();
+        let before = app.doc.pages().to_vec();
+        let (tx, rx) = std::sync::mpsc::channel();
+        app.scan = Some(rx);
+        app.scan_target = Some(before[1].id);
+        app.select(0);
+        assert!(!app.enabled(39));
+        assert!(app.action(39).is_err());
+        assert_eq!(app.generation, 17);
+        tx.send((
+            17,
+            Ok(vec![(
+                1,
+                2,
+                vec![80, 90, 100, 255, 110, 120, 130, 255],
+                300,
+                600,
+            )]),
+        ))
+        .unwrap();
+        assert!(app.poll_background());
+        assert_eq!(app.index, 1);
+        assert!(app.scan_target.is_none());
+        assert!(app.scan.is_none());
+        assert_eq!(app.doc.pages()[0], before[0]);
+        assert_eq!(app.doc.pages()[2], before[2]);
+        assert_eq!(app.doc.pages()[1].height, 2);
+        let after = app.doc.pages().to_vec();
+        app.action(4).unwrap();
+        assert_eq!(app.doc.pages(), before);
+        assert!(!app.doc.is_dirty());
+        app.action(5).unwrap();
+        assert_eq!(app.doc.pages(), after);
+    }
+    #[test]
+    fn cancel_driver_error_and_late_results_leave_the_model_intact() {
+        for outcome in [
+            Ok(vec![]),
+            Err("Scanner canceled".into()),
+            Ok(vec![(1, 1, vec![1, 2, 3, 255], 0, 150)]),
+        ] {
+            let mut app = app();
+            let before = app.doc.pages().to_vec();
+            let (tx, rx) = std::sync::mpsc::channel();
+            app.scan = Some(rx);
+            app.scan_target = Some(before[1].id);
+            tx.send((17, outcome)).unwrap();
+            assert!(app.poll_background());
+            assert_eq!(app.doc.pages(), before);
+            assert!(!app.doc.is_dirty());
+            assert!(app.scan_target.is_none());
+        }
+        let mut app = app();
+        let target = app.doc.pages()[1].id;
+        let (tx, rx) = std::sync::mpsc::channel();
+        app.scan = Some(rx);
+        app.scan_target = Some(target);
+        app.new_document().unwrap();
+        tx.send((17, Ok(vec![(1, 1, vec![1, 2, 3, 255], 150, 150)])))
+            .unwrap();
+        assert!(app.poll_background());
+        assert!(app.doc.pages().is_empty());
+        assert!(!app.doc.is_dirty());
+        assert!(app.scan_status.contains("discarded"));
     }
 }

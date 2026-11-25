@@ -1,0 +1,6 @@
+{
+  "name": "off42-ocr",
+  "version-string": "1",
+  "builtin-baseline": "6fdd23fa0a9479a9f9a1c48178696f60cf39255d",
+  "dependencies": [{"name": "tesseract", "default-features": false}]
+}

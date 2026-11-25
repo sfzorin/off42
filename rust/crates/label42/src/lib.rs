@@ -1,4 +1,8 @@
-use std::fmt::Write as _;
+mod artwork;
+pub use artwork::{sheet_pdf_artwork_stock,bitmap_artwork_pdf};
+use std::{fmt::Write as _, sync::OnceLock};
+
+use serde::{Deserialize, Serialize};
 
 use lopdf::{dictionary, Document, Object, Stream};
 use rxing::{common::BitMatrix, BarcodeFormat, EncodeHints, MultiFormatWriter, Writer};
@@ -8,10 +12,19 @@ const PT_PER_MM: f64 = 72.0 / 25.4;
 const A4: [f64; 2] = [210.0, 297.0];
 pub const MAX_LABELS: usize = 5000;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+mod calibration;
+pub use calibration::calibration_pdf;
+mod technical;
+mod vector;
+pub use technical::{symbols, TechnicalElement, TechnicalSymbol};
+pub use vector::TechnicalVector;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Format {
     Qr,
     DataMatrix,
+    #[serde(rename = "code128")]
     Code128,
     Aztec,
 }
@@ -195,6 +208,104 @@ pub struct Layout {
     pub first_slot: usize,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Stock {
+    pub id: String,
+    pub name: String,
+    pub width: f64,
+    pub height: f64,
+    pub columns: usize,
+    pub rows: usize,
+    pub margin_left: f64,
+    pub margin_top: f64,
+    pub gap_x: f64,
+    pub gap_y: f64,
+    pub source: String,
+    pub note: String,
+}
+
+impl Stock {
+    pub fn catalog() -> Result<&'static [Self], String> {
+        static CATALOG: OnceLock<Result<Vec<Stock>, String>> = OnceLock::new();
+        CATALOG
+            .get_or_init(|| {
+                let mut stocks: Vec<Stock> =
+                    serde_json::from_str(include_str!("../resources/label-stocks.json"))
+                        .map_err(|error| format!("Could not read label stock catalog: {error}"))?;
+                for stock in &stocks {
+                    stock
+                        .validate()
+                        .map_err(|error| format!("Invalid stock {}: {error}", stock.id))?;
+                }
+                stocks.sort_by(|left, right| left.name.cmp(&right.name));
+                Ok(stocks)
+            })
+            .as_ref()
+            .map(|stocks| stocks.as_slice())
+            .map_err(Clone::clone)
+    }
+
+    pub fn custom(width: f64, height: f64, gap_x: f64, gap_y: f64) -> Result<Self, String> {
+        if !(5.0..=A4[0]).contains(&width)
+            || !(5.0..=A4[1]).contains(&height)
+            || !(0.0..=50.0).contains(&gap_x)
+            || !(0.0..=50.0).contains(&gap_y)
+        {
+            return Err("Choose label dimensions that fit A4 and gaps between 0 and 50 mm.".into());
+        }
+        let columns = ((A4[0] + gap_x) / (width + gap_x) + 1e-9).floor() as usize;
+        let rows = ((A4[1] + gap_y) / (height + gap_y) + 1e-9).floor() as usize;
+        let stock = Self {
+            id: "custom".into(),
+            name: "Custom".into(),
+            width,
+            height,
+            columns,
+            rows,
+            margin_left: (A4[0] - columns as f64 * width - (columns - 1) as f64 * gap_x) / 2.0,
+            margin_top: (A4[1] - rows as f64 * height - (rows - 1) as f64 * gap_y) / 2.0,
+            gap_x,
+            gap_y,
+            source: String::new(),
+            note: String::new(),
+        };
+        stock.validate()?;
+        Ok(stock)
+    }
+
+    pub fn validate(&self) -> Result<(), String> {
+        let values = [
+            self.width,
+            self.height,
+            self.margin_left,
+            self.margin_top,
+            self.gap_x,
+            self.gap_y,
+        ];
+        if !(1..=100).contains(&self.columns)
+            || !(1..=100).contains(&self.rows)
+            || self.columns * self.rows > MAX_LABELS
+            || values
+                .iter()
+                .any(|value| !value.is_finite() || *value < -1e-9)
+            || self.width < 5.0
+            || self.height < 5.0
+            || self.margin_left
+                + self.columns as f64 * self.width
+                + (self.columns - 1) as f64 * self.gap_x
+                > A4[0] + 0.01
+            || self.margin_top
+                + self.rows as f64 * self.height
+                + (self.rows - 1) as f64 * self.gap_y
+                > A4[1] + 0.01
+        {
+            return Err("The label layout does not fit on A4.".into());
+        }
+        Ok(())
+    }
+}
+
 pub struct Label {
     pub text: String,
     pub code: Option<String>,
@@ -206,22 +317,25 @@ pub fn sheet_pdf(
     format: Option<Format>,
     labels: &[Label],
 ) -> Result<Vec<u8>, String> {
-    let Layout {
-        width,
-        height,
-        horizontal_gap,
-        vertical_gap,
-        first_slot,
-    } = layout;
-    if !(5.0..=A4[0]).contains(&width)
-        || !(5.0..=A4[1]).contains(&height)
-        || !(0.0..=50.0).contains(&horizontal_gap)
-        || !(0.0..=50.0).contains(&vertical_gap)
-    {
-        return Err("Choose label dimensions that fit A4 and gaps between 0 and 50 mm.".into());
-    }
-    let cols = ((A4[0] + horizontal_gap) / (width + horizontal_gap) + 1e-9).floor() as usize;
-    let rows = ((A4[1] + vertical_gap) / (height + vertical_gap) + 1e-9).floor() as usize;
+    let stock = Stock::custom(
+        layout.width,
+        layout.height,
+        layout.horizontal_gap,
+        layout.vertical_gap,
+    )?;
+    sheet_pdf_stock(&stock, layout.first_slot, format, labels)
+}
+
+pub fn sheet_pdf_stock(
+    stock: &Stock,
+    first_slot: usize,
+    format: Option<Format>,
+    labels: &[Label],
+) -> Result<Vec<u8>, String> {
+    stock.validate()?;
+    let (width, height) = (stock.width, stock.height);
+    let (horizontal_gap, vertical_gap) = (stock.gap_x, stock.gap_y);
+    let (cols, rows) = (stock.columns, stock.rows);
     let capacity = cols * rows;
     if !(1..=capacity).contains(&first_slot) {
         return Err(format!("Choose a first slot from 1 through {capacity}."));
@@ -258,8 +372,8 @@ pub fn sheet_pdf(
     } else {
         Some(PdfFont::embed_subset(&mut doc, &text)?)
     };
-    let margin_x = (A4[0] - cols as f64 * width - (cols - 1) as f64 * horizontal_gap) / 2.0;
-    let margin_y = (A4[1] - rows as f64 * height - (rows - 1) as f64 * vertical_gap) / 2.0;
+    let margin_x = stock.margin_left;
+    let margin_y = stock.margin_top;
     let mut index = first_slot - 1;
     let mut render_bytes = 0;
     let mut streams = vec![String::new(); page_count];
@@ -412,6 +526,34 @@ fn label_commands(
 mod tests {
     use super::*;
     use std::io::Cursor;
+
+    #[test]
+    fn stock_catalog_preserves_template_layout_origin() {
+        let catalog = Stock::catalog().unwrap();
+        assert_eq!(catalog.len(), 559);
+        let stock = catalog
+            .iter()
+            .find(|stock| stock.id == "avery-L4730")
+            .unwrap();
+        assert_eq!(stock.columns * stock.rows, 270);
+        let labels = [Label {
+            text: "ABC".into(),
+            code: None,
+            copies: 1,
+        }];
+        let bytes = sheet_pdf_stock(stock, 1, None, &labels).unwrap();
+        let doc = Document::load_mem(&bytes).unwrap();
+        let page = doc.get_pages()[&1];
+        let content = String::from_utf8(doc.get_page_content(page)).unwrap();
+        let position = content
+            .split_whitespace()
+            .skip(5)
+            .take(2)
+            .map(|v| v.parse::<f64>().unwrap())
+            .collect::<Vec<_>>();
+        assert!((position[0] - 6.0 * PT_PER_MM).abs() < 0.001);
+        assert!((position[1] - 274.0 * PT_PER_MM).abs() < 0.001);
+    }
 
     #[test]
     fn exported_codes_decode_with_the_original_values() {

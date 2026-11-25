@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+base64 = "0.22"
+image = { version = "0.25", default-features = false, features = ["png"] }
 suite42-core = { path = "../suite42-core" }
 csv = "1"
 serde = { version = "1", features = ["derive"] }
@@ -15,3 +17,6 @@ sha2 = "0.10"
 calamine = { version = "0.38", features = ["dates"] }
 roxmltree = "0.20"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+libm = "0.2"
+fastrand = "2"
+regex = "1"

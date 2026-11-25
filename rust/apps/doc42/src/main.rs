@@ -1,4 +1,5 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
+mod navigator;
 use doc42_core::rich::{
     Alignment, Block, Cell, Field, FieldKind, Format, Image, ListMarker, Paragraph, ParagraphStyle,
     Position, RichDocument, Run, Selection, State, Table, TextStyle,
@@ -9,25 +10,32 @@ use std::{
     path::Path,
 };
 use win42::{App, CommandSpec, CommandState, DialogRequest, DialogResult, FileFormat};
+const NAVIGATOR: u16 = 361;
 struct Doc {
     doc: RichDocument,
+    pending_word:Option<doc42_core::rich::PreparedWordEdit>,
     selection: (usize, usize),
     requested_selection: Option<(usize, usize)>,
     external_url: Option<String>,
     zoom_percent: u16,
     next_revision: u64,
     snapshots: HashMap<u64, State>,
+    navigator_open: bool,
+    navigator_rows: std::cell::RefCell<Vec<navigator::Entry>>,
 }
 impl Doc {
     fn new() -> Self {
         Self {
             doc: RichDocument::new(),
+            pending_word:None,
             selection: (0, 0),
             requested_selection: None,
             external_url: None,
             zoom_percent: 100,
             next_revision: 1,
             snapshots: HashMap::new(),
+            navigator_open: false,
+            navigator_rows: Default::default(),
         }
     }
     fn format(id: &str) -> Result<Format, String> {
@@ -452,9 +460,169 @@ impl Doc {
         self.doc.editor_text().unwrap_or_default()
     }
 }
+
+fn statistics_text(stats: doc42_core::rich::TextStatistics) -> String {
+    let label = win42::localization::text;
+    format!(
+        "{}: {}\n{}: {}\n{}: {}\n{}: {}",
+        label("Words"), stats.words,
+        label("Characters (with spaces)"), stats.characters,
+        label("Characters (no spaces)"), stats.characters_without_spaces,
+        label("Paragraphs"), stats.paragraphs,
+    )
+}
+
 impl App for Doc {
+    fn supports_technical_elements(&self) -> bool {
+        true
+    }
+    fn technical_targets(&self) -> Vec<win42::TechnicalTarget> {
+        self.doc
+            .state()
+            .blocks
+            .iter()
+            .filter_map(|block| match block {
+                Block::Image(image) => {
+                    win42::TechnicalElement::from_png(&image.data).map(|mut element| {
+                        element.width_mm = f64::from(image.width_twips) * 25.4 / 1440.0;
+                        win42::TechnicalTarget::new(image.id, element)
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+    fn apply_technical_element(
+        &mut self,
+        target: Option<u64>,
+        raster: win42::TechnicalRaster,
+    ) -> Result<(), String> {
+        let paragraph = self
+            .doc
+            .position_from_utf16(self.selection.1)
+            .ok()
+            .map(|p| p.paragraph);
+        self.doc
+            .transact(|state| {
+                let width = (raster.width_points * 20.0).round() as u32;
+                let height = (raster.height_points * 20.0).round() as u32;
+                if let Some(id) = target {
+                    let image = state
+                        .blocks
+                        .iter_mut()
+                        .find_map(|block| match block {
+                            Block::Image(image) if image.id == id => Some(image),
+                            _ => None,
+                        })
+                        .ok_or(doc42_core::rich::Error::Invalid(
+                            "The technical object no longer exists".into(),
+                        ))?;
+                    if win42::TechnicalElement::from_png(&image.data).is_none() {
+                        return Err(doc42_core::rich::Error::Invalid(
+                            "Choose a technical object".into(),
+                        ));
+                    }
+                    image.data = raster.png;
+                    image.mime = "image/png".into();
+                    image.width_twips = width;
+                    image.height_twips = height;
+                } else {
+                    let index = state
+                        .blocks
+                        .iter()
+                        .position(
+                            |block| matches!(block, Block::Paragraph(p) if Some(p.id) == paragraph),
+                        )
+                        .map_or(state.blocks.len(), |index| index + 1);
+                    let id = state.next_id;
+                    state.next_id = id.checked_add(1).ok_or(doc42_core::rich::Error::Limit)?;
+                    state.blocks.insert(
+                        index,
+                        Block::Image(Image {
+                            id,
+                            mime: "image/png".into(),
+                            data: raster.png,
+                            width_twips: width,
+                            height_twips: height,
+                            alt: String::new(),
+                        }),
+                    );
+                    for section in &mut state.sections {
+                        if section.start_block >= index && section.start_block != 0 {
+                            section.start_block += 1;
+                        }
+                    }
+                    state.selection = Selection::default();
+                }
+                Ok(())
+            })
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
     fn supports_production(&self) -> bool {
         true
+    }
+    fn label_sources(&self) -> Result<Vec<(String, win42::LabelSource)>, String> {
+        let mut sources = Vec::new();
+        for table in self.doc.state().blocks.iter().filter_map(|block| {
+            if let Block::Table(table) = block {
+                Some(table)
+            } else {
+                None
+            }
+        }) {
+            if table.rows.len() > 5000 || table.rows.iter().any(|row| row.len() > 200) {
+                return Err("Use a table with up to 5,000 rows and 200 columns for labels".into());
+            }
+            let rows = table
+                .rows
+                .iter()
+                .enumerate()
+                .map(|(index, row)| {
+                    let values = row
+                        .iter()
+                        .map(|cell| {
+                            if cell.row_span == 0 || cell.col_span == 0 {
+                                return String::new();
+                            }
+                            cell.paragraphs
+                                .iter()
+                                .map(|paragraph| {
+                                    paragraph
+                                        .runs
+                                        .iter()
+                                        .map(|run| run.text.as_str())
+                                        .collect::<String>()
+                                })
+                                .collect::<Vec<_>>()
+                                .join("\n")
+                        })
+                        .collect();
+                    (index + 1, values)
+                })
+                .collect();
+            sources.push((
+                format!("Table {}", sources.len() + 1),
+                win42::LabelSource::Rows(rows),
+            ));
+        }
+        for (index,image) in self.doc.state().blocks.iter().filter_map(|block|if let Block::Image(image)=block{Some(image)}else{None}).enumerate() {
+            sources.push((format!("Picture {} Artwork",index+1),win42::LabelSource::PictureArtwork{bytes:image.data.clone(),width_points:f64::from(image.width_twips)/20.,height_points:f64::from(image.height_twips)/20.}));
+        }
+        sources.push((
+            if self.selection.0 != self.selection.1 {
+                "Selected Text"
+            } else {
+                "Custom Text"
+            }
+            .into(),
+            self.label_source()?,
+        ));
+        Ok(sources)
+    }
+    fn label_rich_selection_width(&self)->Option<u32>{
+        let page=&self.doc.state().sections.first()?.page;
+        page.width_twips.checked_sub(page.margin_left)?.checked_sub(page.margin_right)
     }
     fn label_source(&self) -> Result<win42::LabelSource, String> {
         let (start, end) = self.selection;
@@ -470,6 +638,12 @@ impl App for Doc {
             String::new()
         };
         Ok(win42::LabelSource::Text(text))
+    }
+    fn default_print_command(&self)->Option<u16>{Some(315)}
+    fn toolbar_command_visible(&self,id:u16)->bool{matches!(id,300..=303|305|306|313)}
+    fn rich_format_command(&self,id:u16)->Option<win42::RichFormatCommand>{
+        use win42::RichFormatCommand::*;
+        Some(match id{300=>Bold,301=>Italic,302=>Underline,303=>Font,304=>Color,305=>AlignLeft,306=>AlignCenter,307=>AlignRight,308=>Justify,_=>return None})
     }
     fn name(&self) -> &'static str {
         "DOC42"
@@ -700,11 +874,26 @@ impl App for Doc {
         self.doc.rich_edit_projection().ok()
     }
     fn edit_rich_text(&mut self, bytes: &[u8], selection: (usize, usize)) -> Result<(), String> {
-        self.doc
-            .apply_rich_edit_projection(bytes, selection)
-            .map_err(|e| e.to_string())?;
+        if let Err(error)=self.doc.apply_rich_edit_projection(bytes, selection){
+            if let Some(directory)=std::env::var_os("OFF42_AUDIT_OUTPUT"){
+                let directory=std::path::PathBuf::from(directory);
+                let _=std::fs::write(directory.join("DOC42-rejected-projection.rtf"),bytes);
+                if let Ok(source)=self.doc.encode(Format::Project){let _=std::fs::write(directory.join("DOC42-rejected-source.doc42"),source);}
+            }
+            return Err(error.to_string());
+        }
         self.selection = selection;
         Ok(())
+    }
+    fn prepare_rich_word(&mut self,native:&[u16],range:(usize,usize),replacement:&str)->Result<Vec<u8>,String>{
+        self.pending_word=None;
+        let word=native.get(range.0..range.1).and_then(|v|String::from_utf16(v).ok()).ok_or("Invalid word range")?;
+        let edit=self.doc.prepare_word_edit(native,range,&word,replacement).map_err(|e|e.to_string())?;
+        let projection=edit.projection().to_vec();self.pending_word=Some(edit);Ok(projection)
+    }
+    fn finish_rich_word(&mut self,commit:bool)->Result<(),String>{
+        let edit=self.pending_word.take().ok_or("Word correction unavailable")?;
+        if commit{self.doc.commit_word_edit(edit).map_err(|e|e.to_string())?;}Ok(())
     }
     fn take_requested_rich_selection(&mut self) -> Option<(usize, usize)> {
         self.requested_selection.take()
@@ -723,6 +912,10 @@ impl App for Doc {
     }
     fn open_formats(&self) -> Vec<FileFormat> {
         self.save_formats()
+    }
+    fn supports_recovery(&self)->bool{true}
+    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
+        Ok(Some(win42::recovery::Snapshot::new("doc42",self.doc.encode(Format::Project).map_err(|e|e.to_string())?)))
     }
     fn save_formats(&self) -> Vec<FileFormat> {
         vec![
@@ -870,6 +1063,7 @@ impl App for Doc {
             (353, "Go to bookmark…", None),
             (354, "Follow link", None),
             (355, "Delete bookmark…", None),
+            (360, "Statistics…", None),
         ]
         .into_iter()
         .map(|(id, title, accelerator)| CommandSpec {
@@ -881,6 +1075,19 @@ impl App for Doc {
         .collect()
     }
     fn command_state(&self, id: u16) -> CommandState {
+        if id == NAVIGATOR {
+            return CommandState { enabled: true, checked: self.navigator_open };
+        }
+        if id == 4 || id == 5 {
+            return CommandState {
+                enabled: if id == 4 {
+                    self.doc.can_undo()
+                } else {
+                    self.doc.can_redo()
+                },
+                checked: false,
+            };
+        }
         if (346..=349).contains(&id) {
             let at = self.doc.position_from_utf16(self.selection.0).ok();
             return CommandState {
@@ -983,7 +1190,7 @@ impl App for Doc {
             };
         }
         CommandState {
-            enabled: style.is_some(),
+            enabled: !(300..=304).contains(&id) || style.is_some(),
             checked: style.is_some_and(|s| match id {
                 300 => s.bold,
                 301 => s.italic,
@@ -2000,6 +2207,14 @@ impl App for Doc {
     }
     fn dialog_request(&self, id: u16) -> Option<DialogRequest> {
         match id {
+            360 => Some(DialogRequest::RichTextStatistics {
+                title: "Statistics",
+                text: format!("{}\n{}", win42::localization::text("Document"), statistics_text(self.doc.statistics())),
+                describe: |units| {
+                    let stats = doc42_core::rich::TextStatistics::from_native_selection(units)?;
+                    Some(format!("{}\n{}", win42::localization::text("Selection"), statistics_text(stats)))
+                },
+            }),
             303 => Some(DialogRequest::Font),
             304 => Some(DialogRequest::Color([0, 0, 0])),
             309 => {
@@ -2080,11 +2295,33 @@ impl App for Doc {
         };
         self.apply_style(style)
     }
+    fn view_actions(&self) -> &'static [(u16, &'static str)] {
+        &[(NAVIGATOR, "Navigator")]
+    }
+    fn live_rich_sidebar(&self) -> bool {
+        self.navigator_open
+    }
+    fn rich_sidebar_selection(&self, index: usize, native: &[u16]) -> Result<Option<(usize, usize)>, String> {
+        let rows = self.navigator_rows.borrow();
+        let Some(target) = rows.get(index).and_then(|entry| entry.target.as_ref()) else {
+            return Ok(None);
+        };
+        match target {
+            navigator::Target::Text(start, end) => self.doc.native_text_range(native, start, end),
+            navigator::Target::Image(image) => self.doc.native_image_range(native, *image),
+        }.map(Some).map_err(|error| error.to_string())
+    }
     fn items(&self) -> Vec<String> {
-        vec![]
+        let entries = if self.navigator_open { navigator::entries(self.doc.state()) } else { Vec::new() };
+        let labels = entries.iter().map(|entry| entry.label.clone()).collect();
+        self.navigator_rows.replace(entries);
+        labels
+    }
+    fn selected(&self) -> usize {
+        usize::MAX
     }
     fn list_visible(&self) -> bool {
-        false
+        self.navigator_open
     }
     fn text(&self) -> String {
         win42::to_native_text(&self.visible_text())
@@ -2098,7 +2335,7 @@ impl App for Doc {
             .any(|s| !s.header.is_empty() || !s.footer.is_empty());
         format!(
             "{} words · {}%{}{}{}",
-            self.visible_text().split_whitespace().count(),
+            self.doc.statistics().words,
             self.zoom_percent,
             if headers {
                 " · header/footer stored; body view"
@@ -2246,6 +2483,9 @@ impl App for Doc {
     }
     fn action(&mut self, id: u16) -> Result<(), String> {
         match id {
+            NAVIGATOR => {
+                self.navigator_open = !self.navigator_open;
+            }
             351 => {
                 let (p, range, _, selection) = self.selection_style()?;
                 self.doc
@@ -2478,34 +2718,12 @@ impl App for Doc {
     fn supports_find_replace(&self) -> bool {
         true
     }
-    fn find_next(&self, query: &str, start_utf16: usize) -> Result<Option<(usize, usize)>, String> {
-        let text = self.text();
-        let start = text
-            .char_indices()
-            .scan(0usize, |n, (i, c)| {
-                let old = *n;
-                *n += c.len_utf16();
-                Some((i, old))
-            })
-            .find(|(_, n)| *n >= start_utf16)
-            .map(|(i, _)| i)
-            .unwrap_or(text.len());
-        if query.is_empty() {
-            return Ok(None);
-        }
-        let found = text[start..]
-            .find(query)
-            .map(|i| start + i)
-            .or_else(|| text.find(query));
-        Ok(found.map(|i| {
-            let n = text[..i].encode_utf16().count();
-            (n, n + query.encode_utf16().count())
-        }))
-    }
-    fn replace_all(&mut self, query: &str, replacement: &str) -> Result<usize, String> {
-        self.doc
-            .replace_all_text(query, replacement)
-            .map_err(|e| e.to_string())
+    fn replace_all(
+        &mut self,
+        search: &suite42_core::text_search::Search,
+        replacement: &str,
+    ) -> Result<usize, String> {
+        self.doc.replace_matches(search, replacement).map_err(|e| e.to_string())
     }
 }
 fn main() {
@@ -3372,29 +3590,209 @@ mod policy_regression {
 }
 
 #[cfg(test)]
-mod find_adapter_regression {
+mod technical_regression {
     use super::*;
-    use win42::App;
-    #[test]
-    fn native_caret_inside_match_wraps_across_emoji_and_crlf() {
-        let d = RichDocument::decode("x😀z\r\nend".as_bytes(), Format::Text).unwrap();
-        let a = Doc {
-            doc: d,
-            ..Doc::new()
-        };
-        assert_eq!(a.find_next("😀z\r\n", 3).unwrap(), Some((1, 6)));
-        assert_eq!(a.find_next("😀z\r\n", 4).unwrap(), Some((1, 6)));
+    fn element(value: &str, width: f64) -> win42::TechnicalElement {
+        win42::TechnicalElement {
+            symbol_id: None,
+            code_type: win42::BarcodeFormat::Qr,
+            value: value.into(),
+            width_mm: width,
+            caption: false,
+        }
     }
     #[test]
-    fn native_offsets_wrap_across_unicode_and_crlf() {
-        let d = RichDocument::decode("😀 a\n😀 a".as_bytes(), Format::Text).unwrap();
-        let a = Doc {
-            doc: d,
-            ..Doc::new()
+    fn technical_insert_edit_undo_and_word_round_trip() {
+        let mut app = Doc::new();
+        let first = element("PCB-0007", 20.0);
+        app.apply_technical_element(None, win42::TechnicalRaster::render(first.clone()).unwrap())
+            .unwrap();
+        let id = app.technical_targets()[0].id;
+        let second = element("PCB-0008", 25.0);
+        app.apply_technical_element(
+            Some(id),
+            win42::TechnicalRaster::render(second.clone()).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(app.technical_targets()[0].element.value, "PCB-0008");
+        app.action(4).unwrap();
+        assert_eq!(app.technical_targets()[0].element.value, "PCB-0007");
+        app.action(5).unwrap();
+        for format in [Format::Project, Format::Docx, Format::Odt, Format::Rtf] {
+            let bytes = app.doc.encode(format).unwrap();
+            let restored = RichDocument::decode(&bytes, format).unwrap();
+            let image = restored
+                .state()
+                .blocks
+                .iter()
+                .find_map(|block| {
+                    if let Block::Image(image) = block {
+                        Some(image)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap();
+            assert_eq!(
+                win42::TechnicalElement::from_png(&image.data),
+                Some(second.clone())
+            );
+            assert!((f64::from(image.width_twips) * 25.4 / 1440.0 - 25.0).abs() < 0.02);
+        }
+    }
+}
+
+#[cfg(test)]
+mod command_dispatch_regression {
+    use super::*;
+    #[test]
+    fn collapsed_caret_does_not_disable_history_or_table_commands() {
+        let mut app = Doc::new();
+        let first = win42::TechnicalElement {
+            symbol_id: None,
+            code_type: win42::BarcodeFormat::Qr,
+            value: "PCB-0007".into(),
+            width_mm: 20.0,
+            caption: false,
         };
-        assert_eq!(a.find_next("😀", 0).unwrap(), Some((0, 2)));
-        assert_eq!(a.find_next("😀", 2).unwrap(), Some((6, 8)));
-        assert_eq!(a.find_next("😀", 8).unwrap(), Some((0, 2)));
-        assert_eq!(a.find_next("missing", 0).unwrap(), None);
+        app.apply_technical_element(None, win42::TechnicalRaster::render(first.clone()).unwrap())
+            .unwrap();
+        let id = app.technical_targets()[0].id;
+        let mut second = first.clone();
+        second.value = "PCB-0008".into();
+        app.apply_technical_element(Some(id), win42::TechnicalRaster::render(second).unwrap())
+            .unwrap();
+        let (revision, _) = app.save_snapshot("doc42").unwrap().unwrap();
+        app.saved_snapshot(revision);
+        assert_eq!(app.selection.0, app.selection.1);
+        assert!(app.command_state(4).enabled);
+        app.action(4).unwrap();
+        assert_eq!(app.technical_targets()[0].element.value, "PCB-0007");
+        assert!(app.command_state(5).enabled);
+        app.action(5).unwrap();
+        assert_eq!(app.technical_targets()[0].element.value, "PCB-0008");
+        assert!(!app.command_state(300).enabled);
+        assert!(app.command_state(329).enabled);
+        assert!(app.command_state(353).enabled);
+    }
+}
+
+#[cfg(test)]
+mod table_label_regression {
+    use super::*;
+    #[test]
+    fn labels_snapshot_an_explicit_table_and_leave_covered_slots_empty() {
+        let mut app = Doc::new();
+        app.input_action(313, &["3".into(), "3".into()]).unwrap();
+        let mut table_id = 0;
+        app.doc
+            .transact(|state| {
+                let table = state
+                    .blocks
+                    .iter_mut()
+                    .find_map(|block| {
+                        if let Block::Table(table) = block {
+                            Some(table)
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap();
+                table_id = table.id;
+                for (row, values) in [
+                    ["Name", "Code", "Copies"],
+                    ["Board α", "PCB-0007", "2"],
+                    ["Board β", "PCB-0008", "1"],
+                ]
+                .into_iter()
+                .enumerate()
+                {
+                    for (col, value) in values.into_iter().enumerate() {
+                        table.rows[row][col].paragraphs[0].runs[0].text = value.into();
+                    }
+                }
+                Ok(())
+            })
+            .unwrap();
+        let original = app.doc.snapshot();
+        let (_, win42::LabelSource::Rows(rows)) = app.label_sources().unwrap().remove(0) else {
+            panic!("table source expected");
+        };
+        assert_eq!(
+            rows[1],
+            (2, vec!["Board α".into(), "PCB-0007".into(), "2".into()])
+        );
+        assert_eq!(rows[2].1[1], "PCB-0008");
+        assert_eq!(app.doc.snapshot(), original);
+        app.doc.merge_table_cells(table_id, 1, 0, 2).unwrap();
+        let (_, win42::LabelSource::Rows(rows)) = app.label_sources().unwrap().remove(0) else {
+            panic!("table source expected");
+        };
+        assert!(rows[1].1[1].is_empty());
+        app.doc.undo();
+        let (_, win42::LabelSource::Rows(rows)) = app.label_sources().unwrap().remove(0) else {
+            panic!("table source expected");
+        };
+        assert_eq!(rows[1].1[1], "PCB-0007");
+    }
+}
+
+#[cfg(test)]
+mod statistics_tests {
+    use super::*;
+    #[test]
+    fn word_count_is_read_only_and_available_without_a_plain_text_projection() {
+        let mut app = Doc::new();
+        app.doc=RichDocument::decode(br"{\rtf1\ansi Before TARGET\par\trowd\cellx2000\cellx4000\pard\intbl Table TARGET\cell Other cell\cell\row\pard After TARGET\par}",Format::Rtf).unwrap();
+        app.selection = (usize::MAX, usize::MAX);
+        assert!(app.doc.editor_text().is_err());
+        let before = app.doc.encode(Format::Project).unwrap();
+        assert!(app.command_state(360).enabled);
+        let Some(DialogRequest::RichTextStatistics { title, text, .. }) = app.dialog_request(360) else {
+            panic!("Expected read-only statistics")
+        };
+        assert_eq!(title, "Statistics");
+        assert!(text.contains("Words: 8"));
+        assert!(app.status().starts_with("8 words"));
+        assert_eq!(app.doc.encode(Format::Project).unwrap(), before);
+        assert!(!app.doc.can_undo());
+    }
+}
+
+#[cfg(test)]
+mod picture_label_source_tests {
+    use super::*;
+    #[test]
+    fn picture_sources_retain_encoded_pixels_and_display_aspect_without_document_edits(){
+        use image::ImageEncoder;
+        let mut bytes=Vec::new();image::codecs::png::PngEncoder::new(&mut bytes).write_image(&[255,0,0,255,0,0,255,128],2,1,image::ExtendedColorType::Rgba8).unwrap();
+        let mut app=Doc::new();app.doc.transact(|state|{let id=state.next_id;state.next_id+=1;state.blocks.push(Block::Image(Image{id,mime:"image/png".into(),data:bytes.clone(),width_twips:30,height_twips:15,alt:"private alternate text".into()}));Ok(())}).unwrap();let before=app.doc.state().clone();let dirty=app.dirty();
+        let sources=app.label_sources().unwrap();let source=&sources.iter().find(|(name,_)|name=="Picture 1 Artwork").unwrap().1;
+        let win42::LabelSource::PictureArtwork{bytes:encoded,width_points,height_points}=source else{panic!("Missing picture artwork")};assert_eq!(encoded,&bytes);assert_eq!((*width_points,*height_points),(1.5,0.75));
+        assert_eq!(app.doc.state(),&before);assert_eq!(app.dirty(),dirty);
+    }
+}
+
+#[cfg(test)]mod recovery_tests{
+    use super::*;
+    #[test]fn recovery_keeps_latest_rich_content_and_does_not_mark_a_pending_revision_saved(){
+        let mut app=Doc::new();app.edit("BEFORE".into()).unwrap();
+        let(revision,_)=app.save_snapshot("doc42").unwrap().unwrap();app.edit("AFTER 😀".into()).unwrap();
+        let before=app.doc.snapshot();let snapshot=app.recovery_snapshot().unwrap().unwrap();
+        assert_eq!(snapshot.extension,"doc42");let restored=RichDocument::decode(&snapshot.bytes,Format::Project).unwrap();
+        assert_eq!(restored.state(),&before);assert_eq!(app.doc.state(),&before);
+        app.saved_snapshot(revision);assert!(app.dirty());app.doc.undo();assert!(!app.dirty());
+    }
+}
+
+#[cfg(test)]
+mod word_edit_regression {
+    use super::*;
+    #[test]
+    fn prepared_word_cancel_commit_and_stale_keep_the_authoritative_formatting(){
+        let mut app=Doc::new();app.edit("😀 speling world".into()).unwrap();let original=app.doc.state().clone();let native:Vec<_>="😀 speling world\r".encode_utf16().collect();
+        app.prepare_rich_word(&native,(3,10),"spelling").unwrap();assert_eq!(app.doc.state(),&original);app.finish_rich_word(false).unwrap();assert_eq!(app.doc.state(),&original);
+        app.prepare_rich_word(&native,(3,10),"spelling").unwrap();app.finish_rich_word(true).unwrap();let mut expected=original.clone();let Block::Paragraph(p)=&mut expected.blocks[0]else{panic!()};p.runs[0].text="😀 spelling world".into();assert_eq!(app.doc.state(),&expected);app.action(4).unwrap();assert_eq!(app.doc.state(),&original);app.action(5).unwrap();assert_eq!(app.doc.state(),&expected);
+        app.action(4).unwrap();app.prepare_rich_word(&native,(3,10),"spelling").unwrap();app.doc.transact(|s|{s.sections[0].page.margin_left+=1;Ok(())}).unwrap();let changed=app.doc.state().clone();assert!(app.finish_rich_word(true).is_err());assert_eq!(app.doc.state(),&changed);
     }
 }

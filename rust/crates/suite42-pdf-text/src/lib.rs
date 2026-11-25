@@ -1,6 +1,8 @@
 //! Embedded Noto Sans Type0 font shared by PDF-producing applications.
 use lopdf::{dictionary, Document, Object, ObjectId, Stream};
 use std::collections::BTreeMap;
+mod font_program;
+pub use font_program::FontProgram;
 
 pub struct PdfFont {
     pub id: ObjectId,
@@ -19,24 +21,30 @@ impl PdfFont {
         Ok(())
     }
     pub fn embed(doc: &mut Document, text: &str) -> Result<Self, String> {
-        Self::embed_impl(doc, text, false)
+        Self::embed_impl(doc, text, false, false)
     }
     /// Embeds a font program reduced to the glyphs `text` needs. Glyph IDs are
     /// preserved, so the CIDToGIDMap matches the full font's.
     pub fn embed_subset(doc: &mut Document, text: &str) -> Result<Self, String> {
-        Self::embed_impl(doc, text, true)
+        Self::embed_impl(doc, text, true, false)
     }
-    fn embed_impl(doc: &mut Document, text: &str, subset: bool) -> Result<Self, String> {
+    /// Use exclusively with text rendering mode 3. Missing visible outlines map to the existing space glyph;
+    /// every character still has its own CID and Unicode mapping, with OCR geometry supplying selection bounds.
+    pub fn embed_invisible_subset(doc:&mut Document,text:&str)->Result<Self,String>{
+        Self::embed_impl(doc,text,true,true)
+    }
+    fn embed_impl(doc: &mut Document, text: &str, subset: bool, invisible:bool) -> Result<Self, String> {
         // Noto Sans is distributed under OFL 1.1 alongside the bundled font.
         let font_data = include_bytes!("../../doc42-layout-probe/fixtures/NotoSans.ttf");
+        Self::embed_data(doc,text,subset,invisible,font_data,"NotoSans")
+    }
+    fn embed_data(doc:&mut Document,text:&str,subset:bool,invisible:bool,font_data:&[u8],name:&str)->Result<Self,String>{
         let face = ttf_parser::Face::parse(font_data, 0)
             .map_err(|e| format!("Invalid bundled font: {e:?}"))?;
         let mut chars = std::collections::BTreeMap::new();
         for ch in text.chars() {
             if !chars.contains_key(&ch) {
-                let glyph = face
-                    .glyph_index(ch)
-                    .ok_or_else(|| format!("Bundled font lacks character {ch:?}"))?;
+                let glyph = face.glyph_index(ch).or_else(||if invisible{face.glyph_index(' ')}else{None}).ok_or_else(|| format!("Bundled font lacks character {ch:?}"))?;
                 let cid =
                     u16::try_from(chars.len() + 1).map_err(|_| "Too many distinct characters")?;
                 let width = u32::from(face.glyph_hor_advance(glyph).unwrap_or(face.units_per_em()))
@@ -55,7 +63,10 @@ impl PdfFont {
         } else {
             Self::full_font_stream(doc, font_data)
         };
-        let descriptor = doc.add_object(dictionary! {"Type"=>"FontDescriptor", "FontName"=>"NotoSans", "Flags"=>32, "FontBBox"=>vec![(-1000).into(),(-1000).into(),3000.into(),3000.into()], "ItalicAngle"=>0, "Ascent"=>1100, "Descent"=>-300, "CapHeight"=>750, "StemV"=>80, "FontFile2"=>font_stream});
+        let metric=|v:i16|(f64::from(v)*1000./f64::from(face.units_per_em())).round()as i64;
+        let bounds=face.global_bounding_box();
+        let flags=32+i64::from(face.is_monospaced())+if face.is_italic(){64}else{0};
+        let descriptor = doc.add_object(dictionary! {"Type"=>"FontDescriptor", "FontName"=>name, "Flags"=>flags, "FontBBox"=>vec![metric(bounds.x_min).into(),metric(bounds.y_min).into(),metric(bounds.x_max).into(),metric(bounds.y_max).into()], "ItalicAngle"=>face.italic_angle().unwrap_or(0.)as f64, "Ascent"=>metric(face.ascender()), "Descent"=>metric(face.descender()), "CapHeight"=>metric(face.capital_height().unwrap_or(face.ascender())), "StemV"=>80, "FontFile2"=>font_stream});
         let mut cid_to_gid = vec![0u8; (chars.len() + 1) * 2];
         let mut widths = vec![Object::Integer(0); chars.len() + 1];
         let mut cmap = String::from("/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n/CMapName /SCN42Unicode def\n/CMapType 2 def\n1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n");
@@ -78,8 +89,8 @@ impl PdfFont {
         cmap.push_str("endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend\n");
         let map = doc.add_object(Stream::new(dictionary! {}, cid_to_gid));
         let unicode = doc.add_object(Stream::new(dictionary! {}, cmap.into_bytes()));
-        let cidfont = doc.add_object(dictionary! {"Type"=>"Font", "Subtype"=>"CIDFontType2", "BaseFont"=>"NotoSans", "CIDSystemInfo"=>dictionary! {"Registry"=>Object::string_literal("Adobe"), "Ordering"=>Object::string_literal("Identity"), "Supplement"=>0}, "FontDescriptor"=>descriptor, "CIDToGIDMap"=>map, "W"=>vec![Object::Integer(0), Object::Array(widths)]});
-        let font = doc.add_object(dictionary! {"Type"=>"Font", "Subtype"=>"Type0", "BaseFont"=>"NotoSans", "Encoding"=>"Identity-H", "DescendantFonts"=>vec![Object::Reference(cidfont)], "ToUnicode"=>unicode});
+        let cidfont = doc.add_object(dictionary! {"Type"=>"Font", "Subtype"=>"CIDFontType2", "BaseFont"=>name, "CIDSystemInfo"=>dictionary! {"Registry"=>Object::string_literal("Adobe"), "Ordering"=>Object::string_literal("Identity"), "Supplement"=>0}, "FontDescriptor"=>descriptor, "CIDToGIDMap"=>map, "W"=>vec![Object::Integer(0), Object::Array(widths)]});
+        let font = doc.add_object(dictionary! {"Type"=>"Font", "Subtype"=>"Type0", "BaseFont"=>name, "Encoding"=>"Identity-H", "DescendantFonts"=>vec![Object::Reference(cidfont)], "ToUnicode"=>unicode});
         Ok(Self { id: font, chars })
     }
     /// Reuses only an actual identical embedded font stream. CID maps and
@@ -303,4 +314,72 @@ mod tests {
         assert!(full_face.glyph_bounding_box(unused).is_some());
         assert!(face.glyph_bounding_box(unused).is_none());
     }
+}
+
+/// A literal vector outline for decorative text that must not enter copy/search results.
+/// Coordinates are PDF points with a baseline at zero; the width uses the same font metrics as encoding.
+pub fn text_outline(text: &str, points: f64) -> Result<(String, f64), String> {
+    use std::fmt::Write;
+    if text.len() > 4096 || !points.is_finite() || !(1.0..=512.0).contains(&points) {
+        return Err("Invalid decorative text size".into());
+    }
+    struct Outline {
+        data: String,
+        current: (f32, f32),
+    }
+    impl ttf_parser::OutlineBuilder for Outline {
+        fn move_to(&mut self, x: f32, y: f32) {
+            let _ = write!(self.data, "{x} {y} m ");
+            self.current = (x, y);
+        }
+        fn line_to(&mut self, x: f32, y: f32) {
+            let _ = write!(self.data, "{x} {y} l ");
+            self.current = (x, y);
+        }
+        fn quad_to(&mut self, x: f32, y: f32, x1: f32, y1: f32) {
+            let (a, b) = self.current;
+            self.curve_to(
+                a + (x - a) * 2.0 / 3.0,
+                b + (y - b) * 2.0 / 3.0,
+                x1 + (x - x1) * 2.0 / 3.0,
+                y1 + (y - y1) * 2.0 / 3.0,
+                x1,
+                y1,
+            );
+        }
+        fn curve_to(&mut self, a: f32, b: f32, c: f32, d: f32, x: f32, y: f32) {
+            let _ = write!(self.data, "{a} {b} {c} {d} {x} {y} c ");
+            self.current = (x, y);
+        }
+        fn close(&mut self) {
+            self.data.push_str("h ");
+        }
+    }
+    let data = include_bytes!("../../doc42-layout-probe/fixtures/NotoSans.ttf");
+    let face =
+        ttf_parser::Face::parse(data, 0).map_err(|e| format!("Invalid bundled font: {e:?}"))?;
+    let scale = points / f64::from(face.units_per_em());
+    let mut advance = 0.0;
+    let mut result = String::new();
+    for ch in text.chars() {
+        let glyph = face
+            .glyph_index(ch)
+            .ok_or_else(|| format!("Bundled font lacks character {ch:?}"))?;
+        let mut outline = Outline {
+            data: String::new(),
+            current: (0.0, 0.0),
+        };
+        face.outline_glyph(glyph, &mut outline);
+        write!(
+            result,
+            "q {scale} 0 0 {scale} {advance} 0 cm {} f Q ",
+            outline.data
+        )
+        .unwrap();
+        advance += f64::from(face.glyph_hor_advance(glyph).unwrap_or(face.units_per_em())) * scale;
+        if result.len() > 8 * 1024 * 1024 {
+            return Err("Decorative text outline exceeds limits".into());
+        }
+    }
+    Ok((result, advance))
 }

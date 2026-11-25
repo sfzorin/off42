@@ -1,9 +1,8 @@
 //! Optional positioned text search through a locally supplied PDFium DLL.
 use std::{
     ffi::{c_char, c_void, CString},
-    sync::Mutex,
 };
-pub(crate) static PDFIUM_LOCK: Mutex<()> = Mutex::new(());
+pub(crate) use win42::pdfium::LOCK as PDFIUM_LOCK;
 type Handle = *mut c_void;
 #[link(name = "kernel32")]
 extern "system" {

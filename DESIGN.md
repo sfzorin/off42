@@ -4,7 +4,7 @@ off42 has native macOS and Windows implementations of PDF42, DOC42, XLS42, IMG42
 The Swift/macOS apps share **Kit42** (`Sources/Kit42`); the Rust/Windows apps share native Windows infrastructure.
 The Kit42, AppKit and Swift contracts below describe macOS; the Windows workspace has its own implementation
 and feature scope. Shared product names do not imply identical capabilities.
-This describes the source as of 2026-11-06. [README.md](README.md#regression-checks) documents verification commands
+This describes the source as of 2026-11-07. [README.md](README.md#regression-checks) documents verification commands
 and scope; detailed build logs, executable identities and installation history are retained with each local audit.
 
 ## Principles
@@ -133,6 +133,11 @@ Typical PDF42 layout; other apps add their own formula bar, notes, inspectors or
 These contracts describe the current source. README lists scenario boundaries; each audit records the actual checked
 binary, failures/skips, installation and publication state. Native UI assertions complement saved-file inspection.
 
+Windows DOC42 Navigator projects stable model positions into the actual Rich Edit UTF-16 buffer.
+It checks text, exact hyperlink instructions and image-marker order before moving the selection,
+including across tables and pictures. The live sidebar reloads independently from the editor
+and adds no history entries.
+
 ## XLS42 editing and output contracts
 
 - Commit the visible cell/formula draft before Save, Print, export, Find or a sheet/context change. The commit result
@@ -143,6 +148,9 @@ binary, failures/skips, installation and publication state. Native UI assertions
   writes crossing protection, worksheet bounds, the 100,000-cell operation limit or part of a legacy array before
   changing cells or undo history. A complete array replacement removes its metadata in the same undo transaction;
   format-only paste can change a subset without changing array formulas. Large sparse clears visit stored cells.
+- Windows list validation resolves fixed same-sheet ranges from the current calculated values. The grid commits
+  the selected typed value and runs validation before publishing the edit. Native XLSX uses absolute addresses.
+  Imported stop-style rules retain their original XML through value edits.
 - Format Cells represents mixed border selections explicitly. Opening and accepting the dialog without changing a
   border preserves every edge, including imported line styles. None, Outline and All are explicit actions over the
   complete selection; Outline clears inner lines. Changing a border style/colour changes existing lines without
@@ -171,6 +179,26 @@ dated binary/test/installation evidence with each audit; native action tests and
   restore model and selection together. A command that commits a pending draft and changes an object can form one
   native undo group; regressions must check the complete before/after state of that group. Notes editors clear their
   local Undo when the slide/content changes; Revert clears local notes/outline histories so they cannot edit stale content.
+- On Windows, accepting the modal speaker-notes editor adds one slide-scoped history entry. Office overlays patch
+  supported note text and preserve other shapes and parts. Adding a PPTX note reuses a compatible notes master or
+  adds a standard master using the slide theme. Unsupported layouts retain their original package data.
+- Windows rehearsal reuses the normal slide-show order, transitions and navigation. The host lays out the current
+  canvas alongside an independent next-slide preview and a read-only, scrollable notes control. Blanking affects
+  the current canvas alone. Ending rehearsal destroys its controls and restores the editor window.
+- Windows laser and pen overlays belong to the active slide show. A captured stroke stays on its slide
+  until erased or the show ends. Pointer leave clears the laser, and canvas-only cursor hiding never
+  changes the system cursor visibility counter. Saving, exporting and editing use the unmarked scene.
+- The Windows show overview renders at most twelve thumbnails for the current page and uses the
+  active show order. Keyboard and pointer selection jump by slide identity. Closing the overview
+  resumes the existing timing budget. Choosing another slide starts that slide's timing.
+- Windows slide image exports render the presentation scene in a bounded, opaque offscreen buffer. Batch output
+  preserves original slide numbering and stages every file before publication. A destination conflict leaves
+  existing files intact and rollback removes only outputs whose identities still match the published files.
+- Windows slide PDF export uses the original slide dimensions and the same offscreen renderer. A4 notes pages
+  use GDI for glyph measurement and raster rendering with a Unicode text layer. Long notes continue on pages
+  without a slide thumbnail. The exporter preserves source bytes and publishes only a complete new PDF.
+- Windows handouts use the same A4 grid for PDF export and printing. Notes and handouts go through the
+  shared native printer path with fit to paper and a page range. Normal slide printing retains its scene path.
 - Character/paragraph commands visit visible text containers in nested groups and table cells. Vertical alignment
   targets the edited table cell when one is active, otherwise all selected text containers. Empty-paragraph properties
   are data and must survive commit. The inspector reports effective styles from the same text-container traversal.
@@ -258,6 +286,11 @@ These are source contracts; each audit records the exact tested binary, exercise
   physical page size and corresponding OCR geometry. Single-page encoders cannot silently drop extra pages. Each output
   file is atomically replaced after successful encoding; a multi-file batch is not one atomic transaction. History
   removal deletes its entry/thumbnail, not the saved document.
+- Windows batch PNG and JPEG export preserves each page's dimensions and DPI. It stages every file
+  before publication and refuses destination conflicts. History records the actual files after success.
+- Windows SCN42 filename templates prefill the editable native save field. OCR appears in that field
+  only when the template asks for the first line. Preferences store the template and next number
+  under a file lock, and only a completed export advances the number.
 - Signature/stamp placement belongs to one page identity. Return or Print into Page commits the mark into both the
   displayed pixels and the geometry-corrected base with multiply blending; Escape, changing the shown page or its
   pixel revision, and closing the window cancel unfinished placement. Existing OCR text/geometry is preserved because
@@ -532,3 +565,561 @@ calibration contracts apply to macOS; the Windows apps have their own barcode an
 label pagination and print-to-file geometry. App native technical scenarios additionally cover
 commands, controls, complete Undo/Redo and disk save/reopen. The shared UI test is opt-in with `--ui`;
 coordinate it with other desktop audits. These checks do not certify physical printer alignment.
+
+Windows spreadsheet pictures use shared grid object hooks for immutable decoded pixels, selection and a
+single movement commit at pointer release. Drag previews stay in the host; document history stores cell
+anchors, point offsets and physical size. Frozen panes clip objects using the same geometry as cells.
+XLS42 preserves original PNG bytes (including technical recipes) in projects and Office exports; imported
+Office pictures retain provenance so only the corresponding original drawing node is replaced.
+
+Shared Windows technical-object commands pass an immutable rendered object to an app adapter. Each
+adapter inserts or replaces the object in one document-history transaction and retains the portable
+recipe. Object choice uses current document identities; PDF recipes share the macOS annotation key.
+
+PDF technical appearances contain only bounded path operators, with glyph outlines and independent
+physical bounds. The core validates the operator allowlist and graphics-state balance before recording
+a vector stamp. Raster pixels are transient for vector placement and are not retained in its history
+or emitted as an image resource. Standard image signatures continue to use their alpha image appearance.
+
+Label inputs are immutable source snapshots. Apps can enumerate named sources; the source chooser only
+appears when there is a choice. DOC tables are explicitly named because the current linear selection
+API does not cover table cells. Label preferences separate tabular and text workflows, hash source
+headers before restoring mappings, and exclude document contents and barcode payloads.
+
+The Windows host defers real menu/toolbar commands received while refreshing native controls. RichEdit
+and TSF can pump messages inside a refresh; generated control notifications remain suppressed, while
+user commands are posted back in order after the refresh releases the model. Deferred commands are also
+flushed after smaller guarded control updates and normal command dispatch.
+
+## Windows language host
+
+The Rust host bundles exported macOS catalogs (reproduce with `rust/scripts/export-localizations.py`).
+Windows-specific labels are supplemented by `win42/resources/windows-translations.json`; these override imported
+keys without changing their source catalogs. `win42::localization` owns the twenty-language set, matching, process overrides and bounded atomic preferences
+in `%LOCALAPPDATA%/off42/Preferences/language.json`. View → Language confirms unsaved changes and restarts
+with the current saved path. Only UI keys pass through lookup; field data and document strings stay untouched.
+Choice prompts retain original values/indices independently from translated display labels. Prompt label heights
+are measured with the GUI font; Arabic labels align right without mirroring document geometry. Missing Windows
+keys use English. This does not establish full translation or proofing coverage.
+
+## Windows recent documents
+
+Each app has a bounded atomic JSON path list in `%LOCALAPPDATA%/off42/Recent Documents/`. Only successful
+normal session opens and saved snapshots update it. Asynchronous opens enter the list after identity validation
+and commit. File → Open Recent uses stable command IDs and the same `open_paths`/unsaved confirmation as Open.
+Menu display escapes filename mnemonics and never translates paths. Clear Menu changes preferences only.
+There is no document content in this file and no cloud synchronization. Import-only scan sources are excluded.
+
+## Windows exports with settings
+
+`App::file_input_request` optionally collects export settings before the file picker. Neither Cancel invokes the app.
+`file_action_with_input` receives both confirmed values and destination, leaving ordinary `file_action` unchanged.
+File action menu states now use the same app availability checks as their dispatch. PDF42 page export captures
+`PageExtraction` once; each worker output clones/prunes its committed graph and remaps effective page labels.
+Source state/history stay untouched. Split outputs stream into one temporary ZIP, with bounded total data,
+progress, cancellation and final no-clobber publication. No partial destination is exposed.
+
+PDF page-label overrides live in the core snapshot state, keyed by page object identity. A range edit expands only
+its effective rules and commits one history transaction; unaffected labels retain their values. Clear uses an explicit
+empty override to remove the catalog tree. Saving, reordering and extraction rebuild rules in the current page order.
+Roman/letter display matches the macOS bounded implementation. `App::input_choices` supplies stable underlying
+values for translated native choice controls, reused by page-label numbering styles.
+
+Windows Save As uses a host-only ID outside application tool IDs. Earlier ID 18 collided with IMG/SCN crop and PDF
+rectangle tools; those app tool IDs remain stable, while Save As now uses 65507. The audit detects old/new Save As
+IDs so it can still inspect older downloadable previews. Canvas pointer moves update tools/redraw only during a
+captured gesture; current tools have no passive-hover state. This keeps idle synthesized moves out of caption/
+paint updates and lets background timers run. Native regressions check full crop pixels/history and drawn PDF
+annotations, alongside the pending asynchronous-open scenario.
+
+## Windows engineering calculations
+
+The formula parser recognizes a complete function token (including digits/dots and Excel compatibility prefixes)
+before considering A1 references; reference parsing remains separate. Scalar engineering arguments reuse bounded
+expression parsing. Signed radix conversions and 48-bit operations enforce bounds before integer conversion/shifting.
+Unit constants are exported reproducibly from the macOS source by `rust/scripts/export-unit-conversions.py`; the
+bundled catalog is lazy and case sensitive. Dimensions, SI powers, binary-information prefixes and temperature
+scale/offset handling remain separate. Explicit scalar Boolean/numeric-text coercion does not affect range filtering.
+
+Office export obtains typed formula results from one evaluator/cache per sheet. The XLSX writer infers types from
+string values, so generated text formula caches are corrected to `t="str"` before computing the embedded project
+digest. The patch retains formula XML, other cell attributes and unrelated ZIP entries. Spreadsheet string escapes
+preserve literal `_xHHHH_` text and encode invalid XML characters. ODS gets typed scalar values directly; error
+cache display is textual because that writer has no error variant. External imports are tested after changing an
+input, ensuring recomputation cannot pass solely through a saved cached result.
+
+## Windows runtime dependency gate
+
+The explicit MSVC target uses `+crt-static`; Cargo host tools/proc macros remain separate. CI stages binaries from
+the target-specific output directory and tests with PDFium beside target-specific test executables. A bounded Python
+PE reader examines import and delay-import tables, requires x64 PE32+ images and rejects redistributable C++ runtimes
+and unknown libraries. OS/API-set imports and bundled PDFium are allowed. Reports record each binary's SHA-256.
+The archive is created only after this gate passes. The source handoff includes the target configuration.
+
+
+## PDF text export and configured file actions
+
+A file action can resolve its extension/filter after its settings prompt and before the system picker. The
+`configured_file_action` hook is read-only; prompt cancellation, invalid settings and picker cancellation start
+no work. Choice controls use the same stable underlying values as ordinary command prompts.
+
+PDF text export takes the same committed `save_snapshot` as other outputs. A worker owns the immutable bytes,
+serializes PDFium use with existing search/edit sessions, and closes every native handle through RAII. It reads
+pages in the requested order, coalesces equal character styles, normalizes line endings, and preserves blank page
+boundaries. DOC42 adapters serialize RTF/HTML/DOCX; the HTML adapter now round-trips explicit page breaks. Font
+names are sanitized before entering rich-text output. Paragraph/text/style-run limits bound allocation, and
+cancellation is checked between pages and during glyph iteration. Final publication is atomic and no-clobber.
+
+
+## XLS scalar text arguments and parity reporting
+
+The extended text dispatcher preserves omitted arguments separately from explicit values. Text aggregators read
+bounded row-major ranges and preserve truly blank cells as empty strings; ordinary numeric aggregation retains
+its existing type-filtering rules. Existing scalar formula values remain authoritative, and Office caches use
+the previously established typed result path. Text functions live behind one dispatcher with explicit argument,
+output and search-work limits. Wildcard SEARCH uses bounded dynamic programming rather than repeated regex or
+quadratic suffix scans. Tests strip internal Office project data and edit inputs before checking recalculation.
+
+The reference-case exporter reads only the macOS fixed fixture list and records its SHA-256. A standalone report
+compares actual portable calculation results with those examples and retains all gaps. It is a diagnostic report,
+not an all-pass test or a feature-count claim; locale-dependent examples are identified separately.
+
+
+The math dispatcher shares numeric coercion with the established evaluator and receives both flattened numeric
+values and the original argument count. This keeps range filtering intact while rejecting invalid arities even
+when ranges contain no numbers. GCD/LCM use bounded exact integers and checked products; combinatorial loops stop
+when no finite f64 result is possible. Stable reciprocal/asymptotic forms avoid needless overflow for ACOTH and
+SQRTPI. Calculation never substitutes NaN/Inf for a visible formula error.
+
+
+## Independent native windows
+
+The Windows host keeps one document session per process. File → New opens a blank sibling process for apps that
+create documents, matching the macOS document model; it does not replace the current session, ask to discard it
+or cancel its asynchronous open. File → New Window (Ctrl+Shift+N) is available in all six apps, including viewers.
+Both blank windows and additional dropped/opened documents use the same spawn helper, forwarding the current
+language override and a `--` path separator. Save paths, histories and native handles remain process-local. Shared
+library/preferences/recents retain their established local-file behavior.
+
+
+Window placement is a separate bounded preference per app: normal workspace rectangle and maximized state only.
+GetWindowPlacement/SetWindowPlacement are paired so taskbar/workspace coordinates are not mixed with screen
+coordinates. Windows relocates entirely offscreen rectangles after display changes. Fullscreen slideshow windows
+save their pre-fullscreen placement; minimized state is never restored. Preferences are validated and published
+atomically only after close is confirmed, and preference failures do not block document closure. No document path
+or text is stored in layout files.
+
+
+## Rich document search and anchored replacement
+
+Native Rich Edit Find searches its actual projection through EM_FINDTEXTEXW, using native character ranges and
+wraparound. A plain model projection cannot represent table/image offsets. The host retains the existing app
+adapter for plain editors and uses Rich Edit selection APIs for rich results. This fixes literal search through
+structured documents without claiming new regex/whole-word behavior.
+
+Literal body replacement is isolated in DOC42's search module. It plans bounded nonoverlapping matches before
+mutating a disposable transaction, includes table paragraphs and skips images/section separators, indexes run
+boundaries to retain formatting/links without rescanning all runs per match, and remaps bookmarks/comments/notes
+from right to left. Matches covering invisible note markers are refused so a plain text query cannot silently remove a note. Revision/field
+anchors and cached TOC content remain guarded. One history entry contains the entire operation; invalid/oversized
+results commit nothing. The ODT reader isolates outer bookmark markers while parsing inline note paragraphs.
+
+
+An additional preflight bounds matches multiplied by document annotation/field/revision/TOC contexts. The generic
+anchor remapper is deliberately reused for consistent gravity, and excessive aggregate work is refused before
+any rewrite. This prevents the independent match/document caps from multiplying into a long UI-blocking operation.
+
+### Windows vector paths
+
+`win42::SceneItem::VectorPath` carries compound Move/Line/Cubic/Close paths with independent optional fill
+and stroke. The GDI host uses an even-odd path at the destination resolution for canvas, show and printer
+output, with saved/restored DC state. PPT42 evaluates the shared preset catalog at the current shape size,
+then applies the existing object transform. Yellow handles edit a temporary drag object; pointer-up commits
+one model history step and cancellation drops the preview. Text uses the preset's evaluated text rectangle.
+Preset identity and adjustment values remain editable across project/PPTX/ODP output. Generated MPL data
+ships with source, notice and license in the Windows archive.
+
+### Windows PDF page decorations
+
+PDF decorations live in the PDF snapshot history and are keyed by stable page identity. A selection is validated
+before committing a single multi-page operation. Header/footer and Bates tokens resolve in document order at insertion;
+future page reorder retains the assigned text. Rendering and export use the current crop/quarter-turn transform.
+Save snapshots add isolated Form XObjects, preserve inherited/shared page resources, and wrap original content state.
+Repeated watermark forms/images and font character sets are shared. Watermarks use glyph outlines; headers and numbers
+carry embedded Unicode text. Reopening leaves baked page content. Filename tokens follow only successful save callbacks.
+The shared configured file action validates image-watermark settings before showing its PNG/JPEG picker.
+
+
+### Windows read-only statistics and typed statistical arguments
+
+`DialogRequest::Information` displays a localized read-only message without producing a model callback.
+DOC42 statistics traverse rich body paragraphs and table cells directly; they do not flatten the Rich Edit
+caret projection or alter history. Style runs are joined before Unicode word/grapheme segmentation.
+
+XLS extended arguments preserve scalar/reference provenance and actual blank flags alongside evaluated values.
+Statistical families use that information for standard and A-variant coercion and paired observations.
+Distribution iterations charge the evaluator's shared step budget; argument text charges a separate cumulative
+8 MiB budget before accumulation, including cache hits. Tail and inverse-tail functions avoid `1-p` cancellation.
+The independent high-precision numeric fixture is QA data, not an installed runtime dependency.
+
+Office snapshot embedding rebuilds fresh ZIP containers, preserves unrelated parts and declares the JSON part
+in standard package metadata before hashing. Re-embedding removes prior private declarations/parts. ODS import
+repairs only a dangling own optional snapshot declaration in its working copy. Formula token mapping operates
+outside quoted literals and distinguishes ODF native F left tails from legacy Excel right-tail names.
+
+
+### Windows spreadsheet financial and calendar arithmetic
+
+Financial functions reuse typed scalar/reference arguments and the global calculation budget. IRR and RATE
+solve in log-rate space, normalize residuals and use bounded bracket fallback; cash-flow sign and date-shape
+checks precede solving. Loan interest discounts remaining payments rather than advancing a rounded payment
+through many periods. Long-term future balances retain compensated cancellation terms.
+
+Calendar functions work in absolute Excel serial days with a workbook offset. Explicit components preserve
+day 60 without constructing an invalid Gregorian date. Business-day intervals count whole weeks and holiday
+sets; WORKDAY finds the first distance reaching the requested count with bounded monotone search. Real ISO
+entry values are typed dates. Native XLSX uses serial values/date formatting; ODS uses date-time values, and
+external XLSX edits use the standard ISO date cell kind. Explicit imported text remains text.
+
+
+The plain Windows EDIT subclass brackets native text replacement, paste/cut/clear and character operations.
+Intermediate EN_CHANGE notifications are suppressed until the outer native operation returns; the host then
+commits its final text once. REFRESHING notifications remain ignored, and Rich Edit keeps its existing path.
+This preserves one history step when replacing a selected cell value instead of first committing its deletion.
+
+
+### Windows conditions and reference information
+
+The scalar evaluator retains the original formula-cell coordinates through nested/lazy/fallback parsers.
+Reference metadata operations inspect reference syntax and cell kinds without calculating the referenced formula
+when that is unnecessary. Error literals and imported error cells feed the same typed error path; error-looking
+text remains text. Typed logical ranges ignore reference text/blank values and propagate errors across all operands.
+IF/IFS/SWITCH/CHOOSE retain selected-branch evaluation; native result caches preserve Boolean/text/error types.
+
+
+### Windows native reports and PDF comparison
+
+`ReportRequest` presents a resizable native list, a copyable read-only detail field and explicit keep/clear
+controls. Stable row indices produce `ReportEvent` callbacks; the owning app retains the data and performs
+navigation/model transactions. The owner is disabled while the report is open, background completion/rendering
+continues, and pending print dialogs wait until it closes. A pending report is consumed once on the UI thread.
+The report does not add toolbar controls to every app.
+
+PDF comparison reads two committed snapshots in a worker, keeps UTF-8 positions and PDF-space glyph bounds,
+and compares Unicode words per page using bounded linear-memory LCS with common-prefix/suffix/disjoint fast
+paths. It groups removed/replaced words into line rectangles. Temporary highlights multiply into disposable
+view pixels; explicit keeping adds colored highlight annotations in one validated history transaction. Tagged
+live marks can be cleared without affecting ordinary annotations; saved/reopened marks become ordinary PDF
+annotations. Source/document and history identities invalidate stale results while allowing navigation and Save.
+
+`SnapshotHistory::current_id` is opaque and follows the exact state through Undo/Redo; new branches and unequal
+replacement get new identities. Saving leaves the identity unchanged. PDF snapshot guards combine it with a
+unique source identity, so PDFs with matching object IDs cannot accept one another's asynchronous results.
+
+
+### Windows file batches and separate results
+
+`DialogRequest::CombineFiles` uses a native multi-select picker and a new save destination, then returns typed
+paths to the app. Cancellation dispatches no model transaction. A completed background result can request a new
+independent document window; its originating document/session is retained. Print/report modal work remains ordered.
+Application command IDs are checked against host menus and native control-notification IDs before building UI.
+
+PDF batch merge reads bounded inputs into disposable documents and shares the existing structural insertion
+adapter. Its temporary model retains no user Undo history. Imported page-label rules resolve indirect standard
+values before object renumbering and map old/new page identities; existing labels and default numbering remain
+separate. Bookmarks/forms retain the existing namespace/resource validation. A fully prepared output is written to
+a same-directory temporary file, checked for cancellation and published without clobbering. No input is rewritten.
+
+Windows PDF header batches use the shared multi-file/folder dialog and return per-file outcomes in the native
+report component. Report clients choose whether highlight controls and a compact first column are relevant.
+App-requested continuation commands and output windows are delivered after modal owners become enabled;
+settings can therefore continue into another picker without re-entering the previous input dialog. Large
+settings forms use monitor-aware column placement. Batch files publish individually without replacing existing
+paths, and cancellation preserves the copies already completed.
+
+
+### Windows calculated spreadsheet arrays
+
+A calculation owns disposable typed values and spill rectangles; authoritative worksheet cells own user input.
+Formula anchors retain their source and calculated children never enter document history. An occupied input,
+protected array span, merge or competing spill produces a blocked anchor. Matrix shape, work and cumulative text
+are checked before replication. Parser-local LET bindings are scoped to the current expression. Scalar operations
+lift through the existing evaluator, while conditional operations select branches before broadcasting.
+
+Display, clipboard and export consume a single calculation per operation. Plain clipboard text uses formatted
+results; private payloads preserve formulas and source coordinates. Partial spills become typed values, while
+copied anchors keep calculated children empty. Export adapters write standard XLSX dynamic ranges/typed caches
+and ODS matrix spans independently of the optional native project payload. External array structure preservation
+remains a separate adapter responsibility; existing legacy-array edit guards are retained.
+
+
+External array adapters distinguish authoritative input from cached children using standard format metadata.
+Only pure, explicitly dynamic XLSX metadata records unlock caches; mixed records and legacy ranges remain guarded.
+ODS matrix anchors use supported dynamic functions. Import validates overlap and bounded total range work before
+clearing child inputs. Modern XLSX errors are sanitized in a disposable reader package and restored from original XML.
+
+External scalar and array exports share one calculation/clock per sheet. Surgical XML updates preserve styles,
+unknown attributes and objects, materialize only required ODS repeat runs, and clear old cache ranges without erasing
+explicit inputs. XLSX registration preserves existing metadata records. Core ODS preservation checks remain strict;
+a writer-injected default style is removed only where an unchanged source cell had no explicit style. Array metadata
+updates occur separately from the general opaque-content preservation pass.
+
+
+A spreadsheet calculation keeps full precision. Presentation formats only typed numeric results and never feeds
+rounded grid strings back into arithmetic or typed Office caches. `calculated_cells` supplies sparse data-processing text;
+`display_grid` and plain clipboard text share the presentation projection, while private clipboard payloads retain
+source formulas/types/styles. The common cell formatter accepts an explicit sheet identity so filter/summary
+references across sheets use the owning sheet's format. XLSX visibility uses the same calculation and disables the
+writer's independent filter pass, preventing it from hiding formula rows that passed the application filter.
+
+Windows PDF/scan recognition shares borrowed RGBA input and source-pixel word rectangles. The native OCR
+SDK is pinned separately from Cargo, statically linked with the CRT, and ships verified offline models and
+licenses. PDF workers retain only text between pages and commit against an exact source/history token;
+selected-page capture normalizes disposable render geometry while the saved page retains original boxes,
+rotation and annotations. Invisible font CIDs retain Unicode mappings even where a visible outline is absent.
+Native backend and GUI verification is pending; the package remains a development build.
+
+Image analysis captures an immutable shared raster and checks its pixel identity before displaying/copying
+recognized words. Viewing sessions reset on file/frame navigation; drawing changes invalidate the cache
+before another worker result can be accepted. Selection tint is a disposable display buffer. Applications
+may omit infrequent command specifications from the toolbar while retaining menu items and accelerators.
+
+PDF label artwork is an independent single-page snapshot. Native PDFium flattening runs under the shared
+PDFium lock; the portable label renderer clips and normalizes page geometry inside one reusable form and
+prunes unrelated source objects. Layout preferences retain stock/copies only. Source choices can carry
+individual capture failures, so unavailable artwork does not disable other label inputs.
+
+Document picture label sources carry encoded images and displayed dimensions; decoding is deferred until
+the user chooses that source. The bounded bitmap wrapper preserves aspect ratio and composites alpha on
+white paper, then reuses the PDF artwork assembly path. Other document content never enters that snapshot.
+
+A shared PDFium mutex now covers search/edit/preview/printing initialization and teardown. Disposable
+preview documents live on workers; only one BGRA page buffer enters the modal preview. UI callbacks run
+outside window-state borrows, allowing standard save/print/settings dialogs without retaining engine locks.
+Actual-size PDF print jobs retain immutable bytes and native document/font resources until spooling ends.
+
+A document gesture may queue the shared label action and provide one ephemeral source override. The host
+consumes it once, outside document-state borrows and after normal mouse release. PDF area selection
+checks document epoch, save-state identity and current page before extracting an immutable single-page
+snapshot. Selection outlines are display items only; cancellation or rerender clears the queued area.
+
+Native rich-content label capture streams only the current selection, then formats an isolated editor.
+A temporary EMF measures actual ink before allocating one bounded bitmap; the PDF stores only the
+resulting selected pixels. No clipboard round trip or live-editor layout mutation is needed. Native
+selected-text label sources use the same editor's UTF-16 projection rather than model-only offsets.
+The initial mixed-content output is raster artwork; vector text fidelity remains a separate parity gap.
+
+Recovery uses a readonly app snapshot contract, separate from user-save revision capture. Imported Office
+containers remain in their original format; an inline presentation draft is applied only to an independent
+state copy. The shared host tracks a recovered document's unsaved state independently of its newly decoded
+model, so it cannot silently close or save over the original. Protected PDF sessions do not produce automatic
+plaintext copies. File-menu/startup recovery is limited to inactive sessions holding no exclusive file lock.
+
+Each journal writes one bounded, length/hash-checked atomic record on a serial worker. A failed write leaves
+the previous record intact; a later Save/Discard still queues its cleanup. Claimed copies stay locked until
+saved/discarded. Recovery storage is an owned cache, never an allowed document-save destination; cleanup
+removes only known journal/materialization files and preserves unrelated files. Errors appear in status.
+
+Each app exposes one ordinary print command to the shared host. The host places it in File, registers
+Ctrl+P once, and retains normal command-state checks. PDF jobs distinguish actual-size label sheets from
+centered/shrink-only document pages. Pure placement math uses physical sheet dimensions, separate axis
+DPI and hard-margin offsets, then applies printer calibration. PDF/font resources survive through EndDoc;
+queued background print jobs wait until the owner is enabled. Raster printing remains an explicit fallback.
+
+Presentation scenes read an active inline text draft for both display and print while keeping the model's
+history unchanged. Recovery deletion takes an exclusive claim and validates the record envelope but does
+not require decoding/checksumming a damaged payload; recovery itself still verifies the full payload hash.
+
+Apps may opt individual character commands into native Rich Edit formatting. The host derives command
+states from the current native range and applies only the requested character mask, preserving mixed
+attributes elsewhere. Empty character selections set typing attributes without a model/history mutation;
+paragraph alignment changes its paragraphs even with a collapsed caret. Content changes pass through the
+existing guarded projection adapter exactly once; generated control notifications
+are suppressed during this operation, and a rejected projection restores the native snapshot and range.
+Successful character formatting avoids a model-to-control reload, which would erase insertion attributes.
+
+Image recovery uses an internal versioned sample/metadata record per frame, wrapped in an animation/session
+record and the common hashed journal. It bypasses export codecs, retains 16-bit samples and conversion guards,
+and captures readonly references to all active/inactive frames without consuming a pending save. Decoders
+bound frames, dimensions, lengths, metadata counts and aggregate allocation; normal recovery produces a fresh
+model and the shared host supplies the unsaved-copy lifecycle. Original paths are not output destinations.
+
+Goal Seek freezes a workbook task before starting a cancelable worker. Numerical trials use a private model
+with the ordinary formula evaluator and frozen calculation time; no trial writes enter live history or export
+caches. A sealed result carries its source state/history identity and can be committed only against that state
+through normal cell validation. The host's confirmation contract delivers an explicit boolean result; closing
+or declining it does not apply the proposed change. Worker/session disposal signals cancellation without a UI join.
+
+Rich Edit's projection may inject fixed view defaults and re-encode PNG resources. Only known default
+padding and inline-picture properties are accepted in projection mode; regular imports stay strict.
+The picture matcher tries exact resources first, then compares bounded decoded sample hashes and geometry,
+restoring original compressed data/MIME/metadata on a match. It caches each source digest and bounds aggregate
+pixel work; any removed or visually changed source picture still rejects the transaction. Unknown placement
+properties are not silently discarded. Regression fixtures are the exact isolated native-audit source/RTF.
+
+SCN acquisition captures generation plus an optional rescan page identity. A replacement validates the entire
+batch against a private candidate that excludes the target's current slot/allocation, then replaces the target
+with a fresh page and appends further feeder images in one history commit. Neither selection changes nor
+index reuse redirect that callback; project generation or missing identity refuses it. Ordinary WIA acquisition
+uses the same STA/result channel. Only explicit audit environment variables enable a WIC image fixture with
+a bounded file barrier for deterministic cancellation/delayed callbacks; it never establishes hardware coverage.
+
+Toolbar commands may declare toggle semantics. Native pushlike check controls receive the same checked state
+as menus, while dialog/action buttons retain ordinary button semantics. Control updates occur outside model
+borrows to avoid synchronous native notification reentrancy.
+
+Windows constrained optimization runs through a sealed XLS42 task/result boundary. Tasks own a frozen private
+workbook, share one evaluator per trial point and carry the source history identity; trial writes bypass live
+history. Accepted values are first validated in a private candidate workbook, then the sheet model and all
+values enter live history together. Discard keeps only the model. The native form declares its multiline
+field indices through `input_multiline_fields`; existing first-field multiline forms retain their behavior.
+
+Windows explicit proofing uses the installed `ISpellChecker` providers in the UI's existing COM apartment. It
+checks an immutable GT_RAWTEXT UTF-16 projection, masks structural delimiters without changing positions and
+validates returned ranges. Dialogs expose only installed languages and readonly source words. A correction
+maps the captured UTF-16 text to the authoritative paragraph/table runs and prepares a sealed model change;
+font substitutions from exported native RTF are not imported. The host loads and validates the new projection
+before committing the prepared change, suppressing generated control notifications. Refusal discards it and
+restores the prior native projection and selection. DOC retains source run styles/links; PPT retains its exact
+style precision and object geometry. No dictionary writes or automatic correction are performed; Skip All is
+limited to that checker session.
+
+Shared Windows panel visibility belongs to each native window, separately from document history. It combines
+application availability with user visibility, and the existing DPI layout reclaims sidebar/toolbar/status/ruler
+space. `Window Layout` preferences persist the visibility flags with the normal placement; default flags are
+omitted to retain the old placement representation. Generated UI controls still exist while hidden, so their
+commands and document models remain available. Menu checks reflect availability and current visibility.
+
+PDF header/footer font programs are bounded immutable values, shared across decoration history and batch
+workers. Windows GDI resolves the requested family/style to its actual TrueType bytes; substitution to a
+missing family is refused. The shared PDF font layer validates outline-embedding permissions and preserves
+full programs when subsetting is prohibited. Embedded metrics and Unicode maps come from that face. A
+process-local program identity separates glyph-subset caches; actual data equality defines settings equality.
+The default Noto Sans path stays available without system-font access. This font-program boundary does not
+implement new shaping or font fallback behavior. Machine-readable embedding rules follow the
+[OpenType OS/2 specification](https://learn.microsoft.com/typography/opentype/spec/os2).
+
+### Windows sparse worksheet projection
+
+`Workbook::display_cells` and `calculated_cells` calculate once and return occupied/spilled coordinates;
+formatting, safe external caches and typed booleans keep the existing display semantics. Filtering, clipboard,
+labels, charts, pivots, validation and printing consume sparse maps. Clipboard rectangles retain an independent
+100,000-cell operation bound. Dense projections are test-only helpers; production consumers use sparse maps.
+`App::sparse_table` supplies an immutable `SparseTable` with shared text storage and explicit dimensions;
+legacy `table` adapters remain available. The host caches the chosen source on refresh, shows/layouts the grid
+for either representation, and painting reads missing coordinates as empty text. The XLS physical row map is
+shared, sorted and binary searched; hidden/filtered rows keep their physical editing/clipboard coordinates.
+This removes empty-cell text allocation; the shared sparse axes below handle native grid geometry.
+
+`App::grid_axes` optionally supplies sparse `GridAxis` geometry: default length plus overrides and cumulative
+64-bit deltas in shared immutable storage. Prefix/hit queries binary search; visible traversal skips zero-length
+runs and visits only cells intersecting the frozen/scrolled viewport. XLS translates physical size overrides
+through its existing row map. Row labels are requested only while painting visible headers. The grid keeps a
+64-bit origin, uses clipped 32-bit GDI pixels, and scales only the native scrollbar thumb when total geometry
+exceeds the OS range; both scrollbar endpoints retain exact logical coordinates. Existing custom grids can use
+the bounded legacy length adapter. Geometry/hit/merge/resize/editor/picture paths use the same axes.
+
+External XLSX values and shared-formula text are read through Calamine's pinned `worksheet_cells_reader`
+stream, one actual XML cell record at a time. No worksheet-range matrix is constructed. Types, dates,
+modern error substitutions, per-cell formula caches, layout imports and original-package preservation retain
+existing policy; record count and cumulative input text are checked before model insertion. XLS retains its legacy reader; ODS uses the sparse record import described below.
+
+ODS import visits namespace-qualified XML cell records and expands only meaningful bounded repetitions
+(up to one million records, four MB cumulative text). Empty repeated rows/columns advance coordinates.
+ODF text spaces, tabs, line breaks and paragraphs are decoded explicitly with a bounded depth. Style/merge
+projection and unedited-style verification visit actual coordinates; structural style shifts visit explicit styles.
+Value-only ODS changes with unchanged sheet layout/styles and no active filter use the existing surgical XML
+patcher extended with typed inputs. Unedited rich text, metadata and ZIP parts remain byte-for-byte; scalar
+and dynamic-array caches still refresh through the common pipeline. Layout/style/structural/filter edits retain
+the existing reconstruction and preservation guards. Missing XML attribute namespaces are introduced locally,
+and nonexistent attribute removals need no namespace declaration. Newly materialized gaps use ODF repetition.
+
+
+Worksheet capacity is now 1,048,576 by 16,384. It is independent of one-million stored-cell/four-MB text
+budgets and the 100,000-cell rectangle-operation budget. Copy/paste/style/fill/CSV and native print
+check operation area before expansion; native merge encoders have the same bound. Full-range validation
+visits stored coordinates, checking implicit blanks algebraically. Chart series retain the old 1,000-point
+maximum independently of sheet dimensions. Dense text APIs compile only for core tests; examples and app
+consumers use sparse projections. Grid refresh brings a changed focus into view without snapping ordinary
+scrolling back to an unchanged focus; headers fit seven-digit row numbers. Viewport expansion and full-column formula aggregation are described below.
+
+The Windows XLS open boundary validates stored editor inputs from `Workbook::cell_inputs` across all
+sheets before replacing the live session. It does not iterate the logical worksheet rectangle; implicit
+blanks cannot contain unsupported control characters. Refusal preserves the previous document and caches.
+
+Reference aggregates traverse the union of stored nonempty coordinates and ordered spill entries, in row-major
+order, charging stored-data scans against the common calculation budget. SUM/AVERAGE/MIN/MAX/COUNT/COUNTA/
+PRODUCT and aggregate math retain their typed range rules without visiting implicit blanks. COUNTBLANK uses
+reference area minus calculated nonempty coordinates, including empty-string formula results and spill values.
+Other operations still enforce their materialization budgets. This does not add whole-column reference syntax.
+
+Native XLSX literal error inputs are emitted as formatted placeholders and corrected through the existing typed
+cache XML writer to standard `t="e"` cells without formulas. Supported legacy/modern codes retain their exact
+raw errors; unrecognized literal XLSX error codes are refused. Native ODS literal errors are tagged by the shared
+surgical typed-input patcher. Ordinary error-looking strings stay strings. The disposable Calamine working copy
+also normalizes GETTING_DATA before restoring the original code, and the evaluator recognizes the supported
+modern errors without changing ERROR.TYPE's explicit mappings.
+
+Grid selection/frozen-row queries binary-search the shared physical-row map. Picture moves use the same
+sparse 64-bit axes as painting and hit testing for both prefix positions and destination lookup; no per-row
+walk is needed to move an object near the bottom of a large sheet. The existing visible-anchor/point-unit
+policy and one-transaction history remain intact.
+
+Whole-axis reference parsing accepts optional absolute markers, quoted sheet qualifiers and global Excel
+row/column endpoints. Valid formula references into unallocated blank area evaluate as blanks/zero without
+changing sheet data/extent; past-capacity references still fail. INDEX's reference form resolves its source
+rectangle before materializing only the chosen result; array-valued first arguments retain the array path.
+INDIRECT accepts whole-axis address text while still refusing arbitrary expressions. ODF conversion retains
+whole-axis operands in bracket notation, including row-only endpoints. Native Office writers and importers
+use the standard activeTab/ActiveTable metadata, independently of the private snapshot. External tab-state
+saves surgically update the first workbook view and its sheet selection flags; ODS reads/writes ActiveTable
+by namespace URI and creates missing settings with a manifest entry. Other views, cell XML, styles and
+unknown ZIP members remain unchanged. Same-active-sheet reordering preserves existing grouping flags.
+Existing allocated-coordinate editing bounds and array budgets remain.
+
+Conditional reference aggregates collect the union of occupied relative offsets from all criteria and the
+optional target, including spill coordinates. Counting adds the area of omitted offsets only when all
+criteria accept a physical blank. Summing/averaging/extrema inspect typed occupied target values; numeric
+counts exclude blank/text/logical targets, while selected errors propagate. Criteria use computed emptiness,
+so formula-empty strings and nonempty spill cells are distinguished. Work for stored traversal, predicates
+and wildcard matching shares the existing evaluation budget. SUMIF/AVERAGEIF target anchoring follows the
+criteria dimensions with global bounds; IFS validates equal shapes before traversal.
+
+Windows blank-grid growth is per-document viewport state, keyed by sheet identity. Scroll/keyboard edges
+request extra rows/columns through App::extend_grid_view; the native host refreshes its sparse projection
+without mutating document data or history. Out-of-allocation selections remain in the viewport until edited.
+Workbook::edit_expanding runs an edit against a private bounded state and commits dimensions/selection/data
+as one history step. Errors and no-ops preserve the original state and redo branch. Mapped typed/TSV paste
+validates global mapping axes, then grows to the actually used destinations in its existing atomic edit.
+External ODS positive blank allocation growth does not shift references; value-only saves normalize this
+allocation difference when choosing the surgical XML path. Shrinking/structural changes keep their guards.
+
+Native grid snapshots now carry a document/sheet identity independent of ordinary edits and focus
+coordinates. The grid resets scroll and transient drag state on identity changes before extending blank
+space or revealing the selected cell. Successful Open/New advance the document generation; rejected Open
+preserves it, and sheet identity distinguishes same-focus tab changes. A small sheet's scroll clamping is
+not relied on as a document-reset mechanism. Range commands use bounded growth transactions; mapped
+serial output grows only its actual destinations.
+
+A lexical formula normalization layer shares the macOS Russian alias table. It supplies disposable
+canonical text to evaluation, spill discovery and standard Office writers without replacing authoritative
+editor input. Semicolons become argument separators only outside inline arrays; quoted strings/sheets and
+structured headers are copied intact. Unicode unquoted sheet prefixes are quoted for standard output.
+Error constants are normalized before ODF reference tokenization (OpenFormula 1.3 §5.12). Tests inspect
+independent packages and retain exact original-state Undo for external edits.
+
+Stable sorting uses typed keys from one bounded evaluation session. Nonempty-key line indexes are ordered
+explicitly; omitted all-blank lines map algebraically into the stable trailing group. Only stored cells move,
+including styles and relative formula inputs. This removes rectangular materialization from sorting. Rows
+and columns share the same permutation, with optional headers, multiple directions, natural ASCII number
+segments and custom priorities. Key slots and evaluation work are independently bounded; failed rules,
+merged/array/spill blocks and unsupported external sources leave the original history untouched. The basic
+sort dialog stays compact; advanced options have their own menu dialog.
+
+Common ODS numeric formats are encoded as standard number-style/percentage-style definitions with
+explicit decimal/minimum digit/grouping and en-US punctuation. Native cell styles reference deduplicated
+definitions; numeric values remain unrounded while numeric text caches are formatted independently.
+Import resolves namespace-qualified definitions and parent number styles. Surgical input/array/scalar cache
+updates carry number-format context, keeping percentage type and display text separate from numeric data.
+Formatting changes are bounded by XML size and unique-style counts; unsupported code families remain
+guarded. Unchanged style definitions and unknown ZIP parts survive value-only external saves.

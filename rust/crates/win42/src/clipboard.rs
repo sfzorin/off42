@@ -13,12 +13,16 @@ impl Drop for Clipboard {
     }
 }
 unsafe fn open(owner: HWND) -> Result<Clipboard, String> {
-    if OpenClipboard(owner) == 0 {
-        Err("Unable to open clipboard".into())
-    } else {
-        Ok(Clipboard)
+    // Clipboard viewers/other applications can hold a short lease while a user copies.
+    // Retry that transient contention, but keep a bounded error for a persistent lock.
+    let start=std::time::Instant::now();
+    loop{
+        if OpenClipboard(owner)!=0{return Ok(Clipboard);}
+        if start.elapsed()>=std::time::Duration::from_millis(500){return Err("Unable to open clipboard".into());}
+        std::thread::sleep(std::time::Duration::from_millis(10));
     }
 }
+
 pub unsafe fn write_text(owner: HWND, text: &str) -> Result<(), String> {
     if text.contains('\0') {
         return Err("Clipboard text contains NUL".into());

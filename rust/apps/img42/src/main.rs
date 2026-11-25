@@ -1,10 +1,16 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 mod batch;
 mod pdf_view;
+mod live_text;
+mod recovery;
+mod uniform_background;
 use img42_core::ImageDocument;
 use std::path::Path;
+const EXPORT_SELECTION: u16 = 51;
 #[derive(Default)]
 struct Img {
+    live_text:live_text::LiveText,
+    background: uniform_background::Removal,
     batch: Option<batch::Worker>,
     batch_outcomes: Vec<String>,
     batch_done: Option<bool>,
@@ -31,12 +37,18 @@ struct Img {
     zoom: Option<f64>,
     tool: u8,
     gesture: Vec<(u32, u32)>,
+    image_pointer_scale: f64,
     selection: Option<(u32, u32, u32, u32)>,
     mask: Option<Vec<bool>>,
     ink_color: [u8; 3],
     ink_width: u32,
 }
 impl Img {
+    fn lasso_radius(&self) -> f64 {
+        let scale = if self.image_pointer_scale > 0.0 { self.image_pointer_scale } else { 1.0 };
+        (12.0 / scale).clamp(1.0, 256.0)
+    }
+
     fn loses_precision(&self) -> bool {
         self.original_16bit.iter().enumerate().any(|(i, was_16)| {
             *was_16
@@ -50,8 +62,37 @@ impl Img {
     }
 }
 impl win42::App for Img {
+    fn supports_marks(&self) -> bool {
+        true
+    }
+    fn mark_canvas_size(&self) -> Option<(u32, u32)> {
+        self.doc
+            .as_ref()
+            .map(|document| (document.width(), document.height()))
+    }
+    fn place_mark(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        rect: [u32; 4],
+    ) -> Result<(), String> {
+        self.doc
+            .as_mut()
+            .ok_or("Open an image first.")?
+            .place_mark(width, height, rgba, rect)
+            .map_err(|error| error.to_string())?;
+        self.gesture.clear();
+        Ok(())
+    }
     fn poll_background(&mut self) -> bool {
-        let mut changed = false;
+        let (background_changed, applied) = self.background.poll(self.doc.as_mut());
+        if applied {
+            self.selection = None;
+            self.mask = None;
+            self.gesture.clear();
+        }
+        let mut changed = self.live_text.poll(self.doc.as_ref()) || background_changed;
         let mut done = None;
         if let Some(worker) = &self.batch {
             loop {
@@ -131,6 +172,8 @@ impl win42::App for Img {
         self.frames = prepared.docs.into_iter().map(Some).collect();
         self.frame_index = 0;
         self.doc = self.frames[0].take();
+        self.live_text.reset();
+        self.background = uniform_background::Removal::default();
         self.delays = vec![image::Delay::from_numer_denom_ms(0, 1); count];
         self.animation_loop = img42_core::AnimationLoop::Once;
         self.conversion_risk = true;
@@ -213,6 +256,11 @@ impl win42::App for Img {
     }
     fn can_save_in_place(&self) -> bool {
         !self.conversion_risk && !self.loses_precision()
+    }
+    fn supports_recovery(&self)->bool{true}
+    fn recovery_extensions(&self)->&'static[&'static str]{&["img42r"]}
+    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
+        recovery::snapshot(self)
     }
     fn save_snapshot_to(
         &mut self,
@@ -298,6 +346,7 @@ impl win42::App for Img {
         }
     }
 
+    fn default_print_command(&self)->Option<u16>{Some(36)}
     fn name(&self) -> &'static str {
         "IMG42"
     }
@@ -312,7 +361,7 @@ impl win42::App for Img {
     }
     fn file_actions(&self) -> &'static [win42::FileAction] {
         &[win42::FileAction {
-            id: 40,
+            id: EXPORT_SELECTION,
             title: "Export selected pixels (8-bit PNG)...",
             save: true,
             extension: "png",
@@ -321,23 +370,17 @@ impl win42::App for Img {
         }]
     }
     fn file_action(&mut self, id: u16, path: &Path) -> Result<(), String> {
-        if id != 40 {
+        if id != EXPORT_SELECTION {
             return Err("Unknown action".into());
         }
-        let mask = self.mask.as_ref().ok_or("Select a color first")?;
+        let mask = self.mask.as_ref().ok_or("Make a pixel selection first")?;
         let bytes = self
             .doc
             .as_ref()
             .ok_or("Open an image first")?
             .masked_png(mask)
             .map_err(|e| e.to_string())?;
-        use std::io::Write;
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(path)
-            .map_err(|e| e.to_string())?;
-        file.write_all(&bytes).map_err(|e| e.to_string())
+        suite42_core::write_new(path, &bytes).map_err(|e| e.to_string())
     }
     fn actions(&self) -> &'static [(u16, &'static str)] {
         &[
@@ -365,10 +408,22 @@ impl win42::App for Img {
             (37, "Previous image in folder"),
             (38, "Next image in folder"),
             (39, "Lasso selection tool"),
+            (50, "Smart Lasso"),
+            (uniform_background::COMMAND, "Remove Uniform Background…"),
             (40, "Batch convert folder..."),
             (41, "Cancel batch"),
             (42, "Batch outcomes..."),
         ]
+    }
+    fn command_specs(&self)->Vec<win42::CommandSpec> {
+        [(43,"Recognize Image Text…",None),(44,"Copy Selected Text",Some("Ctrl+C")),(45,"Copy All Recognized Text",None),(46,"Select All Recognized Text",Some("Ctrl+A")),(47,"Clear Text Selection",None),(48,"Cancel Text Recognition",None),(49,"View and Select Text",None)]
+            .into_iter().map(|(id,title,accelerator)|win42::CommandSpec{id,title,accelerator,group:"Live Text"}).collect()
+    }
+    fn toolbar_command_visible(&self,id:u16)->bool {matches!(id,44|49)}
+    fn command_state(&self,id:u16)->win42::CommandState {win42::CommandState{enabled:self.enabled(id),checked:id==49&&self.tool==0}}
+    fn clipboard_request(&self,id:u16)->Option<win42::ClipboardRequest> {
+        if !matches!(id,44|45)||(id==44&&self.tool!=0){return None;}
+        self.live_text.text(self.doc.as_ref()?,id==45).map(win42::ClipboardRequest::WriteText)
     }
     fn input_folder_fields(&self, id: u16) -> Vec<(usize, &'static str)> {
         if id == 40 {
@@ -381,6 +436,14 @@ impl win42::App for Img {
         }
     }
     fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+        if id == uniform_background::COMMAND {
+            return Some(win42::InputRequest {
+                title: "Remove Uniform Background",
+                fields: vec![("Color tolerance (0–64)", "24".into())],
+            });
+        }
+        if id==43 {return Some(win42::InputRequest{title:"Recognize Image Text",fields:vec![("Language (auto, en-US, eng+rus; up to 3)",if self.live_text.language.is_empty(){"auto".into()}else{self.live_text.language.clone()})]});}
+
         if id == 40 {
             return Some(win42::InputRequest {
                 title: "Batch conversion: JPEG is 8-bit on white",
@@ -480,6 +543,23 @@ impl win42::App for Img {
         Some(win42::InputRequest { title, fields })
     }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
+        if id == uniform_background::COMMAND {
+            let [value] = values else { return Err("Invalid background settings".into()) };
+            let tolerance = value.trim().parse::<u8>().ok()
+                .filter(|value| *value <= 64).ok_or("Enter a color tolerance from 0 to 64")?;
+            if self.background.running() {
+                return Err("Background removal is already running".into());
+            }
+            self.batch_done = None;
+            return self.background.start(self.doc.as_ref().ok_or("Open an image first")?, tolerance);
+        }
+        if id==43 {
+            let language=values.first().ok_or("Missing OCR language")?.trim();
+            if language.is_empty()||language.len()>128||!language.chars().all(|c|c.is_ascii_alphanumeric()||matches!(c,'-'|'_'|'+')) {return Err("Choose auto or up to three built-in OCR languages".into());}
+            self.live_text.start(self.doc.as_ref().ok_or("Open an image first")?,language);
+            self.tool=0;self.selection=None;self.mask=None;self.gesture.clear();return Ok(());
+        }
+
         if id == 40 {
             if self.batch.is_some() {
                 return Err("A batch is already running".into());
@@ -641,6 +721,7 @@ impl win42::App for Img {
     fn image(&self) -> Option<(u32, u32, Vec<u8>)> {
         let d = self.doc.as_ref()?;
         let mut pixels = d.pixels().to_vec();
+        if self.tool==0 {self.live_text.paint_selection(d,&mut pixels);}
         if let Some(mask) = &self.mask {
             for (p, selected) in pixels.chunks_exact_mut(4).zip(mask) {
                 if *selected {
@@ -672,6 +753,14 @@ impl win42::App for Img {
     }
     fn canvas_event(&mut self, event: win42::CanvasEvent) -> Result<(), String> {
         use win42::CanvasEvent::*;
+        if self.tool==0 {
+            if let Key{code:32|33|34,..}=event {
+                self.live_text.clear();
+                let result=self.action(if matches!(event,Key{code:33,..}){37}else{38});
+                return match result {Err(e)if e=="No more images in this direction"=>Ok(()),result=>result};
+            }
+            if let Some(doc)=self.doc.as_ref(){if self.live_text.event(doc,event){return Ok(());}}
+        }
         let d = match self.doc.as_ref() {
             Some(d) => d,
             None => return Ok(()),
@@ -694,18 +783,26 @@ impl win42::App for Img {
                 }
             }
             PointerUp(p) if !self.gesture.is_empty() => {
-                self.gesture.push(point(p));
+                let mut trace = std::mem::take(&mut self.gesture);
+                trace.push(point(p));
                 if self.tool == 1 {
-                    self.selection =
-                        Some(rectangle(self.gesture[0], *self.gesture.last().unwrap()));
-                } else if self.tool == 6 {
-                    self.mask = Some(polygon_mask(d.width(), d.height(), &self.gesture)?);
+                    self.selection = Some(rectangle(trace[0], *trace.last().unwrap()));
+                } else if matches!(self.tool, 6 | 7) {
+                    if self.tool == 7 {
+                        if trace.len() < 3 {
+                            return Ok(());
+                        }
+                        if let Some(outline) = d.refine_lasso(&trace, self.lasso_radius()) {
+                            trace = outline;
+                        }
+                    }
+                    self.mask = Some(polygon_mask(d.width(), d.height(), &trace)?);
                     self.selection = None;
                 } else {
-                    let start = self.gesture[0];
-                    let end = *self.gesture.last().unwrap();
+                    let start = trace[0];
+                    let end = *trace.last().unwrap();
                     let points = if self.tool == 2 {
-                        self.gesture.clone()
+                        trace
                     } else {
                         shape_points(self.tool, start, end, d.width(), d.height())
                     };
@@ -716,7 +813,6 @@ impl win42::App for Img {
                         .draw_stroke(&points, [r, g, b, 255], self.ink_width.max(1))
                         .map_err(|e| e.to_string())?;
                 }
-                self.gesture.clear();
             }
             Cancel => self.gesture.clear(),
             _ => {}
@@ -725,6 +821,32 @@ impl win42::App for Img {
     }
     fn image_zoom(&self) -> Option<f64> {
         self.zoom
+    }
+    fn set_image_pointer_scale(&mut self, dip_per_pixel: f64) {
+        self.image_pointer_scale = dip_per_pixel;
+    }
+    fn image_overlay(&self) -> Vec<win42::SceneItem> {
+        if self.tool != 7 || self.gesture.is_empty() {
+            return Vec::new();
+        }
+        let points: Vec<_> = self.gesture.iter().map(|&(x, y)| win42::Point {
+            x: f64::from(x),
+            y: f64::from(y),
+        }).collect();
+        let last = points[points.len() - 1];
+        let radius = self.lasso_radius();
+        let color = [0, 100, 245];
+        vec![
+            win42::SceneItem::Path { points, color, closed: false },
+            win42::SceneItem::Ellipse {
+                x: last.x - radius,
+                y: last.y - radius,
+                width: radius * 2.0,
+                height: radius * 2.0,
+                fill: None,
+                stroke: Some(color),
+            },
+        ]
     }
     fn status(&self) -> String {
         let completed = self
@@ -757,12 +879,15 @@ impl win42::App for Img {
             .as_ref()
             .map(|d| {
                 format!(
-                    "{} × {} pixels | {}",
+                    "{} × {} pixels | {}{}",
                     d.width(),
                     d.height(),
                     self.zoom
                         .map(|z| format!("{:.0}%", 100.0 * z))
                         .unwrap_or_else(|| "Fit".into())
+                        + if self.live_text.status(d).is_empty() {""} else {" | "}
+                        + self.live_text.status(d),
+                    if self.background.status().is_empty() { String::new() } else { format!(" | {}", self.background.status()) }
                 )
             })
             .unwrap_or_else(|| "Open a PNG or JPEG image".into())
@@ -782,13 +907,22 @@ impl win42::App for Img {
     }
     fn enabled(&self, id: u16) -> bool {
         match id {
+            uniform_background::COMMAND => self.doc.is_some() && !self.background.running(),
+            43|49=>self.doc.is_some(),
+            44|47=>self.tool==0&&self.doc.as_ref().is_some_and(|d|self.live_text.selected(d)),
+            45|46=>self.doc.as_ref().is_some_and(|d|self.live_text.ready(d)),
+            48=>self.live_text.busy(),
             40 => self.batch.is_none(),
             41 => self.batch.is_some(),
             42 => !self.batch_outcomes.is_empty(),
+            EXPORT_SELECTION | 34 | 35 => self.doc.is_some() && self.mask.is_some(),
             _ => self.doc.is_some(),
         }
     }
     fn open(&mut self, p: &Path) -> Result<(), String> {
+        if p.extension().and_then(|e|e.to_str()).is_some_and(|e|e.eq_ignore_ascii_case("img42r")){
+            *self=recovery::open(p)?;return Ok(());
+        }
         if p.extension()
             .and_then(|e| e.to_str())
             .is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
@@ -804,6 +938,8 @@ impl win42::App for Img {
         self.frames = docs.into_iter().map(Some).collect();
         self.frame_index = 0;
         self.doc = self.frames[0].take();
+        self.live_text.reset();
+        self.background = uniform_background::Removal::default();
         self.delays = delays;
         self.animation_loop = animation_loop;
         self.conversion_risk = conversion_risk;
@@ -837,6 +973,8 @@ impl win42::App for Img {
             self.frames[self.frame_index] = self.doc.take();
             self.doc = self.frames[i].take();
             self.frame_index = i;
+            self.live_text.reset();
+            self.background = uniform_background::Removal::default();
             self.selection = None;
             self.mask = None;
             self.gesture.clear();
@@ -846,6 +984,22 @@ impl win42::App for Img {
         self.frame_index
     }
     fn action(&mut self, id: u16) -> Result<(), String> {
+        if matches!(id, 4 | 5) {
+            self.background = uniform_background::Removal::default();
+        }
+        if matches!(id,44..=49) {
+            match id {
+                44|45=>return Ok(()),
+                46=>if let Some(doc)=self.doc.as_ref(){self.live_text.select_all(doc);},
+                47=>self.live_text.clear(),
+                48=>self.live_text.cancel(),
+                49=>{self.tool=0;self.selection=None;self.mask=None;self.gesture.clear();},
+                _=>{}
+            }
+            return Ok(());
+        }
+        if matches!(id,23|24|26..=28|39){self.live_text.clear();}
+
         if id == 41 {
             if let Some(worker) = &self.batch {
                 worker
@@ -955,20 +1109,21 @@ impl win42::App for Img {
             return Ok(());
         }
         if id == 34 {
-            let mask = self.mask.as_mut().ok_or("Select a color first")?;
+            let mask = self.mask.as_mut().ok_or("Make a pixel selection first")?;
             for selected in mask {
                 *selected = !*selected;
             }
             return Ok(());
         }
         if id == 35 {
-            let mask = self.mask.take().ok_or("Select a color first")?;
-            return self
-                .doc
+            let mask = self.mask.as_ref().ok_or("Make a pixel selection first")?;
+            self.doc
                 .as_mut()
                 .ok_or("Open an image first")?
-                .erase_mask(&mask)
-                .map_err(|e| e.to_string());
+                .erase_mask(mask)
+                .map_err(|e| e.to_string())?;
+            self.mask = None;
+            return Ok(());
         }
         if matches!(id, 4 | 5 | 10 | 11 | 15 | 16) {
             self.selection = None;
@@ -994,8 +1149,8 @@ impl win42::App for Img {
                 self.tool = 1;
                 self.gesture.clear();
             }
-            39 => {
-                self.tool = 6;
+            39 | 50 => {
+                self.tool = if id == 50 { 7 } else { 6 };
                 self.gesture.clear();
             }
             24 => {
@@ -1021,32 +1176,43 @@ fn polygon_mask(width: u32, height: u32, points: &[(u32, u32)]) -> Result<Vec<bo
     if points.len() < 3 || points.len() > 4096 {
         return Err("Draw a lasso with 3–4096 points".into());
     }
-    let mut mask = vec![false; width as usize * height as usize];
-    let min_y = points.iter().map(|p| p.1).min().unwrap();
-    let max_y = points
+    let mut edges = points
         .iter()
-        .map(|p| p.1)
-        .max()
-        .unwrap()
-        .min(height.saturating_sub(1));
-    for y in min_y..=max_y {
-        let scan = y as f64 + 0.5;
-        let mut intersections = Vec::new();
-        for i in 0..points.len() {
-            let (x1, y1) = points[i];
-            let (x2, y2) = points[(i + 1) % points.len()];
-            let (y1, y2) = (y1 as f64, y2 as f64);
-            if (y1 <= scan && scan < y2) || (y2 <= scan && scan < y1) {
-                intersections.push(x1 as f64 + (scan - y1) * (x2 as f64 - x1 as f64) / (y2 - y1));
-            }
+        .copied()
+        .zip(points.iter().copied().cycle().skip(1))
+        .filter_map(|(a, b)| {
+            let ((x1, y1), (x2, y2)) = if a.1 <= b.1 { (a, b) } else { (b, a) };
+            (y1 < y2).then_some((y1, y2, x1, x2))
+        })
+        .collect::<Vec<_>>();
+    edges.sort_unstable_by_key(|edge| edge.0);
+    let mut mask = vec![false; width as usize * height as usize];
+    let start = edges.first().map_or(0, |edge| edge.0);
+    let end = edges.iter().map(|edge| edge.1).max().unwrap_or(0).min(height);
+    let mut pending = edges.into_iter().peekable();
+    let mut active = Vec::new();
+    let mut intersections = Vec::new();
+    let mut work = 0usize;
+    for y in start..end {
+        active.retain(|&(_, y2, _, _)| y2 > y);
+        while pending.peek().is_some_and(|edge| edge.0 == y) {
+            active.push(pending.next().expect("pending edge"));
         }
+        work += active.len();
+        if work > 8_000_000 {
+            return Err("Lasso outline exceeds the selection work limit".into());
+        }
+        let scan = f64::from(y) + 0.5;
+        intersections.clear();
+        intersections.extend(active.iter().map(|&(y1, y2, x1, x2)| {
+            f64::from(x1) + (scan - f64::from(y1)) * (f64::from(x2) - f64::from(x1)) / f64::from(y2 - y1)
+        }));
         intersections.sort_by(f64::total_cmp);
         for pair in intersections.chunks_exact(2) {
             let x1 = (pair[0] - 0.5).ceil().max(0.0) as u32;
             let x2 = (pair[1] - 0.5).ceil().min(width as f64).max(0.0) as u32;
-            for x in x1.min(width)..x2 {
-                mask[(y * width + x) as usize] = true;
-            }
+            let row = (y * width) as usize;
+            mask[row + x1.min(width) as usize..row + x2 as usize].fill(true);
         }
     }
     Ok(mask)
@@ -1106,6 +1272,48 @@ fn main() {
 #[cfg(test)]
 mod selection_tests {
     use super::*;
+    #[test]
+    fn smart_lasso_snaps_to_subject_and_selection_edit_is_one_history_step() {
+        use win42::{App, CanvasEvent, Point};
+        let target: Vec<_> = (0..128).flat_map(|y| {
+            (0..128).map(move |x| (32..96).contains(&x) && (32..96).contains(&y))
+        }).collect();
+        let pixels: Vec<_> = target.iter().flat_map(|selected| {
+            let tone = if *selected { 20 } else { 240 };
+            [tone, tone, tone, 255]
+        }).collect();
+        let doc = ImageDocument::from_rgba(128, 128, pixels.clone(), None).unwrap();
+        let trace = [(25, 25), (103, 25), (103, 103), (25, 103), (25, 25)];
+        let raw = polygon_mask(128, 128, &trace).unwrap();
+        let overlap = |mask: &[bool]| {
+            let intersection = target.iter().zip(mask).filter(|&(&a, &b)| a && b).count();
+            let union = target.iter().zip(mask).filter(|&(&a, &b)| a || b).count();
+            intersection as f64 / union as f64
+        };
+        assert!(overlap(&raw) < 0.75);
+        let mut app = Img { doc: Some(doc), ..Default::default() };
+        app.action(50).unwrap();
+        app.set_image_pointer_scale(1.0);
+        let point = |(x, y): (u32, u32)| Point { x: x.into(), y: y.into() };
+        app.canvas_event(CanvasEvent::PointerDown(point(trace[0]))).unwrap();
+        for &coordinate in &trace[1..4] {
+            app.canvas_event(CanvasEvent::PointerMove(point(coordinate))).unwrap();
+        }
+        assert_eq!(app.image_overlay().len(), 2);
+        app.canvas_event(CanvasEvent::PointerUp(point(trace[4]))).unwrap();
+        assert!(app.image_overlay().is_empty());
+        let mask = app.mask.clone().unwrap();
+        assert!(overlap(&mask) > 0.94, "IoU {}", overlap(&mask));
+        assert!(!app.dirty());
+        app.action(35).unwrap();
+        let changed = app.doc.as_ref().unwrap().pixels().to_vec();
+        assert_eq!(changed.iter().skip(3).step_by(4).filter(|&&alpha| alpha == 0).count(),
+                   mask.iter().filter(|&&selected| selected).count());
+        app.action(4).unwrap();
+        assert_eq!(app.doc.as_ref().unwrap().pixels(), pixels);
+        app.action(5).unwrap();
+        assert_eq!(app.doc.as_ref().unwrap().pixels(), changed);
+    }
     #[test]
     fn png_with_srgb_can_save_in_place() {
         use image::ImageEncoder;
