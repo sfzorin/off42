@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "XEM CÁCH HOẠT ĐỘNG",
+    "title": "Một phút với OFF42.",
+    "text": "Viết tiếp một lá thư Word, kiểm tra ngân sách, trình chiếu slide, sửa PDF và quét một trang giấy — rồi biến danh sách sản phẩm thành nhãn QR có dấu CE. Mọi khung hình đều do chính các ứng dụng kết xuất trên Mac, với tài liệu mẫu của các công ty hư cấu.",
+    "caption": "Bản demo không tiếng, khoảng một phút. Hình ảnh thật từ ứng dụng; chuyển động máy quay và con trỏ được thêm vào."
+  },
+  "captions": {
+    "introTitle": "Trọn bộ văn phòng. Không thuê bao.",
+    "introLine": "Mở tệp Word, Excel, PowerPoint và PDF  ·  Dùng ngoại tuyến  ·  Miễn phí, mã nguồn mở",
+    "docTitle": "Mở tệp Word và viết tiếp.",
+    "docSub": "Mở DOCX, DOC, ODT, RTF và Markdown · lưu DOCX, ODT, RTF và PDF.",
+    "xlsTitle": "Bảng tính với công thức và biểu đồ thật.",
+    "xlsSub": "XLSX, XLS, ODS và CSV · 384 hàm · biểu đồ.",
+    "pptTitle": "Trình chiếu ngay từ tệp PowerPoint.",
+    "pptSub": "Chế độ người thuyết trình với slide tiếp theo, ghi chú và đồng hồ · xuất ra PDF hoặc video.",
+    "pdfEditTitle": "Sửa lỗi chính tả ngay trong PDF.",
+    "pdfEditSub": "Sửa văn bản, trang, biểu mẫu và liên kết — rồi lưu thành PDF bình thường.",
+    "compressTitle": "Thu nhỏ PDF nặng trước khi gửi email.",
+    "compressSub": "Ảnh nhỏ hơn; chữ vẫn sắc nét và tìm kiếm được.",
+    "scanTitle": "Quét giấy thành PDF tìm kiếm được.",
+    "scanSub": "Máy quét USB, máy quét mạng hoặc camera iPhone · tích hợp nhận dạng chữ.",
+    "qrTitle": "Biến danh sách sản phẩm thành mã QR…",
+    "qrSub": "QR, Data Matrix, Code 128 và Aztec, kích thước tính bằng milimét.",
+    "marksTitle": "…thêm CE, UKCA, EAC và các dấu khác…",
+    "marksSub": "97 dấu · mỗi dấu kèm điều kiện sử dụng. Dấu không chứng nhận sản phẩm.",
+    "labelsTitle": "…và in cả một tờ nhãn.",
+    "labelsSub": "Mã từ bất kỳ cột nào · 559 loại giấy nhãn · hiệu chỉnh máy in.",
+    "signTitle": "Ký và đóng dấu không cần in.",
+    "signSub": "Chữ ký kiểu viết tay, con dấu công ty và ký bằng chứng thư số.",
+    "langTitle": "Bằng ngôn ngữ của bạn: có 20.",
+    "langSub": "Cùng bảng ngân sách trong XLS42, giao diện tiếng {language}.",
+    "outroLine": "Miễn phí  ·  Dùng ngoại tuyến  ·  Mã nguồn mở  ·  macOS và Windows"
+  },
+  "languageNames": {
+    "ja": "Nhật",
+    "ar": "Ả Rập",
+    "de": "Đức",
+    "ko": "Hàn",
+    "es": "Tây Ban Nha",
+    "zh-Hans": "Trung",
+    "ru": "Nga",
+    "en": "Anh"
+  },
+  "products": {
+    "headers": [
+      "Sản phẩm",
+      "SKU",
+      "Lô",
+      "Trang sản phẩm"
+    ],
+    "names": [
+      "Đèn bàn, LED 12 V",
+      "Bộ đổi nguồn, 24 W",
+      "Hub USB-C, 7 cổng",
+      "Cốc sạc, 65 W",
+      "Dây nối dài, 3 m",
+      "Đèn ngủ cảm biến",
+      "Quạt tản nhiệt, 120 mm",
+      "Trạm hàn",
+      "Driver dải đèn LED",
+      "Bộ nguồn thí nghiệm"
+    ]
+  },
+  "typing": " Chúng tôi cũng có thể quay một đoạn giới thiệu ngắn tại studio cho kênh của Quý khách."
+}

@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "LIHAT CARA KERJANYA",
+    "title": "Satu menit bersama OFF42.",
+    "text": "Lanjutkan menulis surat Word, periksa anggaran, tampilkan presentasi, perbaiki PDF, dan pindai halaman — lalu ubah daftar produk menjadi label QR dengan tanda CE. Setiap bingkai dirender oleh aplikasinya sendiri di Mac, dengan dokumen contoh dari perusahaan fiktif.",
+    "caption": "Demo tanpa suara, sekitar satu menit. Tampilan asli aplikasi; gerakan kamera dan penunjuk ditambahkan."
+  },
+  "captions": {
+    "introTitle": "Seluruh kantor Anda. Tanpa langganan.",
+    "introLine": "Membuka file Word, Excel, PowerPoint, dan PDF  ·  Bekerja offline  ·  Gratis dan sumber terbuka",
+    "docTitle": "Buka file Word dan lanjutkan menulis.",
+    "docSub": "Membuka DOCX, DOC, ODT, RTF, dan Markdown · menyimpan DOCX, ODT, RTF, dan PDF.",
+    "xlsTitle": "Spreadsheet dengan rumus dan grafik sungguhan.",
+    "xlsSub": "XLSX, XLS, ODS, dan CSV · 384 fungsi · grafik.",
+    "pptTitle": "Presentasi langsung dari file PowerPoint.",
+    "pptSub": "Tampilan penyaji dengan slide berikutnya, catatan, dan timer · ekspor ke PDF atau video.",
+    "pdfEditTitle": "Perbaiki salah ketik langsung di PDF.",
+    "pdfEditSub": "Edit teks, halaman, formulir, dan tautan — lalu simpan sebagai PDF biasa.",
+    "compressTitle": "Perkecil PDF besar sebelum dikirim.",
+    "compressSub": "Gambar jadi lebih kecil; teks tetap tajam dan bisa dicari.",
+    "scanTitle": "Pindai kertas menjadi PDF yang bisa dicari.",
+    "scanSub": "Pemindai USB dan jaringan atau kamera iPhone · pengenalan teks bawaan.",
+    "qrTitle": "Ubah daftar produk menjadi kode QR…",
+    "qrSub": "QR, Data Matrix, Code 128, dan Aztec, dengan ukuran dalam milimeter.",
+    "marksTitle": "…tambahkan CE, UKCA, EAC, dan tanda lain…",
+    "marksSub": "97 tanda · masing-masing menampilkan syarat penggunaannya. Tanda tidak menyertifikasi produk.",
+    "labelsTitle": "…lalu cetak satu lembar label penuh.",
+    "labelsSub": "Kode dari kolom mana pun · 559 jenis kertas label · kalibrasi printer.",
+    "signTitle": "Tanda tangan dan stempel tanpa mencetak.",
+    "signSub": "Tanda tangan bergaya tulisan tangan, stempel perusahaan, dan penandatanganan sertifikat.",
+    "langTitle": "Dalam bahasa Anda: salah satu dari 20.",
+    "langSub": "Anggaran yang sama di XLS42, antarmuka dalam bahasa {language}.",
+    "outroLine": "Gratis  ·  Bekerja offline  ·  Sumber terbuka  ·  macOS dan Windows"
+  },
+  "languageNames": {
+    "ja": "Jepang",
+    "ar": "Arab",
+    "de": "Jerman",
+    "ko": "Korea",
+    "es": "Spanyol",
+    "zh-Hans": "Tionghoa",
+    "ru": "Rusia",
+    "en": "Inggris"
+  },
+  "products": {
+    "headers": [
+      "Produk",
+      "SKU",
+      "Batch",
+      "Halaman produk"
+    ],
+    "names": [
+      "Lampu meja, LED 12 V",
+      "Adaptor daya, 24 W",
+      "Hub USB-C, 7 port",
+      "Pengisi daya dinding, 65 W",
+      "Kabel ekstensi, 3 m",
+      "Lampu tidur dengan sensor",
+      "Kipas pendingin, 120 mm",
+      "Stasiun solder",
+      "Driver strip LED",
+      "Catu daya meja kerja"
+    ]
+  },
+  "typing": " Kami juga dapat merekam video perkenalan singkat di studio untuk kanal Anda."
+}

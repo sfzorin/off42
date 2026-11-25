@@ -150,11 +150,16 @@ exist for EN and RU; other languages fall back to English.
 Each home page shows `public/assets/video/off42-demo-<lang>.mp4` (H.264, 1920×1080, silent, about a minute) with
 `off42-demo-<lang>.jpg` as poster; `npm run check` requires both for all 20 languages. The videos are composed from the
 apps' own window renders in that interface language (`K42_SNAPSHOT`, isolated `*Audit` bundles), not screen
-recordings; camera moves, sheet slides and the pointer are added. Scripts are in `screenshots/video/`:
-`prepare.py` (isolated bundles), `make_products.py` (fictional product lists), `render.py <lang>` (window and dialog
-renders, including XLS42 debug hooks `K42_SELECT=A1:D11`, `K42_DIALOG_STEPS`, `K42_DIALOG_DELAY`, `K42_DIALOG_PDF`),
-`compose2.py` (the cut; captions per language from `video-i18n/<lang>.json`, text drawn with AppKit so Arabic, Thai
-and CJK shape correctly) and `site_shots.py`. `npm run preview` serves byte ranges so the video plays in Safari.
+recordings; camera moves, sheet slides and the pointer are added. Scripts are in `screenshots/video/` (copy the folder to a scratch directory next to `shots/` and `samples/` from the
+screenshot pipeline): `prepare.py` builds isolated `*Audit.app` bundles from `$OFF42_REPO/.build/debug`;
+`render_i18n.py en,ru,…` renders each language's windows and dialogs, writing its fictional product list, typing
+part of a sentence into the localized letter and driving dialogs through the XLS42 debug hooks (`K42_SELECT=A1:D11`,
+`K42_DIALOG_STEPS`, `K42_DIALOG_DELAY`, `K42_DIALOG_PDF`) with the strings the app itself shows in that language;
+`compose_all.sh OUT en ru …` runs `compose3.py` (3 at a time) and writes `off42-demo-<lang>.mp4` and the poster.
+Captions and product names are in `video-i18n/<lang>.json`; `textpng.swift` (build with `swiftc -O`) draws them with
+AppKit so Arabic, Thai and CJK shape correctly. The portfolio PDF for the compression scene and the site's
+`xls-budget-*-1600.webp` and `signed-*-1600.webp` shots are inputs as well.
+`npm run preview` serves byte ranges so the video plays in Safari.
 
 The cut follows the product story: the promise (“Your whole office. No subscription.”), keep writing a Word letter,
 an Excel formula and chart, a PowerPoint deck and presenter view, editing text inside a PDF, shrinking a heavy PDF,

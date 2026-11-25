@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "VEJA FUNCIONANDO",
+    "title": "Um minuto com o OFF42.",
+    "text": "Continue uma carta no Word, confira um orçamento, apresente slides, corrija um PDF e digitalize uma página — depois transforme uma lista de produtos em etiquetas com QR code e marcação CE. Cada quadro é renderizado pelos próprios apps em um Mac, com documentos de exemplo de empresas fictícias.",
+    "caption": "Demonstração sem som, cerca de um minuto. Renderização real dos apps; movimentos de câmera e o ponteiro foram adicionados."
+  },
+  "captions": {
+    "introTitle": "Seu escritório inteiro. Sem assinatura.",
+    "introLine": "Abre arquivos do Word, Excel, PowerPoint e PDF  ·  Funciona offline  ·  Grátis e de código aberto",
+    "docTitle": "Abra um arquivo do Word e continue escrevendo.",
+    "docSub": "Abre DOCX, DOC, ODT, RTF e Markdown · salva em DOCX, ODT, RTF e PDF.",
+    "xlsTitle": "Planilhas com fórmulas e gráficos de verdade.",
+    "xlsSub": "XLSX, XLS, ODS e CSV · 384 funções · gráficos.",
+    "pptTitle": "Apresente direto de arquivos do PowerPoint.",
+    "pptSub": "Modo apresentador com próximo slide, notas e cronômetro · exporte para PDF ou vídeo.",
+    "pdfEditTitle": "Corrija um erro de digitação no próprio PDF.",
+    "pdfEditSub": "Edite texto, páginas, formulários e links — e salve um PDF normal.",
+    "compressTitle": "Reduza um PDF pesado antes de enviar.",
+    "compressSub": "As imagens ficam menores; o texto continua nítido e pesquisável.",
+    "scanTitle": "Digitalize papel em um PDF pesquisável.",
+    "scanSub": "Scanners USB e de rede ou a câmera do iPhone · reconhecimento de texto integrado.",
+    "qrTitle": "Transforme uma lista de produtos em QR codes…",
+    "qrSub": "QR, Data Matrix, Code 128 e Aztec, dimensionados em milímetros.",
+    "marksTitle": "…adicione CE, UKCA, EAC e outras marcas…",
+    "marksSub": "97 marcas · cada uma mostra suas condições de uso. Uma marca não certifica o produto.",
+    "labelsTitle": "…e imprima uma folha inteira de etiquetas.",
+    "labelsSub": "Código de qualquer coluna · 559 modelos de etiqueta · calibração da impressora.",
+    "signTitle": "Assine e carimbe sem imprimir.",
+    "signSub": "Assinaturas em estilo manuscrito, carimbos da empresa e assinatura com certificado.",
+    "langTitle": "No seu idioma: são 20.",
+    "langSub": "O mesmo orçamento no XLS42, com a interface em {language}.",
+    "outroLine": "Grátis  ·  Funciona offline  ·  Código aberto  ·  macOS e Windows"
+  },
+  "languageNames": {
+    "ja": "japonês",
+    "ar": "árabe",
+    "de": "alemão",
+    "ko": "coreano",
+    "es": "espanhol",
+    "zh-Hans": "chinês",
+    "ru": "russo",
+    "en": "inglês"
+  },
+  "products": {
+    "headers": [
+      "Produto",
+      "SKU",
+      "Lote",
+      "Página do produto"
+    ],
+    "names": [
+      "Luminária de mesa, LED 12 V",
+      "Fonte de alimentação, 24 W",
+      "Hub USB-C, 7 portas",
+      "Carregador de tomada, 65 W",
+      "Extensão elétrica, 3 m",
+      "Luz noturna com sensor",
+      "Ventoinha, 120 mm",
+      "Estação de solda",
+      "Driver para fita LED",
+      "Fonte de bancada"
+    ]
+  },
+  "typing": " Também podemos gravar uma breve apresentação em estúdio para o seu canal."
+}

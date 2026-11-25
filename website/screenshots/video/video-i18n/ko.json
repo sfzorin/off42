@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "실제로 보기",
+    "title": "OFF42와 함께하는 1분.",
+    "text": "Word 편지를 이어 쓰고, 예산을 확인하고, 슬라이드를 발표하고, PDF를 고치고, 종이를 스캔한 다음 제품 목록을 CE 마크가 들어간 QR 라벨로 바꿉니다. 모든 프레임은 Mac에서 앱이 직접 렌더링했으며, 가상 회사의 샘플 문서를 사용했습니다.",
+    "caption": "무음 데모, 약 1분. 실제 앱 렌더링이며 카메라 움직임과 포인터는 추가한 것입니다."
+  },
+  "captions": {
+    "introTitle": "오피스 전부. 구독 없이.",
+    "introLine": "Word, Excel, PowerPoint, PDF 파일 열기  ·  오프라인 작동  ·  무료 오픈 소스",
+    "docTitle": "Word 파일을 열고 이어서 쓰세요.",
+    "docSub": "DOCX, DOC, ODT, RTF, Markdown 열기 · DOCX, ODT, RTF, PDF로 저장.",
+    "xlsTitle": "진짜 수식과 차트가 있는 스프레드시트.",
+    "xlsSub": "XLSX, XLS, ODS, CSV · 384개 함수 · 차트.",
+    "pptTitle": "PowerPoint 파일로 바로 발표하세요.",
+    "pptSub": "다음 슬라이드, 노트, 타이머가 있는 발표자 보기 · PDF나 동영상으로 내보내기.",
+    "pdfEditTitle": "PDF 안에서 바로 오타 수정.",
+    "pdfEditSub": "텍스트, 페이지, 양식, 링크를 편집하고 일반 PDF로 저장하세요.",
+    "compressTitle": "무거운 PDF는 보내기 전에 줄이세요.",
+    "compressSub": "이미지는 작아지고 텍스트는 선명하며 검색도 됩니다.",
+    "scanTitle": "종이를 검색 가능한 PDF로 스캔.",
+    "scanSub": "USB·네트워크 스캐너 또는 iPhone 카메라 · 텍스트 인식 내장.",
+    "qrTitle": "제품 목록을 QR 코드로 바꾸고…",
+    "qrSub": "QR, Data Matrix, Code 128, Aztec을 밀리미터 단위 크기로.",
+    "marksTitle": "…CE, UKCA, EAC 등 마크를 넣고…",
+    "marksSub": "97개 마크 · 각 마크의 사용 조건 표시. 마크가 제품을 인증하지는 않습니다.",
+    "labelsTitle": "…라벨 한 장을 통째로 인쇄하세요.",
+    "labelsSub": "어느 열에서든 코드 생성 · 559개 라벨 용지 · 프린터 보정.",
+    "signTitle": "인쇄 없이 서명하고 도장 찍기.",
+    "signSub": "손글씨 스타일 서명, 회사 도장, 인증서 서명.",
+    "langTitle": "여러분의 언어로: 20개 언어.",
+    "langSub": "같은 예산을 XLS42에서, 인터페이스는 {language}.",
+    "outroLine": "무료  ·  오프라인 작동  ·  오픈 소스  ·  macOS 및 Windows"
+  },
+  "languageNames": {
+    "ja": "일본어",
+    "ar": "아랍어",
+    "de": "독일어",
+    "ko": "한국어",
+    "es": "스페인어",
+    "zh-Hans": "중국어",
+    "ru": "러시아어",
+    "en": "영어"
+  },
+  "products": {
+    "headers": [
+      "제품",
+      "SKU",
+      "로트",
+      "제품 페이지"
+    ],
+    "names": [
+      "데스크 램프, 12 V LED",
+      "전원 어댑터, 24 W",
+      "USB-C 허브, 7포트",
+      "벽면 충전기, 65 W",
+      "연장 코드, 3 m",
+      "센서 수면등",
+      "냉각 팬, 120 mm",
+      "납땜 스테이션",
+      "LED 스트립 드라이버",
+      "실험용 전원 공급기"
+    ]
+  },
+  "typing": " 귀사 채널을 위한 짧은 스튜디오 소개 영상도 촬영해 드릴 수 있습니다."
+}

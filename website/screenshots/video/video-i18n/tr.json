@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "ÇALIŞIRKEN İZLEYİN",
+    "title": "OFF42 ile bir dakika.",
+    "text": "Bir Word mektubuna devam edin, bütçeyi kontrol edin, sunum yapın, bir PDF'i düzeltin ve bir sayfa tarayın; ardından ürün listesini CE işaretli QR etiketlerine dönüştürün. Her kare, kurgusal şirketlerin örnek belgeleriyle bir Mac'te uygulamaların kendisi tarafından oluşturuldu.",
+    "caption": "Sessiz demo, yaklaşık bir dakika. Gerçek uygulama görüntüleri; kamera hareketleri ve işaretçi sonradan eklendi."
+  },
+  "captions": {
+    "introTitle": "Eksiksiz ofis. Abonelik yok.",
+    "introLine": "Word, Excel, PowerPoint ve PDF dosyalarını açar  ·  Çevrimdışı çalışır  ·  Ücretsiz ve açık kaynak",
+    "docTitle": "Word dosyasını açın, yazmaya devam edin.",
+    "docSub": "DOCX, DOC, ODT, RTF ve Markdown açar · DOCX, ODT, RTF ve PDF kaydeder.",
+    "xlsTitle": "Gerçek formüller ve grafiklerle tablolar.",
+    "xlsSub": "XLSX, XLS, ODS ve CSV · 384 fonksiyon · grafikler.",
+    "pptTitle": "Doğrudan PowerPoint dosyalarından sunun.",
+    "pptSub": "Sonraki slayt, notlar ve zamanlayıcıyla sunucu görünümü · PDF veya videoya aktarma.",
+    "pdfEditTitle": "Yazım hatasını doğrudan PDF'te düzeltin.",
+    "pdfEditSub": "Metin, sayfa, form ve bağlantıları düzenleyin; sonra normal bir PDF kaydedin.",
+    "compressTitle": "Ağır PDF'i göndermeden önce küçültün.",
+    "compressSub": "Resimler küçülür; metin net ve aranabilir kalır.",
+    "scanTitle": "Kâğıdı aranabilir PDF'e tarayın.",
+    "scanSub": "USB ve ağ tarayıcıları ya da iPhone kamerası · yerleşik metin tanıma.",
+    "qrTitle": "Ürün listesini QR kodlara dönüştürün…",
+    "qrSub": "QR, Data Matrix, Code 128 ve Aztec, boyutu milimetre cinsinden.",
+    "marksTitle": "…CE, UKCA, EAC ve diğer işaretleri ekleyin…",
+    "marksSub": "97 işaret · her biri kullanım koşullarını gösterir. İşaret ürünü belgelendirmez.",
+    "labelsTitle": "…ve tam bir etiket sayfası yazdırın.",
+    "labelsSub": "Herhangi bir sütundan kod · 559 etiket kâğıdı · yazıcı kalibrasyonu.",
+    "signTitle": "Yazdırmadan imzalayın ve kaşeleyin.",
+    "signSub": "El yazısı tarzı imzalar, şirket kaşeleri ve sertifikayla imzalama.",
+    "langTitle": "Kendi dilinizde: 20 dilden biri.",
+    "langSub": "Aynı bütçe XLS42'de, arayüz dili: {language}.",
+    "outroLine": "Ücretsiz  ·  Çevrimdışı çalışır  ·  Açık kaynak  ·  macOS ve Windows"
+  },
+  "languageNames": {
+    "ja": "Japonca",
+    "ar": "Arapça",
+    "de": "Almanca",
+    "ko": "Korece",
+    "es": "İspanyolca",
+    "zh-Hans": "Çince",
+    "ru": "Rusça",
+    "en": "İngilizce"
+  },
+  "products": {
+    "headers": [
+      "Ürün",
+      "Stok kodu",
+      "Parti",
+      "Ürün sayfası"
+    ],
+    "names": [
+      "Masa lambası, 12 V LED",
+      "Güç adaptörü, 24 W",
+      "USB-C hub, 7 port",
+      "Duvar şarj cihazı, 65 W",
+      "Uzatma kablosu, 3 m",
+      "Sensörlü gece lambası",
+      "Soğutma fanı, 120 mm",
+      "Lehim istasyonu",
+      "LED şerit sürücüsü",
+      "Laboratuvar güç kaynağı"
+    ]
+  },
+  "typing": " Ayrıca kanalınız için kısa bir stüdyo tanıtım videosu da çekebiliriz."
+}

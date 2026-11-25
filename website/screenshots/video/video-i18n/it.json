@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "GUARDALO ALL'OPERA",
+    "title": "Un minuto con OFF42.",
+    "text": "Continua una lettera di Word, controlla un budget, presenta delle slide, correggi un PDF e scansiona una pagina, poi trasforma un elenco prodotti in etichette QR con marcatura CE. Ogni fotogramma è renderizzato dalle app stesse su un Mac, con documenti di esempio di aziende fittizie.",
+    "caption": "Demo senza audio, circa un minuto. Rendering reale delle app; movimenti di camera e puntatore sono aggiunti."
+  },
+  "captions": {
+    "introTitle": "Tutto il tuo ufficio. Senza abbonamento.",
+    "introLine": "Apre file Word, Excel, PowerPoint e PDF  ·  Funziona offline  ·  Gratis e open source",
+    "docTitle": "Apri un file Word e continua a scrivere.",
+    "docSub": "Apre DOCX, DOC, ODT, RTF e Markdown · salva in DOCX, ODT, RTF e PDF.",
+    "xlsTitle": "Fogli di calcolo con formule e grafici veri.",
+    "xlsSub": "XLSX, XLS, ODS e CSV · 384 funzioni · grafici.",
+    "pptTitle": "Presenta direttamente dai file PowerPoint.",
+    "pptSub": "Vista relatore con slide successiva, note e timer · esportazione in PDF o video.",
+    "pdfEditTitle": "Correggi un refuso direttamente nel PDF.",
+    "pdfEditSub": "Modifica testo, pagine, moduli e link, poi salva un normale PDF.",
+    "compressTitle": "Alleggerisci un PDF pesante prima di inviarlo.",
+    "compressSub": "Le immagini si riducono; il testo resta nitido e ricercabile.",
+    "scanTitle": "Scansiona la carta in un PDF ricercabile.",
+    "scanSub": "Scanner USB e di rete o la fotocamera dell'iPhone · riconoscimento del testo integrato.",
+    "qrTitle": "Trasforma un elenco prodotti in codici QR…",
+    "qrSub": "QR, Data Matrix, Code 128 e Aztec, dimensionati in millimetri.",
+    "marksTitle": "…aggiungi CE, UKCA, EAC e altre marcature…",
+    "marksSub": "97 marcature · ognuna mostra le condizioni d'uso. Una marcatura non certifica il prodotto.",
+    "labelsTitle": "…e stampa un intero foglio di etichette.",
+    "labelsSub": "Codice da qualsiasi colonna · 559 formati di etichette · calibrazione della stampante.",
+    "signTitle": "Firma e timbra senza stampare.",
+    "signSub": "Firme in stile manoscritto, timbri aziendali e firma con certificato.",
+    "langTitle": "Nella tua lingua: una di 20.",
+    "langSub": "Lo stesso budget in XLS42, interfaccia in {language}.",
+    "outroLine": "Gratis  ·  Funziona offline  ·  Open source  ·  macOS e Windows"
+  },
+  "languageNames": {
+    "ja": "giapponese",
+    "ar": "arabo",
+    "de": "tedesco",
+    "ko": "coreano",
+    "es": "spagnolo",
+    "zh-Hans": "cinese",
+    "ru": "russo",
+    "en": "inglese"
+  },
+  "products": {
+    "headers": [
+      "Prodotto",
+      "Codice",
+      "Lotto",
+      "Pagina prodotto"
+    ],
+    "names": [
+      "Lampada da scrivania, LED 12 V",
+      "Alimentatore, 24 W",
+      "Hub USB-C, 7 porte",
+      "Caricatore da parete, 65 W",
+      "Prolunga, 3 m",
+      "Luce notturna con sensore",
+      "Ventola, 120 mm",
+      "Stazione saldante",
+      "Driver per strisce LED",
+      "Alimentatore da banco"
+    ]
+  },
+  "typing": " Possiamo inoltre girare una breve presentazione in studio per il vostro canale."
+}

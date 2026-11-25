@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "LIHAT IA BERFUNGSI",
+    "title": "Seminit bersama OFF42.",
+    "text": "Teruskan menulis surat Word, semak bajet, bentangkan slaid, betulkan PDF dan imbas sehelai halaman — kemudian tukar senarai produk kepada label QR bertanda CE. Setiap bingkai dipaparkan oleh aplikasi itu sendiri pada Mac, dengan dokumen contoh syarikat rekaan.",
+    "caption": "Demo tanpa suara, kira-kira seminit. Paparan sebenar aplikasi; pergerakan kamera dan penuding ditambah."
+  },
+  "captions": {
+    "introTitle": "Seluruh pejabat anda. Tanpa langganan.",
+    "introLine": "Membuka fail Word, Excel, PowerPoint dan PDF  ·  Berfungsi luar talian  ·  Percuma dan sumber terbuka",
+    "docTitle": "Buka fail Word dan terus menulis.",
+    "docSub": "Membuka DOCX, DOC, ODT, RTF dan Markdown · menyimpan DOCX, ODT, RTF dan PDF.",
+    "xlsTitle": "Hamparan dengan formula dan carta sebenar.",
+    "xlsSub": "XLSX, XLS, ODS dan CSV · 384 fungsi · carta.",
+    "pptTitle": "Bentang terus daripada fail PowerPoint.",
+    "pptSub": "Paparan penyampai dengan slaid seterusnya, nota dan pemasa · eksport ke PDF atau video.",
+    "pdfEditTitle": "Betulkan salah taip terus dalam PDF.",
+    "pdfEditSub": "Edit teks, halaman, borang dan pautan — kemudian simpan PDF biasa.",
+    "compressTitle": "Kecilkan PDF yang besar sebelum dihantar.",
+    "compressSub": "Gambar menjadi lebih kecil; teks kekal tajam dan boleh dicari.",
+    "scanTitle": "Imbas kertas menjadi PDF boleh dicari.",
+    "scanSub": "Pengimbas USB dan rangkaian atau kamera iPhone · pengecaman teks terbina dalam.",
+    "qrTitle": "Tukar senarai produk kepada kod QR…",
+    "qrSub": "QR, Data Matrix, Code 128 dan Aztec, bersaiz dalam milimeter.",
+    "marksTitle": "…tambah CE, UKCA, EAC dan tanda lain…",
+    "marksSub": "97 tanda · setiap satu menunjukkan syarat penggunaannya. Tanda tidak memperakui produk.",
+    "labelsTitle": "…dan cetak sehelai penuh label.",
+    "labelsSub": "Kod daripada mana-mana lajur · 559 jenis kertas label · penentukuran pencetak.",
+    "signTitle": "Tandatangan dan cop tanpa mencetak.",
+    "signSub": "Tandatangan gaya tulisan tangan, cop syarikat dan tandatangan sijil.",
+    "langTitle": "Dalam bahasa anda: salah satu daripada 20.",
+    "langSub": "Bajet yang sama dalam XLS42, antara muka dalam bahasa {language}.",
+    "outroLine": "Percuma  ·  Berfungsi luar talian  ·  Sumber terbuka  ·  macOS dan Windows"
+  },
+  "languageNames": {
+    "ja": "Jepun",
+    "ar": "Arab",
+    "de": "Jerman",
+    "ko": "Korea",
+    "es": "Sepanyol",
+    "zh-Hans": "Cina",
+    "ru": "Rusia",
+    "en": "Inggeris"
+  },
+  "products": {
+    "headers": [
+      "Produk",
+      "SKU",
+      "Kelompok",
+      "Halaman produk"
+    ],
+    "names": [
+      "Lampu meja, LED 12 V",
+      "Penyesuai kuasa, 24 W",
+      "Hab USB-C, 7 port",
+      "Pengecas dinding, 65 W",
+      "Kord sambungan, 3 m",
+      "Lampu tidur bersensor",
+      "Kipas penyejuk, 120 mm",
+      "Stesen pematerian",
+      "Pemacu jalur LED",
+      "Bekalan kuasa makmal"
+    ]
+  },
+  "typing": " Kami juga boleh merakam video pengenalan studio yang ringkas untuk saluran pihak tuan."
+}

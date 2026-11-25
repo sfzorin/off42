@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "IN AKTION",
+    "title": "Eine Minute mit OFF42.",
+    "text": "Einen Word-Brief weiterschreiben, ein Budget prüfen, Folien präsentieren, ein PDF korrigieren und eine Seite scannen – dann eine Produktliste in QR-Etiketten mit CE-Zeichen verwandeln. Jedes Bild rendern die Apps selbst auf einem Mac, mit Beispieldokumenten fiktiver Firmen.",
+    "caption": "Stumme Demo, etwa eine Minute. Echte App-Darstellung; Kamerabewegungen und Zeiger sind hinzugefügt."
+  },
+  "captions": {
+    "introTitle": "Dein ganzes Büro. Ohne Abo.",
+    "introLine": "Öffnet Word-, Excel-, PowerPoint- und PDF-Dateien  ·  Funktioniert offline  ·  Kostenlos und Open Source",
+    "docTitle": "Word-Datei öffnen und weiterschreiben.",
+    "docSub": "Öffnet DOCX, DOC, ODT, RTF und Markdown · speichert DOCX, ODT, RTF und PDF.",
+    "xlsTitle": "Tabellen mit echten Formeln und Diagrammen.",
+    "xlsSub": "XLSX, XLS, ODS und CSV · 384 Funktionen · Diagramme.",
+    "pptTitle": "Direkt aus PowerPoint-Dateien präsentieren.",
+    "pptSub": "Referentenansicht mit nächster Folie, Notizen und Timer · Export als PDF oder Video.",
+    "pdfEditTitle": "Tippfehler direkt im PDF korrigieren.",
+    "pdfEditSub": "Text, Seiten, Formulare und Links bearbeiten – dann als normales PDF speichern.",
+    "compressTitle": "Große PDFs vor dem Mailen verkleinern.",
+    "compressSub": "Bilder werden kleiner, Text bleibt scharf und durchsuchbar.",
+    "scanTitle": "Papier in ein durchsuchbares PDF scannen.",
+    "scanSub": "USB- und Netzwerkscanner oder die iPhone-Kamera · Texterkennung integriert.",
+    "qrTitle": "Aus einer Produktliste QR-Codes machen…",
+    "qrSub": "QR, Data Matrix, Code 128 und Aztec, Größe in Millimetern.",
+    "marksTitle": "…CE, UKCA, EAC und weitere Zeichen hinzufügen…",
+    "marksSub": "97 Zeichen · jedes mit Nutzungsbedingungen. Ein Zeichen zertifiziert das Produkt nicht.",
+    "labelsTitle": "…und einen ganzen Etikettenbogen drucken.",
+    "labelsSub": "Code aus jeder Spalte · 559 Etikettenformate · Druckerkalibrierung.",
+    "signTitle": "Unterschreiben und stempeln ohne Ausdruck.",
+    "signSub": "Unterschriften im Handschrift-Stil, Firmenstempel und Signieren mit Zertifikat.",
+    "langTitle": "In deiner Sprache: eine von 20.",
+    "langSub": "Dasselbe Budget in XLS42, Oberfläche auf {language}.",
+    "outroLine": "Kostenlos  ·  Funktioniert offline  ·  Open Source  ·  macOS und Windows"
+  },
+  "languageNames": {
+    "ja": "Japanisch",
+    "ar": "Arabisch",
+    "de": "Deutsch",
+    "ko": "Koreanisch",
+    "es": "Spanisch",
+    "zh-Hans": "Chinesisch",
+    "ru": "Russisch",
+    "en": "Englisch"
+  },
+  "products": {
+    "headers": [
+      "Produkt",
+      "Artikelnr.",
+      "Charge",
+      "Produktseite"
+    ],
+    "names": [
+      "Schreibtischlampe, LED 12 V",
+      "Netzteil, 24 W",
+      "USB-C-Hub, 7 Ports",
+      "Steckerladegerät, 65 W",
+      "Verlängerungskabel, 3 m",
+      "Nachtlicht mit Sensor",
+      "Lüfter, 120 mm",
+      "Lötstation",
+      "LED-Streifen-Treiber",
+      "Labornetzteil"
+    ]
+  },
+  "typing": " Gerne drehen wir auch ein kurzes Studio-Intro für Ihren Kanal."
+}

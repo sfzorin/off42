@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "实际演示",
+    "title": "一分钟了解 OFF42。",
+    "text": "接着写一封 Word 信函，核对预算，放映演示文稿，修改 PDF，扫描一页纸，再把产品清单变成带 CE 标志的 QR 标签。每一帧都由应用本身在 Mac 上渲染，使用的是虚构公司的示例文档。",
+    "caption": "无声演示，约一分钟。画面为应用真实渲染；镜头运动和指针为后期添加。"
+  },
+  "captions": {
+    "introTitle": "整套办公。无需订阅。",
+    "introLine": "打开 Word、Excel、PowerPoint 和 PDF 文件  ·  离线可用  ·  免费开源",
+    "docTitle": "打开 Word 文件，接着写。",
+    "docSub": "打开 DOCX、DOC、ODT、RTF 和 Markdown · 保存为 DOCX、ODT、RTF 和 PDF。",
+    "xlsTitle": "表格里有真正的公式和图表。",
+    "xlsSub": "XLSX、XLS、ODS 和 CSV · 384 个函数 · 图表。",
+    "pptTitle": "直接放映 PowerPoint 文件。",
+    "pptSub": "演讲者视图：下一张幻灯片、备注和计时器 · 导出为 PDF 或视频。",
+    "pdfEditTitle": "在 PDF 里直接改错字。",
+    "pdfEditSub": "编辑文字、页面、表单和链接，然后保存为普通 PDF。",
+    "compressTitle": "发邮件前，先压缩大 PDF。",
+    "compressSub": "图片变小，文字依然清晰、可搜索。",
+    "scanTitle": "把纸张扫描成可搜索的 PDF。",
+    "scanSub": "USB 和网络扫描仪，或 iPhone 相机 · 内置文字识别。",
+    "qrTitle": "把产品清单变成 QR 码…",
+    "qrSub": "QR、Data Matrix、Code 128 和 Aztec，以毫米设定尺寸。",
+    "marksTitle": "…加上 CE、UKCA、EAC 等标志…",
+    "marksSub": "97 种标志 · 每种都显示使用条件。标志并不代表产品通过认证。",
+    "labelsTitle": "…再打印整页标签。",
+    "labelsSub": "可用任意列生成代码 · 559 种标签纸 · 打印机校准。",
+    "signTitle": "无需打印即可签名盖章。",
+    "signSub": "手写风格签名、公司印章和证书签名。",
+    "langTitle": "说你的语言：共 20 种。",
+    "langSub": "同一份预算，XLS42 界面为{language}。",
+    "outroLine": "免费  ·  离线可用  ·  开源  ·  macOS 和 Windows"
+  },
+  "languageNames": {
+    "ja": "日语",
+    "ar": "阿拉伯语",
+    "de": "德语",
+    "ko": "韩语",
+    "es": "西班牙语",
+    "zh-Hans": "中文",
+    "ru": "俄语",
+    "en": "英语"
+  },
+  "products": {
+    "headers": [
+      "产品",
+      "货号",
+      "批次",
+      "产品页面"
+    ],
+    "names": [
+      "台灯，12 V LED",
+      "电源适配器，24 W",
+      "USB-C 集线器，7 口",
+      "墙插充电器，65 W",
+      "延长线，3 m",
+      "感应小夜灯",
+      "散热风扇，120 mm",
+      "焊台",
+      "LED 灯带驱动器",
+      "实验室电源"
+    ]
+  },
+  "typing": "我们还可以为贵频道拍摄一段简短的工作室片头。"
+}

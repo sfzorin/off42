@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "PANOORIN ITONG GUMAGANA",
+    "title": "Isang minuto kasama ang OFF42.",
+    "text": "Ituloy ang isang liham sa Word, suriin ang budget, mag-present ng slides, ayusin ang isang PDF at mag-scan ng pahina — pagkatapos ay gawing mga QR label na may CE mark ang isang listahan ng produkto. Bawat frame ay ni-render ng mismong mga app sa isang Mac, gamit ang mga sample na dokumento ng mga kathang-isip na kompanya.",
+    "caption": "Tahimik na demo, mga isang minuto. Totoong render ng app; idinagdag ang galaw ng camera at ang pointer."
+  },
+  "captions": {
+    "introTitle": "Buong opisina mo. Walang subscription.",
+    "introLine": "Nagbubukas ng Word, Excel, PowerPoint at PDF  ·  Gumagana offline  ·  Libre at open source",
+    "docTitle": "Magbukas ng Word file at ituloy ang pagsulat.",
+    "docSub": "Nagbubukas ng DOCX, DOC, ODT, RTF at Markdown · nagse-save ng DOCX, ODT, RTF at PDF.",
+    "xlsTitle": "Spreadsheet na may tunay na formula at chart.",
+    "xlsSub": "XLSX, XLS, ODS at CSV · 384 function · mga chart.",
+    "pptTitle": "Mag-present mismo mula sa PowerPoint file.",
+    "pptSub": "Presenter view na may susunod na slide, notes at timer · i-export sa PDF o video.",
+    "pdfEditTitle": "Ayusin ang typo mismo sa loob ng PDF.",
+    "pdfEditSub": "I-edit ang text, pahina, form at link — saka mag-save ng karaniwang PDF.",
+    "compressTitle": "Paliitin ang mabigat na PDF bago i-email.",
+    "compressSub": "Lumiliit ang mga larawan; nananatiling malinaw at nahahanap ang text.",
+    "scanTitle": "I-scan ang papel bilang searchable na PDF.",
+    "scanSub": "USB at network scanner o camera ng iPhone · may built-in na text recognition.",
+    "qrTitle": "Gawing QR code ang listahan ng produkto…",
+    "qrSub": "QR, Data Matrix, Code 128 at Aztec, sukat sa milimetro.",
+    "marksTitle": "…magdagdag ng CE, UKCA, EAC at iba pang mark…",
+    "marksSub": "97 mark · bawat isa ay may kondisyon ng paggamit. Hindi sinesertipikahan ng mark ang produkto.",
+    "labelsTitle": "…at mag-print ng buong sheet ng label.",
+    "labelsSub": "Code mula sa anumang column · 559 uri ng label stock · calibration ng printer.",
+    "signTitle": "Pumirma at magtatak nang hindi nagpi-print.",
+    "signSub": "Mga pirmang parang sulat-kamay, tatak ng kompanya at pagpirma gamit ang certificate.",
+    "langTitle": "Sa wika mo: isa sa 20.",
+    "langSub": "Parehong budget sa XLS42, interface sa wikang {language}.",
+    "outroLine": "Libre  ·  Gumagana offline  ·  Open source  ·  macOS at Windows"
+  },
+  "languageNames": {
+    "ja": "Hapon",
+    "ar": "Arabe",
+    "de": "Aleman",
+    "ko": "Koreano",
+    "es": "Espanyol",
+    "zh-Hans": "Tsino",
+    "ru": "Ruso",
+    "en": "Ingles"
+  },
+  "products": {
+    "headers": [
+      "Produkto",
+      "SKU",
+      "Batch",
+      "Pahina ng produkto"
+    ],
+    "names": [
+      "Lampara sa mesa, 12 V LED",
+      "Power adapter, 24 W",
+      "USB-C hub, 7 port",
+      "Wall charger, 65 W",
+      "Extension cord, 3 m",
+      "Night light na may sensor",
+      "Cooling fan, 120 mm",
+      "Soldering station",
+      "Driver ng LED strip",
+      "Bench power supply"
+    ]
+  },
+  "typing": " Maaari rin po kaming mag-film ng maikling studio intro para sa inyong channel."
+}

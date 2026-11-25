@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "ZOBACZ W DZIAŁANIU",
+    "title": "Minuta z OFF42.",
+    "text": "Dokończ list w Wordzie, sprawdź budżet, poprowadź prezentację, popraw PDF i zeskanuj stronę, a potem zamień listę produktów w etykiety z kodami QR i znakiem CE. Każdą klatkę renderują same aplikacje na Macu, na przykładowych dokumentach fikcyjnych firm.",
+    "caption": "Demo bez dźwięku, około minuty. Prawdziwy obraz z aplikacji; ruchy kamery i wskaźnik zostały dodane."
+  },
+  "captions": {
+    "introTitle": "Całe biuro. Bez subskrypcji.",
+    "introLine": "Otwiera pliki Word, Excel, PowerPoint i PDF  ·  Działa offline  ·  Za darmo i z otwartym kodem",
+    "docTitle": "Otwórz plik Worda i pisz dalej.",
+    "docSub": "Otwiera DOCX, DOC, ODT, RTF i Markdown · zapisuje DOCX, ODT, RTF i PDF.",
+    "xlsTitle": "Arkusze z prawdziwymi formułami i wykresami.",
+    "xlsSub": "XLSX, XLS, ODS i CSV · 384 funkcje · wykresy.",
+    "pptTitle": "Prezentuj prosto z plików PowerPoint.",
+    "pptSub": "Widok prezentera z następnym slajdem, notatkami i stoperem · eksport do PDF lub wideo.",
+    "pdfEditTitle": "Popraw literówkę wprost w PDF.",
+    "pdfEditSub": "Edytuj tekst, strony, formularze i linki — i zapisz zwykły PDF.",
+    "compressTitle": "Zmniejsz ciężki PDF przed wysłaniem.",
+    "compressSub": "Obrazy są mniejsze, a tekst pozostaje ostry i przeszukiwalny.",
+    "scanTitle": "Skanuj papier do przeszukiwalnego PDF.",
+    "scanSub": "Skanery USB i sieciowe lub aparat iPhone'a · wbudowane rozpoznawanie tekstu.",
+    "qrTitle": "Zamień listę produktów w kody QR…",
+    "qrSub": "QR, Data Matrix, Code 128 i Aztec, z rozmiarem w milimetrach.",
+    "marksTitle": "…dodaj CE, UKCA, EAC i inne znaki…",
+    "marksSub": "97 znaków · każdy z warunkami użycia. Znak nie certyfikuje produktu.",
+    "labelsTitle": "…i wydrukuj cały arkusz etykiet.",
+    "labelsSub": "Kod z dowolnej kolumny · 559 formatów etykiet · kalibracja drukarki.",
+    "signTitle": "Podpisuj i stempluj bez drukowania.",
+    "signSub": "Podpisy w stylu odręcznym, pieczątki firmowe i podpis certyfikatem.",
+    "langTitle": "W twoim języku: jednym z 20.",
+    "langSub": "Ten sam budżet w XLS42, interfejs: {language}.",
+    "outroLine": "Za darmo  ·  Działa offline  ·  Otwarty kod  ·  macOS i Windows"
+  },
+  "languageNames": {
+    "ja": "japoński",
+    "ar": "arabski",
+    "de": "niemiecki",
+    "ko": "koreański",
+    "es": "hiszpański",
+    "zh-Hans": "chiński",
+    "ru": "rosyjski",
+    "en": "angielski"
+  },
+  "products": {
+    "headers": [
+      "Produkt",
+      "SKU",
+      "Partia",
+      "Strona produktu"
+    ],
+    "names": [
+      "Lampka biurkowa, LED 12 V",
+      "Zasilacz, 24 W",
+      "Hub USB-C, 7 portów",
+      "Ładowarka sieciowa, 65 W",
+      "Przedłużacz, 3 m",
+      "Lampka nocna z czujnikiem",
+      "Wentylator, 120 mm",
+      "Stacja lutownicza",
+      "Sterownik taśmy LED",
+      "Zasilacz laboratoryjny"
+    ]
+  },
+  "typing": " Możemy również nagrać krótkie studyjne intro dla Państwa kanału."
+}

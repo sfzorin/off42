@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "EN ACTION",
+    "title": "Une minute avec OFF42.",
+    "text": "Poursuivez une lettre Word, vérifiez un budget, présentez un diaporama, corrigez un PDF et numérisez une page, puis transformez une liste de produits en étiquettes QR avec marquage CE. Chaque image est rendue par les apps elles-mêmes sur un Mac, avec des documents d'exemple de sociétés fictives.",
+    "caption": "Démo muette, environ une minute. Rendus réels des apps ; mouvements de caméra et pointeur ajoutés."
+  },
+  "captions": {
+    "introTitle": "Tout votre bureau. Sans abonnement.",
+    "introLine": "Ouvre les fichiers Word, Excel, PowerPoint et PDF  ·  Fonctionne hors ligne  ·  Gratuit et open source",
+    "docTitle": "Ouvrez un fichier Word et continuez à écrire.",
+    "docSub": "Ouvre DOCX, DOC, ODT, RTF et Markdown · enregistre en DOCX, ODT, RTF et PDF.",
+    "xlsTitle": "De vraies formules, de vrais graphiques.",
+    "xlsSub": "XLSX, XLS, ODS et CSV · 384 fonctions · graphiques.",
+    "pptTitle": "Présentez directement vos fichiers PowerPoint.",
+    "pptSub": "Mode présentateur avec diapo suivante, notes et minuteur · export en PDF ou vidéo.",
+    "pdfEditTitle": "Corrigez une coquille directement dans le PDF.",
+    "pdfEditSub": "Modifiez texte, pages, formulaires et liens, puis enregistrez un PDF standard.",
+    "compressTitle": "Allégez un PDF lourd avant de l'envoyer.",
+    "compressSub": "Les images s'allègent ; le texte reste net et interrogeable.",
+    "scanTitle": "Numérisez vos papiers en PDF interrogeable.",
+    "scanSub": "Scanners USB et réseau ou appareil photo de l'iPhone · reconnaissance de texte intégrée.",
+    "qrTitle": "Transformez une liste de produits en codes QR…",
+    "qrSub": "QR, Data Matrix, Code 128 et Aztec, dimensionnés en millimètres.",
+    "marksTitle": "…ajoutez CE, UKCA, EAC et d'autres marquages…",
+    "marksSub": "97 marquages · chacun avec ses conditions d'utilisation. Un marquage ne certifie pas le produit.",
+    "labelsTitle": "…et imprimez toute une planche d'étiquettes.",
+    "labelsSub": "Code depuis n'importe quelle colonne · 559 formats d'étiquettes · calibrage de l'imprimante.",
+    "signTitle": "Signez et tamponnez sans imprimer.",
+    "signSub": "Signatures façon manuscrite, tampons d'entreprise et signature par certificat.",
+    "langTitle": "Dans votre langue : parmi 20.",
+    "langSub": "Le même budget dans XLS42, interface en {language}.",
+    "outroLine": "Gratuit  ·  Fonctionne hors ligne  ·  Open source  ·  macOS et Windows"
+  },
+  "languageNames": {
+    "ja": "japonais",
+    "ar": "arabe",
+    "de": "allemand",
+    "ko": "coréen",
+    "es": "espagnol",
+    "zh-Hans": "chinois",
+    "ru": "russe",
+    "en": "anglais"
+  },
+  "products": {
+    "headers": [
+      "Produit",
+      "Référence",
+      "Lot",
+      "Page produit"
+    ],
+    "names": [
+      "Lampe de bureau, LED 12 V",
+      "Adaptateur secteur, 24 W",
+      "Hub USB-C, 7 ports",
+      "Chargeur mural, 65 W",
+      "Rallonge, 3 m",
+      "Veilleuse à détecteur",
+      "Ventilateur, 120 mm",
+      "Station de soudage",
+      "Driver pour ruban LED",
+      "Alimentation de laboratoire"
+    ]
+  },
+  "typing": " Nous pouvons également tourner une courte présentation en studio pour votre chaîne."
+}

@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "MÍRALO EN ACCIÓN",
+    "title": "Un minuto con OFF42.",
+    "text": "Sigue escribiendo una carta de Word, revisa un presupuesto, presenta unas diapositivas, corrige un PDF y escanea una página; después convierte una lista de productos en etiquetas QR con marcado CE. Cada fotograma lo renderizan las propias apps en un Mac, con documentos de ejemplo de empresas ficticias.",
+    "caption": "Demo sin sonido, de aproximadamente un minuto. Renderizado real de las apps; los movimientos de cámara y el puntero son añadidos."
+  },
+  "captions": {
+    "introTitle": "Toda tu oficina. Sin suscripción.",
+    "introLine": "Abre archivos de Word, Excel, PowerPoint y PDF  ·  Funciona sin conexión  ·  Gratis y de código abierto",
+    "docTitle": "Abre un archivo de Word y sigue escribiendo.",
+    "docSub": "Abre DOCX, DOC, ODT, RTF y Markdown · guarda en DOCX, ODT, RTF y PDF.",
+    "xlsTitle": "Hojas de cálculo con fórmulas y gráficos reales.",
+    "xlsSub": "XLSX, XLS, ODS y CSV · 384 funciones · gráficos.",
+    "pptTitle": "Presenta directo desde archivos PowerPoint.",
+    "pptSub": "Vista del presentador con siguiente diapositiva, notas y temporizador · exporta a PDF o vídeo.",
+    "pdfEditTitle": "Corrige una errata dentro del PDF.",
+    "pdfEditSub": "Edita texto, páginas, formularios y enlaces, y guarda un PDF normal.",
+    "compressTitle": "Reduce un PDF pesado antes de enviarlo.",
+    "compressSub": "Las imágenes ocupan menos; el texto sigue nítido y se puede buscar.",
+    "scanTitle": "Escanea papel a un PDF con búsqueda.",
+    "scanSub": "Escáneres USB y de red o la cámara del iPhone · reconocimiento de texto integrado.",
+    "qrTitle": "Convierte una lista de productos en códigos QR…",
+    "qrSub": "QR, Data Matrix, Code 128 y Aztec, con tamaño en milímetros.",
+    "marksTitle": "…añade CE, UKCA, EAC y otras marcas…",
+    "marksSub": "97 marcas · cada una muestra sus condiciones de uso. Una marca no certifica el producto.",
+    "labelsTitle": "…e imprime una hoja entera de etiquetas.",
+    "labelsSub": "Código desde cualquier columna · 559 formatos de etiqueta · calibración de impresora.",
+    "signTitle": "Firma y sella sin imprimir.",
+    "signSub": "Firmas de estilo manuscrito, sellos de empresa y firma con certificado.",
+    "langTitle": "En tu idioma: hay 20.",
+    "langSub": "El mismo presupuesto en XLS42, con la interfaz en {language}.",
+    "outroLine": "Gratis  ·  Funciona sin conexión  ·  Código abierto  ·  macOS y Windows"
+  },
+  "languageNames": {
+    "ja": "japonés",
+    "ar": "árabe",
+    "de": "alemán",
+    "ko": "coreano",
+    "es": "español",
+    "zh-Hans": "chino",
+    "ru": "ruso",
+    "en": "inglés"
+  },
+  "products": {
+    "headers": [
+      "Producto",
+      "SKU",
+      "Lote",
+      "Página del producto"
+    ],
+    "names": [
+      "Lámpara de escritorio, LED 12 V",
+      "Adaptador de corriente, 24 W",
+      "Hub USB-C, 7 puertos",
+      "Cargador de pared, 65 W",
+      "Alargador, 3 m",
+      "Luz nocturna con sensor",
+      "Ventilador, 120 mm",
+      "Estación de soldadura",
+      "Driver para tira LED",
+      "Fuente de alimentación de laboratorio"
+    ]
+  },
+  "typing": " También podemos grabar una breve presentación en estudio para su canal."
+}

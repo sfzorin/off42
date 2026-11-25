@@ -1,0 +1,41 @@
+{
+  "site": {
+    "label": "WATCH IT WORK",
+    "title": "One minute with OFF42.",
+    "text": "Keep writing a Word letter, check a budget, present a deck, fix a PDF and scan a page — then turn a product list into QR labels with CE marks. Every frame is rendered by the apps themselves on a Mac, with sample documents of fictional companies.",
+    "caption": "Silent demo, about a minute. Real app renders; camera moves and the pointer are added."
+  },
+  "captions": {
+    "introTitle": "Your whole office. No subscription.",
+    "introLine": "Opens Word, Excel, PowerPoint and PDF files  ·  Works offline  ·  Free and open source",
+    "docTitle": "Open a Word file and keep writing.",
+    "docSub": "Opens DOCX, DOC, ODT, RTF and Markdown · saves DOCX, ODT, RTF and PDF.",
+    "xlsTitle": "Spreadsheets with real formulas and charts.",
+    "xlsSub": "XLSX, XLS, ODS and CSV · 384 functions · charts.",
+    "pptTitle": "Present straight from PowerPoint files.",
+    "pptSub": "Presenter view with the next slide, notes and a timer · export to PDF or video.",
+    "pdfEditTitle": "Fix a typo right inside the PDF.",
+    "pdfEditSub": "Edit text, pages, forms and links — then save a normal PDF.",
+    "compressTitle": "Shrink a heavy PDF before you email it.",
+    "compressSub": "Pictures get smaller; text stays sharp and searchable.",
+    "scanTitle": "Scan paper into a searchable PDF.",
+    "scanSub": "USB and network scanners or your iPhone camera · text recognition built in.",
+    "qrTitle": "Turn a product list into QR codes…",
+    "qrSub": "QR, Data Matrix, Code 128 and Aztec, sized in millimetres.",
+    "marksTitle": "…add CE, UKCA, EAC and other marks…",
+    "marksSub": "97 marks · each shows its conditions of use. A mark does not certify the product.",
+    "labelsTitle": "…and print a whole sheet of labels.",
+    "labelsSub": "Code from any column · 559 label stocks · printer calibration.",
+    "signTitle": "Sign and stamp without printing.",
+    "signSub": "Handwritten-style signatures, company stamps and certificate signing.",
+    "langTitle": "In your language: 20 of them.",
+    "langSub": "The same budget in XLS42, interface in {language}.",
+    "outroLine": "Free  ·  Works offline  ·  Open source  ·  macOS and Windows"
+  },
+  "languageNames": {"ja": "Japanese", "ar": "Arabic", "de": "German", "ko": "Korean", "es": "Spanish", "zh-Hans": "Chinese", "ru": "Russian", "en": "English"},
+  "products": {
+    "headers": ["Product", "SKU", "Batch", "Product page"],
+    "names": ["Desk lamp, 12 V LED", "Power adapter, 24 W", "USB-C hub, 7 ports", "Wall charger, 65 W", "Extension cord, 3 m", "Night light, sensor", "Cooling fan, 120 mm", "Soldering station", "LED strip driver", "Bench power supply"]
+  },
+  "typing": " We can also film a short studio intro for your channel."
+}

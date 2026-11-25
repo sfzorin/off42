@@ -1,0 +1,66 @@
+{
+  "site": {
+    "label": "MŰKÖDÉS KÖZBEN",
+    "title": "Egy perc az OFF42-vel.",
+    "text": "Folytass egy Word-levelet, ellenőrizz egy költségvetést, tarts egy bemutatót, javíts ki egy PDF-et és szkennelj be egy oldalt, majd alakíts egy terméklistát CE-jelöléses QR-címkékké. Minden képkockát maguk az alkalmazások renderelnek egy Macen, kitalált cégek mintadokumentumaival.",
+    "caption": "Néma bemutató, körülbelül egy perc. Valódi alkalmazásképek; a kameramozgás és a mutató utólag került rá."
+  },
+  "captions": {
+    "introTitle": "Teljes iroda. Előfizetés nélkül.",
+    "introLine": "Megnyitja a Word-, Excel-, PowerPoint- és PDF-fájlokat  ·  Offline is működik  ·  Ingyenes és nyílt forráskódú",
+    "docTitle": "Nyiss meg egy Word-fájlt, és írd tovább.",
+    "docSub": "Megnyit DOCX, DOC, ODT, RTF és Markdown fájlt · ment DOCX, ODT, RTF és PDF formátumba.",
+    "xlsTitle": "Táblázatok valódi képletekkel és diagramokkal.",
+    "xlsSub": "XLSX, XLS, ODS és CSV · 384 függvény · diagramok.",
+    "pptTitle": "Vetíts közvetlenül PowerPoint-fájlokból.",
+    "pptSub": "Előadói nézet a következő diával, jegyzetekkel és időzítővel · exportálás PDF-be vagy videóba.",
+    "pdfEditTitle": "Javítsd ki az elírást közvetlenül a PDF-ben.",
+    "pdfEditSub": "Szerkeszd a szöveget, oldalakat, űrlapokat és hivatkozásokat, majd ments normál PDF-et.",
+    "compressTitle": "Kicsinyítsd a nagy PDF-et küldés előtt.",
+    "compressSub": "A képek kisebbek lesznek, a szöveg éles és kereshető marad.",
+    "scanTitle": "Szkennelj papírt kereshető PDF-be.",
+    "scanSub": "USB-s és hálózati szkennerek vagy az iPhone kamerája · beépített szövegfelismerés.",
+    "qrTitle": "Alakíts egy terméklistát QR-kódokká…",
+    "qrSub": "QR, Data Matrix, Code 128 és Aztec, milliméterben megadott méretben.",
+    "marksTitle": "…adj hozzá CE, UKCA, EAC és más jelöléseket…",
+    "marksSub": "97 jelölés · mindegyiknél látszanak a használati feltételek. A jelölés nem tanúsítja a terméket.",
+    "labelsTitle": "…és nyomtass ki egy teljes címkeívet.",
+    "labelsSub": "Kód bármely oszlopból · 559 címkeformátum · nyomtatókalibrálás.",
+    "signTitle": "Írj alá és pecsételj nyomtatás nélkül.",
+    "signSub": "Kézírásos stílusú aláírások, céges bélyegzők és tanúsítványos aláírás.",
+    "langTitle": "A te nyelveden: 20 közül.",
+    "langSub": "Ugyanaz a költségvetés az XLS42-ben, {language} felülettel.",
+    "outroLine": "Ingyenes  ·  Offline is működik  ·  Nyílt forráskód  ·  macOS és Windows"
+  },
+  "languageNames": {
+    "ja": "japán",
+    "ar": "arab",
+    "de": "német",
+    "ko": "koreai",
+    "es": "spanyol",
+    "zh-Hans": "kínai",
+    "ru": "orosz",
+    "en": "angol"
+  },
+  "products": {
+    "headers": [
+      "Termék",
+      "Cikkszám",
+      "Tétel",
+      "Termékoldal"
+    ],
+    "names": [
+      "Asztali lámpa, 12 V LED",
+      "Hálózati adapter, 24 W",
+      "USB-C elosztó, 7 portos",
+      "Fali töltő, 65 W",
+      "Hosszabbító, 3 m",
+      "Éjszakai fény érzékelővel",
+      "Hűtőventilátor, 120 mm",
+      "Forrasztóállomás",
+      "LED-szalag tápegység",
+      "Labortápegység"
+    ]
+  },
+  "typing": " Csatornájuk számára egy rövid stúdiós bemutatkozó videót is szívesen forgatunk."
+}
