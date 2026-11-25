@@ -1010,3 +1010,9 @@ after image selection; image unit regressions are now included in quick CI.
   standard XLSX range lists, PPT42 verified PDF, native notes printing and show tools, and SCN42
   verified PNG/JPEG batches and filename templates. The DOC42 Navigator screenshot was inspected.
   Local workspace tests passed 599/0/1 and Windows GNU compilation passed for all targets.
+- Run 45704818669 (b1b8376, PR #3) passed all MSVC tests and the four new PPT42 native audits:
+  Insert/Edit Chart with drawn column and pie pixels, Undo/Redo, PPTX chart part and workbook, ODF
+  chart object and in-place PPTX chart overlay; Slide Theme backgrounds and saved theme/master parts;
+  Object Animation output and click-step fade playback with back navigation; SmartArt drawn from its
+  drawing part with diagram parts preserved. The only failing group was the IMG42 signature generator
+  audit that arrived from main (dd97017).
