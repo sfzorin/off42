@@ -377,9 +377,19 @@ def audit_generators(process, main, binary, output, results, local_app_data):
         assert width > 80 and height > 40 and ink >= minimum, (path.name, width, height, ink)
         return width, height, ink
 
-    def pick_variant(prefix):
-        variants = wait_for(lambda: sorted(scratch.glob(prefix + "*.png")) if len(list(scratch.glob("*.png"))) == 6 else None,
-                            "six generated variants", process)
+    def pick_variant(belongs):
+        # The app replaces the previous variants file by file: wait for exactly six of the new set, each fully written.
+        def ready():
+            paths = sorted(scratch.glob("*.png"))
+            if len(paths) != 6 or not all(belongs(path.name) for path in paths):
+                return None
+            try:
+                for path in paths:
+                    png_pixels(path)
+            except Exception:
+                return None
+            return paths
+        variants = wait_for(ready, "six generated variants", process)
         sizes = {inked(path, 300) for path in variants}
         assert len(sizes) > 1, "variants differ"
         choose_file(process, variants[1])
@@ -388,7 +398,7 @@ def audit_generators(process, main, binary, output, results, local_app_data):
 
     command(main, 65498)
     finish_prompt(process, "Create Signature", ["Sergey Zorin", "Full name", "Gel pen", "Violet ink"])
-    chosen = pick_variant("Sergey Zorin ")
+    chosen = pick_variant(lambda name: name.startswith("Sergey Zorin "))
     signature = wait_for(lambda: next(iter(library.glob("Signature - Sergey Zorin*.png")), None), "signature kept in the library", process)
     assert signature.read_bytes() == chosen.read_bytes()
     inked(signature, 300)
@@ -396,7 +406,7 @@ def audit_generators(process, main, binary, output, results, local_app_data):
     command(main, 65497)
     finish_prompt(process, "Create Stamp", ["ru.ooo", "Red ink"])
     finish_prompt(process, "Create Stamp", [])
-    pick_variant("")
+    pick_variant(lambda name: not name.startswith("Sergey Zorin "))
     stamp = wait_for(lambda: next(iter(library.glob("Stamp - *.png")), None), "stamp kept in the library", process)
     _, _, ink = inked(stamp, 2000)
     width, height, pixels = png_pixels(stamp)
