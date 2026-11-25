@@ -236,19 +236,61 @@ pub(crate) fn edit_technical_request(element: &label42::TechnicalElement) -> Inp
         .symbol_id
         .as_ref()
         .and_then(|id| label42::symbols().iter().find(|symbol| symbol.id == *id))
-        .map(|symbol| symbol.title)
-        .unwrap_or(match element.code_type {
+        .map(mark_label)
+        .unwrap_or_else(|| match element.code_type {
             Format::Qr => "QR",
             Format::DataMatrix => "Data Matrix",
             Format::Code128 => "Code 128",
             Format::Aztec => "Aztec",
-        });
+        }.into());
     let mut request = technical_request();
     request.fields[0].1 = kind.into();
     request.fields[1].1 = element.value.clone();
     request.fields[2].1 = format!("{:.3}", element.width_mm);
     request.fields[3].1 = if element.caption { "yes" } else { "no" }.into();
     request
+}
+
+fn language() -> &'static str {
+    crate::localization::current().code
+}
+
+/// A mark as shown in the format list: its name in the interface language and its region, e.g. "CE — EU".
+pub(crate) fn mark_label(symbol: &label42::TechnicalSymbol) -> String {
+    symbol.name_in(language())
+}
+
+/// The mark chosen in the format field (by displayed name, English name or file id).
+pub(crate) fn find_mark(kind: &str) -> Option<&'static label42::TechnicalSymbol> {
+    let kind = kind.trim();
+    label42::symbols().iter().find(|symbol| {
+        symbol.id.eq_ignore_ascii_case(kind) || symbol.title.eq_ignore_ascii_case(kind) || mark_label(symbol) == kind
+    })
+}
+
+/// What the mark is for and its conditions of use, shown before inserting it (as under the macOS preview).
+/// Informs only: every mark can be inserted. `None` for barcodes.
+pub(crate) fn mark_notice(element: &label42::TechnicalElement) -> Option<String> {
+    let symbol = element.symbol_id.as_deref().and_then(|id| label42::symbols().iter().find(|s| s.id == id))?;
+    let t = crate::localization::text;
+    let mut conditions = Vec::new();
+    if symbol.unverified {
+        conditions.push(t("Unverified artwork: compare it with the official mark before use."));
+    }
+    if symbol.legal == "trademark" {
+        conditions.push(t("Trademark or certification mark: use only with the owner's authorization for this product."));
+    }
+    if let Some(warning) = symbol.warning_in(language()) {
+        conditions.push(warning);
+    }
+    if symbol.needs_number {
+        conditions.push(t("Add the required registration or licence number next to the mark."));
+    }
+    if conditions.is_empty() {
+        return None;
+    }
+    let purpose = symbol.purpose_in(language());
+    Some(format!("{}\n\n{}\n\n{}", mark_label(symbol), purpose, conditions.join("\n")).replace("\n\n\n\n", "\n\n"))
 }
 
 pub(crate) fn technical_choices() -> Vec<(usize, Vec<String>)> {
@@ -258,11 +300,10 @@ pub(crate) fn technical_choices() -> Vec<(usize, Vec<String>)> {
         "Code 128".into(),
         "Aztec".into(),
     ];
-    types.extend(
-        label42::symbols()
-            .iter()
-            .map(|symbol| symbol.title.to_owned()),
-    );
+    // Marks follow the codes, grouped in the macOS category order, named in the interface language.
+    for category in label42::CATEGORIES {
+        types.extend(label42::symbols().iter().filter(|s| s.category == category).map(mark_label));
+    }
     vec![(0, types), (3, vec!["yes".into(), "no".into()])]
 }
 
@@ -270,10 +311,7 @@ pub(crate) fn technical_element(fields: &[String]) -> Result<label42::TechnicalE
     let [kind, value, width, caption] = fields else {
         return Err("Invalid technical element settings.".into());
     };
-    let symbol = label42::symbols().iter().find(|symbol| {
-        symbol.id.eq_ignore_ascii_case(kind.trim())
-            || symbol.title.eq_ignore_ascii_case(kind.trim())
-    });
+    let symbol = find_mark(kind);
     let element = label42::TechnicalElement {
         symbol_id: symbol.map(|symbol| symbol.id.to_owned()),
         code_type: if symbol.is_some() {
@@ -294,6 +332,36 @@ pub(crate) fn technical_element(fields: &[String]) -> Result<label42::TechnicalE
     };
     element.validate()?;
     Ok(element)
+}
+
+#[cfg(test)]
+mod mark_choice_tests {
+    use super::*;
+
+    #[test]
+    fn marks_are_listed_after_codes_and_resolve_by_name_title_or_id() {
+        let choices = technical_choices();
+        let types = &choices[0].1;
+        assert_eq!(&types[..4], ["QR", "Data Matrix", "Code 128", "Aztec"]);
+        assert_eq!(types.len(), 4 + label42::symbols().len());
+        assert!(types.contains(&"CE — EU".to_owned()) && types.contains(&"Protective earth".to_owned()));
+        for kind in ["CE — EU", "ce", "Protective earth", "protective-earth"] {
+            assert!(find_mark(kind).is_some(), "{kind}");
+        }
+        let element = technical_element(&["CE — EU".into(), String::new(), "20".into(), "no".into()]).unwrap();
+        assert_eq!(element.symbol_id.as_deref(), Some("ce"));
+    }
+
+    #[test]
+    fn conformity_and_unverified_marks_show_conditions_but_plain_symbols_and_codes_do_not() {
+        let mark = |id: &str| label42::TechnicalElement { symbol_id: Some(id.into()), code_type: Format::Qr, value: String::new(), width_mm: 20.0, caption: false };
+        let ce = mark_notice(&mark("ce")).unwrap();
+        assert!(ce.starts_with("CE — EU") && ce.contains("conformity assessment"), "{ce}");
+        assert!(mark_notice(&mark("iso-9001")).unwrap().contains("Unverified artwork"));
+        assert!(mark_notice(&mark("bis")).unwrap().contains("licence number"));
+        let qr = label42::TechnicalElement { symbol_id: None, code_type: Format::Qr, value: "A".into(), width_mm: 20.0, caption: false };
+        assert!(mark_notice(&qr).is_none());
+    }
 }
 
 #[cfg(test)]

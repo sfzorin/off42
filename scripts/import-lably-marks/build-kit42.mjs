@@ -8,7 +8,12 @@ const BROKEN = new Set(['li-ion-warning.svg', 'sterile.svg', 'mr-conditional.svg
 // NSImage cannot draw this Inkscape file's clip paths: ship a WebKit (Quick Look) render at ~1000 px instead.
 const RASTER = {'etl.svg': 'etl.png'};
 // One entry per artwork file; ids are file names, so the 14 earlier symbol ids keep working.
-for (const m of [...all].sort((a, b) => (a.selectable === false) - (b.selectable === false))) {
+// Several Lably entries can share one drawing. Prefer verified (selectable) entries, then the precise name for the
+// drawing (Class II for insulation-class.svg), then the entry whose id names the file (Protective_Earth, not Earth_ground).
+const PREFERRED = new Set(['Class_II']);
+const named = m => m.id.toLowerCase().replace(/_/g, '-') === m.url.split('/').pop().replace(/\.(svg|png)$/, '');
+const rank = m => (m.selectable === false ? 4 : 0) + (PREFERRED.has(m.id) ? 0 : 2) + (named(m) ? 0 : 1);
+for (const m of [...all].sort((a, b) => rank(a) - rank(b))) {
   const file = m.url.split('/').pop(); if (byFile.has(file) || BROKEN.has(file)) continue;
   byFile.set(file, m);
 }

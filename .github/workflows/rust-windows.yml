@@ -104,8 +104,8 @@ jobs:
         run: |
           python scripts/fetch-pdfium.py build/test-pdfium
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          New-Item -ItemType Directory -Force target/x86_64-pc-windows-msvc/debug/deps | Out-Null
-          Copy-Item build/test-pdfium/pdfium.dll target/x86_64-pc-windows-msvc/debug/deps/pdfium.dll
+          python scripts/place-test-dll.py build/test-pdfium/pdfium.dll --locked --workspace
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - run: cargo test --locked --workspace
         if: inputs.quick_ui != true
       - name: Build six native executables
@@ -160,8 +160,8 @@ jobs:
         if: inputs.quick_ui == true
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force target/x86_64-pc-windows-msvc/debug/deps | Out-Null
-          Copy-Item build/off42/pdfium.dll target/x86_64-pc-windows-msvc/debug/deps/pdfium.dll
+          python scripts/place-test-dll.py build/off42/pdfium.dll --locked -p suite42-core -p win42 -p pdf42-core -p pdf42 -p doc42-core -p doc42 -p xls42-core -p xls42 -p ppt42-core -p ppt42 -p scn42-core -p scn42 -p img42-core -p img42 -p label42
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo test --locked -p suite42-core -p win42 -p pdf42-core -p pdf42 -p doc42-core -p doc42 -p xls42-core -p xls42 -p ppt42-core -p ppt42 -p scn42-core -p scn42 -p img42-core -p img42 -p label42 2>&1 | Tee-Object -FilePath build/native-ui/msvc-tests.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Record available Windows print devices

@@ -478,10 +478,10 @@ impl win42::App for Pdf {
                 rgba: raster.rgba,
             },
             raster.element.description()?,
-            Some(pdf42_core::VectorStamp {
-                width: raster.vector.width_points,
-                height: raster.vector.height_points,
-                content: raster.vector.content.into(),
+            raster.vector.map(|vector| pdf42_core::VectorStamp {
+                width: vector.width_points,
+                height: vector.height_points,
+                content: vector.content.into(),
             }),
         )?);
         #[cfg(windows)]
