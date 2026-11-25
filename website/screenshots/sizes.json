@@ -725,7 +725,7 @@
  ],
  "codes-qr-en": [
   924,
-  1184
+  820
  ],
  "codes-labels-ru": [
   2640,
@@ -733,6 +733,238 @@
  ],
  "codes-qr-ru": [
   924,
-  1184
+  820
+ ],
+ "codes-mark-en": [
+  924,
+  960
+ ],
+ "codes-sheet-en": [
+  1496,
+  1150
+ ],
+ "codes-qr-zh-Hans": [
+  924,
+  820
+ ],
+ "codes-mark-zh-Hans": [
+  924,
+  960
+ ],
+ "codes-sheet-zh-Hans": [
+  1496,
+  1150
+ ],
+ "codes-qr-zh-Hant": [
+  924,
+  820
+ ],
+ "codes-mark-zh-Hant": [
+  924,
+  960
+ ],
+ "codes-sheet-zh-Hant": [
+  1496,
+  1150
+ ],
+ "codes-qr-es": [
+  924,
+  820
+ ],
+ "codes-mark-es": [
+  924,
+  960
+ ],
+ "codes-sheet-es": [
+  1496,
+  1150
+ ],
+ "codes-qr-ar": [
+  924,
+  820
+ ],
+ "codes-mark-ar": [
+  924,
+  960
+ ],
+ "codes-sheet-ar": [
+  1496,
+  1150
+ ],
+ "codes-qr-fr": [
+  924,
+  820
+ ],
+ "codes-mark-fr": [
+  924,
+  960
+ ],
+ "codes-sheet-fr": [
+  1496,
+  1150
+ ],
+ "codes-qr-pt": [
+  924,
+  820
+ ],
+ "codes-mark-pt": [
+  924,
+  960
+ ],
+ "codes-sheet-pt": [
+  1496,
+  1150
+ ],
+ "codes-qr-id": [
+  924,
+  820
+ ],
+ "codes-mark-id": [
+  924,
+  960
+ ],
+ "codes-sheet-id": [
+  1496,
+  1150
+ ],
+ "codes-mark-ru": [
+  924,
+  960
+ ],
+ "codes-sheet-ru": [
+  1496,
+  1150
+ ],
+ "codes-qr-de": [
+  924,
+  820
+ ],
+ "codes-mark-de": [
+  924,
+  960
+ ],
+ "codes-sheet-de": [
+  1496,
+  1150
+ ],
+ "codes-qr-ja": [
+  924,
+  820
+ ],
+ "codes-mark-ja": [
+  924,
+  960
+ ],
+ "codes-sheet-ja": [
+  1496,
+  1150
+ ],
+ "codes-qr-vi": [
+  924,
+  820
+ ],
+ "codes-mark-vi": [
+  924,
+  960
+ ],
+ "codes-sheet-vi": [
+  1496,
+  1150
+ ],
+ "codes-qr-tr": [
+  924,
+  820
+ ],
+ "codes-mark-tr": [
+  924,
+  960
+ ],
+ "codes-sheet-tr": [
+  1496,
+  1150
+ ],
+ "codes-qr-fil": [
+  924,
+  820
+ ],
+ "codes-mark-fil": [
+  924,
+  960
+ ],
+ "codes-sheet-fil": [
+  1496,
+  1150
+ ],
+ "codes-qr-ko": [
+  924,
+  820
+ ],
+ "codes-mark-ko": [
+  924,
+  960
+ ],
+ "codes-sheet-ko": [
+  1496,
+  1150
+ ],
+ "codes-qr-th": [
+  924,
+  820
+ ],
+ "codes-mark-th": [
+  924,
+  960
+ ],
+ "codes-sheet-th": [
+  1496,
+  1150
+ ],
+ "codes-qr-it": [
+  924,
+  820
+ ],
+ "codes-mark-it": [
+  924,
+  960
+ ],
+ "codes-sheet-it": [
+  1496,
+  1150
+ ],
+ "codes-qr-pl": [
+  924,
+  820
+ ],
+ "codes-mark-pl": [
+  924,
+  960
+ ],
+ "codes-sheet-pl": [
+  1496,
+  1150
+ ],
+ "codes-qr-ms": [
+  924,
+  820
+ ],
+ "codes-mark-ms": [
+  924,
+  960
+ ],
+ "codes-sheet-ms": [
+  1496,
+  1150
+ ],
+ "codes-qr-hu": [
+  924,
+  820
+ ],
+ "codes-mark-hu": [
+  924,
+  960
+ ],
+ "codes-sheet-hu": [
+  1496,
+  1150
  ]
 }
