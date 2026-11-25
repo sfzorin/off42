@@ -562,6 +562,10 @@ pub trait App {
     fn uses_rich_edit(&self) -> bool {
         false
     }
+    /// Print layout used to paginate the live rich editor; None hides the page canvas.
+    fn page_layout(&self) -> Option<RichPrint> {
+        None
+    }
     fn rich_text(&self) -> Option<Vec<u8>> {
         None
     }
@@ -633,6 +637,7 @@ mod rich_notes;
 mod rich_preview;
 #[cfg(windows)]
 mod rich_artwork;
+mod rich_pages;
 #[cfg(windows)]
 mod rich_print;
 #[cfg(windows)]

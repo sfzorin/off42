@@ -2191,6 +2191,9 @@ impl App for Doc {
             .map_err(|e| e.to_string())?;
         Ok(())
     }
+    fn page_layout(&self) -> Option<win42::RichPrint> {
+        self.rich_print()
+    }
     fn rich_preview(&self, id: u16) -> Option<win42::RichPrint> {
         if id == 316 {
             self.rich_print()

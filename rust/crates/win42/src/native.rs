@@ -124,9 +124,18 @@ impl State {
                 self.app.status(),
                 crate::localization::text("Recovered copy; save to keep your changes")
             )
+        } else if let Some(page) = self.page_status() {
+            format!("{} · {page}", self.app.status())
         } else {
             self.app.status()
         }
+    }
+    fn page_status(&self) -> Option<String> {
+        if !self.app.uses_rich_edit() || self.edit.is_null() {
+            return None;
+        }
+        let caret = unsafe { crate::rich_edit::selection(self.edit) }.1;
+        crate::rich_pages::status(crate::rich_pages::layout().as_ref(), caret)
     }
     fn clear_recovery(&mut self) {
         self.recovery_unsaved = false;
@@ -749,6 +758,7 @@ unsafe fn refresh() {
         };
         let _ = crate::rich_edit::load(edit, &rtf);
         crate::rich_edit::set_selection(edit, selection);
+        crate::rich_pages::invalidate();
     } else {
         SetWindowTextW(edit, wide(&text).as_ptr());
     }
@@ -1322,7 +1332,9 @@ unsafe fn sync_rulers(_hwnd: HWND) {
             true
         }
     });
+    crate::rich_pages::set_frame(edit, page_left, page_width);
     if changed {
+        crate::rich_pages::invalidate();
         let mut a = u32::from(data.zoom_percent);
         let mut b = 100u32;
         let (mut x, mut y) = (a, b);
@@ -2657,6 +2669,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                 msg(hwnd, &e, MB_OK | MB_ICONERROR);
                 refresh();
             } else {
+                crate::rich_pages::invalidate();
                 schedule_rich_sidebar_refresh(hwnd);
                 update_caption();
             }
@@ -3372,6 +3385,17 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
                 if let Some(id)=command.filter(|id|crate::application_command_id(*id)||*id==CREATE_LABEL_SHEET) { PostMessageW(h,WM_COMMAND,id as usize,0); }
             }
             sync_rulers(h);
+            if crate::rich_pages::due() {
+                let (edit, job) = STATE.with(|s| {
+                    let s = s.borrow();
+                    let s = s.as_ref().unwrap();
+                    let live = s.app.uses_rich_edit() && IsWindowVisible(s.edit) != 0 && s.async_open.is_none();
+                    (s.edit, live.then(|| s.app.page_layout()).flatten())
+                });
+                if crate::rich_pages::measure(edit, job.as_ref()) {
+                    update_caption();
+                }
+            }
             let pending = STATE.with(|s| {
                 s.borrow_mut()
                     .as_mut()
@@ -4163,6 +4187,9 @@ pub fn run(app: Box<dyn App>) {
             instance,
             null(),
         );
+        if rich {
+            SetWindowSubclass(edit, Some(crate::rich_pages::paint_proc), 43, 0);
+        }
         if !rich && SetWindowSubclass(edit,Some(plain_edit_proc),42,0)==0 {
             msg(h,"Could not initialize the document editor",MB_OK|MB_ICONERROR);
             DestroyWindow(h);

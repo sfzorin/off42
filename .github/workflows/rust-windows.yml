@@ -168,6 +168,8 @@ jobs:
         if: always()
         timeout-minutes: 2
         run: python scripts/audit-print-environment.py --output build/native-ui/printing-environment.json
+      - name: Audit DOC42 document model through native controls
+        run: python scripts/audit-doc42-windows.py --bin-dir build/off42 --output build/native-ui
       - name: Audit native commands in the packaged apps
         run: python scripts/audit-ui-windows.py --bin-dir build/off42 --output build/native-ui --extended --pictures --technical-objects --label-sources --languages --recents --page-exports --host-commands --engineering --text-exports --extended-formulas --multiwindow --window-layout --rich-search --preset-shapes --pdf-decorations --statistical-formulas --pdf-comparison --pdf-merge --pdf-batch-headers --array-formulas --ocr --label-artwork --label-preview --recovery --native-print
       - uses: actions/upload-artifact@v4
