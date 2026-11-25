@@ -87,3 +87,6 @@
 @media(max-width:700px){.codes-cards{grid-template-columns:1fr;gap:28px;max-width:480px;margin-inline:auto}}
 @media(max-width:640px){.video-section{padding:64px 6% 16px}.codes-section{margin:40px 4% 0;padding:40px 5%}.codes-foot{flex-direction:column;align-items:flex-start}}
 .hero-copy,.hero-visual{min-width:0}.hero-visual{width:100%;max-width:100%}
+.i{display:inline-block;flex:none;width:1em;height:1em;vertical-align:middle}.language-picker summary>span:first-child{font-size:inherit;font-weight:inherit}.language-picker summary .i-globe{width:21px;height:21px}.chevron{display:inline-flex}.chevron .i{width:14px;height:14px;transition:transform .2s}.language-picker[open]>summary .chevron .i{transform:rotate(180deg)}.language-panel a .i-check{width:14px;height:14px;margin-inline-start:6px;vertical-align:-2px}
+.button{gap:12px}.button .i{width:17px;height:17px}.button.small{gap:9px}.button.small .i{width:15px;height:15px}.text-link{gap:10px}.text-link .i{width:17px;height:17px}.app-arrow .i,.card-number .i{width:18px;height:18px}.benefit-list span .i{width:16px;height:16px}.mobile-menu summary .i{display:block;width:24px;height:24px}.copy{display:inline-flex;align-items:center;justify-content:center}.copy .i{width:16px;height:16px}.download-icon .i{width:44px;height:44px;stroke-width:1.5}
+[dir=rtl] .i-right,[dir=rtl] .i-upright{transform:scaleX(-1)}

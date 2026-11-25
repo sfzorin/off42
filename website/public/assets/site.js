@@ -19,7 +19,9 @@ for (const button of document.querySelectorAll('button.copy')) {
       try { copied = document.execCommand('copy'); } catch { copied = false; }
     }
     if (!copied) return;
-    const label = button.textContent; button.textContent = '✓'; button.setAttribute('aria-label', button.dataset.done);
-    setTimeout(() => { button.textContent = label; button.setAttribute('aria-label', button.title); }, 1600);
+    const icon = button.innerHTML;
+    button.innerHTML = '<svg class="i i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+    button.setAttribute('aria-label', button.dataset.done);
+    setTimeout(() => { button.innerHTML = icon; button.setAttribute('aria-label', button.title); }, 1600);
   });
 }

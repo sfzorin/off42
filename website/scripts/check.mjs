@@ -29,7 +29,7 @@ for(const page of manifest.files){
  assert.equal((html.match(/<h1[ >]/g)||[]).length,1,page.path+' h1');
  if(page.route==='features/')assert.equal((html.match(/<h2>[^<]+<\/h2><p>/g)||[]).length,Object.keys(source.features).length+1,page.path+' feature card heading levels');
  const langCode=page.lang==='zh-Hans'?'简':page.lang==='zh-Hant'?'繁':page.lang.toUpperCase();
- assert(html.includes(': '+langCode+'"><span aria-hidden="true">◎</span>'),page.path+' language control accessible name includes visible code');
+ assert(html.includes(': '+langCode+'"><svg class="i i-globe"'),page.path+' language control accessible name includes visible code');
  assert(!/undefined|\[object Object\]/.test(html),page.path);
  const canonical=html.match(/<link rel="canonical" href="([^"]+)"/)[1];
  assert.equal(canonical,page.url);assert(!canonicalSeen.has(canonical));canonicalSeen.add(canonical);
