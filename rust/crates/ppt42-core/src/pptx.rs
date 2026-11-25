@@ -2587,7 +2587,7 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
                     fill_visible: false,
                     stroke_visible: false,
                     text: (*value).clone(),
-                    text_style: TextStyle::default(),
+                    text_style: themed_style(deck.theme(), row == 0),
                     paragraphs: Vec::new(),
                     media: Vec::new(),
                     cells: Vec::new(),
@@ -2733,7 +2733,12 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
         format!("<Relationships xmlns=\"{pkg}\">{pres_rels}</Relationships>").into_bytes(),
     ));
     parts.push(("_rels/.rels".into(),format!("<Relationships xmlns=\"{pkg}\"><Relationship Id=\"main\" Type=\"{rns}/officeDocument\" Target=\"ppt/presentation.xml\"/></Relationships>").into_bytes()));
-    let master=format!("<p:sldMaster xmlns:p=\"{pns}\" xmlns:a=\"{ans}\" xmlns:r=\"{rns}\"><p:cSld><p:spTree>{group}</p:spTree></p:cSld><p:clrMap bg1=\"lt1\" tx1=\"dk1\" bg2=\"lt2\" tx2=\"dk2\" accent1=\"accent1\" accent2=\"accent2\" accent3=\"accent3\" accent4=\"accent4\" accent5=\"accent5\" accent6=\"accent6\" hlink=\"hlink\" folHlink=\"folHlink\"/><p:sldLayoutIdLst><p:sldLayoutId id=\"2147483649\" r:id=\"layout\"/></p:sldLayoutIdLst><p:txStyles/></p:sldMaster>");
+    let background = if deck.theme().is_some() {
+        "<p:bg><p:bgPr><a:solidFill><a:schemeClr val=\"bg1\"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>"
+    } else {
+        ""
+    };
+    let master=format!("<p:sldMaster xmlns:p=\"{pns}\" xmlns:a=\"{ans}\" xmlns:r=\"{rns}\"><p:cSld>{background}<p:spTree>{group}</p:spTree></p:cSld><p:clrMap bg1=\"lt1\" tx1=\"dk1\" bg2=\"lt2\" tx2=\"dk2\" accent1=\"accent1\" accent2=\"accent2\" accent3=\"accent3\" accent4=\"accent4\" accent5=\"accent5\" accent6=\"accent6\" hlink=\"hlink\" folHlink=\"folHlink\"/><p:sldLayoutIdLst><p:sldLayoutId id=\"2147483649\" r:id=\"layout\"/></p:sldLayoutIdLst><p:txStyles/></p:sldMaster>");
     parts.push((
         "ppt/slideMasters/slideMaster1.xml".into(),
         master.into_bytes(),
@@ -2759,7 +2764,10 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
         colors.push_str(&format!("<a:{key}><a:srgbClr val=\"{value}\"/></a:{key}>"));
     }
     let solid = "<a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill>";
-    let theme=format!("<a:theme xmlns:a=\"{ans}\" name=\"Suite42\"><a:themeElements><a:clrScheme name=\"Suite42\">{colors}</a:clrScheme><a:fontScheme name=\"Suite42\"><a:majorFont><a:latin typeface=\"Arial\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/></a:majorFont><a:minorFont><a:latin typeface=\"Arial\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/></a:minorFont></a:fontScheme><a:fmtScheme name=\"Suite42\"><a:fillStyleLst>{}</a:fillStyleLst><a:lnStyleLst>{}</a:lnStyleLst><a:effectStyleLst>{}</a:effectStyleLst><a:bgFillStyleLst>{}</a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>",solid.repeat(3),format!("<a:ln>{solid}</a:ln>").repeat(3),"<a:effectStyle><a:effectLst/></a:effectStyle>".repeat(3),solid.repeat(3));
+    let theme = match deck.theme() {
+        Some(theme) => theme.drawingml(),
+        None => format!("<a:theme xmlns:a=\"{ans}\" name=\"Suite42\"><a:themeElements><a:clrScheme name=\"Suite42\">{colors}</a:clrScheme><a:fontScheme name=\"Suite42\"><a:majorFont><a:latin typeface=\"Arial\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/></a:majorFont><a:minorFont><a:latin typeface=\"Arial\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/></a:minorFont></a:fontScheme><a:fmtScheme name=\"Suite42\"><a:fillStyleLst>{}</a:fillStyleLst><a:lnStyleLst>{}</a:lnStyleLst><a:effectStyleLst>{}</a:effectStyleLst><a:bgFillStyleLst>{}</a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>",solid.repeat(3),format!("<a:ln>{solid}</a:ln>").repeat(3),"<a:effectStyle><a:effectLst/></a:effectStyle>".repeat(3),solid.repeat(3)),
+    };
     parts.push(("ppt/theme/theme1.xml".into(), theme.into_bytes()));
     let types=format!("<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"png\" ContentType=\"image/png\"/><Default Extension=\"jpg\" ContentType=\"image/jpeg\"/><Default Extension=\"xlsx\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\"/><Override PartName=\"/ppt/presentation.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml\"/><Override PartName=\"/ppt/slideMasters/slideMaster1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml\"/><Override PartName=\"/ppt/slideLayouts/slideLayout1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml\"/><Override PartName=\"/ppt/theme/theme1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.theme+xml\"/>{overrides}</Types>");
     parts.push(("[Content_Types].xml".into(), types.into_bytes()));
@@ -2772,6 +2780,15 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
     Ok(zip.finish().map_err(|e| e.to_string())?.into_inner())
 }
 
+/// Text style of the legacy title (`title`) or body under the deck theme.
+pub(crate) fn themed_style(theme: Option<&crate::theme::Theme>, title: bool) -> TextStyle {
+    let mut style = TextStyle::default();
+    if let Some(theme) = theme {
+        style.color = theme.text();
+        style.family = if title { theme.major_font.clone() } else { theme.minor_font.clone() };
+    }
+    style
+}
 /// Chart part, its relationships and embedded workbook for a new chart named `name`.
 fn chart_parts(chart: &crate::chart::Chart, name: &str, overrides: &mut String) -> Result<Vec<(String, Vec<u8>)>, String> {
     overrides.push_str(&format!("<Override PartName=\"/ppt/charts/{name}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.chart+xml\"/>"));
@@ -2840,6 +2857,7 @@ fn appended_objects(
             version: 2,
             next_id,
             slides: vec![temp_slide],
+            theme: None,
         },
         selected: slide.id,
     };

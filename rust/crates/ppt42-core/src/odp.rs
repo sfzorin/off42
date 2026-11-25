@@ -33,6 +33,7 @@ pub struct Source {
     bytes: Vec<u8>,
     pages: Vec<PageSource>,
     size_points: Option<(f64, f64)>,
+    background: Option<[u8; 3]>,
 }
 impl Source {
     pub fn outline_role(&self, slide: u64, object: u64) -> Option<OutlineRole> {
@@ -58,6 +59,10 @@ impl Source {
             .and_then(|p| p.objects.iter().find(|o| o.object_id == object))
             .map(|o| o.rich_safe)
             .unwrap_or(true)
+    }
+    /// Solid background of the first master page, when it has one.
+    pub fn background(&self) -> Option<[u8; 3]> {
+        self.background
     }
     pub fn size_points(&self) -> Option<(f64, f64)> {
         self.size_points
@@ -961,6 +966,13 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
     let state = deck.history.snapshot();
     deck.history = SnapshotHistory::new(state, HISTORY_LIMIT);
     let mut sizes = Vec::new();
+    let background = common.as_ref().and_then(|doc| {
+        let master = doc.descendants().find(|n| n.is_element() && n.tag_name().name() == "master-page")?;
+        let name = attr(master, "style-name")?;
+        let style = doc.descendants().find(|n| n.is_element() && n.tag_name().name() == "style" && attr(*n, "name") == Some(name))?;
+        let props = style.children().find(|n| n.is_element() && n.tag_name().name() == "drawing-page-properties")?;
+        (attr(props, "fill") == Some("solid")).then(|| attr(props, "fill-color").and_then(color)).flatten()
+    });
     for data in [Some(content.clone()), styles]
         .into_iter()
         .flatten()
@@ -994,6 +1006,7 @@ pub fn import_with_source(bytes: &[u8]) -> Result<(Presentation, Source), String
             bytes: bytes.to_vec(),
             pages: source_pages,
             size_points,
+            background,
         },
     ))
 }
@@ -1106,7 +1119,11 @@ pub fn export(deck: &Presentation) -> Result<Vec<u8>, String> {
         // Legacy title/body are represented as ordinary editable text frames.
         for (j, value) in [&slide.title, &slide.body].iter().enumerate() {
             if !value.is_empty() {
-                pages.push_str(&format!("<draw:frame svg:x=\"35pt\" svg:y=\"{}pt\" svg:width=\"650pt\" svg:height=\"50pt\"><draw:text-box>{}</draw:text-box></draw:frame>",30+j*55,text(value)));
+                let body = match deck.theme() {
+                    Some(theme) => styled_text(value, &format!("legacy{si}_{j}"), &super::pptx::themed_style(Some(theme), j == 0), &mut styles),
+                    None => text(value),
+                };
+                pages.push_str(&format!("<draw:frame svg:x=\"35pt\" svg:y=\"{}pt\" svg:width=\"650pt\" svg:height=\"50pt\"><draw:text-box>{}</draw:text-box></draw:frame>",30+j*55,body));
             }
         }
         pages.push_str(&notes::generate(&slide.notes));
@@ -1114,7 +1131,14 @@ pub fn export(deck: &Presentation) -> Result<Vec<u8>, String> {
     }
     let ns="xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\" xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\" xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\" xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:svg=\"urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"";
     let content=format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><office:document-content {ns} office:version=\"1.2\"><office:automatic-styles>{styles}</office:automatic-styles><office:body><office:presentation>{pages}</office:presentation></office:body></office:document-content>");
-    let styles_doc=format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><office:document-styles {ns} xmlns:fo=\"urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0\" office:version=\"1.2\"><office:styles/><office:automatic-styles><style:page-layout style:name=\"pm1\"><style:page-layout-properties fo:page-width=\"10in\" fo:page-height=\"5.625in\" style:print-orientation=\"landscape\"/></style:page-layout></office:automatic-styles><office:master-styles><style:master-page style:name=\"Default\" style:page-layout-name=\"pm1\"/></office:master-styles></office:document-styles>");
+    let (master_background, master_style) = match deck.theme() {
+        Some(theme) => {
+            let c = theme.background();
+            (format!("<style:style style:name=\"dpMaster\" style:family=\"drawing-page\"><style:drawing-page-properties draw:fill=\"solid\" draw:fill-color=\"#{:02x}{:02x}{:02x}\" draw:background-size=\"full\"/></style:style>", c[0], c[1], c[2]), " draw:style-name=\"dpMaster\"")
+        }
+        None => (String::new(), ""),
+    };
+    let styles_doc=format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><office:document-styles {ns} xmlns:fo=\"urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0\" office:version=\"1.2\"><office:styles/><office:automatic-styles><style:page-layout style:name=\"pm1\"><style:page-layout-properties fo:page-width=\"10in\" fo:page-height=\"5.625in\" style:print-orientation=\"landscape\"/></style:page-layout>{master_background}</office:automatic-styles><office:master-styles><style:master-page style:name=\"Default\" style:page-layout-name=\"pm1\"{master_style}/></office:master-styles></office:document-styles>");
     let mut manifest=String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?><manifest:manifest xmlns:manifest=\"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0\" manifest:version=\"1.2\"><manifest:file-entry manifest:full-path=\"/\" manifest:media-type=\"application/vnd.oasis.opendocument.presentation\"/><manifest:file-entry manifest:full-path=\"content.xml\" manifest:media-type=\"text/xml\"/><manifest:file-entry manifest:full-path=\"styles.xml\" manifest:media-type=\"text/xml\"/>");
     for (path, _, mime) in &media {
         manifest.push_str(&format!(

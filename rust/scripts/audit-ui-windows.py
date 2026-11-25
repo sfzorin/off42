@@ -2396,6 +2396,54 @@ def audit_ppt_charts(process, main, output, results):
     results["checks"].append("PPT42 Insert/Edit Chart dialogs, drawn column and pie pixels, Undo/Redo, PPTX chart part and workbook, ODF chart object, reopen in both formats and in-place PPTX chart overlay")
 
 
+def audit_ppt_theme(process, main, output, results):
+    def text_value(raw):
+        return {"raw": raw, "crlf": False}
+
+    source = output / "ppt-theme-source.json"
+    source.write_text(json.dumps({"version": 2, "next_id": 2, "slides": [
+        {"id": 1, "title_text": text_value("Themed"), "body_text": text_value("")}]}), encoding="utf-8")
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+
+    def center(name):
+        path = output / f"ppt-theme-{name}.png"
+        fill_prompt(process, main, 77, "Export Slide Images", ["PNG", "1280", "No"])
+        choose_file(process, path)
+        output_ready(process, main, path, b"\x89PNG\r\n\x1a\n")
+        width, height, pixels = png_pixels(path)
+        offset = (width * (height * 3 // 4) + width // 2) * 4
+        return tuple(pixels[offset:offset + 3])
+
+    def saved(name, extension, kind):
+        path = output / f"ppt-theme-{name}.{extension}"
+        save_as(main)
+        choose_file(process, path, format_name=kind)
+        output_ready(process, main, path, b"PK")
+        return path
+
+    midnight = (0x14, 0x1B, 0x2D)
+    fill_prompt(process, main, 82, "Slide Theme", ["Midnight"])
+    assert center("midnight") == midnight
+    command(main, 4)
+    assert center("undo") == (255, 255, 255)
+    command(main, 5)
+    pptx = saved("midnight", "pptx", "PowerPoint presentation")
+    odp = saved("midnight", "odp", "OpenDocument presentation")
+    with zipfile.ZipFile(pptx) as package:
+        theme = package.read("ppt/theme/theme1.xml")
+        assert b'name="Midnight"' in theme and b'<a:lt1><a:srgbClr val="141B2D"/>' in theme
+        assert b"<p:bg>" in package.read("ppt/slideMasters/slideMaster1.xml")
+    with zipfile.ZipFile(odp) as package:
+        assert b'draw:fill-color="#141b2d"' in package.read("styles.xml")
+    open_fixture(process, main, pptx)
+    assert center("reopened-pptx") == midnight
+    open_fixture(process, main, odp)
+    assert center("reopened-odp") == midnight
+    assert source.read_bytes() == original
+    results["checks"].append("PPT42 Slide Theme dialog, themed background pixels, Undo/Redo, PPTX theme and master background, ODF master page background and reopened backgrounds")
+
+
 def audit_ppt_pdf(process, main, binary, output, results, native_print):
     dll = binary.parent / "pdfium.dll"
 
@@ -4064,6 +4112,7 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
                 audit_ppt_outline_export(process,main,output,results)
                 audit_ppt_slide_images(process,main,output,results)
                 audit_ppt_charts(process,main,output,results)
+                audit_ppt_theme(process,main,output,results)
                 audit_ppt_pdf(process,main,binary,output,results,native_print)
             return results
         if binary.stem.lower() == "pdf42" and not startup:

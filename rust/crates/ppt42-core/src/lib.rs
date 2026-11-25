@@ -11,6 +11,7 @@ pub mod chart;
 pub mod geometry;
 pub mod odp;
 pub mod pptx;
+pub mod theme;
 const MAX_SLIDES: usize = 200;
 const MAX_TEXT: usize = 32_768;
 const MAX_FILE: u64 = 512 * 1024;
@@ -318,11 +319,14 @@ pub struct Deck {
     version: u32,
     next_id: u64,
     pub slides: Vec<Slide>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<theme::Theme>,
 }
 impl Deck {
     fn valid(&self) -> bool {
         let mut ids = HashSet::new();
         self.version == 2
+            && self.theme.as_ref().is_none_or(theme::Theme::valid)
             && self.next_id > 0
             && !self.slides.is_empty()
             && self.slides.len() <= MAX_SLIDES
@@ -437,6 +441,7 @@ impl Presentation {
                         version: 2,
                         next_id: 2,
                         slides: vec![Slide::new(1, String::new(), String::new())],
+                        theme: None,
                     },
                     selected: 1,
                 },
@@ -534,6 +539,22 @@ impl Presentation {
         if !state.deck.valid() {
             return Err("invalid slide text or deck exceeds size limit".into());
         }
+        self.history.apply(state);
+        Ok(())
+    }
+    pub fn theme(&self) -> Option<&theme::Theme> {
+        self.history.current().deck.theme.as_ref()
+    }
+    /// Applies (or removes) the deck theme as one Undo step.
+    pub fn set_theme(&mut self, theme: Option<theme::Theme>) -> Result<(), String> {
+        if theme.as_ref().is_some_and(|t| !t.valid()) {
+            return Err("Invalid theme".into());
+        }
+        if self.theme() == theme.as_ref() {
+            return Ok(());
+        }
+        let mut state = self.history.current().clone();
+        state.deck.theme = theme;
         self.history.apply(state);
         Ok(())
     }
@@ -645,6 +666,12 @@ impl Presentation {
         let slide = &mut state.deck.slides[self.current()];
         let id = slide.next_object_id;
         slide.next_object_id = id.checked_add(1).ok_or("object identity exhausted")?;
+        let mut text_style = TextStyle::default();
+        if let Some(theme) = &state.deck.theme {
+            text_style.color = theme.text();
+            text_style.family = theme.minor_font.clone();
+        }
+        let slide = &mut state.deck.slides[self.current()];
         slide.objects.push(SlideObject {
             id,
             group_id: None,
@@ -660,7 +687,7 @@ impl Presentation {
             fill_visible: true,
             stroke_visible: true,
             text,
-            text_style: TextStyle::default(),
+            text_style,
             paragraphs: Vec::new(),
             media,
             cells,

@@ -12,6 +12,7 @@ mod show_markup;
 mod show_overview;
 use show_settings::ShowSettings;
 const EXPORT_PDF: u16 = 78;
+const THEME: u16 = 82;
 const PRINT_LAYOUT: u16 = 79;
 const PDF_LAYOUTS: [&str; 3] = ["Slides", "Notes Pages", "Handouts"];
 const HANDOUT_COUNTS: [&str; 6] = ["1", "2", "3", "4", "6", "9"];
@@ -661,11 +662,14 @@ impl Ppt {
     fn scene_for(&self, index: usize, show_selection: bool) -> Option<win42::CanvasScene> {
         use win42::{CanvasScene, Point, SceneItem};
         let slide = &self.deck.slides()[index];
-        let background = self
-            .pptx_source
-            .as_ref()
-            .and_then(|s| s.background(slide.source_identity()))
+        let theme = self.deck.theme();
+        let background = theme
+            .map(|t| t.background())
+            .or_else(|| self.pptx_source.as_ref().and_then(|s| s.background(slide.source_identity())))
+            .or_else(|| self.odp_source.as_ref().and_then(|s| s.background()))
             .unwrap_or([255, 255, 255]);
+        let text_color = theme.map_or([0, 0, 0], |t| t.text());
+        let (title_font, body_font) = theme.map_or(("Arial", "Arial"), |t| (t.major_font.as_str(), t.minor_font.as_str()));
         let decorations = self
             .pptx_source
             .as_ref()
@@ -686,9 +690,9 @@ impl Ppt {
                 width: 650.0,
                 height: 40.0,
                 text: slide.title.clone(),
-                color: [0, 0, 0],
+                color: text_color,
                 font: win42::SceneFont {
-                    family: "Arial".into(),
+                    family: title_font.into(),
                     points: 28.0,
                     bold: true,
                     italic: false,
@@ -703,9 +707,9 @@ impl Ppt {
                 width: 650.0,
                 height: 290.0,
                 text: slide.body.clone(),
-                color: [0, 0, 0],
+                color: text_color,
                 font: win42::SceneFont {
-                    family: "Arial".into(),
+                    family: body_font.into(),
                     points: 18.0,
                     bold: false,
                     italic: false,
@@ -1706,6 +1710,10 @@ impl win42::App for Ppt {
                         ("Rotation (degrees)", o.rotation_degrees.to_string()),
                     ],
                 }),
+            THEME => Some(win42::InputRequest {
+                title: "Slide Theme",
+                fields: vec![("Theme", self.deck.theme().map_or_else(|| "None".into(), |t| t.name.clone()))],
+            }),
             chart_ui::INSERT => Some(chart_ui::request(id, &ppt42_core::chart::Chart::sample())),
             chart_ui::EDIT => self
                 .selected_chart()
@@ -1749,6 +1757,8 @@ impl win42::App for Ppt {
                  (2, HANDOUT_COUNTS.map(str::to_owned).to_vec())]
         } else if id == 72 {
             vec![(0, vec!["No".into(), "Yes".into()]), (1, vec!["No".into(), "Yes".into()])]
+        } else if id == THEME {
+            vec![(0, std::iter::once("None".to_owned()).chain(ppt42_core::theme::Theme::names()).collect())]
         } else if matches!(id, chart_ui::INSERT | chart_ui::EDIT) {
             chart_ui::choices()
         } else if matches!(id, 68 | 69) {
@@ -1935,6 +1945,13 @@ impl win42::App for Ppt {
                     .rem_euclid(360.0);
                 }
                 self.deck.update_objects(objects)
+            }
+            THEME if values.len() == 1 && self.enabled(id) => {
+                let theme = match values[0].trim() {
+                    "None" => None,
+                    name => Some(ppt42_core::theme::Theme::built_in(name).ok_or("Choose a theme")?),
+                };
+                self.deck.set_theme(theme)
             }
             chart_ui::INSERT => {
                 let chart = chart_ui::parse(values, &ppt42_core::chart::Chart::sample())?;
@@ -2361,6 +2378,7 @@ impl win42::App for Ppt {
             (33, "Insert Table…"),
             (chart_ui::INSERT, "Insert Chart…"),
             (chart_ui::EDIT, "Edit Chart…"),
+            (THEME, "Slide Theme…"),
             (34, "Edit Table Cell…"),
             (40, "Print…"),
             (PRINT_LAYOUT, "Print Layout…"),
@@ -2771,6 +2789,8 @@ impl win42::App for Ppt {
                     .any(|o| o.id == id && matches!(o.kind, ppt42_core::ObjectKind::Table))
             }),
             chart_ui::EDIT => self.selected_chart().is_some(),
+            // Office sources keep their own theme parts; themes apply to native decks and new files.
+            THEME => self.pptx_source.is_none() && self.odp_source.is_none(),
             _ => true,
         }
     }
@@ -3772,4 +3792,22 @@ mod chart_ui_tests {
             assert_eq!(found.series[0].values, chart.series[0].values);
         }
     }
+    #[test]
+    fn theme_dialog_applies_background_and_text_with_undo() {
+        let mut app = Ppt::new(Presentation::new());
+        app.deck.edit("Title".into(), String::new()).unwrap();
+        assert_eq!(app.input_request(THEME).unwrap().fields[0].1, "None");
+        assert_eq!(app.input_choices(THEME)[0].1.len(), 7);
+        app.input_action(THEME, &["Forest".into()]).unwrap();
+        let scene = app.canvas_scene().unwrap();
+        assert!(matches!(scene.items[0], win42::SceneItem::Rect { fill: [0xF6, 0xF8, 0xF3], .. }));
+        assert!(scene.items.iter().any(|i| matches!(i, win42::SceneItem::TextBox { text, color: [0x1E, 0x2B, 0x22], font, .. } if text == "Title" && font.family == "Georgia")));
+        assert!(app.input_action(THEME, &["Missing".into()]).is_err());
+        app.action(4).unwrap();
+        assert!(app.deck.theme().is_none());
+        let (_, bytes) = app.save_snapshot("pptx").unwrap().unwrap();
+        app.pptx_source = Some(ppt42_core::pptx::import(&bytes).unwrap().1);
+        assert!(!app.enabled(THEME));
+    }
 }
+
