@@ -2694,6 +2694,7 @@ dependencies = [
  "doc42-core",
  "image",
  "label42",
+ "marks42",
  "serde",
  "serde_json",
  "sha2 0.10.9",

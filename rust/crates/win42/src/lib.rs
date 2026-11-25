@@ -608,6 +608,7 @@ mod grid_geometry;
 mod label_preferences;
 #[cfg(any(windows, test))]
 mod marks;
+pub mod generator;
 #[cfg(any(windows, test))]
 mod recents;
 #[cfg(any(windows, test))]

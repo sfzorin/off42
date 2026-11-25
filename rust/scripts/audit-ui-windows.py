@@ -366,6 +366,51 @@ def finish_prompt(process, title, values):
     click(dialog, 1)
 
 
+def audit_generators(process, main, binary, output, results, local_app_data):
+    """Create Signature… and Create Stamp…: generated variants, the native picker and the shared library."""
+    root = Path(local_app_data) / "off42"
+    scratch, library = root / "Generator", root / "Signatures and Stamps"
+
+    def inked(path, minimum):
+        width, height, pixels = png_pixels(path)
+        ink = sum(1 for i in range(3, len(pixels), 4) if pixels[i] > 128)
+        assert width > 80 and height > 40 and ink >= minimum, (path.name, width, height, ink)
+        return width, height, ink
+
+    def pick_variant(prefix):
+        variants = wait_for(lambda: sorted(scratch.glob(prefix + "*.png")) if len(list(scratch.glob("*.png"))) == 6 else None,
+                            "six generated variants", process)
+        sizes = {inked(path, 300) for path in variants}
+        assert len(sizes) > 1, "variants differ"
+        choose_file(process, variants[1])
+        click(modal(process, native_class="#32770"), 1)
+        return variants[1]
+
+    command(main, 65498)
+    finish_prompt(process, "Create Signature", ["Sergey Zorin", "Full name", "Gel pen", "Violet ink"])
+    chosen = pick_variant("Sergey Zorin ")
+    signature = wait_for(lambda: next(iter(library.glob("Signature - Sergey Zorin*.png")), None), "signature kept in the library", process)
+    assert signature.read_bytes() == chosen.read_bytes()
+    inked(signature, 300)
+
+    command(main, 65497)
+    finish_prompt(process, "Create Stamp", ["ru.ooo", "Red ink"])
+    finish_prompt(process, "Create Stamp", [])
+    pick_variant("")
+    stamp = wait_for(lambda: next(iter(library.glob("Stamp - *.png")), None), "stamp kept in the library", process)
+    _, _, ink = inked(stamp, 2000)
+    width, height, pixels = png_pixels(stamp)
+    red = sum(1 for i in range(0, len(pixels), 4) if pixels[i + 3] > 128 and pixels[i] > 2 * max(pixels[i + 1], pixels[i + 2]))
+    assert red > ink // 2, ("red stamp-pad ink", red, ink)
+
+    command(main, 65515)
+    choose_file(process, signature)
+    finish_prompt(process, "Place Signature or Stamp", ["4", "4", "40", "20"])
+    wait_for(lambda: u.IsWindowEnabled(main), "generated signature placed", process)
+    command(main, 4)
+    results["checks"].append("generated signatures and stamps: settings, six distinct variants, native picker, library copy, ink colour and placement")
+
+
 def audit_marks(process, main, binary, output, results, local_app_data):
     source = output / f"audit-mark-{uuid.uuid4().hex}.png"
     write_png(source, 2, 2, bytes([255,255,255,255, 0,0,0,255, 0,0,255,255, 255,255,255,255]))
@@ -3956,6 +4001,8 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
             results["checks"].append("native inline proofing flags follow the menu toggle")
         if extended and binary.stem.lower() in {"img42", "scn42"}:
             audit_marks(process, main, binary, output, results, environment["LOCALAPPDATA"])
+            if binary.stem.lower() == "img42":
+                audit_generators(process, main, binary, output, results, environment["LOCALAPPDATA"])
             if host_commands:
                 audit_crop_command(process, main, binary, output, results)
         if binary.stem.lower() not in {"doc42", "pdf42", "xls42"}:
