@@ -741,6 +741,22 @@ final class PagedView: NSView, NSLayoutManagerDelegate {
 
     // MARK: Printing (one sheet per page card)
 
+    private var calibratedPageContext: CGContext?
+
+    override func beginPage(in rect: NSRect, atPlacement location: NSPoint) {
+        super.beginPage(in: rect, atPlacement: location)
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
+        context.saveGState()
+        calibratedPageContext = context
+        ProductionPrint.concatenate(in: context, pageRect: rect, flipped: isFlipped)
+    }
+
+    override func endPage() {
+        calibratedPageContext?.restoreGState()
+        calibratedPageContext = nil
+        super.endPage()
+    }
+
     override func knowsPageRange(_ range: NSRangePointer) -> Bool {
         range.pointee = NSRange(location: 1, length: cards.count)
         return true

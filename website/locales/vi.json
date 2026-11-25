@@ -1,0 +1,406 @@
+{
+  "nav": {
+    "features": "Tính năng",
+    "apps": "Bộ ứng dụng",
+    "about": "Mã nguồn mở",
+    "download": "Tải xuống",
+    "language": "Ngôn ngữ",
+    "menu": "Menu",
+    "skip": "Chuyển đến nội dung",
+    "home": "Trang chủ"
+  },
+  "home": {
+    "eyebrow": "Miễn phí · Mã nguồn mở · macOS và Windows",
+    "title": "Trọn bộ văn phòng. Không thuê bao.",
+    "intro": "OFF42 tập hợp sáu ứng dụng gốc cho macOS và Windows: PDF, tài liệu, bảng tính, trình chiếu, hình ảnh và bản quét. Miễn phí, mã nguồn mở, với cách triển khai riêng và giới hạn được ghi rõ cho từng nền tảng.",
+    "primary": "Tải OFF42",
+    "secondary": "Khám phá công cụ",
+    "note": "Miễn phí · Mã nguồn mở · macOS 14+ · Windows",
+    "suiteTitle": "Đủ bộ công cụ. Nhẹ nhàng làm việc.",
+    "suiteIntro": "Từ bản nháp đầu tiên đến tệp PDF đã ký, xử lý công việc hằng ngày bằng một bộ công cụ quen thuộc.",
+    "featureEyebrow": "CHI TIẾT NHỎ. KHÁC BIỆT LỚN.",
+    "featureTitle": "Thêm khả năng cho từng tệp.",
+    "featureIntro": "Chỉnh sửa PDF. Giảm dung lượng tệp đính kèm. Biến trang giấy thành văn bản có thể tìm kiếm. Chọn công cụ phù hợp với việc cần làm.",
+    "privacyTitle": "Làm việc ngay trên Mac của bạn.",
+    "privacyText": "Các thao tác chỉnh sửa chính chạy ngay trên máy tính của bạn, không tải tệp lên mạng. Tính năng trực tuyến tùy chọn cần kết nối; khả năng sử dụng khác nhau theo nền tảng.",
+    "privacyLabel": "Dành cho công việc cục bộ",
+    "languageTitle": "Quen thuộc hơn với 20 ngôn ngữ.",
+    "languageText": "Trang web và giao diện ứng dụng đều hỗ trợ ngôn ngữ của bạn. Chọn ngôn ngữ quen thuộc và tiếp tục sử dụng cùng bộ công cụ.",
+    "openTitle": "Một bộ văn phòng thực sự rộng mở.",
+    "openText": "OFF42 được phát hành theo giấy phép MIT. Đọc mã nguồn, tự biên dịch, báo lỗi hoặc cùng cải thiện phiên bản tiếp theo.",
+    "openLink": "Khám phá trên GitHub",
+    "endTitle": "Thuê bao — off. Văn phòng — của bạn.",
+    "endText": "Miễn phí · Mã nguồn mở · macOS và Windows",
+    "formatsLabel": "ĐỊNH DẠNG OFFICE VÀ ĐỊNH DẠNG MỞ",
+    "formatsTitle": "Làm việc với chính những tệp bạn đang có.",
+    "formatsText": "Mở tệp đồng nghiệp gửi và lưu đúng định dạng họ cần. Bố cục phức tạp có thể hiển thị khác, vì vậy hãy kiểm tra các tệp quan trọng sau khi nhập.",
+    "opens": "Mở",
+    "saves": "Lưu",
+    "faqTitle": "Câu hỏi trước khi bắt đầu",
+    "faq": [
+      {
+        "q": "OFF42 có miễn phí không?",
+        "a": "Có. OFF42 miễn phí và mã nguồn mở theo giấy phép MIT. Không có gói thuê bao, tài khoản hay mua hàng trong ứng dụng."
+      },
+      {
+        "q": "OFF42 có dùng được ngoại tuyến không?",
+        "a": "Các thao tác chỉnh sửa chính chạy ngay trên máy tính của bạn, không tải tệp lên mạng. Tính năng trực tuyến tùy chọn cần kết nối; khả năng sử dụng khác nhau theo nền tảng."
+      },
+      {
+        "q": "OFF42 có mở được tệp Microsoft Office không?",
+        "a": "Có. DOC42 mở DOCX và DOC, XLS42 mở XLSX và XLS, PPT42 mở PPTX. Tệp OpenDocument (ODT, ODS, ODP) cũng được hỗ trợ. Không phải mọi tính năng Office đều được hỗ trợ, vì vậy hãy kiểm tra tệp phức tạp sau khi nhập."
+      },
+      {
+        "q": "OFF42 hỗ trợ những máy Mac nào?",
+        "a": "OFF42 dành cho macOS 14 trở lên. Bộ cài công khai chưa được phát hành; bạn có thể tự biên dịch các ứng dụng từ mã nguồn bằng Xcode Command Line Tools."
+      },
+      {
+        "q": "Có phiên bản Windows không?",
+        "a": "Các ứng dụng gốc cho Windows đã được triển khai và có sẵn mã nguồn. Hãy xem tính năng và giới hạn được ghi trong tài liệu. Bộ cài Windows công khai chưa được phát hành."
+      }
+    ]
+  },
+  "name": {
+    "label": "Ý NGHĨA CÁI TÊN",
+    "title": "OFF là từ office. Và từ mọi thứ bạn có thể tắt đi.",
+    "officeTitle": "Trọn bộ văn phòng",
+    "officeText": "Sáu ứng dụng cho mọi tệp trên bàn làm việc: PDF, tệp Word và Excel, trang trình chiếu, ảnh và bản quét.",
+    "offlineTitle": "Chạy ngoại tuyến",
+    "offlineText": "Chỉnh sửa ngay trên máy tính của bạn. Không cần tài khoản hay tải tệp lên mạng.",
+    "offTitle": "Thuê bao: off",
+    "offText": "Không thuê bao, không thời gian dùng thử, không quảng cáo. Giấy phép MIT và miễn phí, hôm nay và cả ngày mai.",
+    "answerTitle": "Còn 42?",
+    "answerText": "Câu trả lời cho câu hỏi tối thượng về sự sống, vũ trụ và vạn vật. Chúng tôi chỉ áp dụng nó vào văn phòng.",
+    "stats": [
+      "ứng dụng trong một bộ",
+      "định dạng tệp",
+      "ngôn ngữ giao diện",
+      "thuê bao",
+      "lần tải tệp của bạn lên"
+    ]
+  },
+  "marks": {
+    "label": "CHỮ KÝ VÀ CON DẤU",
+    "title": "Ký tên, đóng dấu như trên giấy. Không cần máy in hay máy quét.",
+    "text": "Chỉ từ một cái tên, OFF42 viết ra chữ ký tay, đóng dấu công ty rồi đặt cả hai ngay vào tài liệu. Mỗi lần chèn lại hơi khác một chút, như mực thật trên giấy.",
+    "points": [
+      "Chữ ký bằng bút bi, bút gel, bút máy hoặc bút dạ",
+      "132 kiểu con dấu: dấu tròn, dấu công ty, “Đã thanh toán” và “Đã nhận”",
+      "Học chữ ký của chính bạn từ vài mẫu",
+      "Dùng được trong PDF, văn bản, trang chiếu, bảng tính, hình ảnh và bản quét"
+    ],
+    "note": "Chữ ký vẽ tay không phải chữ ký số dựa trên chứng thư số. Khi cần, PDF42 ký bằng chứng thư số của bạn.",
+    "signedCaption": "Hợp đồng được ký và đóng dấu trong PDF42. Tên người và công ty là hư cấu."
+  },
+  "codes": {
+    "label": "MÃ QR, KÝ HIỆU VÀ NHÃN",
+    "title": "Mã QR, dấu CE và tờ nhãn, chính xác đến từng milimét.",
+    "text": "Biến một ô, một hàng trong bảng hoặc vùng chọn thành mã QR, Data Matrix, Code 128 hay Aztec, rồi thêm các dấu hợp chuẩn và ký hiệu an toàn mà sản phẩm của bạn cần. Đặt kích thước bằng milimét rồi in cả tờ nhãn ngay từ các hàng dữ liệu.",
+    "points": [
+      "Mã QR, Data Matrix, Code 128 và Aztec vẫn chỉnh sửa được sau khi lưu",
+      "97 dấu: CE, UKCA, EAC, FCC, UL, CCC, KC, RCM, WEEE, RoHS, hình đồ cảnh báo GHS, ký hiệu an toàn IEC và nhiều hơn nữa",
+      "Tờ nhãn từ các hàng bảng tính, bảng trong văn bản, hoặc trang hay vùng PDF",
+      "559 khổ giấy nhãn hoặc lưới tùy chỉnh, mẫu đã lưu và hiệu chỉnh máy in"
+    ],
+    "note": "Dấu chỉ là hình vẽ cho nhãn: chèn dấu không có nghĩa là sản phẩm được chứng nhận. Với dấu hợp chuẩn và nhãn hiệu thương mại, ứng dụng hiển thị điều kiện sử dụng, chẳng hạn chứng chỉ hoặc số giấy phép bắt buộc. Có trong PDF42, DOC42 và XLS42 trên macOS.",
+    "qrAlt": "“Insert Symbol or Code” trong XLS42: mã QR rộng 30 mm tạo từ đường dẫn sản phẩm.",
+    "labelsAlt": "“Create Labels” trong XLS42: tờ nhãn có mã QR tạo từ mười hàng sản phẩm.",
+    "caption": "Tờ nhãn tạo từ mười hàng bảng tính. Các sản phẩm là hư cấu."
+  },
+  "show": {
+    "label": "XEM THỰC TẾ",
+    "title": "Ứng dụng thật. Tài liệu thật.",
+    "text": "Mọi hình ảnh ở đây đều là ảnh chụp màn hình OFF42 trên Mac, với tài liệu mẫu của các công ty hư cấu mở trong ứng dụng. Không phải ảnh dựng."
+  },
+  "labels": {
+    "learn": "Khám phá",
+    "allFeatures": "Tất cả tính năng",
+    "useCases": "DÀNH CHO CÔNG VIỆC HẰNG NGÀY",
+    "workflow": "Từ mở tệp đến hoàn tất",
+    "details": "Những gì bạn có thể làm",
+    "goodToKnow": "Điều cần biết",
+    "related": "Khám phá thêm",
+    "faq": "Câu hỏi thường gặp",
+    "step": "Bước",
+    "illustration": "Minh họa quy trình làm việc",
+    "source": "Mã nguồn",
+    "license": "Giấy phép MIT",
+    "release": "Bản phát hành GitHub",
+    "available": "Có sẵn",
+    "unavailable": "Chưa phát hành",
+    "downloadDmg": "Tải DMG",
+    "downloadExe": "Tải EXE",
+    "checksum": "SHA-256",
+    "version": "Phiên bản",
+    "requirements": "Yêu cầu hệ thống",
+    "footer": "Bộ văn phòng mã nguồn mở cho công việc hằng ngày.",
+    "privacy": "Quyền riêng tư",
+    "copyright": "Một dự án mã nguồn mở độc lập.",
+    "back": "Về trang chủ",
+    "notFound": "Không tìm thấy trang này.",
+    "notFoundText": "Về trang chủ hoặc chọn một ngôn ngữ để tiếp tục khám phá.",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép",
+    "screenshot": "Ảnh chụp màn hình trên macOS. Tài liệu mẫu, công ty hư cấu."
+  },
+  "apps": {
+    "pdf": {
+      "tag": "PDF với nhiều khả năng hơn.",
+      "text": "Đọc, chú thích, sắp xếp, nén và ký tệp PDF."
+    },
+    "doc": {
+      "tag": "Từ ý tưởng đến tài liệu.",
+      "text": "Soạn thảo và dàn trang tài liệu DOCX, ODT, RTF và Markdown."
+    },
+    "xls": {
+      "tag": "Để những con số kể chuyện.",
+      "text": "Làm việc với bảng tính, công thức và biểu đồ trong XLSX, ODS và CSV."
+    },
+    "ppt": {
+      "tag": "Ý tưởng xứng đáng được trình bày.",
+      "text": "Tạo trang chiếu, thêm bảng và hình dạng để kể câu chuyện của bạn."
+    },
+    "img": {
+      "tag": "Chỉnh nhẹ. Ảnh đẹp hơn.",
+      "text": "Xem, cắt, đổi kích thước, chú thích và điều chỉnh hình ảnh."
+    },
+    "scn": {
+      "tag": "Mở thêm khả năng từ trang giấy.",
+      "text": "Quét, làm sạch trang và nhận dạng văn bản bằng OCR ngay trên thiết bị."
+    }
+  },
+  "features": {
+    "documents": {
+      "title": "Không gian cho ý tưởng tiếp theo",
+      "seoTitle": "Phần mềm soạn thảo văn bản miễn phí cho Mac | OFF42",
+      "seoDescription": "Viết thư và báo cáo với DOC42: mở và lưu DOCX, ODT, RTF và Markdown, dàn trang với bảng và hình ảnh, xuất PDF. Miễn phí và mã nguồn mở.",
+      "short": "Tài liệu",
+      "intro": "Viết thư, báo cáo và bản nháp mới với DOC42. Kết hợp văn bản có định dạng và bố cục trang trong các định dạng tài liệu quen thuộc.",
+      "points": [
+        "Mở và lưu DOCX, ODT, RTF, Markdown cùng các định dạng văn bản khác.",
+        "Làm việc với định dạng, bảng, hình ảnh và bố cục trang.",
+        "Xuất sang PDF khi tài liệu đã sẵn sàng để chia sẻ."
+      ],
+      "steps": [
+        "Tạo tài liệu hoặc mở tệp có sẵn.",
+        "Điều chỉnh văn bản, hình ảnh và bố cục trang.",
+        "Lưu bản sao có thể chỉnh sửa hoặc xuất PDF."
+      ],
+      "note": "Tài liệu Office phức tạp có thể hiển thị khác nhau. Hãy kiểm tra bố cục khi nhập và tệp đã xuất trước khi dựa vào khả năng tái hiện chính xác.",
+      "question": "Có thể làm việc với tài liệu Word không?",
+      "answer": "DOC42 hỗ trợ DOCX và mở được tệp DOC cũ. Hỗ trợ định dạng không có nghĩa là mọi tính năng Microsoft Word đều được xử lý hoàn toàn giống nhau."
+    },
+    "spreadsheets": {
+      "title": "Hiểu rõ những con số",
+      "seoTitle": "Phần mềm bảng tính miễn phí cho Mac: XLSX, ODS, CSV | OFF42",
+      "seoDescription": "Mở tệp XLSX và XLS, dùng công thức, định dạng và biểu đồ, lưu XLSX, ODS hoặc CSV và xuất PDF với XLS42. Ứng dụng bảng tính miễn phí, mã nguồn mở cho Mac.",
+      "short": "Bảng tính",
+      "intro": "Từ danh sách đơn giản đến báo cáo có tính toán, XLS42 mang ô dữ liệu, công thức và biểu đồ vào công việc hằng ngày.",
+      "points": [
+        "Mở XLSX, XLS cũ, ODS và tệp văn bản có ký tự phân cách.",
+        "Dùng công thức, định dạng và biểu đồ để giải thích dữ liệu.",
+        "Lưu XLSX, ODS hoặc CSV, hay xuất PDF."
+      ],
+      "steps": [
+        "Mở sổ làm việc hoặc bắt đầu với trang tính trống.",
+        "Nhập dữ liệu, áp dụng công thức và thêm biểu đồ.",
+        "Kiểm tra kết quả tính toán và lưu đúng định dạng."
+      ],
+      "note": "Khả năng hỗ trợ công thức và định dạng tùy thuộc vào tệp. CSV chỉ lưu một bảng giá trị, không lưu toàn bộ sổ làm việc với định dạng và nhiều trang tính.",
+      "question": "Có thể mở bảng tính Excel không?",
+      "answer": "Có, XLS42 mở được XLSX và XLS cũ. Hãy kiểm tra công thức phức tạp và định dạng đã nhập; không phải mọi tính năng Excel đều được hỗ trợ."
+    },
+    "presentations": {
+      "title": "Đưa ý tưởng lên sân khấu",
+      "seoTitle": "Phần mềm trình chiếu miễn phí cho Mac: PPTX, ODP | OFF42",
+      "seoDescription": "Tạo trang chiếu với văn bản, hình ảnh, hình dạng và bảng, trình bày kèm ghi chú người thuyết trình, xuất PDF hoặc hình ảnh với PPT42. Miễn phí, mã nguồn mở, dành cho Mac.",
+      "short": "Trình chiếu",
+      "intro": "Kể một câu chuyện trực quan rõ ràng với PPT42. Sắp xếp văn bản, hình ảnh, hình dạng và bảng, rồi chuyển từ chỉnh sửa sang trình chiếu.",
+      "points": [
+        "Làm việc với tệp trình chiếu PPTX và OpenDocument.",
+        "Sắp xếp đối tượng, bảng và ghi chú diễn giả trên trang chiếu.",
+        "Xuất trang chiếu thành PDF và hình ảnh để chia sẻ dễ dàng."
+      ],
+      "steps": [
+        "Tạo bài trình chiếu hoặc mở tệp được hỗ trợ.",
+        "Hoàn thiện từng trang chiếu và chuẩn bị ghi chú.",
+        "Chạy trình chiếu hoặc xuất các trang chiếu."
+      ],
+      "note": "Tệp PPT cũ cần được chuyển đổi trước. Bố cục phức tạp có thể thay đổi khi nhập; hãy kiểm tra toàn bộ bài trước khi trình bày.",
+      "question": "Có thể chia sẻ trang chiếu dưới dạng PDF không?",
+      "answer": "Có. PPT42 hỗ trợ xuất PDF cho trang chiếu và trang ghi chú, cùng hình ảnh trang chiếu PNG và JPEG."
+    },
+    "edit-pdf": {
+      "title": "Chỉnh sửa PDF trên Mac",
+      "seoTitle": "Sửa PDF miễn phí trên Mac: chú thích, điền biểu mẫu | OFF42",
+      "seoDescription": "Sửa văn bản PDF, tô sáng, chú thích, điền biểu mẫu và sắp xếp trang trên Mac với PDF42. Miễn phí, mã nguồn mở, ngoại tuyến — không cần tải lên trình chỉnh sửa trực tuyến.",
+      "short": "Chỉnh sửa PDF",
+      "intro": "Biến PDF thành tài liệu làm việc. Với PDF42, bạn có thể sửa văn bản trên trang, thêm ghi chú, tô sáng nội dung quan trọng, điền biểu mẫu và sắp xếp lại các trang.",
+      "points": [
+        "Sửa văn bản trên trang và chú thích bằng tô sáng, hộp văn bản, hình dạng hoặc nét vẽ tự do.",
+        "Chèn, trích xuất, xoay, xóa và sắp xếp lại các trang.",
+        "Điền biểu mẫu PDF được hỗ trợ và lưu thay đổi."
+      ],
+      "steps": [
+        "Mở tệp PDF trên Mac.",
+        "Chọn công cụ chú thích, biểu mẫu hoặc trang phù hợp với công việc.",
+        "Lưu một bản sao và kiểm tra tài liệu đã hoàn tất."
+      ],
+      "note": "Các chỉnh sửa văn bản trên trang được làm phẳng khi lưu. Bố cục và biểu mẫu PDF phức tạp có thể được xử lý khác nhau; hãy kiểm tra bản sao đã lưu trước khi chia sẻ.",
+      "question": "Có thể chỉnh sửa PDF mà không tải lên không?",
+      "answer": "Có. PDF42 làm việc với tệp cục bộ trên Mac. Các thao tác chú thích và quản lý trang cơ bản không cần trình chỉnh sửa trực tuyến."
+    },
+    "scan-ocr": {
+      "title": "Biến trang giấy thành tài liệu có thể tìm kiếm",
+      "seoTitle": "Ứng dụng quét OCR cho Mac: tạo PDF tìm kiếm được | OFF42",
+      "seoDescription": "Quét từ máy quét hoặc camera iPhone, chỉnh thẳng và làm sạch trang, nhận dạng văn bản trên Mac rồi xuất PDF có thể tìm kiếm với SCN42. Miễn phí, ngoại tuyến.",
+      "short": "Quét và OCR",
+      "intro": "Đưa giấy vào văn phòng số với SCN42. Thu nhận trang, chỉnh thẳng, làm sạch rồi nhận dạng văn bản ngay trên Mac.",
+      "points": [
+        "Thu nhận từ máy quét được hỗ trợ hoặc nhập hình ảnh và PDF.",
+        "Cắt, chỉnh nghiêng và điều chỉnh trang trước khi nhận dạng.",
+        "Xuất PDF có thể tìm kiếm hoặc văn bản đã nhận dạng."
+      ],
+      "steps": [
+        "Quét hoặc nhập các trang.",
+        "Kiểm tra thứ tự trang và làm sạch hình ảnh.",
+        "Chạy OCR rồi xuất theo định dạng bạn cần."
+      ],
+      "note": "Khả năng hỗ trợ máy quét và tính năng Thông suốt phụ thuộc vào phần cứng. Ngôn ngữ và độ chính xác của OCR phụ thuộc vào Apple Vision và ảnh nguồn; 20 ngôn ngữ giao diện là tính năng riêng.",
+      "question": "Có thể tìm kiếm văn bản trong bản quét không?",
+      "answer": "Xuất PDF có thể tìm kiếm sau khi chạy OCR để thêm lớp văn bản. Luôn kiểm tra kết quả nhận dạng, nhất là tên, số và bản quét chất lượng thấp."
+    },
+    "compress-pdf": {
+      "title": "Nén PDF, chia sẻ dễ dàng hơn",
+      "seoTitle": "Nén PDF trên Mac: giảm dung lượng ngoại tuyến | OFF42",
+      "seoDescription": "Giảm dung lượng PDF nhiều hình ảnh trên Mac với PDF42. Chọn 100, 150 hoặc 220 dpi, xem trước kích thước và giữ chữ sắc nét. Miễn phí, ngoại tuyến, không tải tệp lên.",
+      "short": "Nén PDF",
+      "intro": "Chia sẻ PDF có nhiều hình ảnh dễ dàng hơn. PDF42 có các tùy chọn nén để bạn cân bằng hợp lý giữa dung lượng tệp và chi tiết hình ảnh.",
+      "points": [
+        "Chọn mức đặt sẵn 100, 150 hoặc 220 dpi cho hình ảnh.",
+        "Xem trước dung lượng tệp, đồng thời giữ độ sắc nét của chữ và nội dung vector.",
+        "Lưu thành tệp riêng và so sánh kết quả với bản gốc."
+      ],
+      "steps": [
+        "Mở PDF và chọn tính năng nén.",
+        "Chọn mức đặt sẵn cho hình ảnh rồi so sánh dung lượng ước tính.",
+        "Lưu kết quả, sau đó kiểm tra dung lượng và độ dễ đọc."
+      ],
+      "note": "Kết quả tùy thuộc tệp nguồn và có thể không giảm dung lượng. Việc nén làm giảm chất lượng hình ảnh và xóa chữ ký số hiện có.",
+      "question": "PDF sẽ nhỏ hơn bao nhiêu?",
+      "answer": "Không có mức giảm cố định. PDF từ bản quét hoặc có nhiều hình ảnh thường có khả năng nén tốt hơn tệp đã được tối ưu."
+    },
+    "labels-codes": {
+      "title": "Mã, ký hiệu và nhãn tính bằng milimét",
+      "seoTitle": "Tạo nhãn mã QR, mã vạch và dấu CE trên Mac | OFF42",
+      "seoDescription": "Tạo mã QR, Data Matrix, Code 128 và Aztec, thêm CE, UKCA, EAC, FCC và các dấu sản phẩm khác, rồi in tờ nhãn từ các hàng bảng tính trên Mac. Miễn phí và mã nguồn mở.",
+      "short": "Mã QR và nhãn",
+      "intro": "Đặt mã quét được hoặc dấu hợp chuẩn vào PDF, văn bản hay bảng tính, rồi in cả tờ nhãn từ dữ liệu của bạn. Kích thước được đặt bằng milimét.",
+      "points": [
+        "Chèn mã QR, Data Matrix, Code 128 và Aztec vẫn chỉnh sửa được sau khi lưu.",
+        "Thêm 97 dấu sản phẩm — dấu hợp chuẩn (CE, UKCA, EAC, FCC, UL, CCC), dấu môi trường (WEEE, RoHS), hình đồ cảnh báo nguy hiểm GHS và ký hiệu an toàn IEC — kèm điều kiện sử dụng.",
+        "In tờ nhãn từ các hàng bảng tính, bảng trong văn bản hoặc vùng PDF trên 559 khổ giấy có sẵn hoặc lưới tùy chỉnh."
+      ],
+      "steps": [
+        "Chọn ô, bảng, văn bản hoặc vùng PDF, rồi chọn “Insert › Symbol or Code” hoặc “File › Create Labels”.",
+        "Chọn loại mã hoặc ký hiệu, chiều rộng bằng milimét, khổ giấy nhãn và cột chứa mã.",
+        "Kiểm tra bản xem trước, rồi lưu PDF hoặc in với hiệu chỉnh của máy in."
+      ],
+      "note": "Dấu chỉ là hình vẽ: chèn dấu không chứng nhận sản phẩm. Chỉ dùng dấu hợp chuẩn và nhãn hiệu thương mại khi sản phẩm đã được chứng nhận hoặc bạn có giấy phép; ứng dụng hiển thị điều kiện của từng dấu. Hãy in thử để kiểm tra dung sai của giấy và máy in. Trên macOS; hộp thoại được dịch sang tiếng Anh, tiếng Nga và tiếng Thổ Nhĩ Kỳ, tên dấu sang 11 ngôn ngữ.",
+      "question": "Mã có còn chỉnh sửa được sau khi lưu tệp không?",
+      "answer": "Có. Tệp PDF, DOCX, XLSX và ODS giữ lại thông số tạo mã, nên lệnh “Edit Symbol or Code” mở lại được mã đó; các ứng dụng khác chỉ thấy một hình ảnh thông thường. Mã trong bảng tính lấy giá trị của ô tại thời điểm chèn và không cập nhật theo các thay đổi sau đó."
+    },
+    "sign-pdf": {
+      "title": "Để lại chữ ký trên PDF",
+      "seoTitle": "Ký PDF trên Mac: chữ ký tay, con dấu, chữ ký số | OFF42",
+      "seoDescription": "Thêm chữ ký kiểu viết tay hoặc con dấu vào PDF, hoặc ký bằng chứng thư số. PDF42 lưu các dấu của bạn trong thư viện để dùng lại. Miễn phí và mã nguồn mở.",
+      "short": "Chữ ký PDF",
+      "intro": "Luôn sẵn chữ ký và con dấu cho công việc. Thêm chữ ký hiển thị, dùng lại con dấu hoặc sử dụng chữ ký số dựa trên chứng thư số trong PDF42.",
+      "points": [
+        "Lưu chữ ký và con dấu có thể tái sử dụng trong thư viện chung.",
+        "Đặt và điều chỉnh dấu hiển thị trên trang.",
+        "Sử dụng ký bằng chứng thư số khi quy trình làm việc yêu cầu."
+      ],
+      "steps": [
+        "Mở tài liệu và chọn công cụ chữ ký.",
+        "Chọn dấu hiển thị hoặc quy trình ký số.",
+        "Lưu và kiểm tra kết quả bằng phần mềm PDF mà người nhận sử dụng."
+      ],
+      "note": "Chữ ký hiển thị không phải chữ ký số có chứng thư số. Độ tin cậy của chứng thư và khả năng tương tác của dấu thời gian phụ thuộc vào chứng thư, dịch vụ và phần mềm của người nhận.",
+      "question": "Chữ ký hiển thị và chữ ký số có giống nhau không?",
+      "answer": "Không. Chữ ký hiển thị là một dấu trên trang. Chữ ký số sử dụng chứng thư số để hỗ trợ phát hiện thay đổi trong tài liệu và xác định người ký."
+    },
+    "image-editor": {
+      "title": "Hoàn thiện hình ảnh, thật đơn giản",
+      "seoTitle": "Phần mềm chỉnh sửa ảnh miễn phí cho Mac | OFF42",
+      "seoDescription": "Mở JPEG, PNG, HEIC, WebP và TIFF, rồi cắt, đổi kích thước, xoay, điều chỉnh và chú thích với IMG42. Trình chỉnh sửa ảnh miễn phí, mã nguồn mở, dùng ngoại tuyến.",
+      "short": "Chỉnh sửa hình ảnh",
+      "intro": "Mở ảnh, cắt phần gây xao nhãng, điều chỉnh hình ảnh hoặc thêm chú thích rõ ràng. IMG42 giúp bạn xử lý các tác vụ hình ảnh hằng ngày thuận tiện.",
+      "points": [
+        "Xem định dạng ảnh phổ biến như JPEG, PNG, HEIC và TIFF.",
+        "Cắt, đổi kích thước, xoay và điều chỉnh hình ảnh.",
+        "Thêm đánh dấu và xuất sang định dạng hình ảnh được hỗ trợ."
+      ],
+      "steps": [
+        "Mở hình ảnh trên Mac.",
+        "Điều chỉnh rồi kiểm tra các điểm ảnh.",
+        "Xuất bản sao theo định dạng phù hợp với mục đích sử dụng."
+      ],
+      "note": "Khả năng đọc và ghi tùy thuộc định dạng và codec có sẵn trên macOS. Một số định dạng có thể mở nhưng không thể lưu lại ở dạng gốc.",
+      "question": "Có thể đổi kích thước ảnh trước khi chia sẻ không?",
+      "answer": "Có. Đổi kích thước rồi xuất bản sao. Kiểm tra kích thước và chọn định dạng giữ được độ trong suốt hoặc chất lượng ảnh bạn cần."
+    }
+  },
+  "download": {
+    "title": "Bộ văn phòng mới bắt đầu từ đây.",
+    "intro": "Chọn nền tảng và kiểm tra tình trạng phát hành. Mã nguồn có sẵn trên GitHub.",
+    "mac": "OFF42 cho macOS",
+    "macText": "Mã nguồn dành cho macOS 14 trở lên. Bộ cài DMG công khai chưa được phát hành.",
+    "windows": "OFF42 cho Windows",
+    "windowsText": "Các ứng dụng gốc cho Windows đã được triển khai và có sẵn mã nguồn. Hãy xem tính năng và giới hạn được ghi trong tài liệu. Bộ cài Windows công khai chưa được phát hành.",
+    "sourceTitle": "Biên dịch. Tìm hiểu. Biến thành công cụ của bạn.",
+    "sourceText": "Lấy mã nguồn có giấy phép MIT trên GitHub. Biên dịch trên macOS cần Xcode Command Line Tools. Bản dựng cục bộ dùng chữ ký ad-hoc, trừ khi bạn cấu hình ký để phân phối.",
+    "checkReleases": "Xem bản phát hành",
+    "buildGuide": "Hướng dẫn biên dịch",
+    "releaseNote": "Nút tải xuống xuất hiện khi có tệp phát hành công khai. Không bộ cài nào được ghi là đã ký hay được Apple chứng thực nếu chưa có bằng chứng từ bản phát hành.",
+    "buildTitle": "Biên dịch OFF42 trên Mac của bạn",
+    "buildText": "Trong khi chờ bộ cài có chữ ký được phát hành, bạn có thể tự biên dịch các ứng dụng chỉ trong vài phút. Hãy chạy các lệnh sau trong Terminal.",
+    "buildStep1": "Cài đặt Xcode Command Line Tools của Apple.",
+    "buildStep2": "Tải mã nguồn từ GitHub.",
+    "buildStep3": "Biên dịch cả sáu ứng dụng, hoặc biên dịch một ứng dụng và sao chép vào thư mục Applications."
+  },
+  "about": {
+    "title": "Một bộ văn phòng không giấu điều gì.",
+    "intro": "OFF42 tập hợp sáu ứng dụng gốc cho macOS và Windows: PDF, tài liệu, bảng tính, trình chiếu, hình ảnh và bản quét. Miễn phí, mã nguồn mở, với cách triển khai riêng và giới hạn được ghi rõ cho từng nền tảng.",
+    "licenseTitle": "Giấy phép MIT. Tự do khám phá.",
+    "licenseText": "Sử dụng, nghiên cứu, sửa đổi và phân phối lại phần mềm theo giấy phép MIT. Kho mã có đầy đủ điều khoản cấp phép và mã nguồn.",
+    "contributeTitle": "Cùng nhau tạo nên công cụ tốt hơn.",
+    "contributeText": "Báo lỗi có thể tái hiện, đề xuất cải tiến, hỗ trợ dịch thuật hoặc đóng góp mã qua GitHub.",
+    "honestTitle": "Phát triển công khai.",
+    "honestText": "Dự án đang tiếp tục phát triển. Kho mã ghi lại các bản dựng đã kiểm tra, giới hạn và phạm vi kiểm định. Mã nguồn có sẵn không đồng nghĩa với bản phát hành đã đóng gói, ký và được Apple chứng thực.",
+    "status": "Xem tình trạng dự án",
+    "issues": "Báo sự cố"
+  },
+  "privacy": {
+    "title": "Giữ công việc ở gần bạn.",
+    "intro": "Trang web này giới thiệu OFF42 và liên kết đến mã nguồn cùng các bản phát hành. Trang web không tiếp nhận hay xử lý tài liệu của bạn.",
+    "siteTitle": "Một trang web đơn giản",
+    "siteText": "Không có quảng cáo, mã phân tích hay hệ thống tài khoản. Nhà cung cấp lưu trữ có thể xử lý thông tin yêu cầu để cung cấp và bảo vệ trang web.",
+    "appTitle": "Xử lý tài liệu cục bộ",
+    "appText": "Các thao tác chỉnh sửa chính chạy ngay trên máy tính của bạn, không tải tệp lên mạng. Tính năng trực tuyến tùy chọn cần kết nối; khả năng sử dụng khác nhau theo nền tảng.",
+    "linksTitle": "Liên kết ngoài",
+    "linksText": "GitHub và các dịch vụ được liên kết khác có chính sách quyền riêng tư riêng. Truy cập trang web này không tải lên các tệp của bạn."
+  },
+  "seo": {
+    "homeTitle": "OFF42 — Phần mềm văn phòng miễn phí cho macOS và Windows, không thuê bao",
+    "homeDescription": "Ứng dụng văn phòng gốc miễn phí, mã nguồn mở cho macOS và Windows: PDF, DOCX, XLSX, PPTX, hình ảnh và bản quét. Tính năng và phạm vi kiểm thử khác nhau theo nền tảng.",
+    "featuresTitle": "Tính năng: PDF, tài liệu, bảng tính, bản quét | OFF42",
+    "featuresDescription": "Chỉnh sửa và ký PDF, nén tệp lớn, quét có OCR, soạn DOCX, làm việc với XLSX và PPTX. Xem mọi việc bộ văn phòng miễn phí OFF42 làm được trên Mac.",
+    "downloadTitle": "Tải OFF42 cho macOS và Windows — Bộ văn phòng miễn phí",
+    "downloadDescription": "OFF42 cho macOS và Windows: mã nguồn, trạng thái phát hành, hướng dẫn biên dịch và giới hạn nền tảng. Kiểm tra phần đã triển khai và thử nghiệm trước khi cài đặt.",
+    "aboutTitle": "Bộ văn phòng mã nguồn mở, giấy phép MIT | OFF42",
+    "aboutDescription": "OFF42 gồm sáu ứng dụng gốc cho macOS và Windows theo giấy phép MIT. Xem mã nguồn, hỗ trợ nền tảng và giới hạn trên GitHub.",
+    "privacyTitle": "Quyền riêng tư: tệp luôn ở trên máy tính của bạn | OFF42",
+    "privacyDescription": "Các thao tác chỉnh sửa chính chạy ngay trên máy tính của bạn, không tải tệp lên mạng. Tính năng trực tuyến tùy chọn cần kết nối; khả năng sử dụng khác nhau theo nền tảng."
+  }
+}

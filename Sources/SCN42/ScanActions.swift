@@ -7,17 +7,22 @@ extension ScanWindowController {
     // MARK: - Scanning
 
     @objc func scanAction(_ sender: Any?) {
+        guard settingsPanel.commitPendingInput() else { return }
         guard let scanner, canScan else {
             explainCannotScan()
             return
         }
         let s = settings
+        let intent = scanGeneration
         let freshDetection = overview != nil && !areaQuads.isEmpty && areaQuads.count == areas.count
         if s.source == .flatbed && s.detectPhotos && !freshDetection {
             // Photos: an overview first, every photo found becomes its own scan (new photos each time).
             runOverview { [weak self] ok in
                 guard let self, ok else { return }
+                let overviewToken = self.overviewGeneration
                 self.detectPhotos { found in
+                    guard !self.windowIsClosed, self.scanGeneration == intent,
+                          self.overviewGeneration == overviewToken, self.scanner === scanner, self.settings == s else { return }
                     if found == 0 { self.startScan(scanner, areas: self.scanAreas(s), s) } else { self.startScan(scanner, areas: self.areas, s) }
                 }
             }
@@ -27,7 +32,7 @@ extension ScanWindowController {
     }
 
     private func explainCannotScan() {
-        if isScanning { return }
+        if hasPendingWork { banner.show(.info, L("Wait for the current operation to finish.")); return }
         guard let scanner else {
             banner.show(.warning, L("No scanner found. Turn the scanner on, or use Scan with iPhone."))
             return
@@ -39,17 +44,25 @@ extension ScanWindowController {
     func scanAreas(_ s: ScanSettings) -> [CGRect] {
         let full = CGRect(x: 0, y: 0, width: 1, height: 1)
         guard s.source == .flatbed else { return [full] }
-        if !areas.isEmpty { return areas }
-        if let paper = s.paper.inches(custom: s.customSize), let glass = scanner?.glassSize, glass.width > 0 {
+        let valid = areas.filter { $0.minX.isFinite && $0.minY.isFinite && $0.width.isFinite && $0.height.isFinite }
+            .map { $0.intersection(full) }.filter { !$0.isNull && !$0.isEmpty }
+        if !valid.isEmpty { return valid }
+        if let paper = s.paper.inches(custom: s.customSize), let glass = scanner?.glassSize,
+           glass.width.isFinite, glass.height.isFinite, glass.width > 0, glass.height > 0,
+           paper.width.isFinite, paper.height.isFinite, paper.width > 0, paper.height > 0 {
             return [CGRect(x: 0, y: 0, width: min(1, paper.width / glass.width), height: min(1, paper.height / glass.height))]
         }
         return [full]
     }
 
     func startScan(_ scanner: ScannerBackend, areas list: [CGRect], _ s: ScanSettings) {
+        guard !hasPendingWork, !windowIsClosed, scanner.status.canScan, !list.isEmpty else { return }
+        scanGeneration = UUID()
+        let token = scanGeneration
         isScanning = true
         scannedThisRun = []
         blanksThisRun = 0
+        scanHadError = false
         banner.hide()
         if showingGlass && list.count <= 1 { showingGlass = false }
         updateStatus()
@@ -57,6 +70,7 @@ extension ScanWindowController {
         let quads = list == areas ? areaQuads : []
         let paper = s.paper.inches(custom: s.customSize)
         func next() {
+            guard !windowIsClosed, scanGeneration == token, isScanning else { return }
             guard !queue.isEmpty else { scanFinished(nil); return }
             let (index, area) = queue.removeFirst()
             var options = s.processing
@@ -68,9 +82,11 @@ extension ScanWindowController {
             let request = ScanRequest(source: s.source, resolution: s.resolution, colorMode: s.colorMode, bitDepth: s.bitDepth,
                                       area: area, paper: paper, duplex: s.duplex, lastInJob: queue.isEmpty)
             scanner.scan(request, page: { [weak self] raw in
-                self?.process(raw, options, removeBlank: s.removeBlank)
+                guard let self, !self.windowIsClosed, self.scanGeneration == token, self.isScanning else { return }
+                self.process(raw, options, removeBlank: s.removeBlank)
             }, done: { [weak self] error in
-                if let error { self?.scanFinished(error); return }
+                guard let self, !self.windowIsClosed, self.scanGeneration == token, self.isScanning else { return }
+                if let error { self.scanFinished(error); return }
                 next()
             })
         }
@@ -79,6 +95,8 @@ extension ScanWindowController {
 
     /// Pages are cleaned up one after another in the background while the scanner goes on.
     func process(_ raw: RawScan, _ options: ProcessOptions, removeBlank: Bool, documentScan: Bool = false) {
+        guard !windowIsClosed else { return }
+        let token = acquisitionGeneration
         pendingProcessing += 1
         updateStatus()
         var o = options
@@ -88,14 +106,18 @@ extension ScanWindowController {
             o.deskew = false
         }
         processQueue.async { [weak self] in
-            let page = ScanPage.make(raw, options: o)
+            let result = Result { try ScanPage.make(raw, options: o) }
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.pendingProcessing -= 1
-                if removeBlank && page.report.blank {
-                    self.blanksThisRun += 1
-                } else {
-                    self.add(page)
+                guard !self.windowIsClosed, self.acquisitionGeneration == token else { return }
+                switch result {
+                case .success(let page):
+                    if removeBlank && page.report.blank { self.blanksThisRun += 1 }
+                    else { self.add(page) }
+                case .failure(let error):
+                    self.scanHadError = true; self.copierCopies = nil
+                    self.banner.show(.warning, error.localizedDescription)
                 }
                 self.processingMaybeDone()
                 self.updateStatus()
@@ -122,6 +144,7 @@ extension ScanWindowController {
 
     private func scanFinished(_ error: Error?) {
         isScanning = false
+        prepareScannerSource()
         // Detected photos have been scanned: the next batch needs a new overview.
         if !areaQuads.isEmpty {
             areaQuads = []
@@ -129,6 +152,7 @@ extension ScanWindowController {
             overview = nil
         }
         if let error {
+            scanHadError = true
             let text = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             banner.show(.warning, text)
             copierCopies = nil
@@ -143,14 +167,15 @@ extension ScanWindowController {
         // The scanner may finish before its last image has been processed and replaced the target.
         rescanTarget = nil
         let added = scannedThisRun.count
-        if added > 0 || blanksThisRun > 0 {
+        if !scanHadError && (added > 0 || blanksThisRun > 0) {
             var text = L("Added %@.", pagesText(added))
             if blanksThisRun > 0 { text += " " + L("Blank pages removed: %d.", blanksThisRun) }
             let crops = scannedThisRun.filter { $0.report.cropMethod != nil }.count
             if crops > 0 { text += " " + L("Cropped and straightened: %d.", crops) }
             banner.show(.success, text)
+            let token = scanGeneration
             DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
-                if self?.isScanning == false { self?.banner.hide() }
+                if self?.isScanning == false && self?.scanGeneration == token { self?.banner.hide() }
             }
         }
         if let copies = copierCopies {
@@ -160,7 +185,13 @@ extension ScanWindowController {
     }
 
     @objc func cancelScanAction(_ sender: Any?) {
+        guard isScanning else { return }
+        scanGeneration = UUID(); overviewGeneration = UUID()
+        isScanning = false; copierCopies = nil; scanHadError = true
         scanner?.cancel()
+        prepareScannerSource()
+        banner.show(.info, L("The scan was cancelled."))
+        processingMaybeDone(); updateStatus()
     }
 
     @objc func overviewAction(_ sender: Any?) {
@@ -173,12 +204,18 @@ extension ScanWindowController {
     func runOverview(_ done: @escaping (Bool) -> Void) {
         guard let scanner, canOverview else { explainCannotScan(); done(false); return }
         isScanning = true
+        overviewGeneration = UUID(); let token = overviewGeneration
+        overviewJobGeneration = UUID(); let job = overviewJobGeneration, intent = scanGeneration
         showingGlass = true
         refreshPreview()
         updateStatus()
         scanner.overview { [weak self] result in
             guard let self else { return }
+            guard self.overviewJobGeneration == job, self.scanGeneration == intent, self.isScanning,
+                  !self.windowIsClosed, self.scanner === scanner else { done(false); return }
             self.isScanning = false
+            self.prepareScannerSource()
+            guard self.overviewGeneration == token else { self.updateStatus(); done(false); return }
             switch result {
             case .success(let image):
                 self.overview = image
@@ -200,7 +237,8 @@ extension ScanWindowController {
 
     /// Finds the photos on the overview and makes each one a scan area.
     func detectPhotos(_ done: @escaping (Int) -> Void) {
-        guard let overview else { done(0); return }
+        guard let overview, busyText == nil, !windowIsClosed else { done(0); return }
+        let token = overviewGeneration
         busyText = L("Looking for photos…")
         updateStatus()
         DispatchQueue.global(qos: .userInitiated).async {
@@ -210,6 +248,9 @@ extension ScanWindowController {
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.busyText = nil
+                guard !self.windowIsClosed, self.overviewGeneration == token, self.overview === overview else {
+                    self.updateStatus(); done(0); return
+                }
                 // Found areas are not remembered: the next photos lie elsewhere.
                 self.areas = found
                 self.areaQuads = normalised
@@ -224,6 +265,7 @@ extension ScanWindowController {
     }
 
     @objc func clearAreasAction(_ sender: Any?) {
+        overviewGeneration = UUID()
         areas = []
         areaQuads = []
         Store.lastAreas = []
@@ -239,7 +281,7 @@ extension ScanWindowController {
 
     @objc func selectScannerAction(_ sender: Any?) {
         guard let item = sender as? NSMenuItem, let s = item.representedObject as? ScannerBackend else { return }
-        if s !== scanner { scanner?.close(); choose(s) }
+        if s !== scanner { choose(s) }
     }
 
     // MARK: - Presets
@@ -295,20 +337,26 @@ extension ScanWindowController {
     @objc func openDocument(_ sender: Any?) { importAction(sender) }
 
     func importFiles(_ urls: [URL], at row: Int?) {
-        let items = ContinuityImport.load(urls)
+        guard !hasPendingWork, !windowIsClosed else { banner.show(.info, L("Wait for the current operation to finish.")); return }
+        let items: [(RawScan, Bool)]
+        do { items = try ContinuityImport.loadChecked(urls) }
+        catch { showError(error); return }
         guard !items.isEmpty else { banner.show(.warning, L("No images found in these files.")); return }
         // -1 means before the first page; nil is reserved for appending at the end.
         if let row { insertionIndex = min(max(0, row), pages.count) - 1 }
         scannedThisRun = []
         blanksThisRun = 0
+        scanHadError = false; scanGeneration = UUID()
         for (raw, isPDF) in items { process(raw, settings.processing, removeBlank: false, documentScan: isPDF) }
     }
 
     /// Continuity Camera result (Take Photo → image to clean up; Scan Documents → PDF pages from the phone).
     func importContinuity(_ pboard: NSPasteboard) -> Bool {
+        guard !hasPendingWork, !windowIsClosed else { banner.show(.info, L("Wait for the current operation to finish.")); return false }
         guard let imported = ContinuityImport.read(pboard), !imported.pages.isEmpty else { return false }
         scannedThisRun = []
         blanksThisRun = 0
+        scanHadError = false; scanGeneration = UUID()
         for raw in imported.pages { process(raw, settings.processing, removeBlank: false, documentScan: imported.isDocumentScan) }
         return true
     }
@@ -382,13 +430,12 @@ extension ScanWindowController {
 
     /// The selected page and everything after it go to a new window.
     @objc func splitAction(_ sender: Any?) {
-        guard let i = pageList.selection.first, i > 0, i < pages.count else { return }
+        guard let i = pageList.selection.first, i > 0, i < pages.count, let other = AppDelegate.shared?.newWindow() else { return }
         let moving = Array(pages[i...])
         doc.remove(ids: Set(moving.map(\.id)), name: L("Split Document Here"))
-        let other = AppDelegate.shared?.newWindow()
-        other?.doc.append(moving)
-        other?.doc.undo.removeAllActions()
-        other?.pageList.select([0])
+        other.doc.append(moving.map { $0.copy() })
+        other.doc.undo.removeAllActions()
+        other.pageList.select([0])
     }
 
     // MARK: - Tools
@@ -412,49 +459,61 @@ extension ScanWindowController {
 
     /// Re-runs the clean-up of some pages in the background (one undo step).
     private func refinish(_ targets: [ScanPage], name: String, _ change: @escaping (inout ProcessOptions) -> Void) {
-        guard !targets.isEmpty else { return }
+        guard busyText == nil, !targets.isEmpty else { return }
+        let jobs = targets.compactMap { page -> (ScanPage, UUID, ScanPage.Snapshot, ProcessOptions)? in
+            var options = page.options; change(&options)
+            guard options != page.options else { return nil }
+            return (page, page.contentRevision, page.snapshot, options)
+        }
+        guard !jobs.isEmpty else { return }
+        let token = UUID(); pageWorkGeneration = token
         busyText = L("Cleaning up…")
         updateStatus()
-        let jobs: [(ScanPage, ProcessOptions)] = targets.map { p in var o = p.options; change(&o); return (p, o) }
-        let before = targets.map { ($0, $0.snapshot) }
-        let sel = pageList.selection
-        DispatchQueue.global(qos: .userInitiated).async {
-            jobs.forEach { $0.0.refinish($0.1) }
-            let after = targets.map { $0.snapshot }
+        processQueue.async {
+            let result = Result { try jobs.map { ($0.0, $0.1, try $0.2.finished($0.3)) } }
             DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                // Register the change for undo from the state before.
-                before.forEach { $0.0.restore($0.1) }
-                self.doc.modify(targets, name: name) { p in
-                    if let i = targets.firstIndex(where: { $0 === p }) { p.restore(after[i]) }
-                }
+                guard let self, self.pageWorkGeneration == token else { return }
                 self.busyText = nil
-                self.pageList.select(sel, scroll: false)
+                switch result {
+                case .success(let states): _ = self.applyPageSnapshots(states, name: name)
+                case .failure(let error): self.showError(error)
+                }
                 self.updateStatus()
             }
         }
     }
 
+    /// Only the exact pixels used by a worker can receive its result; a removed or edited page stays untouched.
+    @discardableResult func applyPageSnapshots(_ states: [(ScanPage, UUID, ScanPage.Snapshot)], name: String) -> Int {
+        let valid = states.filter { page, revision, _ in pages.contains { $0 === page } && page.contentRevision == revision }
+        doc.modify(valid.map { $0.0 }, name: name) { page in
+            if let state = valid.first(where: { $0.0 === page }) { page.restore(state.2) }
+        }
+        return valid.count
+    }
+
     @objc func restraightenAction(_ sender: Any?) {
         let targets = targetPages
-        guard !targets.isEmpty else { return }
+        guard busyText == nil, !targets.isEmpty else { return }
+        let jobs = targets.map { ($0, $0.contentRevision, $0.snapshot) }
+        let token = UUID(); pageWorkGeneration = token
         busyText = L("Cleaning up…")
         updateStatus()
-        let sel = pageList.selection
-        DispatchQueue.global(qos: .userInitiated).async {
-            let made = targets.map { p -> ScanPage in
-                var o = p.options
-                o.crop = true
-                o.deskew = true
-                return ScanPage.make(RawScan(image: p.image, dpi: p.dpi), options: { var g = o; g.enhancement = .none; return g }())
+        processQueue.async {
+            let result = Result {
+                try jobs.map { job -> (ScanPage, UUID, ScanPage.Snapshot) in
+                    var options = job.2.options; options.crop = true; options.deskew = true
+                    let page = try ScanPage.make(RawScan(image: job.2.base, dpi: job.2.dpi), options: options)
+                    return (job.0, job.1, page.snapshot)
+                }
             }
             DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                var order = self.pages
-                for (old, new) in zip(targets, made) { if let i = order.firstIndex(where: { $0 === old }) { order[i] = new } }
-                self.doc.setOrder(order, name: L("Crop and Straighten Again"))
+                guard let self, self.pageWorkGeneration == token else { return }
                 self.busyText = nil
-                self.pageList.select(sel, scroll: false)
+                switch result {
+                case .success(let states): _ = self.applyPageSnapshots(states, name: L("Crop and Straighten Again"))
+                case .failure(let error): self.showError(error)
+                }
                 self.updateStatus()
             }
         }
@@ -468,31 +527,31 @@ extension ScanWindowController {
     }
 
     /// Recognises text on every page that has none yet; `then` runs on the main thread afterwards.
-    func ensureText(_ targets: [ScanPage], then: @escaping () -> Void) {
-        let missing = targets.filter { $0.text == nil }
-        guard !missing.isEmpty else { then(); return }
+    func ensureText(_ targets: [ScanPage], then: @escaping (Bool) -> Void) {
+        let jobs = targets.filter { $0.text == nil }.map { ($0, $0.contentRevision, $0.image) }
+        guard !jobs.isEmpty else { then(true); return }
+        guard busyText == nil else { then(false); return }
+        let token = UUID(); pageWorkGeneration = token
         busyText = L("Recognizing text…")
         updateStatus()
-        DispatchQueue.global(qos: .userInitiated).async {
-            for (n, p) in missing.enumerated() {
-                let lines = OCR.recognize(p.image)
-                DispatchQueue.main.async { [weak self] in
-                    self?.doc.setText(p, lines)
-                    self?.busyText = L("Recognizing text… %d of %d", n + 1, missing.count)
-                    self?.updateStatus()
-                }
-            }
+        processQueue.async {
+            let result = Result { try jobs.map { ($0.0, $0.1, try OCR.recognizeChecked($0.2)) } }
             DispatchQueue.main.async { [weak self] in
-                self?.busyText = nil
-                self?.updateStatus()
-                then()
+                guard let self, self.pageWorkGeneration == token else { then(false); return }
+                self.busyText = nil
+                switch result {
+                case .success(let results):
+                    let accepted = results.map { self.doc.setText($0.0, $0.2, expectedContentRevision: $0.1) }.allSatisfy { $0 }
+                    self.updateStatus(); then(accepted)
+                case .failure(let error): self.updateStatus(); self.showError(error); then(false)
+                }
             }
         }
     }
 
     @objc func recognizeTextAction(_ sender: Any?) {
-        ensureText(pages) { [weak self] in
-            guard let self else { return }
+        ensureText(pages) { [weak self] success in
+            guard success, let self else { return }
             let lines = self.pages.reduce(0) { $0 + ($1.text?.count ?? 0) }
             self.banner.show(.success, L("Text recognized: %d lines. Saved PDFs are searchable.", lines))
         }
@@ -500,44 +559,54 @@ extension ScanWindowController {
 
     @objc func copyTextAction(_ sender: Any?) {
         let targets = targetPages
-        ensureText(targets) { [weak self] in
+        copyText(targets, to: .general)
+    }
+
+    func copyText(_ targets: [ScanPage], to pasteboard: NSPasteboard, completion: ((Bool) -> Void)? = nil) {
+        ensureText(targets) { [weak self] success in
+            guard success else { completion?(false); return }
             let text = targets.compactMap(\.text).map(OCR.text).joined(separator: "\n\n")
-            guard !text.isEmpty else { self?.banner.show(.info, L("No text found on these pages.")); return }
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text, forType: .string)
+            guard !text.isEmpty else { self?.banner.show(.info, L("No text found on these pages.")); completion?(false); return }
+            pasteboard.clearContents()
+            let written = pasteboard.setString(text, forType: .string)
             self?.banner.show(.success, L("Text copied."))
+            completion?(written)
         }
     }
 
     @objc func copy(_ sender: Any?) {
-        // ⌘C: the page image.
-        guard let page = targetPages.first else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.writeObjects([NSImage(cgImage: page.image, size: NSSize(width: page.image.width, height: page.image.height))])
+        _ = copyPageImage(to: .general)
+    }
+
+    @discardableResult func copyPageImage(to pasteboard: NSPasteboard) -> Bool {
+        guard let page = targetPages.first else { return false }
+        pasteboard.clearContents()
+        return pasteboard.writeObjects([NSImage(cgImage: page.image, size: NSSize(width: page.image.width, height: page.image.height))])
     }
 
     @objc func exportTextAction(_ sender: Any?) {
         guard let window else { return }
-        ensureText(pages) { [weak self] in
-            guard let self else { return }
+        ensureText(pages) { [weak self] success in
+            guard success, let self else { return }
             let panel = NSSavePanel()
-            panel.allowedContentTypes = [.plainText, .rtf]
             panel.nameFieldStringValue = self.baseName() + ".txt"
-            let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 200, height: 26), pullsDown: false)
-            popup.addItems(withTitles: [L("Plain text (.txt)"), L("Rich text (.rtf)")])
-            let box = NSStackView(views: [NSTextField(labelWithString: L("Format:")), popup])
-            box.edgeInsets = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
-            panel.accessoryView = box
+            let options = TextExportOptions(panel: panel)
+            panel.accessoryView = options.view
             panel.beginSheetModal(for: window) { r in
                 guard r == .OK, var url = panel.url else { return }
-                let rtf = popup.indexOfSelectedItem == 1
+                let rtf = options.rtf
                 url = url.deletingPathExtension().appendingPathExtension(rtf ? "rtf" : "txt")
                 do {
-                    try Exporter.textData(self.pages.compactMap(\.text), rtf: rtf)?.write(to: url)
+                    try self.writeText(to: url, rtf: rtf)
                     self.banner.show(.success, L("Saved: %@", url.lastPathComponent))
                 } catch { self.showError(error) }
             }
         }
+    }
+
+    func writeText(to url: URL, rtf: Bool) throws {
+        guard let data = Exporter.textData(pages.compactMap(\.text), rtf: rtf) else { throw CocoaError(.fileWriteUnknown) }
+        try data.write(to: url, options: .atomic)
     }
 
     // MARK: - Saving
@@ -565,14 +634,20 @@ extension ScanWindowController {
 
     /// Writes the document with `options` into its folder (OCR first when wanted), notes it in the history, opens it.
     func save(_ options: SaveOptions, completion: ((URL?) -> Void)? = nil) {
+        let targets = pages
         let needsText = (options.ocr && options.format.isPDF) || options.nameTemplate.contains("{title}")
-        if needsText { ensureText(pages) { [weak self] in self?.writeFiles(options, completion) } } else { writeFiles(options, completion) }
+        if needsText {
+            ensureText(targets) { [weak self] success in
+                guard success, let self else { completion?(nil); return }
+                self.writeFiles(options, targets: targets, completion)
+            }
+        } else { writeFiles(options, targets: targets, completion) }
     }
 
-    private func writeFiles(_ options: SaveOptions, _ completion: ((URL?) -> Void)?) {
-        let revision = doc.revision
-        let exportPages: [ExportPage] = pages.map(\.exportPage)
-        let base = baseName(options)
+    private func writeFiles(_ options: SaveOptions, targets: [ScanPage], _ completion: ((URL?) -> Void)?) {
+        let contents = doc.captureSavedContents(targets)
+        let exportPages: [ExportPage] = targets.map(\.exportPage)
+        let base = Exporter.expand(options.nameTemplate, counter: options.counter, title: exportPages.first?.title)
         busyText = L("Saving…")
         updateStatus()
         DispatchQueue.global(qos: .userInitiated).async {
@@ -589,22 +664,25 @@ extension ScanWindowController {
                     return
                 }
                 var next = options
-                next.counter += 1
+                next.counter = options.counter == Int.max ? Int.max : options.counter + 1
                 Store.saveOptions = next
-                self.didSave(urls, options, revision: revision)
+                self.didSave(urls, options, contents: contents, snapshot: exportPages)
                 completion?(urls.first)
             }
         }
     }
 
-    private func didSave(_ urls: [URL], _ o: SaveOptions, revision: Int) {
+    private func didSave(_ urls: [URL], _ o: SaveOptions, contents: ScanDocument.SavedContents, snapshot: [ExportPage]) {
         guard let first = urls.first else { return }
         savedURL = first
-        doc.markSaved(revision: revision)
+        doc.markSaved(contents: contents)
         window?.isDocumentEdited = doc.isDirty
         window?.title = urls.count == 1 ? first.lastPathComponent : L("%d files", urls.count)
         let bytes = urls.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
-        for url in urls { History.shared.add(url, pages: urls.count == 1 ? pages.count : 1, thumbnail: pages.first?.image) }
+        for (index, url) in urls.enumerated() {
+            let thumbnail = snapshot.indices.contains(index) ? snapshot[index].image : snapshot.first?.image
+            History.shared.add(url, pages: urls.count == 1 ? snapshot.count : 1, thumbnail: thumbnail)
+        }
         if Store.testDirectory == nil { urls.forEach { NSDocumentController.shared.noteNewRecentDocumentURL($0) } }
         let name = urls.count == 1 ? first.lastPathComponent : L("%d files", urls.count)
         banner.show(.success, L("Saved “%@” (%@).", name, Exporter.sizeText(bytes)), action: L("Show in Finder")) {
@@ -652,29 +730,50 @@ extension ScanWindowController {
             o.openAfter = .none
             // The chosen name is final: write it directly.
             let target = url.deletingPathExtension().appendingPathExtension(o.format.ext)
+            let targets = self.pages
             let run = {
                 do {
-                    let revision = self.doc.revision
-                    let urls = try Exporter.write(self.pages.map(\.exportPage), folder: target.deletingLastPathComponent(),
-                                                  baseName: target.deletingPathExtension().lastPathComponent, options: o, replaceExisting: true)
-                    self.didSave(urls, o, revision: revision)
+                    try self.writeExport(to: target, options: o, targets: targets)
                 } catch { self.showError(error) }
             }
-            if o.ocr && o.format.isPDF { self.ensureText(self.pages, then: run) } else { run() }
+            if o.ocr && o.format.isPDF { self.ensureText(targets) { success in if success { run() } } } else { run() }
         }
     }
 
+    /// Writes the chosen destination from one immutable document snapshot.
+    @discardableResult func writeExport(to target: URL, options: SaveOptions, targets: [ScanPage]? = nil) throws -> [URL] {
+        let targets = targets ?? pages
+        let contents = doc.captureSavedContents(targets)
+        let snapshot = targets.map(\.exportPage)
+        let urls = try Exporter.write(snapshot, folder: target.deletingLastPathComponent(),
+                                      baseName: target.deletingPathExtension().lastPathComponent, options: options, replaceExisting: true)
+        didSave(urls, options, contents: contents, snapshot: snapshot)
+        return urls
+    }
+
     /// A temporary PDF of the document for Share and Mail.
-    func temporaryPDF() -> URL? {
+    func temporaryPDFChecked(targets: [ScanPage]? = nil) throws -> URL {
         var o = Store.saveOptions
         o.format = .pdf
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("SCN42-share-\(UUID().uuidString.prefix(6))", isDirectory: true)
-        return try? Exporter.write(pages.map(\.exportPage), folder: dir, baseName: baseName(o), options: o).first
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("SCN42-share-" + UUID().uuidString, isDirectory: true)
+        do {
+            guard let result = try Exporter.write((targets ?? pages).map(\.exportPage), folder: dir, baseName: baseName(o), options: o).first else {
+                throw CocoaError(.fileWriteUnknown)
+            }
+            return result
+        } catch { try? FileManager.default.removeItem(at: dir); throw error }
+    }
+
+    func temporaryPDF(targets: [ScanPage]? = nil) -> URL? {
+        guard !(targets ?? pages).isEmpty else { return nil }
+        do { return try temporaryPDFChecked(targets: targets) }
+        catch { showError(error); return nil }
     }
 
     @objc func mailAction(_ sender: Any?) {
-        ensureText(pages) { [weak self] in
-            guard let url = self?.temporaryPDF(), let service = NSSharingService(named: .composeEmail) else { return }
+        let targets = pages
+        ensureText(targets) { [weak self] success in
+            guard success, let url = self?.temporaryPDF(targets: targets), let service = NSSharingService(named: .composeEmail) else { return }
             service.perform(withItems: [url])
         }
     }
@@ -686,23 +785,32 @@ extension ScanWindowController {
     @objc func printDocument(_ sender: Any?) { printPages(pages, copies: 1, direct: false) }
     @objc func runPageLayout(_ sender: Any?) { NSPageLayout().beginSheet(with: NSPrintInfo.shared, modalFor: window!, delegate: nil, didEnd: nil, contextInfo: nil) }
 
-    func printOperation(_ list: [ScanPage], copies: Int) -> NSPrintOperation? {
-        let data = Exporter.pdf(list.map(\.exportPage), compression: .original, ocr: false, archival: false)
-        guard let doc = PDFDocument(data: data) else { return nil }
+    func printOperationChecked(_ list: [ScanPage], copies: Int) throws -> NSPrintOperation {
+        guard (1...99).contains(copies) else { throw CocoaError(.fileWriteUnknown) }
+        let data = try Exporter.pdfChecked(list.map(\.exportPage), compression: .original, ocr: false, archival: false)
+        guard let doc = PDFDocument(data: data) else { throw CocoaError(.fileWriteUnknown) }
         let info = (NSPrintInfo.shared.copy() as? NSPrintInfo) ?? NSPrintInfo.shared
         info.dictionary()[NSPrintInfo.AttributeKey.copies] = copies
-        guard let op = doc.printOperation(for: info, scalingMode: .pageScaleToFit, autoRotate: true) else { return nil }
+        guard let op = doc.printOperation(for: info, scalingMode: .pageScaleToFit, autoRotate: true) else { throw CocoaError(.fileWriteUnknown) }
         op.jobTitle = baseName()
         op.printPanel.options.formUnion([.showsCopies, .showsPaperSize, .showsOrientation, .showsScaling, .showsPreview])
         return op
     }
 
+    func printOperation(_ list: [ScanPage], copies: Int) -> NSPrintOperation? {
+        try? printOperationChecked(list, copies: copies)
+    }
+
     /// `direct`: the copier prints the fresh scan without the print dialog.
     func printPages(_ list: [ScanPage], copies: Int, direct: Bool) {
-        guard let window, let op = printOperation(list, copies: copies) else { return }
-        op.showsPrintPanel = !direct
-        op.showsProgressPanel = true
-        op.runModal(for: window, delegate: nil, didRun: nil, contextInfo: nil)
+        guard let window, !list.isEmpty else { return }
+        do {
+            let op = try printOperationChecked(list, copies: copies)
+            op.showsPrintPanel = !direct
+            op.showsProgressPanel = true
+            if let printOperationRunner { printOperationRunner(op, direct) }
+            else { op.runModal(for: window, delegate: nil, didRun: nil, contextInfo: nil) }
+        } catch { showError(error) }
     }
 
     /// Copier: asks how many copies, scans, prints on the default printer.

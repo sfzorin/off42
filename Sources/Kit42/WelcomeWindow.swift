@@ -42,7 +42,12 @@ public final class WelcomeWindowController: NSWindowController {
         ver.font = .systemFont(ofSize: 11)
         ver.textColor = .tertiaryLabelColor
 
-        let buttons = NSStackView(views: actions.map(Self.actionButton))
+        let actionButtons = actions.map(Self.actionButton)
+        // Translated actions can be much longer than the English source. Give every
+        // action the same natural width instead of clipping it to 220 points.
+        let actionWidth = ceil(max(220, actionButtons.map { $0.intrinsicContentSize.width + 16 }.max() ?? 220))
+        actionButtons.forEach { $0.widthAnchor.constraint(equalToConstant: actionWidth).isActive = true }
+        let buttons = NSStackView(views: actionButtons)
         buttons.orientation = .vertical
         buttons.alignment = .centerX
         buttons.spacing = 4
@@ -88,10 +93,12 @@ public final class WelcomeWindowController: NSWindowController {
         root.spacing = 0
         root.distribution = .fill
         left.translatesAutoresizingMaskIntoConstraints = false
-        left.widthAnchor.constraint(equalToConstant: 330).isActive = true
+        let leftWidth = ceil(max(330, actionWidth + 64, sub.intrinsicContentSize.width + 64))
+        left.widthAnchor.constraint(equalToConstant: leftWidth).isActive = true
         rightBackground.translatesAutoresizingMaskIntoConstraints = false
         rightBackground.heightAnchor.constraint(equalTo: root.heightAnchor).isActive = true
         window.contentView = root
+        window.setContentSize(NSSize(width: leftWidth + 350, height: 420))
         window.center()
         reloadRecent()
     }
@@ -130,7 +137,6 @@ public final class WelcomeWindowController: NSWindowController {
         b.font = .systemFont(ofSize: 14)
         b.contentTintColor = .controlAccentColor
         b.translatesAutoresizingMaskIntoConstraints = false
-        b.widthAnchor.constraint(equalToConstant: 220).isActive = true
         b.heightAnchor.constraint(equalToConstant: 30).isActive = true
         b.alignment = .left
         return b

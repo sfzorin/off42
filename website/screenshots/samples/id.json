@@ -1,0 +1,54 @@
+{
+  "rtl": false,
+  "brand": "TELUK BIRU STUDIO",
+  "brandLine": "Identitas merek · Web · Animasi",
+  "number": "Perjanjian No. TB-2026-114",
+  "title": "Perjanjian Jasa Desain",
+  "intro": "Perjanjian ini dibuat pada 6 November 2026 antara PT Teluk Biru Kreatif (“Studio”) dan PT Cahaya Nusantara Media (“Klien”) untuk desain identitas merek dan situs web baru Klien.",
+  "sections": [
+    ["1. Lingkup pekerjaan", "Studio akan menyerahkan sistem logo, panduan tipografi dan warna, desain situs web dua belas halaman, serta pustaka templat media sosial."],
+    ["2. Jadwal", "Pekerjaan dimulai pada 16 November 2026. Konsep pertama dipresentasikan dalam tiga minggu; berkas final diserahkan paling lambat 29 Januari 2027."],
+    ["3. Hak kekayaan intelektual", "Setelah pelunasan, seluruh hak atas desain final beralih kepada Klien. Studio boleh menampilkan karya ini dalam portofolionya."]
+  ],
+  "feeTitle": "4. Biaya",
+  "fees": [["Identitas merek dan panduan", "Rp 150.000.000"], ["Desain situs web, 12 halaman", "Rp 225.000.000"], ["Templat media sosial", "Rp 50.000.000"]],
+  "total": ["Total, belum termasuk PPN", "Rp 425.000.000"],
+  "signTitle": "Ditandatangani oleh dan atas nama para pihak",
+  "parties": [
+    {"role": "Untuk Studio", "company": "PT Teluk Biru Kreatif", "person": "Putri Rahmawati", "title": "Direktur Utama",
+     "date": "Bandung, 6 November 2026", "signName": "Putri Rahmawati", "pen": "ballpoint", "design": 2424853,
+     "stamp": {"id": "eu.round", "width": 104, "values": {"edge": "PT TELUK BIRU KREATIF * BANDUNG *", "centre": "DIREKSI"}}},
+    {"role": "Untuk Klien", "company": "PT Cahaya Nusantara Media", "person": "Arif Wicaksono", "title": "Direktur",
+     "date": "Jakarta, 6 November 2026", "signName": "Arif Wicaksono", "pen": "gel", "design": 2425117,
+     "stamp": {"id": "pl.pieczatka", "width": 150, "values": {"name": "PT Cahaya Nusantara Media", "lines": "Jl. Kemang Raya No. 7\nJakarta Selatan 12730", "numbers": "NPWP 02.000.042.7-015.000"}}}
+  ],
+  "invoiceTitle": "Faktur",
+  "invoiceNumber": "Faktur No. 2026-0418 · 30 Januari 2027",
+  "billTo": "Ditagihkan kepada",
+  "billLines": ["PT Cahaya Nusantara Media", "Jl. Kemang Raya No. 7, Jakarta Selatan 12730", "NPWP 02.000.042.7-015.000"],
+  "items": [["Identitas merek dan panduan", "1", "Rp 150.000.000"], ["Desain situs web, 12 halaman", "1", "Rp 225.000.000"], ["Templat media sosial", "1", "Rp 50.000.000"]],
+  "invoiceTotal": ["Total tagihan", "Rp 425.000.000"],
+  "paid": {"id": "us.paid", "width": 150, "values": {"top": "PT TELUK BIRU KREATIF", "word": "LUNAS"}},
+  "note": "Pembayaran telah diterima, terima kasih. Transfer bank, ref. TB-2026-114.",
+  "generatorName": "Putri Rahmawati",
+  "letter": {
+    "brand": "TELUK BIRU STUDIO", "addr": "Jl. Braga No. 42, Bandung 40111 · halo@telukbiru.example",
+    "date": "Bandung, 6 November 2026", "to": ["Arif Wicaksono", "PT Cahaya Nusantara Media", "Jl. Kemang Raya No. 7, Jakarta Selatan"],
+    "subject": "Penawaran: identitas merek baru untuk Cahaya Nusantara Media",
+    "body": ["Yth. Bapak Arif,", "Terima kasih atas diskusi yang menyenangkan minggu lalu. Sesuai janji, berikut penawaran kami untuk identitas baru Cahaya Nusantara: sistem logo yang lebih tenang, palet warna yang hangat, dan situs web yang menonjolkan film dokumenter Anda.", "Kami mengusulkan tiga tahap, masing-masing diakhiri dengan peninjauan di Jakarta:"],
+    "table": [["Tahap", "Minggu", "Biaya"], ["Riset dan konsep", "3", "Rp 110.000.000"], ["Identitas dan panduan", "4", "Rp 150.000.000"], ["Situs web dan templat", "6", "Rp 165.000.000"]],
+    "close": ["Kami siap memulai pada 16 November. Perjanjian terlampir dan sudah kami tandatangani.", "Hormat kami,"],
+    "name": "Putri Rahmawati", "role": "Direktur Utama, PT Teluk Biru Kreatif"
+  },
+  "budget": {
+    "sheet": "Anggaran 2027", "head": "Anggaran studio, semester I 2027, juta Rp", "total": "Total", "share": "Porsi",
+    "months": ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"],
+    "rows": [["Desain", [110, 130, 150, 90, 85, 100]], ["Pengembangan", [57, 73, 123, 164, 157, 130]], ["Pemasaran", [32, 37, 46, 70, 84, 93]], ["Hosting dan perangkat", [8, 8, 8, 8, 9, 9]]]
+  },
+  "deck": {
+    "title": "Cahaya Nusantara Media", "subtitle": "Pembaruan merek 2027 · Tinjauan desain",
+    "ideasTitle": "Tenang, hangat, bercahaya", "ideasSubtitle": "Tiga gagasan di balik identitas baru",
+    "ideas": [["Cahaya", "Senja tropis yang panjang: kontras lembut dan aksen hangat."], ["Cerita", "Dokumenter lebih dulu: situs web dibuka dengan film."], ["Kriya", "Tanda buatan tangan, tipografi yang berkarakter."]],
+    "timelineTitle": "Jadwal", "steps": [["Nov", "Riset"], ["Des", "Konsep"], ["Jan", "Identitas"], ["Feb", "Situs web"]]
+  }
+}

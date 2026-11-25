@@ -55,7 +55,8 @@ enum SmartLasso {
 
     /// The refined closed outline (image coordinates, y down) for a stroke painted with half-width `radius` (image pixels).
     static func refine(stroke raw: [CGPoint], radius: CGFloat, image: CGImage, subject: CGImage?, options: Options = Options()) -> CGPath? {
-        guard raw.count >= 3, radius > 0 else { return nil }
+        guard raw.count >= 3, raw.count <= 100_000, raw.allSatisfy({ $0.x.isFinite && $0.y.isFinite }),
+              radius.isFinite, radius > 0, radius <= 32768 else { return nil }
         let full = CGRect(x: 0, y: 0, width: image.width, height: image.height)
         // Working region: the band's bounding box, downscaled so the band stays ≥ 8 px but the region ≤ ~900 px.
         var box = CGRect.null
@@ -182,6 +183,7 @@ enum SmartLasso {
         }
 
         let path = viterbiClosed(cost: cost, n: n, k: kCount, maxStep: 2, smooth: 0.12)
+        guard path.count == n else { return nil }
         var pts = (0..<n).map { i -> CGPoint in
             let c = centre[i], nv = normals[i], o = offsets[path[i]]
             return CGPoint(x: c.x + nv.x * o, y: c.y + nv.y * o)
@@ -199,6 +201,8 @@ enum SmartLasso {
 
     /// Minimum-cost closed path choosing one offset per sample; consecutive offsets differ by ≤ `maxStep`.
     static func viterbiClosed(cost: [Float], n: Int, k: Int, maxStep: Int, smooth: Float) -> [Int] {
+        guard n > 0, n <= 20_000, k > 0, k <= 256, cost.count == n * k,
+              maxStep >= 0, maxStep <= k, smooth.isFinite, cost.allSatisfy(\.isFinite) else { return [] }
         func run(start: Int, fixed: Int?) -> [Int] {
             var dp = [Float](repeating: .infinity, count: k)
             var back = [Int32](repeating: 0, count: n * k)
@@ -242,8 +246,12 @@ enum SmartLasso {
     }
 
     static func resampleClosed(_ pts: [CGPoint], spacing: CGFloat) -> [CGPoint] {
+        guard spacing.isFinite, spacing > 0, pts.count <= 100_000,
+              pts.allSatisfy({ $0.x.isFinite && $0.y.isFinite }) else { return [] }
         var src = pts
         if let f = src.first { src.append(f) }
+        let perimeter = zip(src, src.dropFirst()).reduce(CGFloat.zero) { $0 + hypot($1.1.x - $1.0.x, $1.1.y - $1.0.y) }
+        guard perimeter.isFinite, perimeter / spacing <= 20_000 else { return [] }
         var out: [CGPoint] = []
         var carry: CGFloat = 0
         for (a, b) in zip(src, src.dropFirst()) {

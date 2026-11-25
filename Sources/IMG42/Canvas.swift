@@ -114,6 +114,7 @@ final class ImageCanvas: NSScrollView {
 
     func setImage(_ image: CGImage?, size: CGSize, resetZoom: Bool) {
         let sizeChanged = size != imageSize
+        if sizeChanged || image !== imageView.image { markup.invalidateSelectionWork() }
         imageSize = size
         imageView.image = image
         if sizeChanged {
@@ -156,6 +157,7 @@ final class ImageCanvas: NSScrollView {
     }
 
     func zoom(to m: CGFloat, around point: NSPoint? = nil) {
+        guard m.isFinite, m > 0 else { return }
         zoomMode = .custom
         let target = max(minMagnification, min(maxMagnification, m))
         let center = point ?? NSPoint(x: contentView.bounds.midX, y: contentView.bounds.midY)
@@ -232,6 +234,6 @@ final class ImageCanvas: NSScrollView {
     }
 
     override func swipe(with event: NSEvent) {
-        if event.deltaX != 0 { onNavigate?(event.deltaX < 0 ? 1 : -1) }
+        if navigationEnabled, imageFits, event.deltaX != 0 { onNavigate?(event.deltaX < 0 ? 1 : -1) }
     }
 }

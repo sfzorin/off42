@@ -57,7 +57,7 @@ extension ToolsCLI {
                     parts.removeLast()
                 }
                 let body = Substring(parts.joined(separator: ":"))
-                guard let at = body.lastIndex(of: "@"), let n = Int(body[body.index(after: at)...]), let page = pdf.page(at: n - 1) else {
+                guard let at = body.lastIndex(of: "@"), let n = Int(body[body.index(after: at)...]), n >= 1, n <= pdf.pageCount, let page = pdf.page(at: n - 1) else {
                     fail("bad bookmark \(spec) (Title@page)")
                 }
                 let item = PDFOutline()
@@ -81,7 +81,7 @@ extension ToolsCLI {
             let remove = a.contains("remove")
             let auto = a[2].hasPrefix("auto")
             let n = (auto ? String(a[2].dropFirst(5)) : a[2]).split(separator: ",").compactMap { Double($0) }.map { CGFloat($0) }
-            guard auto || n.count == 4 else { fail("bad margins \(a[2]) (l,t,r,b in points, or auto[:l,t,r,b])") }
+            guard (auto && (a[2] == "auto" || a[2].hasPrefix("auto:") && n.count == 4) || !auto && n.count == 4), n.allSatisfy({ $0.isFinite && abs($0) <= 1_000_000 }) else { fail("bad margins \(a[2]) (l,t,r,b in points, or auto[:l,t,r,b])") }
             let m = n.count == 4 ? n : [0, 0, 0, 0]
             for i in pages {
                 guard let page = pdf.page(at: i) else { continue }
@@ -93,6 +93,7 @@ extension ToolsCLI {
                 } else {
                     crop = PageGeometry.cropBox(media: media, rotation: page.rotation, left: m[0], top: m[1], right: m[2], bottom: m[3])
                 }
+                guard !crop.isNull, !crop.isEmpty, [crop.minX, crop.minY, crop.width, crop.height].allSatisfy({ $0.isFinite }), crop.width >= 1, crop.height >= 1 else { fail("crop leaves no usable page") }
                 page.setBounds(crop, for: .cropBox)
                 if remove { PageGeometry.strips(media: media, crop: crop).forEach { page.addAnnotation(CropRemovalOverlay(bounds: $0)) } }
                 print("p\(i + 1): crop \(Int(crop.minX)),\(Int(crop.minY)),\(Int(crop.width))x\(Int(crop.height))")
@@ -106,6 +107,7 @@ extension ToolsCLI {
                 guard n.count == 2 else { fail("bad size \(a[2]) (A4, Letter, 210x297)") }
                 size = CGSize(width: n[0] * PageGeometry.mm, height: n[1] * PageGeometry.mm)
             }
+            guard size.width.isFinite, size.height.isFinite, (1...14_400).contains(size.width), (1...14_400).contains(size.height) else { fail("page size must be 1…14400 points per side") }
             let extend = a.contains("extend")
             let rangeArg = a.dropFirst(3).first { $0 != "extend" && $0 != "scale" }
             guard let pages = rangeArg.map({ PDFTools.pageIndices($0, pageCount: pdf.pageCount) }) ?? Array(0..<pdf.pageCount) else { fail("bad pages") }
@@ -127,21 +129,22 @@ extension ToolsCLI {
             print("resized \(pages.count) pages")
         case "--link" where a.count >= 4:
             let pdf = open(a[0])
+            guard (a.count - 2).isMultiple(of: 2) else { fail("link needs an area and target for each link") }
             var i = 2
             var count = 0
             while i + 1 < a.count {
-                let parts = a[i].split(separator: "@")
-                let n = parts[0].split(separator: ",").compactMap { Double($0) }
-                let pageIndex = parts.count > 1 ? (Int(parts[1]) ?? 1) - 1 : 0
-                guard n.count == 4, let page = pdf.page(at: pageIndex) else { fail("bad rect \(a[i]) (x,y,w,h[@page])") }
-                let link = EditorWindowController.makeLink(bounds: CGRect(x: n[0], y: n[1], width: n[2], height: n[3]))
-                let target = a[i + 1].split(separator: ":", maxSplits: 1).map(String.init)
-                if let p = Int(target[0]), let dest = pdf.page(at: p - 1) {
+                guard let (bounds, pageIndex) = area(a[i], pageCount: pdf.pageCount), let page = pdf.page(at: pageIndex) else {
+                    fail("bad rect \(a[i]) (x,y,w,h[@page])")
+                }
+                let link = EditorWindowController.makeLink(bounds: bounds)
+                let target = a[i + 1].split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+                if let p = Int(target[0]) {
+                    guard p >= 1, p <= pdf.pageCount, let dest = pdf.page(at: p - 1) else { fail("bad target page") }
                     let fit = target.count > 1 ? target[1] : ""
                     let b = dest.bounds(for: .cropBox)
                     link.action = PDFActionGoTo(destination: PDFDestination(page: dest, at: CGPoint(x: b.minX, y: b.maxY)))
                     if !fit.isEmpty { box.x.linkFit[ObjectIdentifier(link)] = fit }
-                } else if let url = URL(string: a[i + 1]) {
+                } else if let url = URL(string: a[i + 1]), url.scheme != nil {
                     link.action = PDFActionURL(url: url)
                 } else { fail("bad target \(a[i + 1])") }
                 let border = PDFBorder()
@@ -161,7 +164,7 @@ extension ToolsCLI {
         case "--props" where a.count >= 2:
             let pdf = open(a[0])
             for pair in a.dropFirst(2) {
-                let kv = pair.split(separator: "=", maxSplits: 1).map(String.init)
+                let kv = pair.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
                 guard kv.count == 2 else { fail("bad property \(pair) (key=value)") }
                 let on = ["1", "true", "yes"].contains(kv[1].lowercased())
                 switch kv[0].lowercased() {
@@ -172,7 +175,9 @@ extension ToolsCLI {
                 case "creator": box.x.info.creator = kv[1]; box.x.dirty.insert(.info)
                 case "layout": box.x.view.pageLayout = kv[1]; box.x.dirty.insert(.view)
                 case "mode": box.x.view.pageMode = kv[1]; box.x.dirty.insert(.view)
-                case "openpage": box.x.view.openPage = max(0, (Int(kv[1]) ?? 1) - 1); box.x.dirty.insert(.view)
+                case "openpage":
+                    guard let number = Int(kv[1]), number >= 1, number <= pdf.pageCount else { fail("bad opening page") }
+                    box.x.view.openPage = number - 1; box.x.dirty.insert(.view)
                 case "zoom": box.x.view.openZoom = kv[1]; box.x.dirty.insert(.view)
                 case "fitwindow": box.x.view.fitWindow = on; box.x.dirty.insert(.view)
                 case "centerwindow": box.x.view.centerWindow = on; box.x.dirty.insert(.view)
@@ -213,7 +218,7 @@ extension ToolsCLI {
             for i in 0..<pdf.pageCount {
                 guard let page = pdf.page(at: i) else { continue }
                 for annot in page.annotations where annot.kind == "FileAttachment" {
-                    let name = box.x.annotationFiles.first { $0.page == i }?.name
+                    let name = box.x.annotationFile(for: annot, on: i)?.name
                     if a[2] == "all" || name == a[2] { page.removeAnnotation(annot); removedAnnots += 1 }
                 }
             }
@@ -234,15 +239,16 @@ extension ToolsCLI {
         case "--pdfa" where a.count >= 2:
             let pdf = open(a[0])
             guard let (data, report) = PDFAExport.make(pdf, extras: box.x) else { fail("cannot convert") }
-            do { try data.write(to: URL(fileURLWithPath: a[1])) } catch { fail("\(error)") }
+            write(data, to: a[1])
             report.lines.forEach { print($0) }
             print("PDF/A-2b: \(data.count) bytes")
         case "--bates" where a.count >= 4:
             let pdf = open(a[0])
             var spec = HeaderFooterSpec()
             spec.batesPrefix = a[2]
-            spec.batesStart = Int(a[3]) ?? 1
-            if a.count > 4 { spec.batesDigits = Int(a[4]) ?? 6 }
+            guard let start = Int(a[3]), start >= 1, !start.addingReportingOverflow(pdf.pageCount).overflow else { fail("bad Bates start") }
+            spec.batesStart = start
+            if a.count > 4 { guard let digits = Int(a[4]), (0...12).contains(digits) else { fail("bad Bates digit count") }; spec.batesDigits = digits }
             let slot = a.count > 5 ? [5, 4, 3, 1, 2, 0][min(5, max(0, Int(a[5]) ?? 0))] : 5   // like page numbers: 0 = bottom centre…
             spec.texts[slot] = "<<bates>>"
             let made = HeaderFooterOverlay.make(spec, pdf: pdf, indices: Array(0..<pdf.pageCount), fileName: (a[0] as NSString).lastPathComponent,
@@ -253,7 +259,8 @@ extension ToolsCLI {
         case "--bates-batch" where a.count >= 4:
             var spec = HeaderFooterSpec()
             spec.batesPrefix = a[1]
-            spec.batesStart = Int(a[2]) ?? 1
+            guard let start = Int(a[2]), start >= 1 else { fail("bad Bates start") }
+            spec.batesStart = start
             spec.texts[5] = "<<bates>>"
             let dir = URL(fileURLWithPath: a[0])
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

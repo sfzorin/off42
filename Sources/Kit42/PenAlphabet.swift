@@ -113,6 +113,41 @@ enum PenAlphabet {
         "я": (1.0, "0.85,0.0 0.85,1.0! 0.4,1.0 0.2,0.7 0.5,0.5 0.85,0.5! 0.1,0.0 1.0,0.15"),
     ]
 
+    /// Other ways people write the same lowercase letter (allographs). A signature design picks one per letter.
+    static let lowerAlternates: [Character: [(CGFloat, String)]] = [
+        "a": [(1.0, "0.25,0.85 0.65,1.0 0.8,0.7 0.75,0.05! 0.75,0.45 0.3,0.5 0.1,0.2 0.4,0.0 0.75,0.25 1.0,0.15"),
+              (1.0, "0.7,0.9 0.25,0.95 0.05,0.4 0.35,0.0 0.75,0.6 0.8,0.9 0.85,0.1 1.0,0.2")],
+        "b": [(1.0, "0.3,2.0 0.3,0.0 0.8,0.4 0.6,1.0 0.3,0.6 1.0,0.8")],
+        "c": [(0.9, "0.75,0.95 0.3,0.9 0.1,0.4 0.45,0.0 1.0,0.25")],
+        "d": [(1.0, "0.6,0.9 0.2,0.8 0.1,0.2 0.5,0.0 0.8,0.5 0.75,2.0 0.6,1.9 0.8,0.0 1.0,0.15")],
+        "e": [(0.9, "0.8,0.9 0.4,1.0 0.3,0.6 0.6,0.5! 0.25,0.45 0.15,0.15 0.5,0.0 1.0,0.2"),
+              (0.9, "0.3,0.35 0.7,0.55 0.45,0.8 0.1,0.4 0.45,0.0 1.0,0.25")],
+        "g": [(1.0, "0.6,0.9 0.2,0.8 0.15,0.25 0.5,0.1 0.75,0.9! 0.7,-1.0 0.5,-1.15")],
+        "h": [(1.0, "0.3,2.0 0.25,0.0! 0.4,0.8 0.7,1.0 0.85,0.0 1.0,0.15")],
+        "k": [(1.0, "0.3,2.0 0.25,0.0! 0.3,0.5 0.8,1.0! 0.4,0.5 0.9,0.0")],
+        "l": [(0.6, "0.3,2.0 0.35,0.0 1.0,0.2")],
+        "m": [(1.5, "0.1,1.0 0.12,0.0! 0.3,0.9 0.45,0.4 0.55,0.9 0.75,1.0 0.85,0.0 1.0,0.15")],
+        "o": [(1.0, "0.55,1.0 0.15,0.65 0.35,0.0 0.85,0.45 0.6,1.0 0.4,0.85 1.0,0.8")],
+        "r": [(0.8, "0.2,0.9 0.25,0.0! 0.3,0.6 0.55,0.95 0.9,0.75"),
+              (0.9, "0.1,0.6 0.35,1.0 0.6,0.75! 0.65,0.9 0.75,0.0 1.0,0.15")],
+        "s": [(0.8, "0.2,0.2 0.5,1.0! 0.75,0.4 0.4,0.0 0.1,0.1 1.0,0.2")],
+        "t": [(0.7, "0.5,1.9 0.35,0.5 0.4,0.0 1.0,0.2")],
+        "u": [(1.1, "0.1,1.0 0.2,0.1 0.5,0.0 0.8,0.9! 0.85,0.0 1.0,0.15")],
+        "y": [(1.1, "0.1,1.0 0.2,0.2 0.5,0.1 0.75,1.0! 0.7,-1.0 0.5,-1.15")],
+        "z": [(0.9, "0.1,0.9 0.7,1.0 0.3,0.4 0.7,0.3 0.5,-0.6 0.1,-0.5 1.0,0.1")],
+        "в": [(1.0, "0.2,1.0 0.25,0.0! 0.6,0.25 0.35,0.55 0.75,0.75 0.45,1.05 0.25,0.7 1.0,0.3")],
+        "д": [(1.1, "0.0,-0.4 0.1,0.0! 0.25,0.1 0.45,1.0! 0.75,1.0! 0.8,0.0! 0.95,0.0 1.0,-0.4")],
+        "и": [(1.1, "0.1,1.0 0.15,0.2 0.35,0.05 0.75,1.0 0.78,0.0 1.0,0.15")],
+        "к": [(1.0, "0.15,1.0 0.2,0.0! 0.2,0.45 0.5,0.6 0.8,1.0! 0.55,0.55 0.9,0.0")],
+        "л": [(1.0, "0.0,0.05 0.25,0.3 0.45,1.0! 0.75,0.1 1.0,0.15")],
+        "п": [(1.1, "0.1,1.0 0.15,0.0! 0.15,0.9 0.75,1.0! 0.8,0.0 1.0,0.15")],
+        "р": [(1.1, "0.2,1.0 0.2,-1.0! 0.25,0.7 0.6,1.0 0.85,0.6 0.5,0.3 1.0,0.4")],
+        "т": [(1.0, "0.0,1.0 0.6,1.0! 0.3,1.0 0.3,0.0 1.0,0.15")],
+        "у": [(1.1, "0.1,1.0 0.2,0.2 0.5,0.1 0.75,1.0! 0.7,-1.0 0.5,-1.15")],
+        "ч": [(1.0, "0.1,1.0 0.1,0.6 0.45,0.45 0.8,0.9! 0.82,0.0 1.0,0.15")],
+        "ш": [(1.5, "0.05,1.0 0.1,0.1 0.3,0.0 0.45,0.9 0.5,0.1 0.7,0.0 0.85,0.9 0.88,0.0 1.0,0.15")],
+    ]
+
     /// Letters written like another one (Cyrillic look-alikes, Turkish letters without their marks: signatures
     /// rarely carry diacritics).
     static let aliases: [Character: Character] = [
@@ -140,6 +175,7 @@ enum PenAlphabet {
 
     private static let capitals: [Character: [[CGPoint]]] = capitalData.mapValues(parse)
     private static let lowers: [Character: (CGFloat, [CGPoint])] = lowerData.mapValues { ($0.0, parse($0.1).first ?? []) }
+    private static let alternates: [Character: [(CGFloat, [CGPoint])]] = lowerAlternates.mapValues { $0.map { ($0.0, parse($0.1).first ?? []) } }
 
     static func capital(_ c: Character) -> [[CGPoint]] {
         let up = Character(String(c).uppercased())
@@ -151,11 +187,27 @@ enum PenAlphabet {
         return capitals["O"]!
     }
 
-    static func lower(_ c: Character) -> (CGFloat, [CGPoint])? {
+    static func lower(_ c: Character) -> (CGFloat, [CGPoint])? { lower(c, variant: 0) }
+
+    /// Variant 0 is the main form; others come from `lowerAlternates` (wrapping around).
+    static func lower(_ c: Character, variant: Int) -> (CGFloat, [CGPoint])? {
         let low = Character(String(c).lowercased())
-        if let l = lowers[low] { return l }
-        if let a = aliases[low], let l = lowers[a] { return l }
-        return nil
+        let key: Character = lowers[low] != nil ? low : (aliases[low] ?? low)
+        guard let base = lowers[key] else { return nil }
+        let forms = [base] + (alternates[key] ?? [])
+        return forms[abs(variant) % forms.count]
+    }
+
+    /// Marks added after the word (delayed strokes, written once the pen has left the line).
+    enum Mark { case none, dot, twoDots, breve, bar }
+
+    static func mark(_ c: Character) -> Mark {
+        let low = Character(String(c).lowercased())
+        if "ij".contains(low) { return .dot }
+        if "ёїöü".contains(low) { return .twoDots }
+        if "йğ".contains(low) { return .breve }
+        if "tf".contains(low) { return .bar }
+        return .none
     }
 
     static func isTall(_ c: Character) -> Bool { "bdfhklt".contains(c) || "бвф".contains(c) }

@@ -96,6 +96,7 @@ enum Orientation {
 
     /// Writes description and optional print resolution without re-encoding.
     static func writeMetadata(description text: String?, resolution: CGFloat? = nil, to url: URL) -> Bool {
+        if let resolution, !resolution.isFinite || resolution <= 0 { return false }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil), let type = CGImageSourceGetType(source) else { return false }
         let meta = CGImageMetadataCreateMutable()
         let value = (text ?? "") as CFString
@@ -125,6 +126,10 @@ enum Orientation {
     }
 
     static func replace(_ url: URL, with tmp: URL) -> Bool {
+        guard (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) != true else {
+            try? FileManager.default.removeItem(at: tmp)
+            return false
+        }
         do {
             _ = try FileManager.default.replaceItemAt(url, withItemAt: tmp)
             return true
@@ -142,6 +147,16 @@ enum ImageWriter {
         guard let type, let t = UTType(type) else { return false }
         // Animated and multi-page images would lose frames when saved as one image.
         return writableTypes.contains(t) && t != .pdf && t != .gif
+    }
+
+    static func hasTransparency(_ image: CGImage) -> Bool {
+        guard ![CGImageAlphaInfo.none, .noneSkipFirst, .noneSkipLast].contains(image.alphaInfo) else { return false }
+        guard let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8,
+                                      bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue), let data = context.data else { return true }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        let bytes = data.bindMemory(to: UInt8.self, capacity: image.width * image.height * 4)
+        return stride(from: 3, to: image.width * image.height * 4, by: 4).contains { bytes[$0] < 255 }
     }
 
     /// Metadata of `source` for an image that is now upright: orientation 1, no stale pixel sizes or thumbnails.
@@ -166,6 +181,11 @@ enum ImageWriter {
     /// Writes `image` atomically. `quality` applies to lossy formats.
     static func write(_ image: CGImage, to url: URL, type: String, quality: Double = 0.92, metadataFrom source: URL? = nil,
                       description: String?? = .none, dpi: CGFloat? = nil) throws {
+        guard writableTypes.contains(where: { $0.identifier == type }), quality.isFinite, (0...1).contains(quality),
+              dpi.map({ $0.isFinite && $0 > 0 }) ?? true,
+              (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) != true else {
+            throw NSError(domain: "IMG42", code: 1, userInfo: [NSLocalizedDescriptionKey: L("This format cannot be written.")])
+        }
         var props = metadata(from: source)
         if let dpi, dpi.isFinite, dpi > 0 {
             props[kCGImagePropertyDPIWidth] = dpi
@@ -186,17 +206,19 @@ enum ImageWriter {
         }
         props[kCGImageDestinationLossyCompressionQuality] = quality
         let tmp = url.deletingLastPathComponent().appendingPathComponent(".\(UUID().uuidString).tmp")
+        defer { try? FileManager.default.removeItem(at: tmp) }
         guard let dest = CGImageDestinationCreateWithURL(tmp as CFURL, type as CFString, 1, nil) else {
             throw NSError(domain: "IMG42", code: 1, userInfo: [NSLocalizedDescriptionKey: L("This format cannot be written.")])
         }
         // Formats without alpha (JPEG, BMP) get a white background instead of black.
         var out = image
         if let t = UTType(type), t.conforms(to: .jpeg) || t == .bmp, image.alphaInfo != .none, image.alphaInfo != .noneSkipLast {
-            out = ImageLoader.render(size: CGSize(width: image.width, height: image.height), colorSpace: image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }) { ctx in
+            guard let opaque = ImageLoader.render(size: CGSize(width: image.width, height: image.height), colorSpace: image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }, { ctx in
                 ctx.setFillColor(.white)
                 ctx.fill(CGRect(x: 0, y: 0, width: image.width, height: image.height))
                 ctx.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-            } ?? image
+            }) else { throw CocoaError(.fileWriteUnknown) }
+            out = opaque
         }
         CGImageDestinationAddImage(dest, out, props as CFDictionary)
         guard CGImageDestinationFinalize(dest) else {

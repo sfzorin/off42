@@ -10,10 +10,11 @@ enum PDFTools {
     /// Parses "1-3, 5, 8-" into groups of 0-based page indices (one group per comma-separated part).
     /// Returns nil when a part is malformed or out of 1…`pageCount`.
     static func parseRanges(_ text: String, pageCount: Int) -> [[Int]]? {
+        guard pageCount > 0 else { return nil }
         var groups: [[Int]] = []
-        for part in text.split(whereSeparator: { $0 == "," || $0 == ";" }) {
+        for part in text.split(omittingEmptySubsequences: false, whereSeparator: { $0 == "," || $0 == ";" }) {
             let p = part.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "–", with: "-")
-            guard !p.isEmpty else { continue }
+            guard !p.isEmpty else { return nil }
             let ends = p.split(separator: "-", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
             guard ends.count <= 2, let a = Int(ends[0].isEmpty ? "1" : ends[0]) else { return nil }
             let b = ends.count == 2 ? (ends[1].isEmpty ? pageCount : Int(ends[1]) ?? -1) : a
@@ -25,12 +26,16 @@ enum PDFTools {
 
     /// Page indices of a range field; empty text means all pages.
     static func pageIndices(_ text: String, pageCount: Int) -> [Int]? {
+        guard pageCount >= 0 else { return nil }
         if text.trimmingCharacters(in: .whitespaces).isEmpty { return Array(0..<pageCount) }
         return parseRanges(text, pageCount: pageCount).map { Array(Set($0.joined())).sorted() }
     }
 
     static func everyN(_ n: Int, pageCount: Int) -> [[Int]] {
-        stride(from: 0, to: pageCount, by: max(1, n)).map { Array($0..<min($0 + max(1, n), pageCount)) }
+        guard n > 0, pageCount > 0 else { return [] }
+        return stride(from: 0, to: pageCount, by: n).map { start in
+            Array(start..<(start + min(n, pageCount - start)))
+        }
     }
 
     // MARK: - Split and merge
@@ -57,6 +62,22 @@ enum PDFTools {
         }
         guard let doc = PDFDocument(url: url), !doc.isLocked else { return [] }
         return (0..<doc.pageCount).compactMap { doc.page(at: $0)?.copy() as? PDFPage }
+    }
+
+    /// Preflight every input: a failed merge must not quietly omit a chosen file.
+    static func mergeChecked(_ urls: [URL]) throws -> PDFDocument {
+        guard !urls.isEmpty else { throw NSError(domain: NSCocoaErrorDomain, code: NSFileReadCorruptFileError) }
+        let inputs = try urls.map { url -> [PDFPage] in
+            let pages = pages(of: url)
+            guard !pages.isEmpty else {
+                throw NSError(domain: NSCocoaErrorDomain, code: NSFileReadCorruptFileError,
+                              userInfo: [NSURLErrorKey: url])
+            }
+            return pages
+        }
+        let out = PDFDocument()
+        for pages in inputs { for page in pages { out.insert(page, at: out.pageCount) } }
+        return out
     }
 
     static func merge(_ urls: [URL]) -> PDFDocument {

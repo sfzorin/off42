@@ -8,9 +8,11 @@ final class PageListController: NSViewController, NSTableViewDataSource, NSTable
     static let dragType = NSPasteboard.PasteboardType("com.sfzorin.scn42.page")
     let table = NSTableView()
     let header = NSTextField(labelWithString: "")
-    var pages: [ScanPage] = [] { didSet { reload() } }
+    var pages: [ScanPage] = [] {
+        didSet { reload(preserving: table.selectedRowIndexes.compactMap { oldValue.indices.contains($0) ? oldValue[$0].id : nil }) }
+    }
     /// Index after which the next scan is inserted (marked in the list), nil = at the end.
-    var insertionIndex: Int? { didSet { table.reloadData() } }
+    var insertionIndex: Int? { didSet { if oldValue != insertionIndex { reload() } } }
     var onSelect: (([Int]) -> Void)?
     var onMove: ((IndexSet, Int) -> Void)?
     var onDropFiles: (([URL], Int) -> Void)?
@@ -60,10 +62,10 @@ final class PageListController: NSViewController, NSTableViewDataSource, NSTable
         commandMenu([Cmd.rotateLeft, Cmd.rotateRight, Cmd.enhance, Cmd.copyText, Cmd.rescan, Cmd.insertHere, Cmd.split, Cmd.moveUp, Cmd.moveDown, Cmd.deletePage])
     }
 
-    func reload() {
-        let selected = table.selectedRowIndexes
+    func reload(preserving selectedIDs: [UUID]? = nil) {
+        let ids = Set(selectedIDs ?? table.selectedRowIndexes.compactMap { pages.indices.contains($0) ? pages[$0].id : nil })
         table.reloadData()
-        let valid = selected.filteredIndexSet { $0 < pages.count }
+        let valid = IndexSet(pages.indices.filter { ids.contains(pages[$0].id) })
         table.selectRowIndexes(valid, byExtendingSelection: false)
         header.stringValue = pages.isEmpty ? L("No pages yet") : pagesText(pages.count)
     }
@@ -71,8 +73,9 @@ final class PageListController: NSViewController, NSTableViewDataSource, NSTable
     var selection: [Int] { table.selectedRowIndexes.map { $0 } }
 
     func select(_ indices: [Int], scroll: Bool = true) {
-        table.selectRowIndexes(IndexSet(indices.filter { $0 < pages.count }), byExtendingSelection: false)
-        if scroll, let last = indices.last, last < pages.count { table.scrollRowToVisible(last) }
+        let valid = indices.filter { pages.indices.contains($0) }
+        table.selectRowIndexes(IndexSet(valid), byExtendingSelection: false)
+        if scroll, let last = valid.last { table.scrollRowToVisible(last) }
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int { pages.count }
@@ -91,8 +94,9 @@ final class PageListController: NSViewController, NSTableViewDataSource, NSTable
     // Drag and drop
 
     func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
+        guard pages.indices.contains(row) else { return nil }
         let item = NSPasteboardItem()
-        item.setString(String(row), forType: Self.dragType)
+        item.setString(pages[row].id.uuidString, forType: Self.dragType)
         return item
     }
 
@@ -106,15 +110,18 @@ final class PageListController: NSViewController, NSTableViewDataSource, NSTable
         if info.draggingSource as? NSTableView === tableView {
             var rows = IndexSet()
             info.enumerateDraggingItems(options: [], for: tableView, classes: [NSPasteboardItem.self], searchOptions: [:]) { item, _, _ in
-                if let s = (item.item as? NSPasteboardItem)?.string(forType: Self.dragType), let r = Int(s) { rows.insert(r) }
+                if let s = (item.item as? NSPasteboardItem)?.string(forType: Self.dragType), let id = UUID(uuidString: s),
+                   let r = self.pages.firstIndex(where: { $0.id == id }) { rows.insert(r) }
             }
-            guard !rows.isEmpty else { return false }
-            onMove?(rows, row)
+            guard !rows.isEmpty, let onMove else { return false }
+            let movedIDs = Set(rows.map { pages[$0].id })
+            onMove(rows, row)
+            select(pages.indices.filter { movedIDs.contains(pages[$0].id) })
             return true
         }
         let urls = info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
-        guard !urls.isEmpty else { return false }
-        onDropFiles?(urls, row)
+        guard !urls.isEmpty, let onDropFiles else { return false }
+        onDropFiles(urls, row)
         return true
     }
 }

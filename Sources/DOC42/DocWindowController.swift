@@ -847,6 +847,8 @@ final class DocWindowController: NSWindowController, NSWindowDelegate, NSTextVie
         let font = attrs[.font] as? NSFont
         let traits = font.map { NSFontManager.shared.traits(of: $0) } ?? []
         switch item.action {
+        case #selector(editTechnicalElementAction(_:)): return selectedTechnicalElement != nil
+        case #selector(createLabelsAction(_:)): return hasLabelSource
         case #selector(toggleBold(_:)): item.state = traits.contains(.boldFontMask) ? .on : .off
         case #selector(toggleItalic(_:)): item.state = traits.contains(.italicFontMask) ? .on : .off
         case #selector(toggleUnderline(_:)): item.state = (attrs[.underlineStyle] as? Int ?? 0) != 0 ? .on : .off

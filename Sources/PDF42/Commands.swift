@@ -16,6 +16,8 @@ enum Cmd {
     static let formTools = tools.filter { Tool(rawValue: $0.tag)?.isFormField ?? false }
 
     // File
+    static let createLabels = Command(L("Create Labels…"), #selector(W.createLabelsAction(_:)), symbol: "tag")
+    static let labelRegion = Command(L("Page Region for Labels…"), #selector(W.selectLabelRegionAction(_:)), symbol: "viewfinder")
     static let exportProtected = Command(L("Export with Password…"), #selector(W.exportWithPasswordAction(_:)), symbol: "lock.doc")
     static let exportImages = Command(L("Export Pages as Images…"), #selector(W.exportPNGAction(_:)), symbol: "photo")
     static let exportAs = Command(L("Export As…"), #selector(W.exportAsAction(_:)), symbol: "square.and.arrow.up",
@@ -93,6 +95,8 @@ enum Cmd {
                                    shortcut: Shortcut("a", [.command, .shift]), toolTip: L("Markup"), label: L("Markup"))
 
     // Insert
+    static let technicalElement = Command(L("Symbol or Code…"), #selector(W.insertTechnicalElementAction(_:)), symbol: "qrcode")
+    static let editTechnicalElement = Command(L("Edit Symbol or Code…"), #selector(W.editTechnicalElementAction(_:)), symbol: "qrcode")
     static let stamps = Command(L("Signature or Stamp…"), #selector(W.showStampsAction(_:)), symbol: "signature",
                                 shortcut: Shortcut("k", [.command, .shift]), toolTip: L("Insert a signature or stamp"), label: L("Stamp"))
     static let insertImage = Command(L("Image from File…"), #selector(W.insertImageAction(_:)), symbol: "photo.badge.plus",
@@ -132,7 +136,7 @@ enum Cmd {
 
     static var menuBar: MenuBarSpec {
         var spec = MenuBarSpec(appName: "PDF42")
-        spec.fileExtras = [.command(properties), .separator,
+        spec.fileExtras = [.command(properties), .command(createLabels), .separator,
                            .command(exportAs), .command(exportPDFA), .command(exportImages), .command(exportProtected), .command(reduceSize), .separator,
                            .command(createFromImages), .command(mergeFiles), .command(split), .separator,
                            .command(compare), .command(clearCompare), .separator,
@@ -143,7 +147,7 @@ enum Cmd {
                      .command(zoomIn), .command(zoomOut), .command(actualSize), .command(zoomToFit), .command(fitWidth), .separator]
             + displayModes.menuElements
             + [.separator, .command(nextPage), .command(previousPage), .command(goToPage), .separator, .command(markupBar)]
-        spec.insert = [.command(stamps), .command(insertImage), .separator,
+        spec.insert = [.command(stamps), .command(insertImage), .command(technicalElement), .command(editTechnicalElement), .separator,
                        .command(tool(.text)), .command(tool(.note)), .command(tool(.link)), .command(createLinks), .separator,
                        .command(addBookmark),
                        .submenu(L("Bookmarks"), [.command(addChildBookmark), .command(renameBookmark), .command(setBookmarkDestination),
@@ -167,6 +171,7 @@ enum Cmd {
         return spec
     }
 
+    static let toolbarOptional: [ToolbarElement] = [.command(technicalElement), .command(createLabels)]
     static let toolbar: [ToolbarElement] = [
         .toggleSidebar, .sidebarSeparator,
         .flexibleSpace,

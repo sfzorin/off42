@@ -131,6 +131,7 @@ enum UITest {
         failed += deepEditing(w, doc)
         failed += deepCommon(w, doc)
         failed += deepSheetReferences(w, doc)
+        failed += technicalLabels(w, doc)
         restoreClipboard()
         print(failed == 0 ? "ALL PASSED" : "\(failed) FAILED")
         exit(failed == 0 ? 0 : 1)

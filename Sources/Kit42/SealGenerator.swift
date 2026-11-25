@@ -34,14 +34,16 @@ public enum SealGenerator {
     private static let sans = "HelveticaNeue-Bold", sansCondensed = "HelveticaNeue-CondensedBold"
     private static let serifBold = "TimesNewRomanPS-BoldMT"
 
-    public static func render(_ spec: SealSpec, impression: UInt64) -> CGImage? {
+    /// `scale`: pixels per layout unit (1: preview size, about 1000 px for a round seal); the impression is the same.
+    public static func render(_ spec: SealSpec, impression: UInt64, scale: CGFloat = 1) -> CGImage? {
         var rng = SeededRandom(impression)
         let layout = CGMutablePath()
         let canvas = draw(spec, into: layout)
         let tilt = rng.range(spec.template.tilt) * (rng.chance(0.5) ? 1 : -1)
-        let side = Int((max(canvas.width, canvas.height) * 1.25).rounded())
+        let side = Int((max(canvas.width, canvas.height) * 1.25 * scale).rounded())
         guard let ctx = InkDraw.context(side, side) else { return nil }
         ctx.translateBy(x: CGFloat(side) / 2, y: CGFloat(side) / 2)
+        ctx.scaleBy(x: scale, y: scale)
         ctx.rotate(by: tilt)
         ctx.translateBy(x: -canvas.width / 2, y: -canvas.height / 2)
         ctx.setFillColor(spec.ink.cgColor)
@@ -57,19 +59,23 @@ public enum SealGenerator {
             ctx.restoreGState()
         }
         guard let image = ctx.makeImage() else { return nil }
-        return InkDraw.trim(InkTexture.apply(image, seed: rng.next(), strength: InkTexture.stamp), pad: 10)
+        return InkDraw.trim(InkTexture.apply(image, seed: rng.next(), strength: InkTexture.stamp, scale: scale), pad: Int((10 * scale).rounded()))
     }
 
     /// A new impression of an imported stamp picture: tilt (round stamps more than rectangular), pad pressure,
     /// grain, gaps and sometimes a faint double strike. The picture keeps its own colours.
-    public static func impress(_ image: CGImage, round: Bool, impression: UInt64) -> CGImage? {
+    /// `scale` enlarges the picture (smoothly) before pressing, so grain and bleed are finer than its pixels;
+    /// below 1 it is drawn smaller. The result stays under about 4000 px.
+    public static func impress(_ image: CGImage, round: Bool, impression: UInt64, scale: CGFloat = 1) -> CGImage? {
         var rng = SeededRandom(impression)
-        let w = CGFloat(image.width), h = CGFloat(image.height)
+        let k = max(0.25, min(scale, 4000 / (CGFloat(max(image.width, image.height)) * 1.25)))
+        let w = CGFloat(image.width) * k, h = CGFloat(image.height) * k
         let tilt = rng.range(round ? 0.035...0.14 : 0.005...0.035) * (rng.chance(0.5) ? 1 : -1)
         let side = Int((max(w, h) * 1.25).rounded())
         guard let ctx = InkDraw.context(side, side) else { return nil }
         ctx.translateBy(x: CGFloat(side) / 2, y: CGFloat(side) / 2)
         ctx.rotate(by: tilt)
+        ctx.interpolationQuality = .high
         let rect = CGRect(x: -w / 2, y: -h / 2, width: w, height: h)
         ctx.draw(image, in: rect)
         if rng.chance(0.3) {
@@ -78,7 +84,7 @@ public enum SealGenerator {
             ctx.draw(image, in: rect.offsetBy(dx: rng.range(-d...d), dy: rng.range(-d...d)))
         }
         guard let pressed = ctx.makeImage() else { return nil }
-        return InkDraw.trim(InkTexture.apply(pressed, seed: rng.next(), strength: InkTexture.stamp), pad: 10)
+        return InkDraw.trim(InkTexture.apply(pressed, seed: rng.next(), strength: InkTexture.stamp, scale: k), pad: Int((10 * k).rounded()))
     }
 
     // MARK: - Layout families (filled outlines; rings are stroked into outlines). Returns the canvas size.

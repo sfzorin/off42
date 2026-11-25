@@ -94,6 +94,7 @@ final class SheetDocument: NSDocument {
         op.jobTitle = displayName
         op.printPanel.options.formUnion([.showsPaperSize, .showsOrientation, .showsScaling, .showsPreview, .showsPageSetupAccessory])
         op.printPanel.addAccessoryController(SheetPrintAccessory(options: options))
+        ProductionPrint.install(on: op)
         return op
     }
 

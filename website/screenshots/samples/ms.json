@@ -1,0 +1,54 @@
+{
+  "rtl": false,
+  "brand": "PELANGI SENJA STUDIO",
+  "brandLine": "Identiti jenama · Web · Animasi",
+  "number": "Perjanjian No. PS-2026-114",
+  "title": "Perjanjian Perkhidmatan Reka Bentuk",
+  "intro": "Perjanjian ini dibuat pada 6 November 2026 antara Pelangi Senja Studio Sdn. Bhd. (“Studio”) dan Cahaya Utara Media Sdn. Bhd. (“Pelanggan”) bagi reka bentuk identiti jenama dan laman web baharu Pelanggan.",
+  "sections": [
+    ["1. Skop kerja", "Studio akan menyerahkan sistem logo, garis panduan tipografi dan warna, reka bentuk laman web dua belas halaman serta koleksi templat media sosial."],
+    ["2. Jadual", "Kerja bermula pada 16 November 2026. Konsep pertama dibentangkan dalam tempoh tiga minggu; fail akhir diserahkan selewat-lewatnya 29 Januari 2027."],
+    ["3. Harta intelek", "Setelah bayaran penuh dijelaskan, semua hak ke atas reka bentuk akhir berpindah kepada Pelanggan. Studio boleh memaparkan kerja ini dalam portfolionya."]
+  ],
+  "feeTitle": "4. Yuran",
+  "fees": [["Identiti jenama & garis panduan", "RM 41,000"], ["Reka bentuk web, 12 halaman", "RM 61,500"], ["Templat media sosial", "RM 13,700"]],
+  "total": ["Jumlah, tidak termasuk SST", "RM 116,200"],
+  "signTitle": "Ditandatangani bagi pihak kedua-dua pihak",
+  "parties": [
+    {"role": "Bagi pihak Studio", "company": "Pelangi Senja Studio Sdn. Bhd.", "person": "Nurul Aisyah Hamzah", "title": "Pengarah Urusan",
+     "date": "George Town, 6 November 2026", "signName": "Nurul Aisyah", "pen": "ballpoint", "design": 2424853,
+     "stamp": {"id": "uk.company", "width": 150, "values": {"name": "Pelangi Senja Studio Sdn. Bhd.", "lines": "42 Lebuh Armenian, 10200 George Town, Pulau Pinang", "numbers": "No. Syarikat 202601004242 (1554242-K)"}}},
+    {"role": "Bagi pihak Pelanggan", "company": "Cahaya Utara Media Sdn. Bhd.", "person": "Daniel Lim Wei Jie", "title": "Ketua Pegawai Eksekutif",
+     "date": "Kuala Lumpur, 6 November 2026", "signName": "Daniel Lim", "pen": "fountain", "design": 2425381,
+     "stamp": {"id": "eu.round", "width": 104, "values": {"edge": "CAHAYA UTARA MEDIA SDN. BHD. * KUALA LUMPUR *", "centre": "1547777-A"}}}
+  ],
+  "invoiceTitle": "Invois",
+  "invoiceNumber": "Invois No. 2026-0418 · 30 Januari 2027",
+  "billTo": "Dibilkan kepada",
+  "billLines": ["Cahaya Utara Media Sdn. Bhd.", "7 Jalan Bukit Bintang, 55100 Kuala Lumpur", "No. Syarikat 202501007777 (1547777-A)"],
+  "items": [["Identiti jenama & garis panduan", "1", "RM 41,000"], ["Reka bentuk web, 12 halaman", "1", "RM 61,500"], ["Templat media sosial", "1", "RM 13,700"]],
+  "invoiceTotal": ["Jumlah perlu dibayar", "RM 116,200"],
+  "paid": {"id": "us.paid", "width": 170, "values": {"top": "PELANGI SENJA STUDIO SDN. BHD.", "word": "TELAH DIBAYAR"}},
+  "note": "Bayaran telah diterima dengan terima kasih. Pindahan bank, rujukan PS-2026-114.",
+  "generatorName": "Nurul Aisyah",
+  "letter": {
+    "brand": "PELANGI SENJA STUDIO", "addr": "42 Lebuh Armenian, 10200 George Town, Pulau Pinang · hello@pelangisenja.example",
+    "date": "George Town, 6 November 2026", "to": ["Encik Daniel Lim", "Cahaya Utara Media Sdn. Bhd.", "7 Jalan Bukit Bintang, 55100 Kuala Lumpur"],
+    "subject": "Cadangan: identiti jenama baharu untuk Cahaya Utara Media",
+    "body": ["Encik Daniel yang dihormati,", "Terima kasih atas perbincangan yang menarik minggu lepas. Seperti yang dijanjikan, berikut cadangan kami untuk identiti baharu Cahaya Utara: sistem logo yang lebih tenang, palet warna yang hangat dan laman web yang mengutamakan filem dokumentari anda.", "Kami mencadangkan tiga peringkat, setiap satu diakhiri dengan semakan di Kuala Lumpur:"],
+    "table": [["Peringkat", "Minggu", "Yuran"], ["Kajian dan konsep", "3", "RM 30,000"], ["Identiti dan garis panduan", "4", "RM 41,000"], ["Laman web dan templat", "6", "RM 45,000"]],
+    "close": ["Kami berbesar hati untuk bermula pada 16 November. Perjanjian dilampirkan dan telah ditandatangani oleh pihak kami.", "Yang benar,"],
+    "name": "Nurul Aisyah Hamzah", "role": "Pengarah Urusan, Pelangi Senja Studio Sdn. Bhd."
+  },
+  "budget": {
+    "sheet": "Bajet 2027", "head": "Bajet studio, separuh pertama 2027, RM", "total": "Jumlah", "share": "Bahagian",
+    "months": ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun"],
+    "rows": [["Reka bentuk", [30400, 36200, 41100, 25000, 23500, 27400]], ["Pembangunan", [15700, 20100, 33800, 45000, 43100, 35700]], ["Pemasaran", [8800, 10300, 12700, 19100, 23000, 25400]], ["Hosting dan perisian", [2100, 2100, 2300, 2300, 2500, 2500]]]
+  },
+  "deck": {
+    "title": "Cahaya Utara Media", "subtitle": "Penjenamaan semula 2027 · Semakan reka bentuk",
+    "ideasTitle": "Tenang, hangat, bercahaya", "ideasSubtitle": "Tiga idea di sebalik identiti baharu",
+    "ideas": [["Cahaya", "Senja tropika yang panjang: kontras lembut dan sentuhan hangat."], ["Cerita", "Dokumentari didahulukan: laman web dibuka dengan filem."], ["Kraf", "Tanda buatan tangan, tipografi yang berkarakter."]],
+    "timelineTitle": "Jadual", "steps": [["Nov", "Kajian"], ["Dis", "Konsep"], ["Jan", "Identiti"], ["Feb", "Laman web"]]
+  }
+}

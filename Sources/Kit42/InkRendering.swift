@@ -226,6 +226,8 @@ enum InkTexture {
         var bleed: CGFloat
         /// Pen only: pressure that rises and falls along the writing direction (left to right).
         var alongX: CGFloat = 0
+        /// Paper fibres: fine elongated texture that takes up less ink (0 = smooth paper).
+        var paper: CGFloat = 0
     }
 
     static let stamp = Strength(pressure: 0.55, gaps: 0.30, bleed: 0.9)
@@ -252,7 +254,9 @@ enum InkTexture {
         }
     }
 
-    static func apply(_ image: CGImage, seed: UInt64, strength: Strength) -> CGImage {
+    /// `scale`: pixels per pixel of the base rendering. Fine detail (paper fibres, the finest grain, bleed) is sized in
+    /// base pixels, so a high-resolution impression looks the same, only sharper.
+    static func apply(_ image: CGImage, seed: UInt64, strength: Strength, scale: CGFloat = 1) -> CGImage {
         let w = image.width, h = image.height
         guard let ctx = InkDraw.context(w, h) else { return image }
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
@@ -261,8 +265,10 @@ enum InkTexture {
         let size = CGFloat(max(w, h))
         let pressure = Noise(seed: rng.next(), cell: size / 3.5)
         let mottle = Noise(seed: rng.next(), cell: size / 28)
-        let grain = Noise(seed: rng.next(), cell: max(2.2, size / 260))
+        let grain = Noise(seed: rng.next(), cell: max(2.2 * scale, size / 260))
         let stroke = Noise(seed: rng.next(), cell: CGFloat(w) / 7)
+        let fibre = Noise(seed: rng.next(), cell: 2.2 * scale)
+        let fibreAngle = rng.range(0...(.pi)), fc = cos(fibreAngle), fs = sin(fibreAngle)
         // The pad presses harder on one side: a gentle gradient in a random direction.
         let angle = rng.range(0...(2 * .pi)), tilt = rng.range(0.15...0.45) * strength.pressure
         let gx = cos(angle), gy = sin(angle)
@@ -277,6 +283,11 @@ enum InkTexture {
                 var k = 1 - strength.pressure * 0.55 * (1 - pressure.value(fx, fy)) - tilt * max(0, side)
                 k -= strength.pressure * 0.25 * (1 - mottle.value(fx, fy))
                 if strength.alongX > 0 { k -= strength.alongX * (1 - stroke.value(fx, 0.5)) }
+                if strength.paper > 0 {
+                    // Fibres run in one direction: noise stretched ten times along it.
+                    let u = (fx * fc + fy * fs) * 0.1, v = -fx * fs + fy * fc
+                    k -= strength.paper * (1 - fibre.value(u, v))
+                }
                 let g = grain.value(fx, fy)
                 let gapLimit = strength.gaps * (0.55 + 0.9 * (1 - k))
                 if g < gapLimit { k *= 0.12 + g / max(0.001, gapLimit) * 0.5 }
@@ -285,7 +296,7 @@ enum InkTexture {
             }
         }
         guard let textured = ctx.makeImage() else { return image }
-        return blur(textured, radius: strength.bleed) ?? textured
+        return blur(textured, radius: strength.bleed * scale) ?? textured
     }
 
     static func blur(_ image: CGImage, radius: CGFloat) -> CGImage? {

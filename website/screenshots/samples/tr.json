@@ -1,0 +1,54 @@
+{
+  "rtl": false,
+  "brand": "MAVİ LİMAN STÜDYO",
+  "brandLine": "Kurumsal kimlik · Web · Hareketli grafik",
+  "number": "Sözleşme No. ML-2026-114",
+  "title": "Tasarım Hizmetleri Sözleşmesi",
+  "intro": "İşbu Sözleşme, 6 Kasım 2026 tarihinde Mavi Liman Tasarım Ltd. Şti. (“Stüdyo”) ile Kuzey Işığı Medya A.Ş. (“Müşteri”) arasında, Müşterinin yeni kurumsal kimliği ve web sitesinin tasarımı için yapılmıştır.",
+  "sections": [
+    ["1. İşin kapsamı", "Stüdyo; logo sistemi, tipografi ve renk kılavuzu, on iki sayfalık web sitesi tasarımı ve sosyal medya şablonları kütüphanesi teslim edecektir."],
+    ["2. Takvim", "Çalışmalar 16 Kasım 2026’da başlar. İlk konseptler üç hafta içinde sunulur; nihai dosyalar 29 Ocak 2027’ye kadar teslim edilir."],
+    ["3. Fikri mülkiyet", "Bedelin tamamı ödendiğinde nihai tasarımlar üzerindeki tüm haklar Müşteriye geçer. Stüdyo çalışmayı portfolyosunda gösterebilir."]
+  ],
+  "feeTitle": "4. Ücretler",
+  "fees": [["Kurumsal kimlik ve kılavuz", "400.000 TL"], ["Web sitesi tasarımı, 12 sayfa", "600.000 TL"], ["Sosyal medya şablonları", "135.000 TL"]],
+  "total": ["Toplam, KDV hariç", "1.135.000 TL"],
+  "signTitle": "Taraflar adına imzalanmıştır",
+  "parties": [
+    {"role": "Stüdyo adına", "company": "Mavi Liman Tasarım Ltd. Şti.", "person": "Elif Yıldız", "title": "Genel Müdür",
+     "date": "İzmir, 6 Kasım 2026", "signName": "Elif Yıldız", "pen": "ballpoint", "design": 2424853,
+     "stamp": {"id": "tr.kase", "width": 150, "values": {"name": "MAVİ LİMAN TASARIM LTD. ŞTİ.", "lines": "Kordon Cad. No: 42, 35220 Alsancak\nKonak / İZMİR", "numbers": "Konak V.D. 6120000042"}}},
+    {"role": "Müşteri adına", "company": "Kuzey Işığı Medya A.Ş.", "person": "Emre Aydın", "title": "Genel Müdür",
+     "date": "İstanbul, 6 Kasım 2026", "signName": "Emre Aydın", "pen": "fountain", "design": 2425381,
+     "stamp": {"id": "tr.round", "width": 104, "values": {"edge": "KUZEY IŞIĞI MEDYA A.Ş.", "bottom": "ŞİŞLİ / İSTANBUL", "centre": "V.D. No\n5670000042"}}}
+  ],
+  "invoiceTitle": "Fatura",
+  "invoiceNumber": "Fatura No. 2026-0418 · 30 Ocak 2027",
+  "billTo": "Alıcı",
+  "billLines": ["Kuzey Işığı Medya A.Ş.", "Büyükdere Cad. No: 7, 34394 Şişli / İstanbul", "Şişli V.D. 5670000042"],
+  "items": [["Kurumsal kimlik ve kılavuz", "1", "400.000 TL"], ["Web sitesi tasarımı, 12 sayfa", "1", "600.000 TL"], ["Sosyal medya şablonları", "1", "135.000 TL"]],
+  "invoiceTotal": ["Ödenecek toplam", "1.135.000 TL"],
+  "paid": {"id": "tr.odendi", "width": 150, "values": {"top": "MAVİ LİMAN TASARIM LTD. ŞTİ.", "word": "ÖDENDİ"}},
+  "note": "Ödeme teşekkürle alınmıştır. Havale/EFT, açıklama: ML-2026-114.",
+  "generatorName": "Elif Yıldız",
+  "letter": {
+    "brand": "MAVİ LİMAN STÜDYO", "addr": "Kordon Cad. No: 42, Alsancak / İzmir · merhaba@maviliman.example",
+    "date": "İzmir, 6 Kasım 2026", "to": ["Emre Aydın", "Kuzey Işığı Medya A.Ş.", "Büyükdere Cad. No: 7, Şişli / İstanbul"],
+    "subject": "Teklif: Kuzey Işığı Medya için yeni kurumsal kimlik",
+    "body": ["Sayın Emre Bey,", "Geçen haftaki keyifli görüşme için teşekkür ederiz. Söz verdiğimiz gibi, yeni Kuzey Işığı kimliği için teklifimizi sunuyoruz: daha sakin bir logo sistemi, sıcak bir renk paleti ve belgesellerinizi öne çıkaran bir web sitesi.", "Her biri İstanbul’da bir değerlendirme toplantısıyla biten üç aşama öneriyoruz:"],
+    "table": [["Aşama", "Hafta", "Ücret"], ["Keşif ve konseptler", "3", "295.000 TL"], ["Kimlik ve kılavuz", "4", "400.000 TL"], ["Web sitesi ve şablonlar", "6", "440.000 TL"]],
+    "close": ["16 Kasım’da başlamaktan memnuniyet duyarız. Sözleşme ektedir ve tarafımızca imzalanmıştır.", "Saygılarımızla,"],
+    "name": "Elif Yıldız", "role": "Genel Müdür, Mavi Liman Tasarım Ltd. Şti."
+  },
+  "budget": {
+    "sheet": "Bütçe 2027", "head": "Stüdyo bütçesi, 2027 ilk yarıyıl, bin TL", "total": "Toplam", "share": "Pay",
+    "months": ["Oca", "Şub", "Mar", "Nis", "May", "Haz"],
+    "rows": [["Tasarım", [295, 355, 400, 245, 230, 270]], ["Yazılım geliştirme", [155, 195, 330, 440, 420, 350]], ["Pazarlama", [86, 100, 125, 185, 225, 250]], ["Barındırma ve araçlar", [20, 20, 22, 22, 25, 25]]]
+  },
+  "deck": {
+    "title": "Kuzey Işığı Medya", "subtitle": "Marka yenileme 2027 · Tasarım sunumu",
+    "ideasTitle": "Sakin, sıcak, kuzeyli", "ideasSubtitle": "Yeni kimliğin ardındaki üç fikir",
+    "ideas": [["Işık", "Uzun kuzey akşamları: yumuşak kontrast ve sıcak vurgular."], ["Hikâye", "Önce belgeseller: web sitesi filmlerle açılır."], ["Zanaat", "El yapımı işaretler, karakterli tipografi."]],
+    "timelineTitle": "Takvim", "steps": [["Kas", "Keşif"], ["Ara", "Konseptler"], ["Oca", "Kimlik"], ["Şub", "Web sitesi"]]
+  }
+}

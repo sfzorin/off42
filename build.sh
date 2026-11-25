@@ -27,6 +27,7 @@ fi
 APPS=(${1:-})
 [[ -z "${1:-}" ]] && APPS=($ALL)
 INSTALL=${2:-}
+OUTPUT_DIR=${SUITE42_BUILD_DIR:-build}
 
 # Quick Look extensions hosted by each app: "<kind> <content types…>" (kind: preview | thumbnail).
 # Only formats macOS itself shows as plain text or not at all.
@@ -54,15 +55,19 @@ make_appex() {
   local BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "Resources/$HOST/Info.plist")
   local TYPES=""
   for t in ${=QL_TYPES[$HOST]}; do TYPES+="<string>$t</string>"; done
+  # Keep the extension's declared languages identical to its host app.
+  local LOCALIZATIONS=$(/usr/libexec/PlistBuddy -x -c "Print :CFBundleLocalizations" "Resources/$HOST/Info.plist" | sed -n '/<array>/,/<\/array>/p')
   local X="$APP/Contents/PlugIns/$BIN.appex"
-  mkdir -p "$X/Contents/MacOS"
+  mkdir -p "$X/Contents/MacOS" "$X/Contents/Resources"
   cp ".build/release/$BIN" "$X/Contents/MacOS/"
+  cp -R ".build/release/Suite42_Kit42.bundle" "$X/Contents/Resources/"
   cat > "$X/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key><string>en</string>
+	<key>CFBundleLocalizations</key>$LOCALIZATIONS
 	<key>CFBundleDisplayName</key><string>$NAME</string>
 	<key>CFBundleExecutable</key><string>$BIN</string>
 	<key>CFBundleIdentifier</key><string>$HOST_ID.$KIND</string>
@@ -93,12 +98,13 @@ for APP_NAME in $APPS; do
   RES="Resources/$APP_NAME"
   make_icon $APP_NAME
 
-  APP="build/$APP_NAME.app"
+  APP="$OUTPUT_DIR/$APP_NAME.app"
   rm -rf "$APP"
   mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
   cp ".build/release/$APP_NAME" "$APP/Contents/MacOS/"
   cp "$RES/Info.plist" "$APP/Contents/"
   cp "$RES/AppIcon.icns" "$APP/Contents/Resources/"
+  cp -R ".build/release/Suite42_Kit42.bundle" "$APP/Contents/Resources/"
   [[ -d .build/release/Suite42_$APP_NAME.bundle ]] && cp -R ".build/release/Suite42_$APP_NAME.bundle" "$APP/Contents/Resources/"
   if [[ -n "${QL_TYPES[$APP_NAME]:-}" ]]; then
     make_appex "$APP" $APP_NAME preview

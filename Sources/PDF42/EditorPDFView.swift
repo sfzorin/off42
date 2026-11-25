@@ -8,15 +8,23 @@ final class EditorPDFView: PDFView {
 
     var tool: Tool = .select {
         didSet {
-            inlineEditor?.end(commit: true)
+            if labelRegionSelection { editor?.updateSignatureBanner() }
+            labelRegionSelection = false
+            cancelInteraction()
+            commitTextEdit()
             if tool != .select { selectAnnotation(nil) }
             clearSelection()
             if (oldValue == .link) != (tool == .link) { updateLinkBorders() }
         }
     }
     var color: NSColor = .systemRed
+    /// Uses only the crop tool's temporary drag preview, never a crop mutation.
+    var labelRegionSelection = false
     /// In-place editor of page text (Edit Text tool), while open.
     var inlineEditor: InlineTextEditor?
+    var hasPendingTextEdit: Bool { inlineEditor?.hasPendingChanges == true }
+    func commitTextEdit() { inlineEditor?.end(commit: true) }
+    func cancelTextEdit() { inlineEditor?.end(commit: false) }
     var lineWidth: CGFloat = 2
     /// Dashed frames around links (View › Show Link Borders; always while the Link tool is active).
     var showsLinkBorders = false { didSet { updateLinkBorders() } }
@@ -35,6 +43,21 @@ final class EditorPDFView: PDFView {
     private var tempAnnotation: PDFAnnotation?
     private var inkPoints: [CGPoint] = []
 
+    /// An unfinished mouse gesture is a preview, not a document mutation.
+    func cancelInteraction() {
+        if let page = dragPage {
+            if drag == .move || drag == .resize { selectedAnnotation?.bounds = dragOriginalBounds }
+            if let tempAnnotation { page.removeAnnotation(tempAnnotation) }
+            refreshMarker()
+            annotationsChanged(on: page)
+        }
+        dragPage = nil
+        drag = .none
+        mouseHandled = false
+        tempAnnotation = nil
+        inkPoints = []
+    }
+
     override var acceptsFirstResponder: Bool { true }
 
     // MARK: - Selection
@@ -49,6 +72,7 @@ final class EditorPDFView: PDFView {
         selectionHandle = nil
         selectedAnnotation = annotation
         selectedPage = annotation == nil ? nil : (page ?? annotation?.page)
+        editor?.annotationSelectionChanged()
         guard let annotation, let page = selectedPage else { return }
 
         let frame = PDFAnnotation(bounds: .zero, forType: .square, withProperties: nil)
@@ -89,6 +113,7 @@ final class EditorPDFView: PDFView {
 
     private func hitAnnotation(on page: PDFPage, at point: CGPoint) -> PDFAnnotation? {
         for annotation in page.annotations.reversed() where !isMarker(annotation) {
+            if tool.isFormField && !annotation.isKind(.widget) { continue }
             // Form tools pick widgets (move, resize, delete); otherwise PDFView handles them (filling).
             if annotation.isSystemHandled, !(tool.isFormField && annotation.isKind(.widget)), !(tool == .link && annotation.isKind(.link)) { continue }
             if annotation is LinkBorderMarker { continue }
@@ -130,6 +155,7 @@ final class EditorPDFView: PDFView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        cancelInteraction()
         window?.makeFirstResponder(self)
         mouseHandled = true
         drag = .none
@@ -223,7 +249,7 @@ final class EditorPDFView: PDFView {
                 dragOriginalBounds = a.bounds
                 return
             }
-            if let widget = hitAnnotation(on: page, at: point) {
+            if let widget = hitAnnotation(on: page, at: point), widget.isKind(.widget) {
                 selectAnnotation(widget, on: page)
                 drag = .move
                 dragOriginalBounds = widget.bounds
@@ -238,6 +264,7 @@ final class EditorPDFView: PDFView {
             border.dashPattern = [3, 2]
             preview.border = border
             preview.color = .controlAccentColor
+            preview.shouldPrint = false
             page.addAnnotation(preview)
             tempAnnotation = preview
         }
@@ -333,7 +360,14 @@ final class EditorPDFView: PDFView {
             } else if tool == .crop {
                 guard let temp = tempAnnotation, temp.bounds.width > 10, temp.bounds.height > 10 else { return }
                 let rect = temp.bounds
-                DispatchQueue.main.async { [weak self] in self?.editor?.cropDialog(rect: rect, on: page) }
+                let forLabels = labelRegionSelection
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    if forLabels {
+                        guard self.labelRegionSelection else { return }
+                        self.editor?.finishLabelRegion(rect, on: page)
+                    } else { self.editor?.cropDialog(rect: rect, on: page) }
+                }
             } else if tool == .redact {
                 guard let temp = tempAnnotation, temp.bounds.width > 2, temp.bounds.height > 2 else { return }
                 editor?.add(RedactOverlay(bounds: temp.bounds, color: color), to: page, name: L("Redact"))
@@ -353,9 +387,10 @@ final class EditorPDFView: PDFView {
         let base = super.menu(for: event) ?? NSMenu()
         if let (page, point) = locate(event), let a = hitAnnotation(on: page, at: point) { selectAnnotation(a, on: page) }
         var items: [Command] = []
+        if selectedAnnotation?.technicalElement != nil { items.append(Cmd.editTechnicalElement) }
         if selectedAnnotation != nil { items.append(Cmd.deleteAnnotation) }
         if let sel = currentSelection, !(sel.string ?? "").isEmpty { items += [Cmd.replaceText, Cmd.highlightSelection] }
-        items += [Cmd.stamps, Cmd.tool(.text), Cmd.tool(.note)]
+        items += [Cmd.stamps, Cmd.technicalElement, Cmd.labelRegion, Cmd.tool(.text), Cmd.tool(.note)]
         for (i, c) in items.enumerated() { base.insertItem(c.menuItem(), at: i) }
         base.insertItem(.separator(), at: items.count)
         return base
@@ -368,6 +403,8 @@ final class EditorPDFView: PDFView {
                 return
             }
             if scalar.value == 27 {
+                cancelInteraction()
+                cancelTextEdit()
                 selectAnnotation(nil)
                 editor?.setTool(.select)
                 return

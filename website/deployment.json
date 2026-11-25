@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-06",
+  "worker": "off42",
+  "deployment_version_prefix": "ea3a61a3",
+  "primary_origin": "https://off42.cc",
+  "files": 270,
+  "build_sha256": "05c1116cc6c9d6155c0d8c52c3ea96ee3a68a7d35291c92c163b3dadb3794d25",
+  "localized_pages": 260,
+  "live_verified_pages": 260,
+  "source_published_to_git": false,
+  "custom_domains": [
+    "off42.cc",
+    "www.off42.cc"
+  ],
+  "www_verification": {
+    "dns_resolvers": [
+      "1.1.1.1",
+      "8.8.8.8"
+    ],
+    "https_status": 200,
+    "tls_verification": true,
+    "note": "HTTPS verified with a public-DNS address via curl --resolve; local negative DNS cache still delayed ordinary resolution at verification time."
+  },
+  "repository": "https://github.com/sfzorin/off42"
+}

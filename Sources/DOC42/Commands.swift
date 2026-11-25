@@ -24,6 +24,9 @@ enum Cmd {
     static let ruler = Command(L("Hide Ruler"), #selector(W.toggleRulerAction(_:)), shortcut: Shortcut("r", [.command, .option]))
 
     static let insertImage = Command(L("Image…"), #selector(W.insertImageAction(_:)), symbol: "photo", shortcut: Shortcut("i", [.command, .shift]))
+    static let technicalElement = Command(L("Symbol or Code…"), #selector(W.insertTechnicalElementAction(_:)), symbol: "qrcode")
+    static let editTechnicalElement = Command(L("Edit Symbol or Code…"), #selector(W.editTechnicalElementAction(_:)))
+    static let createLabels = Command(L("Create Labels…"), #selector(W.createLabelsAction(_:)), symbol: "tag")
     static let insertTable = Command(L("Table…"), #selector(W.insertTableAction(_:)), symbol: "tablecells", shortcut: Shortcut("t", [.command, .option]))
     static let stamps = Command(L("Signature or Stamp…"), #selector(W.showStampsAction(_:)), symbol: "signature",
                                 shortcut: Shortcut("k", [.command, .shift]), toolTip: L("Insert a signature or stamp"), label: L("Stamp"))
@@ -170,14 +173,14 @@ enum Cmd {
 
     static var menuBar: MenuBarSpec {
         var spec = MenuBarSpec(appName: "DOC42")
-        spec.fileExtras = [.command(exportPDF), .command(exportAs), .separator, .command(properties)]
+        spec.fileExtras = [.command(exportPDF), .command(exportAs), .command(createLabels), .separator, .command(properties)]
         spec.editExtras = [.command(trackChanges)]
         spec.find = [.command(find), .command(findReplace), .separator, .command(findNext), .command(findPrevious),
                      .command(useSelectionForFind), .separator, .command(replaceBar)]
         spec.view = [.command(zoomIn), .command(zoomOut), .command(actualSize), .separator] + viewModes.menuElements + [.separator,
                      .command(formatBar), .command(ruler), .command(statusBar), .command(toggleComments), .separator,
                      .command(navigator), .command(stylesPanel), stylesF11]
-        spec.insert = [.command(insertImage), .command(insertTable), .command(stamps), .separator,
+        spec.insert = [.command(insertImage), .command(insertTable), .command(stamps), .command(technicalElement), .command(editTechnicalElement), .separator,
                        .command(link), .command(removeLink), .command(bookmark), .command(crossReference), .separator,
                        .command(footnote), .command(editFootnote), .command(deleteFootnote), .separator,
                        .command(comment), .command(resolveComment), .command(deleteComment), .separator,
@@ -231,6 +234,6 @@ enum Cmd {
 
     static var toolbarOptional: [ToolbarElement] {
         [.command(footnote), .command(trackChanges), .group(id: "zoom", label: L("Zoom"), [zoomOut, zoomIn]),
-         .command(print), .command(exportPDF)]
+         .command(print), .command(exportPDF), .command(technicalElement), .command(createLabels)]
     }
 }

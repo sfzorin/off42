@@ -24,6 +24,7 @@ final class SaveSheetController: NSWindowController, NSTextFieldDelegate {
     let openAfter = NSPopUpButton(frame: .zero, pullsDown: false)
     private var grid: NSGridView!
     private var estimateWork: DispatchWorkItem?
+    private var estimateGeneration = UUID()
 
     init(pages: [ExportPage], title: String?, options: SaveOptions) {
         self.pages = pages
@@ -162,7 +163,8 @@ final class SaveSheetController: NSWindowController, NSTextFieldDelegate {
         options.compression = Compression(rawValue: size.indexOfSelectedItem) ?? .balanced
         options.quality = quality.doubleValue
         options.ocr = ocr.state == .on
-        options.nameTemplate = name.stringValue.isEmpty ? SaveOptions.defaultTemplate : name.stringValue
+        let visibleName = (name.currentEditor() as? NSTextView)?.string ?? name.stringValue
+        options.nameTemplate = visibleName.isEmpty ? SaveOptions.defaultTemplate : visibleName
         options.openAfter = OpenAfter(rawValue: openAfter.indexOfSelectedItem) ?? .none
     }
 
@@ -177,10 +179,15 @@ final class SaveSheetController: NSWindowController, NSTextFieldDelegate {
         preview.stringValue = many ? L("Files: %@ 001.%@ … %@ %03d.%@", base, f.ext, base, pages.count, f.ext) : L("File: %@.%@", base, f.ext)
         estimate.stringValue = L("estimating…")
         estimateWork?.cancel()
+        estimateGeneration = UUID()
+        let generation = estimateGeneration
         let o = options, p = pages
         let work = DispatchWorkItem { [weak self] in
             let bytes = Exporter.estimate(p, o)
-            DispatchQueue.main.async { self?.estimate.stringValue = "≈ " + Exporter.sizeText(bytes) }
+            DispatchQueue.main.async {
+                guard let self, self.estimateGeneration == generation else { return }
+                self.estimate.stringValue = "≈ " + Exporter.sizeText(bytes)
+            }
         }
         estimateWork = work
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.15, execute: work)
@@ -233,6 +240,7 @@ final class SaveSheetController: NSWindowController, NSTextFieldDelegate {
     }
 
     private func close(_ code: NSApplication.ModalResponse) {
+        estimateGeneration = UUID(); estimateWork?.cancel()
         guard let w = window, let parent = w.sheetParent else { window?.close(); return }
         parent.endSheet(w, returnCode: code)
     }

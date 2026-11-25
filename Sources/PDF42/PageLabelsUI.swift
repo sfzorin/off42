@@ -111,8 +111,10 @@ final class PageLabelsEditor: NSObject {
         var out: [PageLabelRange] = []
         for c in controls {
             guard let start = Int(c.start.stringValue), start >= 1, start <= pageCount else { return nil }
-            let style = PageLabelRange.Style.allCases[max(0, c.style.indexOfSelectedItem)]
-            out.append(PageLabelRange(start: start - 1, style: style, prefix: c.prefix.stringValue, first: max(1, Int(c.first.stringValue) ?? 1)))
+            guard let first = Int(c.first.stringValue), first >= 1, first <= Int.max - max(0, pageCount - start),
+                  PageLabelRange.Style.allCases.indices.contains(c.style.indexOfSelectedItem) else { return nil }
+            let style = PageLabelRange.Style.allCases[c.style.indexOfSelectedItem]
+            out.append(PageLabelRange(start: start - 1, style: style, prefix: c.prefix.stringValue, first: first))
         }
         var seen = Set<Int>()
         return out.sorted { $0.start < $1.start }.filter { seen.insert($0.start).inserted }

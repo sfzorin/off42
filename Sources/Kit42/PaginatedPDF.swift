@@ -8,6 +8,9 @@ public enum PaginatedPDF {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
         defer { try? FileManager.default.removeItem(at: url) }
         let job = info.copy() as! NSPrintInfo
+        // Printer corrections are never part of a document export, even if
+        // AppKit retained custom print settings on the source document.
+        ProductionPrint.setCorrection(nil, in: job)
         job.jobDisposition = .save
         job.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = url
         let op = NSPrintOperation(view: view, printInfo: job)

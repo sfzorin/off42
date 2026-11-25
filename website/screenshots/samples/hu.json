@@ -1,0 +1,54 @@
+{
+  "rtl": false,
+  "brand": "KÉKPART STÚDIÓ",
+  "brandLine": "Arculat · Web · Mozgókép",
+  "number": "Szerződésszám: KP-2026-114",
+  "title": "Tervezési szolgáltatási szerződés",
+  "intro": "Jelen szerződés 2026. november 6-án jött létre a Kékpart Stúdió Kft. (a „Stúdió”) és a Délibáb Média Zrt. (a „Megrendelő”) között a Megrendelő új arculatának és weboldalának megtervezésére.",
+  "sections": [
+    ["1. A munka tárgya", "A Stúdió logórendszert, tipográfiai és színhasználati irányelveket, tizenkét oldalas weboldaltervet, valamint közösségimédia-sablonokat készít."],
+    ["2. Határidők", "A munka 2026. november 16-án kezdődik. Az első koncepciók három héten belül, a végleges fájlok 2027. január 29-ig kerülnek átadásra."],
+    ["3. Szellemi tulajdon", "A teljes díj megfizetésével a végleges tervek minden joga a Megrendelőre száll. A Stúdió a munkát bemutathatja portfóliójában."]
+  ],
+  "feeTitle": "4. Díjazás",
+  "fees": [["Arculat és arculati kézikönyv", "3 200 000 Ft"], ["Weboldal-tervezés, 12 oldal", "4 800 000 Ft"], ["Közösségimédia-sablonok", "1 100 000 Ft"]],
+  "total": ["Összesen, áfa nélkül", "9 100 000 Ft"],
+  "signTitle": "A felek képviseletében aláírták",
+  "parties": [
+    {"role": "A Stúdió részéről", "company": "Kékpart Stúdió Kft.", "person": "Kovács Eszter", "title": "Ügyvezető",
+     "date": "Budapest, 2026. november 6.", "signName": "Kovács Eszter", "pen": "ballpoint", "design": 2424853,
+     "stamp": {"id": "pl.pieczatka", "width": 150, "values": {"name": "Kékpart Stúdió Kft.", "lines": "1061 Budapest, Király utca 42.", "numbers": "Cg. 01-09-420042 · Adószám: 32000042-2-42"}}},
+    {"role": "A Megrendelő részéről", "company": "Délibáb Média Zrt.", "person": "Nagy Bence", "title": "Vezérigazgató",
+     "date": "Debrecen, 2026. november 6.", "signName": "Nagy Bence", "pen": "fountain", "design": 2425117,
+     "stamp": {"id": "eu.round", "width": 104, "values": {"edge": "DÉLIBÁB MÉDIA ZRT. * DEBRECEN *", "centre": "Adószám\n27000542-2-09"}}}
+  ],
+  "invoiceTitle": "Számla",
+  "invoiceNumber": "Számlaszám: 2026-0418 · 2027. január 30.",
+  "billTo": "Vevő",
+  "billLines": ["Délibáb Média Zrt.", "4024 Debrecen, Piac utca 17.", "Adószám: 27000542-2-09"],
+  "items": [["Arculat és arculati kézikönyv", "1", "3 200 000 Ft"], ["Weboldal-tervezés, 12 oldal", "1", "4 800 000 Ft"], ["Közösségimédia-sablonok", "1", "1 100 000 Ft"]],
+  "invoiceTotal": ["Fizetendő összesen", "9 100 000 Ft"],
+  "paid": {"id": "us.paid", "width": 150, "values": {"top": "KÉKPART STÚDIÓ KFT.", "word": "FIZETVE"}},
+  "note": "A befizetést köszönettel megkaptuk. Átutalás, közlemény: KP-2026-114.",
+  "generatorName": "Kovács Eszter",
+  "letter": {
+    "brand": "KÉKPART STÚDIÓ", "addr": "1061 Budapest, Király utca 42. · hello@kekpart.example",
+    "date": "Budapest, 2026. november 6.", "to": ["Nagy Bence", "Délibáb Média Zrt.", "4024 Debrecen, Piac utca 17."],
+    "subject": "Ajánlat: új arculat a Délibáb Média számára",
+    "body": ["Kedves Bence!", "Köszönjük a múlt heti remek beszélgetést. Ahogy ígértük, küldjük ajánlatunkat a Délibáb új arculatára: nyugodtabb logórendszer, meleg alföldi színpaletta és egy weboldal, amelyen a dokumentumfilmjeik állnak a középpontban.", "Három szakaszt javaslunk, mindegyik végén egyeztetéssel Debrecenben:"],
+    "table": [["Szakasz", "Hét", "Díj"], ["Feltárás és koncepciók", "3", "2 400 000 Ft"], ["Arculat és kézikönyv", "4", "3 200 000 Ft"], ["Weboldal és sablonok", "6", "3 500 000 Ft"]],
+    "close": ["Örömmel kezdenénk november 16-án. A szerződést csatoltuk, részünkről már aláírtuk.", "Üdvözlettel:"],
+    "name": "Kovács Eszter", "role": "Ügyvezető, Kékpart Stúdió Kft."
+  },
+  "budget": {
+    "sheet": "Költségvetés 2027", "head": "A stúdió költségvetése, 2027 első félév, ezer Ft", "total": "Összesen", "share": "Arány",
+    "months": ["jan.", "febr.", "márc.", "ápr.", "máj.", "jún."],
+    "rows": [["Tervezés", [2400, 2900, 3300, 2000, 1900, 2200]], ["Fejlesztés", [1250, 1600, 2700, 3600, 3400, 2850]], ["Marketing", [700, 820, 1000, 1500, 1800, 2000]], ["Tárhely és eszközök", [165, 165, 180, 180, 200, 200]]]
+  },
+  "deck": {
+    "title": "Délibáb Média", "subtitle": "Arculatfrissítés 2027 · Tervezői bemutató",
+    "ideasTitle": "Nyugodt, meleg, alföldi", "ideasSubtitle": "Az új arculat három alapgondolata",
+    "ideas": [["Fény", "Hosszú alföldi alkonyatok: lágy kontraszt, meleg kiemelések."], ["Történet", "A filmek az elsők: a weboldal a filmekkel nyit."], ["Kézművesség", "Kézzel rajzolt jelek, karakteres tipográfia."]],
+    "timelineTitle": "Ütemterv", "steps": [["nov.", "Feltárás"], ["dec.", "Koncepciók"], ["jan.", "Arculat"], ["febr.", "Weboldal"]]
+  }
+}

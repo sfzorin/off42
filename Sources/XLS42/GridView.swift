@@ -720,6 +720,10 @@ final class GridView: NSView, NSTextFieldDelegate {
             // Floating objects (topmost first)
             if let o = objects.reversed().first(where: { objectRect($0).insetBy(dx: -4, dy: -4).contains(point) }) {
                 selectedObject = o
+                if event.clickCount == 2, controller?.selectedTechnicalElement != nil {
+                    controller?.editTechnicalElementAction(nil)
+                    return
+                }
                 let r = objectRect(o)
                 drag = NSRect(x: r.maxX - 8, y: r.maxY - 8, width: 14, height: 14).contains(point) ? .resizeObject(r) : .moveObject(point, r)
                 window?.makeFirstResponder(self)

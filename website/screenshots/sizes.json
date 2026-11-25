@@ -1,0 +1,738 @@
+{
+ "doc-letter-ar": [
+  2640,
+  1720
+ ],
+ "doc-letter-de": [
+  2640,
+  1720
+ ],
+ "doc-letter-en": [
+  2640,
+  1720
+ ],
+ "doc-letter-es": [
+  2640,
+  1720
+ ],
+ "doc-letter-fil": [
+  2640,
+  1720
+ ],
+ "doc-letter-fr": [
+  2640,
+  1720
+ ],
+ "doc-letter-hu": [
+  2640,
+  1720
+ ],
+ "doc-letter-id": [
+  2640,
+  1720
+ ],
+ "doc-letter-it": [
+  2640,
+  1720
+ ],
+ "doc-letter-ja": [
+  2640,
+  1720
+ ],
+ "doc-letter-ko": [
+  2640,
+  1720
+ ],
+ "doc-letter-ms": [
+  2640,
+  1720
+ ],
+ "doc-letter-pl": [
+  2640,
+  1720
+ ],
+ "doc-letter-pt": [
+  2640,
+  1720
+ ],
+ "doc-letter-ru": [
+  2640,
+  1720
+ ],
+ "doc-letter-th": [
+  2640,
+  1720
+ ],
+ "doc-letter-tr": [
+  2640,
+  1720
+ ],
+ "doc-letter-vi": [
+  2640,
+  1720
+ ],
+ "doc-letter-zh-Hans": [
+  2640,
+  1720
+ ],
+ "doc-letter-zh-Hant": [
+  2640,
+  1720
+ ],
+ "img-markup-ar": [
+  2640,
+  1898
+ ],
+ "img-markup-de": [
+  2640,
+  1898
+ ],
+ "img-markup-en": [
+  2640,
+  1898
+ ],
+ "img-markup-es": [
+  2640,
+  1898
+ ],
+ "img-markup-fil": [
+  2640,
+  1898
+ ],
+ "img-markup-fr": [
+  2640,
+  1898
+ ],
+ "img-markup-hu": [
+  2640,
+  1898
+ ],
+ "img-markup-id": [
+  2640,
+  1898
+ ],
+ "img-markup-it": [
+  2640,
+  1898
+ ],
+ "img-markup-ja": [
+  2640,
+  1898
+ ],
+ "img-markup-ko": [
+  2640,
+  1898
+ ],
+ "img-markup-ms": [
+  2640,
+  1898
+ ],
+ "img-markup-pl": [
+  2640,
+  1898
+ ],
+ "img-markup-pt": [
+  2640,
+  1898
+ ],
+ "img-markup-ru": [
+  2640,
+  1898
+ ],
+ "img-markup-th": [
+  2640,
+  1898
+ ],
+ "img-markup-tr": [
+  2640,
+  1898
+ ],
+ "img-markup-vi": [
+  2640,
+  1898
+ ],
+ "img-markup-zh-Hans": [
+  2640,
+  1898
+ ],
+ "img-markup-zh-Hant": [
+  2640,
+  1898
+ ],
+ "pdf-contract-ar": [
+  2640,
+  1720
+ ],
+ "pdf-contract-de": [
+  2640,
+  1720
+ ],
+ "pdf-contract-en": [
+  2640,
+  1720
+ ],
+ "pdf-contract-es": [
+  2640,
+  1720
+ ],
+ "pdf-contract-fil": [
+  2640,
+  1720
+ ],
+ "pdf-contract-fr": [
+  2640,
+  1720
+ ],
+ "pdf-contract-hu": [
+  2640,
+  1720
+ ],
+ "pdf-contract-id": [
+  2640,
+  1720
+ ],
+ "pdf-contract-it": [
+  2640,
+  1720
+ ],
+ "pdf-contract-ja": [
+  2640,
+  1720
+ ],
+ "pdf-contract-ko": [
+  2640,
+  1720
+ ],
+ "pdf-contract-ms": [
+  2640,
+  1720
+ ],
+ "pdf-contract-pl": [
+  2640,
+  1720
+ ],
+ "pdf-contract-pt": [
+  2640,
+  1720
+ ],
+ "pdf-contract-ru": [
+  2640,
+  1720
+ ],
+ "pdf-contract-th": [
+  2640,
+  1720
+ ],
+ "pdf-contract-tr": [
+  2640,
+  1720
+ ],
+ "pdf-contract-vi": [
+  2640,
+  1720
+ ],
+ "pdf-contract-zh-Hans": [
+  2640,
+  1720
+ ],
+ "pdf-contract-zh-Hant": [
+  2640,
+  1720
+ ],
+ "pdf-seal-ar": [
+  1280,
+  1204
+ ],
+ "pdf-seal-de": [
+  1280,
+  1356
+ ],
+ "pdf-seal-en": [
+  1280,
+  1356
+ ],
+ "pdf-seal-es": [
+  1280,
+  1278
+ ],
+ "pdf-seal-fil": [
+  1280,
+  1278
+ ],
+ "pdf-seal-fr": [
+  1280,
+  1356
+ ],
+ "pdf-seal-hu": [
+  1280,
+  1356
+ ],
+ "pdf-seal-id": [
+  1280,
+  1214
+ ],
+ "pdf-seal-it": [
+  1280,
+  1356
+ ],
+ "pdf-seal-ja": [
+  1280,
+  1072
+ ],
+ "pdf-seal-ko": [
+  1280,
+  1108
+ ],
+ "pdf-seal-ms": [
+  1280,
+  1356
+ ],
+ "pdf-seal-pl": [
+  1280,
+  1356
+ ],
+ "pdf-seal-pt": [
+  1280,
+  1356
+ ],
+ "pdf-seal-ru": [
+  1280,
+  1278
+ ],
+ "pdf-seal-th": [
+  1280,
+  1214
+ ],
+ "pdf-seal-tr": [
+  1280,
+  1356
+ ],
+ "pdf-seal-vi": [
+  1280,
+  1072
+ ],
+ "pdf-seal-zh-Hans": [
+  1280,
+  1108
+ ],
+ "pdf-seal-zh-Hant": [
+  1280,
+  1186
+ ],
+ "pdf-signature-ar": [
+  1280,
+  676
+ ],
+ "pdf-signature-de": [
+  1280,
+  704
+ ],
+ "pdf-signature-en": [
+  1280,
+  676
+ ],
+ "pdf-signature-es": [
+  1280,
+  704
+ ],
+ "pdf-signature-fil": [
+  1280,
+  676
+ ],
+ "pdf-signature-fr": [
+  1280,
+  704
+ ],
+ "pdf-signature-hu": [
+  1280,
+  676
+ ],
+ "pdf-signature-id": [
+  1280,
+  676
+ ],
+ "pdf-signature-it": [
+  1280,
+  704
+ ],
+ "pdf-signature-ja": [
+  1280,
+  676
+ ],
+ "pdf-signature-ko": [
+  1280,
+  676
+ ],
+ "pdf-signature-ms": [
+  1280,
+  676
+ ],
+ "pdf-signature-pl": [
+  1280,
+  676
+ ],
+ "pdf-signature-pt": [
+  1280,
+  704
+ ],
+ "pdf-signature-ru": [
+  1280,
+  676
+ ],
+ "pdf-signature-th": [
+  1280,
+  676
+ ],
+ "pdf-signature-tr": [
+  1280,
+  676
+ ],
+ "pdf-signature-vi": [
+  1280,
+  676
+ ],
+ "pdf-signature-zh-Hans": [
+  1280,
+  676
+ ],
+ "pdf-signature-zh-Hant": [
+  1280,
+  676
+ ],
+ "ppt-deck-ar": [
+  2640,
+  1720
+ ],
+ "ppt-deck-de": [
+  2640,
+  1720
+ ],
+ "ppt-deck-en": [
+  2640,
+  1720
+ ],
+ "ppt-deck-es": [
+  2640,
+  1720
+ ],
+ "ppt-deck-fil": [
+  2640,
+  1720
+ ],
+ "ppt-deck-fr": [
+  2640,
+  1720
+ ],
+ "ppt-deck-hu": [
+  2640,
+  1720
+ ],
+ "ppt-deck-id": [
+  2640,
+  1720
+ ],
+ "ppt-deck-it": [
+  2640,
+  1720
+ ],
+ "ppt-deck-ja": [
+  2640,
+  1720
+ ],
+ "ppt-deck-ko": [
+  2640,
+  1720
+ ],
+ "ppt-deck-ms": [
+  2640,
+  1720
+ ],
+ "ppt-deck-pl": [
+  2640,
+  1720
+ ],
+ "ppt-deck-pt": [
+  2640,
+  1720
+ ],
+ "ppt-deck-ru": [
+  2640,
+  1720
+ ],
+ "ppt-deck-th": [
+  2640,
+  1720
+ ],
+ "ppt-deck-tr": [
+  2640,
+  1720
+ ],
+ "ppt-deck-vi": [
+  2640,
+  1720
+ ],
+ "ppt-deck-zh-Hans": [
+  2640,
+  1720
+ ],
+ "ppt-deck-zh-Hant": [
+  2640,
+  1720
+ ],
+ "scn-scan-ar": [
+  2640,
+  1720
+ ],
+ "scn-scan-de": [
+  2640,
+  1720
+ ],
+ "scn-scan-en": [
+  2640,
+  1720
+ ],
+ "scn-scan-es": [
+  2640,
+  1720
+ ],
+ "scn-scan-fil": [
+  2640,
+  1720
+ ],
+ "scn-scan-fr": [
+  2640,
+  1720
+ ],
+ "scn-scan-hu": [
+  2640,
+  1720
+ ],
+ "scn-scan-id": [
+  2640,
+  1720
+ ],
+ "scn-scan-it": [
+  2640,
+  1720
+ ],
+ "scn-scan-ja": [
+  2640,
+  1720
+ ],
+ "scn-scan-ko": [
+  2640,
+  1720
+ ],
+ "scn-scan-ms": [
+  2640,
+  1720
+ ],
+ "scn-scan-pl": [
+  2640,
+  1720
+ ],
+ "scn-scan-pt": [
+  2640,
+  1720
+ ],
+ "scn-scan-ru": [
+  2640,
+  1720
+ ],
+ "scn-scan-th": [
+  2640,
+  1720
+ ],
+ "scn-scan-tr": [
+  2640,
+  1720
+ ],
+ "scn-scan-vi": [
+  2640,
+  1720
+ ],
+ "scn-scan-zh-Hans": [
+  2640,
+  1720
+ ],
+ "scn-scan-zh-Hant": [
+  2640,
+  1720
+ ],
+ "signed-ar": [
+  2116,
+  863
+ ],
+ "signed-de": [
+  2116,
+  745
+ ],
+ "signed-en": [
+  2116,
+  741
+ ],
+ "signed-es": [
+  2116,
+  799
+ ],
+ "signed-fil": [
+  2116,
+  845
+ ],
+ "signed-fr": [
+  2116,
+  900
+ ],
+ "signed-hu": [
+  2116,
+  856
+ ],
+ "signed-id": [
+  2116,
+  861
+ ],
+ "signed-it": [
+  2116,
+  865
+ ],
+ "signed-ja": [
+  2116,
+  792
+ ],
+ "signed-ko": [
+  2116,
+  838
+ ],
+ "signed-ms": [
+  2116,
+  863
+ ],
+ "signed-pl": [
+  2116,
+  693
+ ],
+ "signed-pt": [
+  2116,
+  740
+ ],
+ "signed-ru": [
+  2116,
+  841
+ ],
+ "signed-th": [
+  2116,
+  878
+ ],
+ "signed-tr": [
+  2116,
+  875
+ ],
+ "signed-vi": [
+  2116,
+  855
+ ],
+ "signed-zh-Hans": [
+  2116,
+  857
+ ],
+ "signed-zh-Hant": [
+  2116,
+  955
+ ],
+ "xls-budget-ar": [
+  2640,
+  1720
+ ],
+ "xls-budget-de": [
+  2640,
+  1720
+ ],
+ "xls-budget-en": [
+  2640,
+  1720
+ ],
+ "xls-budget-es": [
+  2640,
+  1720
+ ],
+ "xls-budget-fil": [
+  2640,
+  1720
+ ],
+ "xls-budget-fr": [
+  2640,
+  1720
+ ],
+ "xls-budget-hu": [
+  2640,
+  1720
+ ],
+ "xls-budget-id": [
+  2640,
+  1720
+ ],
+ "xls-budget-it": [
+  2640,
+  1720
+ ],
+ "xls-budget-ja": [
+  2640,
+  1720
+ ],
+ "xls-budget-ko": [
+  2640,
+  1720
+ ],
+ "xls-budget-ms": [
+  2640,
+  1720
+ ],
+ "xls-budget-pl": [
+  2640,
+  1720
+ ],
+ "xls-budget-pt": [
+  2640,
+  1720
+ ],
+ "xls-budget-ru": [
+  2640,
+  1720
+ ],
+ "xls-budget-th": [
+  2640,
+  1720
+ ],
+ "xls-budget-tr": [
+  2640,
+  1720
+ ],
+ "xls-budget-vi": [
+  2640,
+  1720
+ ],
+ "xls-budget-zh-Hans": [
+  2640,
+  1720
+ ],
+ "xls-budget-zh-Hant": [
+  2640,
+  1720
+ ],
+ "codes-labels-en": [
+  2640,
+  1720
+ ],
+ "codes-qr-en": [
+  924,
+  1184
+ ],
+ "codes-labels-ru": [
+  2640,
+  1720
+ ],
+ "codes-qr-ru": [
+  924,
+  1184
+ ]
+}

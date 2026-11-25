@@ -1,0 +1,54 @@
+{
+  "rtl": false,
+  "brand": "STUDIO HAFENLICHT",
+  "brandLine": "Markenidentität · Web · Motion",
+  "number": "Vertrag Nr. HL-2026-114",
+  "title": "Vertrag über Designleistungen",
+  "intro": "Dieser Vertrag wird am 6. November 2026 zwischen der Studio Hafenlicht GmbH (das „Studio“) und der Alpenblick Medien GmbH (der „Kunde“) über die Gestaltung der neuen Markenidentität und Website des Kunden geschlossen.",
+  "sections": [
+    ["1. Leistungsumfang", "Das Studio liefert ein Logosystem, Typografie- und Farbrichtlinien, das Design einer zwölfseitigen Website sowie Vorlagen für soziale Medien."],
+    ["2. Zeitplan", "Die Arbeit beginnt am 16. November 2026. Erste Entwürfe folgen innerhalb von drei Wochen; die finalen Dateien werden bis zum 29. Januar 2027 geliefert."],
+    ["3. Nutzungsrechte", "Mit vollständiger Zahlung gehen alle Rechte an den finalen Entwürfen auf den Kunden über. Das Studio darf die Arbeit im Portfolio zeigen."]
+  ],
+  "feeTitle": "4. Vergütung",
+  "fees": [["Markenidentität und Richtlinien", "8.400 €"], ["Website-Design, 12 Seiten", "12.600 €"], ["Vorlagen für soziale Medien", "2.800 €"]],
+  "total": ["Summe, zzgl. USt.", "23.800 €"],
+  "signTitle": "Unterschriften der Vertragsparteien",
+  "parties": [
+    {"role": "Für das Studio", "company": "Studio Hafenlicht GmbH", "person": "Lena Hoffmann", "title": "Geschäftsführerin",
+     "date": "Hamburg, 6. November 2026", "signName": "Lena Hoffmann", "pen": "ballpoint", "design": 2424853,
+     "stamp": {"id": "de.firm", "width": 145, "values": {"name": "Studio Hafenlicht GmbH", "lines": "Kehrwieder 12\n20457 Hamburg", "numbers": "USt-IdNr. DE318000042"}}},
+    {"role": "Für den Kunden", "company": "Alpenblick Medien GmbH", "person": "Florian Gruber", "title": "Geschäftsführer",
+     "date": "Wien, 6. November 2026", "signName": "Florian Gruber", "pen": "fountain", "design": 2425117,
+     "stamp": {"id": "at.firm", "width": 145, "values": {"name": "Alpenblick Medien GmbH", "lines": "Lindengasse 7\n1070 Wien", "numbers": "UID ATU74000042 · FN 520042x"}}}
+  ],
+  "invoiceTitle": "Rechnung",
+  "invoiceNumber": "Rechnung Nr. 2026-0418 · 30. Januar 2027",
+  "billTo": "Rechnungsempfänger",
+  "billLines": ["Alpenblick Medien GmbH", "Lindengasse 7, 1070 Wien, Österreich", "UID ATU74000042"],
+  "items": [["Markenidentität und Richtlinien", "1", "8.400 €"], ["Website-Design, 12 Seiten", "1", "12.600 €"], ["Vorlagen für soziale Medien", "1", "2.800 €"]],
+  "invoiceTotal": ["Rechnungsbetrag", "23.800 €"],
+  "paid": {"id": "us.paid", "width": 150, "values": {"top": "STUDIO HAFENLICHT GMBH", "word": "BEZAHLT"}},
+  "note": "Zahlung dankend erhalten. Überweisung, Verwendungszweck HL-2026-114.",
+  "generatorName": "Lena Hoffmann",
+  "letter": {
+    "brand": "STUDIO HAFENLICHT", "addr": "Kehrwieder 12, 20457 Hamburg · hallo@hafenlicht.example",
+    "date": "Hamburg, 6. November 2026", "to": ["Herrn Florian Gruber", "Alpenblick Medien GmbH", "Lindengasse 7, 1070 Wien"],
+    "subject": "Angebot: eine neue Markenidentität für Alpenblick Medien",
+    "body": ["Sehr geehrter Herr Gruber,", "vielen Dank für das angenehme Gespräch letzte Woche. Wie versprochen erhalten Sie unser Angebot für die neue Identität: ein ruhigeres Logosystem, eine warme alpine Farbpalette und eine Website, die Ihre Dokumentationen in den Mittelpunkt stellt.", "Wir schlagen drei Phasen vor, jeweils mit einer Abstimmung in Wien:"],
+    "table": [["Phase", "Wochen", "Honorar"], ["Analyse und Konzepte", "3", "6.200 €"], ["Identität und Richtlinien", "4", "8.400 €"], ["Website und Vorlagen", "6", "9.200 €"]],
+    "close": ["Gern beginnen wir am 16. November. Der Vertrag liegt bei und ist von unserer Seite bereits unterschrieben.", "Mit freundlichen Grüßen"],
+    "name": "Lena Hoffmann", "role": "Geschäftsführerin, Studio Hafenlicht GmbH"
+  },
+  "budget": {
+    "sheet": "Budget 2027", "head": "Studiobudget, erstes Halbjahr 2027 (€)", "total": "Summe", "share": "Anteil",
+    "months": ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun"],
+    "rows": [["Design", [6200, 7400, 8400, 5100, 4800, 5600]], ["Entwicklung", [3200, 4100, 6900, 9200, 8800, 7300]], ["Marketing", [1800, 2100, 2600, 3900, 4700, 5200]], ["Hosting und Tools", [420, 420, 460, 460, 510, 510]]]
+  },
+  "deck": {
+    "title": "Alpenblick Medien", "subtitle": "Markenauffrischung 2027 · Design-Review",
+    "ideasTitle": "Ruhig, warm, alpin", "ideasSubtitle": "Drei Ideen hinter der neuen Identität",
+    "ideas": [["Licht", "Klare Bergluft: sanfter Kontrast und warme Akzente."], ["Geschichte", "Dokus zuerst: Die Website öffnet mit den Filmen."], ["Handwerk", "Handgezeichnete Zeichen, Typografie mit Charakter."]],
+    "timelineTitle": "Zeitplan", "steps": [["Nov", "Analyse"], ["Dez", "Konzepte"], ["Jan", "Identität"], ["Feb", "Website"]]
+  }
+}

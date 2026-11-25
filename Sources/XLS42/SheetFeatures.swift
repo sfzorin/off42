@@ -329,7 +329,10 @@ extension SheetWindowController {
         let vc = StampLibraryViewController { [weak self] cg in
             let rep = NSBitmapImageRep(cgImage: cg)
             guard let png = rep.representation(using: .png, properties: [:]) else { return }
-            self?.insertPicture(png, size: NSSize(width: CGFloat(cg.width) / 2, height: CGFloat(cg.height) / 2))
+            // Its physical size, whatever resolution it was drawn at.
+            let aspect = CGFloat(cg.width) / CGFloat(max(1, cg.height))
+            let width = MarkPlacement.standard(aspect: aspect).widthPoints
+            self?.insertPicture(png, size: NSSize(width: width, height: width / aspect))
         }
         vc.popover = popover
         popover.contentViewController = vc

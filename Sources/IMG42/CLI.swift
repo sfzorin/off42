@@ -19,18 +19,27 @@ enum CLI {
 
     static func run(_ args: [String]) -> Bool {
         guard args.count > 1 else { return false }
+        status = 0
         switch args[1] {
-        case "--info": info(Array(args.dropFirst(2)))
+        case "--info":
+            guard args.count > 2 else { print("usage: --info files…"); status = 2; return true }
+            info(Array(args.dropFirst(2)))
         case "--edit": edit(Array(args.dropFirst(2)))
-        case "--stats": args.dropFirst(2).forEach(stats)
-        case "--ocr": args.dropFirst(2).forEach(ocr)
+        case "--stats", "--ocr":
+            guard args.count > 2 else { print("usage: \(args[1]) files…"); status = 2; return true }
+            if args[1] == "--stats" { args.dropFirst(2).forEach(stats) } else { args.dropFirst(2).forEach(ocr) }
         case "--rotate": rotate(Array(args.dropFirst(2)))
         case "--smart-lasso": smartLasso(Array(args.dropFirst(2)))
         case "--smart-lasso-eval": SmartLassoEval.run(Array(args.dropFirst(2)))
         case "--types":
+            guard args.count == 2 else { print("usage: --types"); status = 2; return true }
             print("read:", ImageFormats.readableTypes.map(\.identifier).joined(separator: " "))
             print("write:", ImageWriter.writableTypes.map(\.identifier).joined(separator: " "))
-        default: return false
+        default:
+            if args[1].hasPrefix("--"), !["--uitest", "--selftest", "--audit"].contains(args[1]) {
+                print("unknown command \(args[1])"); status = 2; return true
+            }
+            return false
         }
         return true
     }
@@ -48,65 +57,87 @@ enum CLI {
                 parts.append("OK")
             } else {
                 parts.append("ERROR: \(l.error ?? "?")")
+                status = 1
             }
             print(parts.joined(separator: "\t"))
         }
     }
 
+    enum Failure: Error { case invalid(String) }
+
     static func edit(_ a: [String]) {
         guard a.count >= 2 else { print("usage: --edit in out [options]"); status = 2; return }
         let input = URL(fileURLWithPath: a[0]), output = URL(fileURLWithPath: a[1])
-        guard var base = ImageLoader.load(input).image else { print("cannot read \(a[0])"); status = 1; return }
+        let loaded = ImageLoader.load(input)
+        guard var base = loaded.image, !loaded.wasDownsampled else { print("cannot read full-resolution image \(a[0])"); status = 1; return }
+        guard let type = UTType(filenameExtension: output.pathExtension), ImageWriter.writableTypes.contains(type) else {
+            print("unsupported output format \(output.pathExtension)"); status = 2; return
+        }
         var adjustments = Adjustments()
         var marks: [Mark] = []
         var description: String?? = .none
         var i = 2
-        func value() -> String { i += 1; return i < a.count ? a[i] : "" }
-        while i < a.count {
-            let opt = a[i]
-            let name = String(opt.dropFirst(2))
-            if let key = Adjustments.Key(rawValue: name) {
-                adjustments[key] = Double(value()) ?? 0
-            } else {
-                switch opt {
-                case "--look":
-                    let v = value()
-                    adjustments.look = ["mono": .mono, "noir": .noir, "sepia": .sepia, "invert": .invert][v] ?? .none
-                case "--auto": adjustments.autoEnhance = true
-                case "--demo-marks": marks = Mark.demo(for: CGSize(width: base.width, height: base.height))
-                case "--rotate", "--flip":
-                    let v = value()
-                    let op: Orientation.Op = opt == "--rotate" ? (v == "left" ? .rotateLeft : .rotateRight) : (v == "v" ? .flipVertical : .flipHorizontal)
-                    let t = Orientation.transform(op, size: CGSize(width: base.width, height: base.height))
-                    marks = marks.map { $0.applying(t) }
-                    base = Orientation.apply(op.orientation, to: base)
-                case "--resize":
-                    let p = value().split(separator: "x").compactMap { Double($0) }
-                    if p.count == 2, let r = ImageLoader.render(size: CGSize(width: p[0], height: p[1]), { $0.draw(base, in: CGRect(x: 0, y: 0, width: p[0], height: p[1])) }) {
-                        base = r
-                    }
-                case "--crop":
-                    let p = value().split(separator: ",").compactMap { Double($0) }
-                    if p.count == 4, let sel = PixelSelection.from(path: CGPath(rect: CGRect(x: p[0], y: p[1], width: p[2], height: p[3]), transform: nil),
-                                                                   size: CGSize(width: base.width, height: base.height), isRectangle: true),
-                       let c = PixelOps.extract(sel, from: base) { base = c }
-                case "--remove-background":
-                    do { if let r = try PixelOps.removeBackground(base) { base = r } else { print("no subject found") } } catch { print("remove background: \(error)") }
-                case "--description": description = .some(value())
-                default: print("unknown option \(opt)"); status = 2
-                }
-            }
-            i += 1
+        func value() throws -> String {
+            guard i + 1 < a.count else { throw Failure.invalid("missing value for " + a[i]) }
+            i += 1; return a[i]
         }
-        let final = Mark.flatten(marks, onto: adjustments.render(base))
-        let type = UTType(filenameExtension: output.pathExtension)?.identifier ?? UTType.png.identifier
+        func numbers(_ text: String, separator: Character, count: Int) throws -> [Double] {
+            let parts = text.split(separator: separator, omittingEmptySubsequences: false)
+            let values = parts.compactMap { Double($0) }
+            guard parts.count == count, values.count == count, values.allSatisfy(\.isFinite) else { throw Failure.invalid("invalid numeric dimensions") }
+            return values
+        }
         do {
-            try ImageWriter.write(final, to: output, type: type, metadataFrom: input, description: description)
-            print("wrote \(output.lastPathComponent) \(final.width)x\(final.height) \(type)")
-        } catch {
-            print("error: \(error.localizedDescription)")
-            status = 1
-        }
+            while i < a.count {
+                let opt = a[i]
+                if opt.hasPrefix("--"), let key = Adjustments.Key(rawValue: String(opt.dropFirst(2))) {
+                    guard let number = Double(try value()), number.isFinite, key.range.contains(number) else { throw Failure.invalid("invalid value for " + opt) }
+                    adjustments[key] = number
+                } else {
+                    switch opt {
+                    case "--look":
+                        let selected = try value()
+                        guard let look = ["none": Adjustments.Look.none, "mono": .mono, "noir": .noir, "sepia": .sepia, "invert": .invert][selected] else { throw Failure.invalid("unknown look " + selected) }
+                        adjustments.look = look
+                    case "--auto": adjustments.autoEnhance = true
+                    case "--demo-marks": marks = Mark.demo(for: CGSize(width: base.width, height: base.height))
+                    case "--rotate", "--flip":
+                        let selected = try value()
+                        let operations: [String: Orientation.Op] = opt == "--rotate" ? ["left": .rotateLeft, "right": .rotateRight] : ["h": .flipHorizontal, "v": .flipVertical]
+                        guard let operation = operations[selected] else { throw Failure.invalid("invalid operation " + selected) }
+                        let transform = Orientation.transform(operation, size: CGSize(width: base.width, height: base.height))
+                        marks = marks.map { $0.applying(transform) }
+                        base = Orientation.apply(operation.orientation, to: base)
+                    case "--resize":
+                        let dimensions = try numbers(value(), separator: "x", count: 2)
+                        let size = CGSize(width: dimensions[0].rounded(), height: dimensions[1].rounded())
+                        guard ImageLoader.validPixelSize(size), let resized = ImageLoader.render(size: size, { $0.draw(base, in: CGRect(origin: .zero, size: size)) }) else { throw Failure.invalid("invalid image size") }
+                        let transform = CGAffineTransform(scaleX: size.width / CGFloat(base.width), y: size.height / CGFloat(base.height))
+                        marks = marks.map { $0.applying(transform) }; base = resized
+                    case "--crop":
+                        let dimensions = try numbers(value(), separator: ",", count: 4)
+                        let rect = CGRect(x: dimensions[0], y: dimensions[1], width: dimensions[2], height: dimensions[3])
+                        guard rect.width > 0, rect.height > 0,
+                              let selection = PixelSelection.from(path: CGPath(rect: rect, transform: nil), size: CGSize(width: base.width, height: base.height), isRectangle: true),
+                              let cropped = PixelOps.extract(selection, from: base) else { throw Failure.invalid("invalid crop rectangle") }
+                        let transform = CGAffineTransform(translationX: -selection.bounds.integral.minX, y: -selection.bounds.integral.minY)
+                        marks = marks.map { $0.applying(transform) }; base = cropped
+                    case "--remove-background":
+                        guard let removed = try PixelOps.removeBackground(base) else { throw Failure.invalid("no subject found") }
+                        base = removed
+                    case "--description": description = .some(try value())
+                    default: throw Failure.invalid("unknown option " + opt)
+                    }
+                }
+                i += 1
+            }
+            guard let adjusted = adjustments.renderChecked(base), let final = Mark.flattenChecked(marks, onto: adjusted) else {
+                throw Failure.invalid("image rendering failed")
+            }
+            try ImageWriter.write(final, to: output, type: type.identifier, metadataFrom: input, description: description)
+            print("wrote \(output.lastPathComponent) \(final.width)x\(final.height) \(type.identifier)")
+        } catch Failure.invalid(let message) { print(message); status = 2 }
+        catch { print("error: \(error.localizedDescription)"); status = 1 }
     }
 
     static func stats(_ f: String) {
@@ -134,9 +165,11 @@ enum CLI {
     }
 
     static func rotate(_ a: [String]) {
-        guard a.count == 2 else { return }
+        guard a.count == 2, ["left", "right", "h", "v"].contains(a[1]) else { print("usage: --rotate file left|right|h|v"); status = 2; return }
         let url = URL(fileURLWithPath: a[0])
-        let current = ImageLoader.load(url).orientation
+        let loaded = ImageLoader.load(url)
+        guard loaded.image != nil else { print("cannot read \(a[0])"); status = 1; return }
+        let current = loaded.orientation
         let op: Orientation.Op = a[1] == "left" ? .rotateLeft : a[1] == "right" ? .rotateRight : a[1] == "v" ? .flipVertical : .flipHorizontal
         let new = Orientation.compose(op, after: current)
         let ok = Orientation.rewriteLosslessly(url, orientation: new)
@@ -145,14 +178,18 @@ enum CLI {
     }
 
     static func smartLasso(_ a: [String]) {
-        guard a.count >= 3, let image = ImageLoader.load(URL(fileURLWithPath: a[0])).image else { print("usage: --smart-lasso in \"x,y;…\" out.png [radius]"); status = 2; return }
-        let pts = a[1].split(separator: ";").map { $0.split(separator: ",").compactMap { Double($0) } }.filter { $0.count == 2 }.map { CGPoint(x: $0[0], y: $0[1]) }
-        let radius = a.count > 3 ? CGFloat(Double(a[3]) ?? 12) : 12
+        guard (3...5).contains(a.count), let image = ImageLoader.load(URL(fileURLWithPath: a[0])).image else { print("usage: --smart-lasso in \"x,y;…\" out.png [radius] [--no-subject]"); status = 2; return }
+        let pairs = a[1].split(separator: ";", omittingEmptySubsequences: false).map { $0.split(separator: ",", omittingEmptySubsequences: false).compactMap { Double($0) } }
+        guard pairs.count >= 3, pairs.allSatisfy({ $0.count == 2 && $0.allSatisfy(\.isFinite) }) else { print("invalid stroke"); status = 2; return }
+        let pts = pairs.map { CGPoint(x: $0[0], y: $0[1]) }
+        let extras = a.dropFirst(3).filter { $0 != "--no-subject" }
+        guard extras.count <= 1, let radius = extras.first.flatMap(Double.init) ?? (extras.isEmpty ? 12 : nil),
+              radius.isFinite, radius > 0, radius <= 32768 else { print("invalid radius"); status = 2; return }
         let noSubject = a.contains("--no-subject")
         let start = Date()
         let subject = noSubject ? nil : SmartLasso.subjectMask(for: image)
         let t1 = Date()
-        guard let path = SmartLasso.refine(stroke: pts, radius: radius, image: image, subject: subject),
+        guard let path = SmartLasso.refine(stroke: pts, radius: CGFloat(radius), image: image, subject: subject),
               let sel = PixelSelection.from(path: path, size: CGSize(width: image.width, height: image.height)) else { print("no selection"); status = 1; return }
         let t2 = Date()
         do {

@@ -84,6 +84,9 @@ public enum SignatureGenerator {
         var decay: CGFloat, legibleDecay: CGFloat, garland: Bool, loops: Bool, rise: CGFloat
         var entry: Bool, exitLength: CGFloat, exitLift: CGFloat, pen: CGFloat, keep: Int, legible: Int
         var waveH: [CGFloat], waveW: [CGFloat]
+        var allographs: UInt64 = 0   // picks the form of each lowercase letter
+        var dots = 1                 // 0 none, 1 dot, 2 dash
+        var bars = 1                 // 0 none, 1 short, 2 long (over the next letters)
     }
 
     private static func style(_ design: UInt64) -> Style {
@@ -94,14 +97,23 @@ public enum SignatureGenerator {
                       capital: (index / joins) % capitalVariants,
                       slant: r.range(0.12...0.6), xh: r.range(0.26...0.46), initialScale: r.range(0.7...1.0),
                       capW: r.range(0.6...1.0), letterW: r.range(0.95...1.4), decay: r.range(0.62...0.9),
-                      legibleDecay: r.range(0.9...1.0), garland: r.chance(0.5), loops: r.chance(0.6),
-                      rise: r.range(-0.03...0.09), entry: r.chance(0.35), exitLength: r.range(0.15...0.6),
-                      exitLift: r.range(-0.2...0.9), pen: r.range(0.018...0.026), keep: Int(r.range(3...7.9)),
+                      legibleDecay: r.range(0.88...0.98), garland: r.chance(0.5), loops: r.chance(0.6),
+                      rise: rising(r.range(0...1)), entry: r.chance(0.35), exitLength: r.range(0.15...0.6),
+                      exitLift: r.range(-0.2...0.9), pen: r.range(0.026...0.034), keep: Int(r.range(3...7.9)),
                       legible: Int(r.range(1...3.9)),
                       waveH: (0..<12).map { _ in r.range(0.75...1.25) }, waveW: (0..<12).map { _ in r.range(0.8...1.25) })
+        s.allographs = r.next()
+        s.dots = r.weighted([0.8, 1.4, 1.0])
+        s.bars = r.weighted([0.5, 1.4, 1.0])
         if arche == .monogram, s.flourish == 0 { s.flourish = 4 }
         if arche == .enclosed { s.flourish = 99 }   // loop around the whole signature
         return s
+    }
+
+    /// Most signatures climb 2–8°; about one in eight runs level. One random draw, so the design seeds of saved
+    /// styles keep all their other parameters.
+    private static func rising(_ u: CGFloat) -> CGFloat {
+        u < 0.12 ? -0.02 + u / 0.12 * 0.05 : 0.035 + (u - 0.12) / 0.88 * 0.105
     }
 
     /// The pen paths (cap-height units) for a name in a style.
@@ -113,7 +125,10 @@ public enum SignatureGenerator {
         var current: [CGPoint] = []
         var x: CGFloat = 0
         var capitalBox = CGRect.null
-        func baseline(_ x: CGFloat) -> CGFloat { s.rise * x }
+        // What varies between one person's signatures is mostly the layout — how far the line climbs, how long the
+        // run-out and flourish are — while letter shapes stay put.
+        let rise = s.rise + copy.range(-0.025...0.025)
+        func baseline(_ x: CGFloat) -> CGFloat { rise * x }
 
         func capital(_ c: Character, scale baseScale: CGFloat) {
             var parts = PenAlphabet.capital(c)
@@ -124,9 +139,9 @@ public enum SignatureGenerator {
                 parts = parts.map { $0.map { CGPoint(x: $0.x * 1.08, y: $0.y > 0.55 ? 0.55 + ($0.y - 0.55) * 1.35 : $0.y) } }
             default: break
             }
-            let scale = baseScale * copy.range(0.93...1.07)
-            let width = s.capW * scale * copy.range(0.94...1.06)
-            let dx = copy.range(-0.04...0.04), dy = copy.range(-0.04...0.04)
+            let scale = baseScale * copy.range(0.96...1.04)
+            let width = s.capW * scale * copy.range(0.96...1.04)
+            let dx = copy.range(-0.03...0.03), dy = copy.range(-0.03...0.03)
             for (i, part) in parts.enumerated() {
                 var pts = part.map { CGPoint(x: x + dx + $0.x * width, y: baseline(x) + dy + $0.y * scale) }
                 if i == 0, s.capital == 1, let first = pts.first, current.isEmpty {
@@ -142,16 +157,65 @@ public enum SignatureGenerator {
             x += width * 0.95
         }
         func flush() { if current.count > 1 { strokes.append(current) }; current = [] }
-        func lower(_ c: Character, amp: CGFloat) {
-            guard let (w, pts) = PenAlphabet.lower(c) else { wave(0, amp: amp); return }
-            let width = w * s.xh * s.letterW * copy.range(0.88...1.12)
-            let a = amp * copy.range(0.9...1.1), dy = copy.range(-0.025...0.025)
-            current += pts.map { CGPoint(x: x + $0.x * width, y: baseline(x) + dy + $0.y * s.xh * a) }
+        // Delayed strokes (i dots, t bars), written after the word as real writers do.
+        var marks: [(x: CGFloat, y: CGFloat, kind: PenAlphabet.Mark)] = []
+        var delayed: [[CGPoint]] = []   // added after everything else, so the flourish still follows the main stroke
+        /// `fade` (0…1): how far into the word — later letters are written faster, smaller and simpler.
+        func lower(_ c: Character, amp: CGFloat, fade: CGFloat = 0) {
+            var h = s.allographs ^ UInt64(c.unicodeScalars.first?.value ?? 0) &* 0x9E37_79B9_7F4A_7C15
+            h ^= h >> 29
+            guard let (w, raw) = PenAlphabet.lower(c, variant: Int(h % 7)) else { wave(0, amp: amp); return }
+            var pts = raw
+            if fade > 0.45, pts.count > 4 {
+                // Interior turns dropped: the letter becomes a quicker arc between its ends.
+                pts = pts.enumerated().filter { $0.offset == 0 || $0.offset == pts.count - 1 || $0.offset % 2 == 0 }.map(\.element)
+            }
+            let flatten = 1 - 0.3 * fade
+            let width = w * s.xh * s.letterW * (1 - 0.12 * fade) * copy.range(0.95...1.05)
+            let a = amp * copy.range(0.95...1.05), dy = copy.range(-0.015...0.015)
+            current += pts.map { CGPoint(x: x + $0.x * width, y: baseline(x) + dy + (0.5 + ($0.y - 0.5) * flatten) * s.xh * a) }
+            let m = PenAlphabet.mark(c)
+            switch m {
+            case .none: break
+            case .bar: marks.append((x + width * 0.45, baseline(x) + s.xh * a * 1.25, m))
+            default: marks.append((x + width * 0.45, baseline(x) + s.xh * a * 1.5, m))
+            }
             x += width
         }
+        func addMarks() {
+            for m in marks {
+                // Dots, breves and diaeresis are placed carelessly (a little right of the letter, drifting with the
+                // copy); some writers drop them altogether (dots == 0).
+                let jx = copy.range(-0.03...0.06), jy = copy.range(-0.03...0.03)
+                switch m.kind {
+                case .dot where s.dots > 0:
+                    let len: CGFloat = s.dots == 1 ? 0.03 : 0.1
+                    delayed.append([CGPoint(x: m.x + jx, y: m.y + jy),
+                                    CGPoint(x: m.x + jx + len + copy.range(0...0.03), y: m.y + jy + 0.015 + copy.range(-0.01...0.02))])
+                case .twoDots where s.dots > 0:
+                    if s.dots == 2 {   // written as one short dash
+                        delayed.append([CGPoint(x: m.x - 0.05 + jx, y: m.y + jy), CGPoint(x: m.x + 0.1 + jx, y: m.y + jy + 0.02)])
+                    } else {
+                        for dx in [-0.045, 0.055] as [CGFloat] {
+                            delayed.append([CGPoint(x: m.x + dx + jx, y: m.y + jy), CGPoint(x: m.x + dx + jx + 0.03, y: m.y + jy + 0.012)])
+                        }
+                    }
+                case .breve where s.dots > 0:
+                    let w = copy.range(0.11...0.15), d = copy.range(0.04...0.07)
+                    delayed.append([CGPoint(x: m.x - w / 2 + jx, y: m.y + 0.05 + jy), CGPoint(x: m.x - w * 0.15 + jx, y: m.y - d + jy),
+                                    CGPoint(x: m.x + w * 0.2 + jx, y: m.y - d * 0.8 + jy), CGPoint(x: m.x + w / 2 + jx, y: m.y + 0.06 + jy)])
+                case .bar where s.bars > 0:
+                    let len: CGFloat = s.bars == 1 ? 0.25 : 0.6
+                    delayed.append([CGPoint(x: m.x - 0.12 + copy.range(-0.04...0.04), y: m.y + copy.range(-0.04...0.02)),
+                                    CGPoint(x: m.x - 0.12 + len * copy.range(0.85...1.15), y: m.y + copy.range(0.0...0.08))])
+                default: break
+                }
+            }
+            marks = []
+        }
         func wave(_ i: Int, amp: CGFloat, tall: Bool = false) {
-            let width = s.xh * s.letterW * 0.9 * s.waveW[i % 12] * copy.range(0.86...1.14)
-            let h = s.xh * amp * s.waveH[i % 12] * (tall && s.loops ? 2.0 : 1) * copy.range(0.82...1.18)
+            let width = s.xh * s.letterW * 0.9 * s.waveW[i % 12] * copy.range(0.92...1.08)
+            let h = s.xh * amp * s.waveH[i % 12] * (tall && s.loops ? 2.0 : 1) * copy.range(0.9...1.1)
             let b = baseline(x)
             if s.garland {
                 current += [CGPoint(x: x + width * 0.3, y: b), CGPoint(x: x + width * 0.75, y: b + h)]
@@ -165,11 +229,17 @@ public enum SignatureGenerator {
         }
         /// Word: capital, `legible` letters written out, the rest as a fading garland (or all legible).
         func word(_ w: String, legible: Int?, garlandCount: Int? = nil) {
+            defer { addMarks() }
             capital(w.first!, scale: 1)
             let rest = Array(w.dropFirst())
             var amp: CGFloat = 1
             let n = legible ?? rest.count
-            for c in rest.prefix(n) { lower(c, amp: amp); amp *= s.legibleDecay }
+            // Legibility falls along the word: the first letters are written out, the last ones run together.
+            for (i, c) in rest.prefix(n).enumerated() {
+                let fade = rest.count > 2 ? CGFloat(i) / CGFloat(rest.count - 1) : 0
+                lower(c, amp: amp, fade: fade * fade)
+                amp *= s.legibleDecay
+            }
             let remaining = Array(rest.dropFirst(n))
             let garland = garlandCount ?? min(remaining.count, s.keep)
             for i in 0..<garland {
@@ -187,7 +257,7 @@ public enum SignatureGenerator {
             }
         }
         func exit() {
-            let length = s.exitLength * copy.range(0.7...1.3)
+            let length = s.exitLength * copy.range(0.6...1.4)
             current.append(CGPoint(x: x + length, y: baseline(x) + s.xh * (s.exitLift + copy.range(-0.3...0.3))))
             x += length
         }
@@ -241,8 +311,12 @@ public enum SignatureGenerator {
                 return CGPoint(x: c.x + rx * cos(a) + CGFloat(i) * 0.02, y: c.y + ry * sin(a))
             })
         case 5 where !capitalBox.isNull:
-            strokes.append([CGPoint(x: capitalBox.minX - 0.25, y: capitalBox.midY - 0.05), CGPoint(x: (capitalBox.maxX + right) / 2, y: capitalBox.midY + 0.25),
-                            CGPoint(x: right + 0.1, y: capitalBox.midY + 0.2)])
+            // A slash across the foot of the capital only: through its middle it turns З into Б or F into E,
+            // and across the whole name it reads as crossing the name out.
+            let reach = min(right, capitalBox.maxX + 0.25 + capitalBox.width * 0.3)
+            let y = capitalBox.minY + capitalBox.height * 0.22
+            strokes.append([CGPoint(x: capitalBox.minX - 0.2, y: y - 0.06), CGPoint(x: capitalBox.midX, y: y),
+                            CGPoint(x: reach, y: y + 0.1)])
         case 6:
             for k in 0..<2 {
                 let y = low - 0.12 - CGFloat(k) * 0.12, x0 = mid + CGFloat(k) * 0.1
@@ -279,7 +353,7 @@ public enum SignatureGenerator {
             let k = flourishStart - 1
             strokes[k] = Array(strokes[k].prefix(mainEnd)) + strokes[k].dropFirst(mainEnd).map(v)
         }
-        return strokes
+        return strokes + delayed
     }
 
     private static func dot(at p: CGPoint) -> [CGPoint] {
@@ -289,115 +363,150 @@ public enum SignatureGenerator {
     // MARK: - Rendering
 
     /// Renders one copy. `pixelHeight` is the capital height in pixels.
-    public static func render(_ name: String, design: UInt64, impression: UInt64, ink: NSColor, pixelHeight: CGFloat = 130) -> CGImage? {
+    public static func render(_ name: String, design: UInt64, impression: UInt64, ink: NSColor, pen: PenType = .ballpoint,
+                              pixelHeight: CGFloat = 130, capture: (([[PenSample]]) -> Void)? = nil) -> CGImage? {
         let words = name.split(whereSeparator: { $0.isWhitespace || $0 == "." }).map(String.init)
         guard !words.isEmpty else { return nil }
         let s = style(design)
         var copy = SeededRandom(impression)
-
-        // Fast writing does not stop at corners: repeated (corner) points are merged, so the pen sweeps through
-        // every turn. This copy moves the via-points a little, size, slant and angle.
-        // Natural variation is smooth: a low-frequency drift of the whole hand plus tiny point noise — never
-        // independent jumps of single points, which read as a shaky, slow hand.
-        let jitter: CGFloat = 0.008
-        let driftA = copy.range(0.02...0.045), driftX = copy.range(1.1...2.2), driftY = copy.range(0.9...1.8)
-        let driftP1 = copy.range(0...6.28), driftP2 = copy.range(0...6.28)
         let raw = plan(words, s, &copy)
-        let strokes = raw.map { stroke -> [CGPoint] in
-            var out: [CGPoint] = []
-            for p in stroke where out.last.map({ hypot($0.x - p.x, $0.y - p.y) > 0.012 }) ?? true {
-                out.append(p)
+        // The hand of this design (fluency and rhythm) — fixed per design.
+        var r = SeededRandom(design &* 0x9E37_79B9 &+ 17)
+        var hand = SigmaLognormal.Hand()
+        // Fluent timing (measured by SignatureBench against a fluent and a laboured reference): the line's shape comes
+        // from the spline, so heavy overlap only removes near-stops between movements; cusps slow down, not stop.
+        hand.overlap = Double(r.range(0.68...0.82))
+        hand.cornerOverlap = 0.5
+        hand.sizeScaled = false
+        hand.sigma = Double(r.range(0.2...0.24))...Double(r.range(0.26...0.31))
+        hand.curvatureGain = r.range(0.3...0.45)
+        hand.tempo = Double(r.range(0.13...0.2))
+        return draw(strokes: raw, hand: hand, slant: s.slant, penRatio: s.pen, pen: pen, ink: ink, pixelHeight: pixelHeight,
+                    copy: &copy, capture: capture)
+    }
+
+    /// A generated signature as if recorded from a tablet (positions with time) — test input for learning.
+    static func recordedSample(_ name: String, design: UInt64, impression: UInt64) -> SignatureSample? {
+        let words = name.split(whereSeparator: { $0.isWhitespace || $0 == "." }).map(String.init)
+        guard !words.isEmpty else { return nil }
+        let s = style(design)
+        var copy = SeededRandom(impression)
+        var hand = SigmaLognormal.Hand()
+        hand.overlap = 0.55
+        var strokes: [[[Double]]] = []
+        var clock: Double = 0
+        for stroke in plan(words, s, &copy) {
+            var via: [CGPoint] = []
+            var corners = Set<Int>()
+            for p in stroke {
+                if let last = via.last, hypot(last.x - p.x, last.y - p.y) < 0.012 { corners.insert(via.count - 1); continue }
+                via.append(p)
             }
-            return out.map { p in
-                CGPoint(x: p.x + driftA * sin(p.y / driftY * 2 * .pi + driftP1) + copy.range(-jitter...jitter),
-                        y: p.y + driftA * sin(p.x / driftX * 2 * .pi + driftP2) + copy.range(-jitter...jitter))
-            }
+            guard via.count > 1 else { continue }
+            let path = SigmaLognormal.trajectory(SigmaLognormal.components(via: via, corners: corners, hand: hand, rng: &copy), start: via[0])
+            guard let t0 = path.first?.t else { continue }
+            strokes.append(path.enumerated().compactMap { i, p in
+                i % 4 == 0 ? [Double(p.p.x + p.p.y * s.slant), Double(p.p.y), clock + p.t - t0, 0.5] : nil
+            })
+            clock += (path.last?.t ?? t0) - t0 + 0.15
         }
+        return SignatureSample(strokes: strokes)
+    }
+
+    /// Shared by generated and learned signatures. Geometry and time are separate, as in handwriting models:
+    /// - the line is a smooth centripetal spline through the via-points (corners swept without stops), low-pass
+    ///   filtered like a fast hand, with this copy's smooth drift, size, slant and angle;
+    /// - the pen's speed along that line comes from the sigma-lognormal model (overlapping lognormal impulses per
+    ///   movement, real durations when recorded), perturbed for this copy; speed drives width and ink.
+    static func draw(strokes raw: [[CGPoint]], hand: SigmaLognormal.Hand, slant baseSlant: CGFloat, penRatio: CGFloat,
+                     pen: PenType, ink: NSColor, pixelHeight: CGFloat, copy: inout SeededRandom, variation: Double = 1,
+                     durations: [[Double]]? = nil, runOut: Bool = true, smoothing: CGFloat? = nil, sharpCorners: Bool = false,
+                     merge: CGFloat = 0.012, layout: Double? = nil, strokeShift: CGFloat = 0,
+                     capture: (([[PenSample]]) -> Void)? = nil) -> CGImage? {
+        let vary = CGFloat(variation)
+        let jitter: CGFloat = 0.006 * vary
+        let driftA = copy.range(0.02...0.045) * vary, driftX = copy.range(1.1...2.2), driftY = copy.range(0.9...1.8)
+        let driftP1 = copy.range(0...6.28), driftP2 = copy.range(0...6.28)
         let size = pixelHeight * copy.range(0.93...1.07)
-        let slant = s.slant + copy.range(-0.08...0.08), angle = copy.range(-0.06...0.06)
+        // Layout (slant, angle) varies on its own scale: a learned hand keeps its letter shapes (small `variation`)
+        // but its copies still lean and climb differently.
+        let lay = CGFloat(layout ?? variation)
+        let slant = baseSlant + copy.range(-0.08...0.08) * lay, angle = copy.range(-0.06...0.06) * lay
         let xStretch = copy.range(0.94...1.06)
         let ca = cos(angle), sa = sin(angle)
-        let pen = max(2, size * s.pen * copy.range(0.95...1.05))
-        let paths = strokes.map { splineThrough($0) }.map { $0.map { p -> CGPoint in
+        let width = max(2, size * penRatio * copy.range(0.95...1.05))
+        func toPixels(_ p: CGPoint) -> CGPoint {
             let q = CGPoint(x: (p.x + p.y * slant) * size * xStretch, y: p.y * size)
             return CGPoint(x: q.x * ca - q.y * sa, y: q.x * sa + q.y * ca)
-        } }.map { fastHand($0, smoothing: max(pen * 3, size * 0.03)) }.filter { $0.count > 2 }
-        guard !paths.isEmpty else { return nil }
-
-        let all = paths.flatMap { $0 }
-        let minX = all.map(\.x).min()! - pen * 4, maxX = all.map(\.x).max()! + pen * 4
-        let minY = all.map(\.y).min()! - pen * 4, maxY = all.map(\.y).max()! + pen * 4
-        let w = Int((maxX - minX).rounded(.up)), h = Int((maxY - minY).rounded(.up))
-        guard w > 0, h > 0, w < 6000, h < 4000, let out = InkDraw.context(w, h) else { return nil }
-        let shade = shift(ink, &copy)
-
-        for path in paths {
-            let pts = path.map { CGPoint(x: $0.x - minX, y: $0.y - minY) }
-            // Speed from curvature (two-thirds power law: v ∝ curvature^(−1/3)), smoothed; the samples are evenly
-            // spaced along the path. Fast parts are thinner and lighter, tight turns slightly heavier.
-            let n = pts.count
-            var curvature = [CGFloat](repeating: 0, count: n)
-            // Curvature over a few pen widths: neighbouring pixels give numerical noise that makes the line flicker.
-            let span = max(3, Int(size * 0.04))
-            for i in 0..<n {
-                let a = pts[max(0, i - span)], b = pts[i], c = pts[min(n - 1, i + span)]
-                let ab = hypot(b.x - a.x, b.y - a.y), bc = hypot(c.x - b.x, c.y - b.y), ac = hypot(c.x - a.x, c.y - a.y)
-                let cross = abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x))
-                curvature[i] = ab * bc * ac > 0 ? 2 * cross / (ab * bc * ac) : 0
-            }
-            let raw = curvature.map { pow($0 * pen + 0.002, -1.0 / 3.0) }
-            let speed = raw.indices.map { i -> CGFloat in
-                let r = max(0, i - span * 2)...min(n - 1, i + span * 2)
-                return raw[r].reduce(0, +) / CGFloat(r.count)
-            }
-            let sorted = speed.sorted()
-            let lo = sorted[Int(Double(n - 1) * 0.1)], hi = max(lo + 0.001, sorted[Int(Double(n - 1) * 0.9)])
-            var width: [CGFloat] = [], alpha: [CGFloat] = []
-            for i in 0..<n {
-                let t = CGFloat(i) / CGFloat(n - 1)
-                let v = min(1, max(0, (speed[i] - lo) / (hi - lo)))
-                // Flying start and finish: the pen lands and lifts while moving.
-                let land = min(1, t / 0.06), lift = min(1, (1 - t) / 0.16)
-                let touch = min(land, lift)
-                width.append(pen * (1.08 - 0.28 * v) * (0.25 + 0.75 * touch))
-                alpha.append(1.0 - 0.22 * v - 0.5 * (1 - touch))
-            }
-            let ribbon = InkDraw.taperedStroke(pts) { t in width[min(width.count - 1, Int((t * CGFloat(width.count - 1)).rounded()))] }
-            // Ink density varies along the stroke without darker overlaps: paint inside the ribbon with "copy",
-            // so each place takes the value of the last segment covering it, then add the stroke to the page.
-            guard let layer = InkDraw.context(w, h) else { continue }
-            layer.addPath(ribbon)
-            layer.clip()
-            layer.setBlendMode(.copy)
-            layer.setLineCap(.round)
-            layer.setLineWidth(pen * 3)
-            for i in 1..<pts.count {
-                layer.setStrokeColor(shade.withAlphaComponent(max(0.15, alpha[i])).cgColor)
-                layer.move(to: pts[i - 1])
-                layer.addLine(to: pts[i])
-                layer.strokePath()
-            }
-            if let image = layer.makeImage() { out.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h)) }
-            // An occasional ink blob where the ball first touched the paper.
-            if copy.chance(0.2) {
-                let r = pen * copy.range(0.45...0.7)
-                out.setFillColor(shade.withAlphaComponent(0.85).cgColor)
-                out.fillEllipse(in: CGRect(x: pts[0].x - r, y: pts[0].y - r, width: 2 * r, height: 2 * r))
-            }
         }
-        guard let image = out.makeImage() else { return nil }
-        let texture = InkTexture.Strength(pressure: copy.range(0.06...0.16), gaps: copy.range(0.01...0.035),
-                                          bleed: copy.range(0.25...0.4), alongX: copy.range(0.04...0.12))
-        return InkDraw.trim(InkTexture.apply(image, seed: copy.next(), strength: texture))
+        var trajectories: [[PenSample]] = []
+        for (index, stroke) in raw.enumerated() {
+            // After a pen lift the next part lands a little elsewhere each time.
+            let shift = CGPoint(x: copy.range(-1...1) * strokeShift, y: copy.range(-1...1) * strokeShift)
+            var via: [CGPoint] = []
+            var corners = Set<Int>()
+            for p in stroke {
+                if let last = via.last, hypot(last.x - p.x, last.y - p.y) < merge { corners.insert(via.count - 1); continue }
+                via.append(p)
+            }
+            via = via.map { p in
+                CGPoint(x: p.x + shift.x + driftA * sin(p.y / driftY * 2 * .pi + driftP1) + copy.range(-jitter...jitter),
+                        y: p.y + shift.y + driftA * sin(p.x / driftX * 2 * .pi + driftP2) + copy.range(-jitter...jitter))
+            }
+            guard via.count > 1 else {
+                if let p = via.first { trajectories.append([PenSample(p: toPixels(p), t: 0, speed: 0, direction: 0)]) }
+                continue
+            }
+            // Geometry: smooth line in pixels, about one pixel between samples.
+            // Sharp corners (learned signatures): the spline is broken at cusps, which a real hand makes by reversing.
+            var path: [CGPoint] = []
+            if sharpCorners, !corners.isEmpty {
+                var start = 0
+                for c in corners.sorted() + [via.count - 1] where c > start {
+                    let piece = splineThrough(Array(via[start...c]))
+                    path += path.isEmpty ? piece : Array(piece.dropFirst())
+                    start = c
+                }
+            } else { path = splineThrough(via) }
+            let line = fastHand(path.map(toPixels), smoothing: smoothing.map { size * $0 } ?? max(width * 3, size * 0.03), runOut: runOut)
+            guard line.count > 2 else { continue }
+            var lengths: [CGFloat] = [0]
+            for i in 1..<line.count { lengths.append(lengths[i - 1] + hypot(line[i].x - line[i - 1].x, line[i].y - line[i - 1].y)) }
+            let total = max(1e-6, lengths.last!)
+            // Time: lognormal impulses for the movements between via-points (this copy's timing perturbed).
+            var comps = SigmaLognormal.components(via: via, corners: corners, durations: durations?[safe: index], hand: hand, rng: &copy)
+            comps = SigmaLognormal.perturb(comps, amount: variation, rng: &copy)
+            let profile = SigmaLognormal.speedProfile(comps)
+            let travel = profile.reduce(0) { $0 + $1.1 }
+            guard travel > 0 else { continue }
+            // Walk the line at the model's speed: distance travelled so far → position on the line.
+            var samples: [PenSample] = []
+            var done: CGFloat = 0
+            var j = 0
+            for (t, v) in profile {
+                done += v
+                let s = total * min(1, done / travel)
+                while j < line.count - 2, lengths[j + 1] < s { j += 1 }
+                let seg = max(1e-6, lengths[j + 1] - lengths[j]), u = (s - lengths[j]) / seg
+                let p = CGPoint(x: line[j].x + (line[j + 1].x - line[j].x) * u, y: line[j].y + (line[j + 1].y - line[j].y) * u)
+                let dir = atan2(line[j + 1].y - line[j].y, line[j + 1].x - line[j].x)
+                samples.append(PenSample(p: p, t: t, speed: v / travel * total, direction: dir))
+            }
+            if samples.count > 1 { trajectories.append(samples) }
+        }
+        guard !trajectories.isEmpty else { return nil }
+        capture?(trajectories)   // measurement (SignatureBench): the pen's path and timing in pixels
+        // Above the usual capital height (130 px) the same pen is drawn at a higher resolution, not a finer pen.
+        return PenRenderer.draw(trajectories, pen: pen, width: width, ink: shift(ink, &copy), rng: &copy, scale: max(1, pixelHeight / 130))
     }
 
     /// The hand at speed: even spacing along the path (about one pixel), a short straight run-out where the pen
     /// lifts, and a low-pass filter over a few pen widths — fast movements carry no small wobbles.
-    private static func fastHand(_ path: [CGPoint], smoothing: CGFloat) -> [CGPoint] {
+    private static func fastHand(_ path: [CGPoint], smoothing: CGFloat, runOut: Bool = true) -> [CGPoint] {
         guard path.count > 2 else { return path }
         var p = path
         let a = p[p.count - 2], b = p[p.count - 1], d = max(0.001, hypot(b.x - a.x, b.y - a.y))
-        p.append(CGPoint(x: b.x + (b.x - a.x) / d * smoothing * 3, y: b.y + (b.y - a.y) / d * smoothing * 3))
+        if runOut { p.append(CGPoint(x: b.x + (b.x - a.x) / d * smoothing * 3, y: b.y + (b.y - a.y) / d * smoothing * 3)) }
         var even: [CGPoint] = [p[0]]
         var carry: CGFloat = 0
         for i in 1..<p.count {
@@ -453,6 +562,6 @@ public enum SignatureGenerator {
         c.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
         return NSColor(hue: (h + copy.range(-0.01...0.01) + 1).truncatingRemainder(dividingBy: 1),
                        saturation: min(1, max(0, s * copy.range(0.92...1.08))),
-                       brightness: min(1, max(0, b + copy.range(-0.05...0.05))), alpha: a)
+                       brightness: min(1, max(0, b + copy.range(-0.05...0.02))), alpha: a)
     }
 }

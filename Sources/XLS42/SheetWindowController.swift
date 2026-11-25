@@ -19,6 +19,7 @@ final class SheetWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     var lastAlertMessage: String?
     /// Tests: the last hyperlink opened (links aren't opened while alerts are suppressed).
     var lastOpenedLink: String?
+    var lastCreatedLabelSource: LabelSource?
     /// Status bar: selection statistics and zoom (View › Status Bar).
     let statusBar = NSVisualEffectView()
     private var statusBarHeight: NSLayoutConstraint?
@@ -1203,6 +1204,8 @@ final class SheetWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
         let style = sheet[grid.active].style
         switch item.action {
+        case #selector(insertTechnicalElementAction(_:)): return !sheet.isProtected
+        case #selector(editTechnicalElementAction(_:)): return !sheet.isProtected && selectedTechnicalElement != nil
         case #selector(toggleAllPanelsAction(_:)):
             item.title = Panels.allHidden(in: window) ? L("Show All Panels") : L("Hide All Panels")
         case #selector(toggleFormulaBarAction(_:)):

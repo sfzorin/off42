@@ -1,4 +1,5 @@
 import AppKit
+import CoreText
 import Kit42
 import PDFKit
 
@@ -76,8 +77,11 @@ enum PageGeometry {
     static func contentBox(_ page: PDFPage) -> CGRect? {
         let media = page.bounds(for: .mediaBox)
         let scale: CGFloat = 1.5
+        guard media.width.isFinite, media.height.isFinite, media.width > 0, media.height > 0,
+              media.width * scale < 40_000_000, media.height * scale < 40_000_000,
+              media.width * media.height * scale * scale < 40_000_000 else { return nil }
         let w = Int(media.width * scale), h = Int(media.height * scale)
-        guard w > 0, h > 0, w * h < 40_000_000,
+        guard w > 0, h > 0,
               let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w, space: CGColorSpaceCreateDeviceGray(),
                                   bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return nil }
         ctx.setFillColor(gray: 1, alpha: 1)
@@ -127,41 +131,65 @@ enum PageGeometry {
         return paperSizes.first { abs($0.1.width - s.width) < 2 && abs($0.1.height - s.height) < 2 }?.0
     }
 
+    private static func resizedFont(_ font: NSFont, to size: CGFloat) -> NSFont {
+        // A system UI font has a special AppKit identity, not a loadable PostScript name. A CoreText
+        // resize turns it into a private SF font that PDFKit resolves as Helvetica when assigning it.
+        // Recreate UI fonts through AppKit's factory, keeping their weight, width and italic trait.
+        if font.familyName == NSFont.systemFont(ofSize: font.pointSize).familyName {
+            let traits = font.fontDescriptor.object(forKey: .traits) as? [NSFontDescriptor.TraitKey: Any] ?? [:]
+            let weight = CGFloat((traits[.weight] as? NSNumber)?.doubleValue ?? 0)
+            let width = CGFloat((traits[.width] as? NSNumber)?.doubleValue ?? 0)
+            let resized = NSFont.systemFont(ofSize: size, weight: .init(rawValue: weight), width: .init(rawValue: width))
+            if font.fontDescriptor.symbolicTraits.contains(.italic) {
+                return NSFontManager.shared.convert(resized, toHaveTrait: .italicFontMask)
+            }
+            return resized
+        }
+        return CTFontCreateCopyWithAttributes(font as CTFont, size, nil, nil) as NSFont
+    }
+
     /// New page of `size` (as displayed) with the old page's visible content scaled to fit and centred.
     /// Annotations move with the content (their rectangles are scaled).
     static func scaled(_ page: PDFPage, to size: CGSize) -> PDFPage? {
         let crop = page.bounds(for: .cropBox)
+        guard size.width.isFinite, size.height.isFinite, size.width >= 36, size.height >= 36,
+              size.width <= 14400, size.height <= 14400, crop.width.isFinite, crop.height.isFinite,
+              crop.width > 0, crop.height > 0 else { return nil }
         let rotation = page.rotation
-        let quarter = rotation % 180 != 0
-        let target = quarter ? CGSize(width: size.height, height: size.width) : size   // page space, before /Rotate
+        let target = rotation % 180 != 0 ? CGSize(width: size.height, height: size.width) : size
         let k = min(target.width / crop.width, target.height / crop.height)
         let dx = (target.width - crop.width * k) / 2, dy = (target.height - crop.height * k) / 2
         let transform = CGAffineTransform(translationX: dx, y: dy).scaledBy(x: k, y: k).translatedBy(x: -crop.minX, y: -crop.minY)
-        let annotations = page.annotations.filter { !($0 is LinkBorderMarker) }
-        page.annotations.forEach { page.removeAnnotation($0) }
-        page.rotation = 0
-        defer { page.rotation = rotation }
         let data = NSMutableData()
         var box = CGRect(origin: .zero, size: target)
-        guard let consumer = CGDataConsumer(data: data), let ctx = CGContext(consumer: consumer, mediaBox: &box, nil) else {
-            annotations.forEach { page.addAnnotation($0) }
-            return nil
-        }
+        guard let consumer = CGDataConsumer(data: data), let ctx = CGContext(consumer: consumer, mediaBox: &box, nil) else { return nil }
         ctx.beginPDFPage(nil)
         ctx.saveGState()
         ctx.concatenate(transform)
         ctx.clip(to: crop)
-        page.draw(with: .mediaBox, to: ctx)
+        if let reference = page.pageRef { ctx.drawPDFPage(reference) }
         ctx.restoreGState()
         ctx.endPDFPage()
         ctx.closePDF()
-        annotations.forEach { page.addAnnotation($0) }
         guard let newPage = PDFDocument(data: data as Data)?.page(at: 0) else { return nil }
         newPage.rotation = rotation
-        for a in annotations {
-            guard let copy = a.copy() as? PDFAnnotation else { continue }
+        for a in page.annotations where !(a is LinkBorderMarker) {
+            guard let copy = a.duplicateForEditing(on: newPage) else { return nil }
             copy.bounds = a.bounds.applying(transform)
-            if let border = copy.border, !(copy.isKind(.link)) { border.lineWidth *= k }
+            if let border = copy.border { border.lineWidth *= k }
+            if let font = a.font { copy.font = resizedFont(font, to: font.pointSize * k) }
+            let local = CGAffineTransform(scaleX: k, y: k)
+            if a.isMarkup, let points = a.quadrilateralPoints, !points.isEmpty { copy.quadrilateralPoints = points.map { NSValue(point: $0.pointValue.applying(local)) } }
+            if a.isKind(.line) { copy.startPoint = a.startPoint.applying(local); copy.endPoint = a.endPoint.applying(local) }
+            if let paths = a.paths {
+                copy.paths?.forEach { copy.remove($0) }
+                for original in paths {
+                    guard let path = original.copy() as? NSBezierPath else { continue }
+                    path.transform(using: AffineTransform(m11: k, m12: 0, m21: 0, m22: k, tX: 0, tY: 0))
+                    path.lineWidth *= k
+                    copy.add(path)
+                }
+            }
             newPage.addAnnotation(copy)
         }
         return newPage
@@ -189,6 +217,7 @@ extension EditorWindowController {
             return f
         }
         let left = field(m.0), top = field(m.1), right = field(m.2), bottom = field(m.3)
+        let originalValues = [m.0, m.1, m.2, m.3], originalStrings = [left, top, right, bottom].map(\.stringValue)
         let marginRow1 = NSStackView(views: [NSTextField(labelWithString: L("Left")), left, NSTextField(labelWithString: L("Right")), right])
         let marginRow2 = NSStackView(views: [NSTextField(labelWithString: L("Top")), top, NSTextField(labelWithString: L("Bottom")), bottom])
         let auto = NSButton(checkboxWithTitle: L("Remove white margins automatically (margins above are added around the content)"), target: nil, action: nil)
@@ -207,7 +236,14 @@ extension EditorWindowController {
             NSSound.beep()
             return
         }
-        func value(_ f: NSTextField) -> CGFloat { max(0, CGFloat(Double(f.stringValue.replacingOccurrences(of: ",", with: ".")) ?? 0)) * PageGeometry.mm }
+        let fields = [left, top, right, bottom]
+        var values = originalValues
+        for (i, field) in fields.enumerated() where response == .alertFirstButtonReturn {
+            if field.stringValue == originalStrings[i] { continue }
+            guard let n = Double(field.stringValue.replacingOccurrences(of: ",", with: ".")), n.isFinite, n >= 0, n <= 100000 else { NSSound.beep(); return }
+            values[i] = n * PageGeometry.mm
+        }
+        func value(_ field: NSTextField) -> CGFloat { values[fields.firstIndex { $0 === field }!] }
         var boxes: [(PDFPage, CGRect)] = []
         for i in targets {
             guard let p = pdf.page(at: i) else { continue }
@@ -220,6 +256,8 @@ extension EditorWindowController {
                                                left: -value(left), top: -value(top), right: -value(right), bottom: -value(bottom))
                 boxes.append((p, out.intersection(media)))
             } else {
+                let shown = EditorWindowController.displayedSize(p)
+                guard value(left) + value(right) < shown.width - 10, value(top) + value(bottom) < shown.height - 10 else { NSSound.beep(); return }
                 boxes.append((p, PageGeometry.cropBox(media: media, rotation: p.rotation, left: value(left), top: value(top),
                                                       right: value(right), bottom: value(bottom))))
             }
@@ -229,7 +267,11 @@ extension EditorWindowController {
 
     /// Sets crop boxes (undoable); optionally marks the content outside for removal on save.
     func setCropBoxes(_ boxes: [(PDFPage, CGRect)], removeOutside: Bool, name: String) {
-        let state: [(PDFPage, CGRect, [PDFAnnotation])] = boxes.map { page, rect in
+        guard let pdf else { return }
+        let valid = boxes.filter { page, rect in
+            pdf.index(for: page) != NSNotFound && rect.origin.x.isFinite && rect.origin.y.isFinite && rect.width.isFinite && rect.height.isFinite && rect.width > 0 && rect.height > 0
+        }
+        let state: [(PDFPage, CGRect, [PDFAnnotation])] = valid.map { page, rect in
             // Earlier removal marks follow the new crop box.
             let had = page.annotations.contains { $0 is CropRemovalOverlay }
             let marks = removeOutside || had ? PageGeometry.strips(media: page.bounds(for: .mediaBox), crop: rect).map { CropRemovalOverlay(bounds: $0) } : []
@@ -240,6 +282,7 @@ extension EditorWindowController {
 
     private func setCropState(_ state: [(PDFPage, CGRect, [PDFAnnotation])], name: String) {
         let old = state.map { s in (s.0, s.0.bounds(for: .cropBox), s.0.annotations.filter { $0 is CropRemovalOverlay }) }
+        guard zip(old, state).contains(where: { $0.0.1 != $0.1.1 || $0.0.2.map(\.bounds) != $0.1.2.map(\.bounds) }) else { return }
         for (page, rect, marks) in state {
             page.setBounds(rect, for: .cropBox)
             page.annotations.filter { $0 is CropRemovalOverlay }.forEach { page.removeAnnotation($0) }
@@ -258,7 +301,7 @@ extension EditorWindowController {
         let size = NSPopUpButton(frame: .zero, pullsDown: false)
         size.addItems(withTitles: PageGeometry.paperSizes.map(\.0) + [L("Custom")])
         let current = EditorWindowController.displayedSize(page)
-        size.selectItem(at: PageGeometry.paperSizes.firstIndex { $0.0 == PageGeometry.paperName(current) } ?? 1)
+        size.selectItem(at: PageGeometry.paperSizes.firstIndex { $0.0 == PageGeometry.paperName(current) } ?? PageGeometry.paperSizes.count)
         let width = NSTextField(string: String(format: "%.0f", current.width / PageGeometry.mm))
         let height = NSTextField(string: String(format: "%.0f", current.height / PageGeometry.mm))
         for f in [width, height] { f.translatesAutoresizingMaskIntoConstraints = false; f.widthAnchor.constraint(equalToConstant: 60).isActive = true }
@@ -296,17 +339,42 @@ extension EditorWindowController {
 
     /// orientation: 0 as the page, 1 portrait, 2 landscape.
     func resizePages(_ indices: [Int], to size: CGSize, orientation: Int, scale: Bool) {
-        guard let pdf else { return }
+        guard let pdf, size.width.isFinite, size.height.isFinite, size.width >= 36, size.height >= 36,
+              size.width <= 14400, size.height <= 14400 else { return }
         prepareForSave()
+        let chosen = Array(Set(indices.filter { $0 >= 0 && $0 < pdf.pageCount })).sorted()
+        let needsBake = scale && chosen.contains { pdf.page(at: $0)?.annotations.contains { $0 is PageOverlay || $0.isWhiteout } == true }
+        var source = pdf
+        if needsBake {
+            guard let bytes = PageOverlay.bakedData(pdf), let snapshot = PDFDocument(data: bytes) else {
+                presentError(NSError(domain: NSCocoaErrorDomain, code: NSFileWriteUnknownError)); return
+            }
+            source = snapshot
+        }
         var replacements: [(Int, PDFPage)] = []
         var boxes: [(PDFPage, CGRect, CGRect)] = []
-        for i in indices {
+        for i in chosen {
             guard let page = pdf.page(at: i) else { continue }
             let shown = EditorWindowController.displayedSize(page)
             let landscape = orientation == 0 ? shown.width > shown.height : orientation == 2
             let s = landscape == (size.width > size.height) ? size : CGSize(width: size.height, height: size.width)
             if scale {
-                if let p = PageGeometry.scaled(page, to: s) { replacements.append((i, p)) }
+                guard let input = source.page(at: i), let p = PageGeometry.scaled(input, to: s) else { return }
+                if needsBake {
+                    let areas = page.annotations.flatMap { ($0 as? PageOverlay)?.redactionAreas ?? ($0.isWhiteout ? [RedactionArea(rect: $0.bounds, fill: (1, 1, 1))] : []) }
+                    let crop = page.bounds(for: .cropBox), target = p.bounds(for: .mediaBox)
+                    let k = min(target.width / crop.width, target.height / crop.height)
+                    let t = CGAffineTransform(translationX: (target.width - crop.width * k) / 2, y: (target.height - crop.height * k) / 2)
+                        .scaledBy(x: k, y: k).translatedBy(x: -crop.minX, y: -crop.minY)
+                    for marker in page.annotations where marker is TemporaryHighlight && !areas.contains(where: { $0.rect.intersects(marker.bounds) }) {
+                        if let copy = marker.duplicateForEditing(on: p) {
+                            copy.bounds = marker.bounds.applying(t)
+                            copy.quadrilateralPoints = marker.quadrilateralPoints?.map { NSValue(point: $0.pointValue.applying(CGAffineTransform(scaleX: k, y: k))) }
+                            p.addAnnotation(copy)
+                        }
+                    }
+                }
+                replacements.append((i, p))
             } else {
                 // The canvas grows or shrinks around the visible area's centre.
                 let crop = page.bounds(for: .cropBox)
@@ -334,14 +402,51 @@ extension EditorWindowController {
 
     /// Swaps pages (undoable); outline entries and links follow the new pages.
     func swapPages(_ replacements: [(Int, PDFPage)], name: String) {
+        swapPages(replacements, name: name, restoringExtras: nil)
+    }
+
+    private func swapPages(_ replacements: [(Int, PDFPage)], name: String, restoringExtras: DocumentExtras?) {
         guard let pdf else { return }
-        let old = replacements.compactMap { r in pdf.page(at: r.0).map { (r.0, $0) } }
+        var seen = Set<Int>()
+        let valid = replacements.filter { $0.0 >= 0 && $0.0 < pdf.pageCount && seen.insert($0.0).inserted }
+        guard !valid.isEmpty else { return }
+        let old = valid.compactMap { r in pdf.page(at: r.0).map { (r.0, $0) } }
+        let current = currentIndex, selected = targetIndices, previousExtras = pdfDoc?.extras
+        var adjusted = restoringExtras ?? previousExtras
+        if restoringExtras == nil {
+            for (index, replacement) in valid {
+                guard let previous = pdf.page(at: index) else { continue }
+                let oldLinks = previous.annotations.filter { $0.isKind(.link) }, newLinks = replacement.annotations.filter { $0.isKind(.link) }
+                if oldLinks.count == newLinks.count {
+                    for (before, after) in zip(oldLinks, newLinks) {
+                        let fit = adjusted?.linkFit.removeValue(forKey: ObjectIdentifier(before))
+                        if let fit { adjusted?.linkFit[ObjectIdentifier(after)] = fit }
+                    }
+                }
+                let oldFiles = previous.annotations.filter { $0.kind == "FileAttachment" }, newFiles = replacement.annotations.filter { $0.kind == "FileAttachment" }
+                let previousFiles = adjusted?.annotationFiles ?? []
+                let remappedFiles: [AnnotationFile] = previousFiles.compactMap { file in
+                    guard file.page == index else { return file }
+                    let at = oldFiles.firstIndex { $0 === file.annotation || $0.bounds == file.rect }
+                    let match: PDFAnnotation?
+                    if oldFiles.count == newFiles.count, let at { match = newFiles[at] }
+                    else { match = newFiles.first { $0.bounds == file.rect } }
+                    guard let match else { return nil }
+                    var moved = file; moved.annotation = match; moved.rect = match.bounds; return moved
+                }
+                adjusted?.annotationFiles = remappedFiles
+            }
+        }
         pdfView.selectAnnotation(nil)
-        PageOverlay.replace(replacements, in: pdf)
+        PageOverlay.replace(valid, in: pdf)
+        if let adjusted { pdfDoc?.extras = adjusted }
         pdfView.layoutDocumentView()
+        if let page = pdf.page(at: min(current, pdf.pageCount - 1)) { pdfView.go(to: page) }
         sidebar.thumbnails.reload()
+        sidebar.thumbnails.selectPages(selected.compactMap { pdf.page(at: $0) })
         sidebar.reloadOutline()
-        undo?.registerUndo(withTarget: self) { $0.swapPages(old, name: name) }
+        sidebar.reloadAttachments()
+        undo?.registerUndo(withTarget: self) { $0.swapPages(old, name: name, restoringExtras: previousExtras) }
         undo?.setActionName(name)
         updateSubtitleNow()
     }

@@ -19,13 +19,18 @@ enum ScannerStatus: Equatable {
         case .ready: return L("Ready")
         case .warmingUp: return L("The scanner is warming up…")
         case .busy: return L("The scanner is busy")
-        case .scanning(let p): return p > 0 ? L("Scanning… %d%%", Int(p)) : L("Scanning…")
+        case .scanning(let p): return p.isFinite && p > 0 ? L("Scanning… %d%%", Int(min(100, p))) : L("Scanning…")
         case .error(let s): return s
         case .offline: return L("The scanner is not available")
         }
     }
 
     var canScan: Bool { self == .ready }
+
+    static func afterWarmUp(selectingSource: Bool, acquiring: Bool) -> ScannerStatus {
+        if selectingSource { return .busy }
+        return acquiring ? .scanning(0) : .ready
+    }
 }
 
 /// One scan job: where, how big, how fine.
@@ -63,10 +68,15 @@ protocol ScannerBackend: AnyObject {
 
     func open()
     func close()
+    func prepare(source: ScanSource, completion: @escaping (Error?) -> Void)
     func overview(_ completion: @escaping (Result<CGImage, Error>) -> Void)
     /// `page` is called for each page (a feeder sends several), then `done` once.
     func scan(_ request: ScanRequest, page: @escaping (RawScan) -> Void, done: @escaping (Error?) -> Void)
     func cancel()
+}
+
+extension ScannerBackend {
+    func prepare(source: ScanSource, completion: @escaping (Error?) -> Void) { completion(nil) }
 }
 
 struct ScanError: LocalizedError {
@@ -150,6 +160,7 @@ final class DeviceManager: NSObject, ICDeviceBrowserDelegate {
     }
 
     func deviceBrowser(_ browser: ICDeviceBrowser, didRemove device: ICDevice, moreGoing: Bool) {
+        scanners.filter { ($0 as? ICScanner)?.device === device }.forEach { $0.close() }
         scanners.removeAll { ($0 as? ICScanner)?.device === device }
         if !moreGoing { onChange() }
     }
@@ -173,6 +184,7 @@ final class ICScanner: NSObject, ScannerBackend, ICScannerDeviceDelegate {
     private var scanPage: ((RawScan) -> Void)?
     private var scanDone: ((Error?) -> Void)?
     private var scanDPI = 300.0
+    private var requestGeneration = UUID()
     private var progressTimer: Timer?
     private let folder = FileManager.default.temporaryDirectory.appendingPathComponent("SCN42-\(UUID().uuidString)", isDirectory: true)
 
@@ -237,7 +249,10 @@ final class ICScanner: NSObject, ScannerBackend, ICScannerDeviceDelegate {
     }
 
     func open() {
-        guard !device.hasOpenSession else { status = .ready; return }
+        guard !device.hasOpenSession else {
+            if status == .offline || status == .connecting { status = .ready }
+            return
+        }
         status = .connecting
         device.delegate = self
         device.requestOpenSession()
@@ -245,6 +260,8 @@ final class ICScanner: NSObject, ScannerBackend, ICScannerDeviceDelegate {
 
     func close() {
         progressTimer?.invalidate()
+        finishPending(ScanError(message: L("The scanner is not available")))
+        status = .offline
         if device.hasOpenSession { device.requestCloseSession() }
         try? FileManager.default.removeItem(at: folder)
     }
@@ -262,11 +279,35 @@ final class ICScanner: NSObject, ScannerBackend, ICScannerDeviceDelegate {
         device.requestSelect(type)
     }
 
+    func prepare(source: ScanSource, completion: @escaping (Error?) -> Void) {
+        guard status.canScan, sources.contains(source) else {
+            completion(ScanError(message: status.text)); return
+        }
+        status = .busy
+        select(source) { [weak self] error in
+            self?.status = error.map { .error(ScanError.describe($0)) } ?? .ready
+            completion(error)
+        }
+    }
+
+    private func finishPending(_ error: Error) {
+        progressTimer?.invalidate()
+        let selection = pendingSelect, overview = overviewDone, scan = scanDone
+        pendingSelect = []; overviewDone = nil; scanDone = nil; scanPage = nil
+        selection.forEach { $0(error) }
+        overview?(.failure(error)); scan?(error)
+    }
+
     func overview(_ completion: @escaping (Result<CGImage, Error>) -> Void) {
+        guard status.canScan else { completion(.failure(ScanError(message: status.text))); return }
+        requestGeneration = UUID(); let token = requestGeneration
+        status = .busy
         select(.flatbed) { [self] error in
-            if let error { completion(.failure(error)); return }
+            if let error { status = .error(ScanError.describe(error)); completion(.failure(error)); return }
+            guard requestGeneration == token else { completion(.failure(ScanError(message: L("The scan was cancelled.")))); return }
             let fu = device.selectedFunctionalUnit
             guard fu.canPerformOverviewScan else {
+                status = .ready
                 completion(.failure(ScanError(message: L("This scanner cannot make an overview scan."))))
                 return
             }
@@ -279,8 +320,15 @@ final class ICScanner: NSObject, ScannerBackend, ICScannerDeviceDelegate {
     }
 
     func scan(_ request: ScanRequest, page: @escaping (RawScan) -> Void, done: @escaping (Error?) -> Void) {
+        guard status.canScan else { done(ScanError(message: status.text)); return }
+        guard (50...4800).contains(request.resolution), sources.contains(request.source),
+              request.area.minX.isFinite, request.area.minY.isFinite, request.area.width.isFinite, request.area.height.isFinite,
+              request.area.width > 0, request.area.height > 0 else { done(CocoaError(.coderInvalidValue)); return }
+        requestGeneration = UUID(); let token = requestGeneration
+        status = .busy
         select(request.source) { [self] error in
-            if let error { done(error); return }
+            if let error { status = .error(ScanError.describe(error)); done(error); return }
+            guard requestGeneration == token else { done(ScanError(message: L("The scan was cancelled."))); return }
             let fu = device.selectedFunctionalUnit
             if fu.supportedMeasurementUnits.contains(Int(ICScannerMeasurementUnit.inches.rawValue)) { fu.measurementUnit = .inches }
             let wanted = request.resolution
@@ -313,7 +361,11 @@ final class ICScanner: NSObject, ScannerBackend, ICScannerDeviceDelegate {
         }
     }
 
-    func cancel() { device.cancelScan() }
+    func cancel() {
+        requestGeneration = UUID()
+        device.cancelScan()
+        finishPending(ScanError(message: L("The scan was cancelled.")))
+    }
 
     private func documentType(_ paper: CGSize?) -> ICScannerDocumentType? {
         guard let paper else { return nil }
@@ -339,18 +391,25 @@ final class ICScanner: NSObject, ScannerBackend, ICScannerDeviceDelegate {
         if let error { status = .error(ScanError.describe(error)) } else { status = .ready }
     }
 
-    func device(_ device: ICDevice, didCloseSessionWithError error: Error?) { status = .offline }
-    func didRemove(_ device: ICDevice) { status = .offline }
+    func device(_ device: ICDevice, didCloseSessionWithError error: Error?) {
+        status = .offline; finishPending(error ?? ScanError(message: L("The scanner is not available")))
+    }
+    func didRemove(_ device: ICDevice) {
+        status = .offline; finishPending(ScanError(message: L("The scanner is not available")))
+    }
     func deviceDidBecomeReady(_ device: ICDevice) { if status == .connecting { status = .ready } }
 
     func device(_ device: ICDevice, didEncounterError error: Error?) {
-        if let error { status = .error(ScanError.describe(error)) }
+        if let error { status = .error(ScanError.describe(error)); finishPending(error) }
     }
 
     func device(_ device: ICDevice, didReceiveStatusInformation info: [ICDeviceStatus: Any]) {
         guard let note = info[.statusNotificationKey] as? String else { return }
         if note == ICScannerStatusWarmingUp { status = .warmingUp }
-        else if note == ICScannerStatusWarmUpDone { status = .ready }
+        else if note == ICScannerStatusWarmUpDone {
+            guard device.hasOpenSession else { return }
+            status = .afterWarmUp(selectingSource: !pendingSelect.isEmpty, acquiring: scanDone != nil || overviewDone != nil)
+        }
     }
 
     // ICScannerDeviceDelegate
@@ -359,11 +418,17 @@ final class ICScanner: NSObject, ScannerBackend, ICScannerDeviceDelegate {
         let waiting = pendingSelect
         pendingSelect = []
         waiting.forEach { $0(error) }
+        if waiting.isEmpty, scanDone == nil, overviewDone == nil, device.hasOpenSession {
+            status = error.map { .error(ScanError.describe($0)) } ?? .ready
+        }
     }
 
     func scannerDevice(_ scanner: ICScannerDevice, didScanTo url: URL) {
         defer { try? FileManager.default.removeItem(at: url) }
-        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil), let image = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCache: true] as CFDictionary) else { return }
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil), let image = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCache: true] as CFDictionary) else {
+            let error = CocoaError(.fileReadCorruptFile)
+            status = .error(error.localizedDescription); finishPending(error); device.cancelScan(); return
+        }
         // Decode now: the file is removed.
         let copy = Bitmap(image, gray: image.colorSpace?.model == .monochrome).cgImage() ?? image
         scanPage?(RawScan(image: copy, dpi: scanDPI))
@@ -403,9 +468,14 @@ final class FakeScanner: ScannerBackend {
     private var feeder: [URL] = []
     private var glassIndex = 0
     private var warmedUp = false
-    private var cancelled = false
+    private var generation = UUID()
+    private var overviewDone: ((Result<CGImage, Error>) -> Void)?
+    private var scanDone: ((Error?) -> Void)?
     /// Seconds per page (`K42_FAKE_SPEED`).
-    private let pageTime = Double(ProcessInfo.processInfo.environment["K42_FAKE_SPEED"] ?? "") ?? 0.35
+    private let pageTime: Double = {
+        let t = Double(ProcessInfo.processInfo.environment["K42_FAKE_SPEED"] ?? "") ?? 0.35
+        return t.isFinite ? min(30, max(0, t)) : 0.35
+    }()
 
     init(folder: URL) {
         self.folder = folder
@@ -415,7 +485,7 @@ final class FakeScanner: ScannerBackend {
         glass = files.filter { $0.lastPathComponent.lowercased().hasPrefix("glass") }
         feeder = files.filter { let n = $0.lastPathComponent.lowercased(); return n.hasPrefix("feed") || n.hasPrefix("page") }
         if glass.isEmpty && feeder.isEmpty { glass = files; feeder = files }
-        if let start = ProcessInfo.processInfo.environment["K42_FAKE_GLASS"].flatMap(Int.init) { glassIndex = start }
+        if let start = ProcessInfo.processInfo.environment["K42_FAKE_GLASS"].flatMap(Int.init) { glassIndex = max(0, start) % max(1, glass.count) }
     }
 
     var id: String { "virtual:" + folder.path }
@@ -435,7 +505,7 @@ final class FakeScanner: ScannerBackend {
     private static func load(_ url: URL) -> RawScan? {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil), let image = CGImageSourceCreateImageAtIndex(src, 0, nil) else { return nil }
         let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any]
-        let dpi = (props?[kCGImagePropertyDPIWidth] as? Double).flatMap { $0 > 10 && abs($0 - 72) > 0.5 ? $0 : nil } ?? 200
+        let dpi = (props?[kCGImagePropertyDPIWidth] as? Double).flatMap { $0.isFinite && $0 > 10 && abs($0 - 72) > 0.5 ? $0 : nil } ?? 200
         return RawScan(image: image, dpi: dpi)
     }
 
@@ -445,66 +515,88 @@ final class FakeScanner: ScannerBackend {
     }
 
     func open() {
+        guard status == .offline else { return }
+        generation = UUID()
+        let token = generation
         status = .connecting
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { self.status = .ready }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            guard self.generation == token, self.status == .connecting else { return }
+            self.status = .ready
+        }
     }
 
-    func close() { status = .offline }
+    func close() { cancel(); generation = UUID(); status = .offline }
 
-    private func warmUp(_ then: @escaping () -> Void) {
+    private func warmUp(_ token: UUID, _ then: @escaping () -> Void) {
         guard !warmedUp, ProcessInfo.processInfo.environment["K42_FAKE_WARMUP"] != nil else { warmedUp = true; then(); return }
         warmedUp = true
         status = .warmingUp
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { then() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { if self.generation == token { then() } }
     }
 
     func overview(_ completion: @escaping (Result<CGImage, Error>) -> Void) {
+        guard status.canScan else { completion(.failure(ScanError(message: status.text))); return }
         guard let url = currentGlass, let raw = FakeScanner.load(url) else {
             completion(.failure(ScanError(message: L("This part of the scanner (glass or feeder) is not available."))))
             return
         }
-        warmUp { [self] in
+        generation = UUID(); let token = generation
+        overviewDone = completion
+        warmUp(token) { [self] in
             status = .scanning(0)
             DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + pageTime) {
                 let s = 75 / raw.dpi
                 let img = Bitmap(raw.image, gray: false).resized(width: Int(Double(raw.image.width) * s), height: Int(Double(raw.image.height) * s)).cgImage()
                 DispatchQueue.main.async {
+                    guard self.generation == token else { return }
                     self.status = .ready
-                    if let img { completion(.success(img)) } else { completion(.failure(ScanError(message: L("The scanner sent no overview image.")))) }
+                    let done = self.overviewDone; self.overviewDone = nil
+                    if let img { done?(.success(img)) } else { done?(.failure(ScanError(message: L("The scanner sent no overview image.")))) }
                 }
             }
         }
     }
 
     func scan(_ request: ScanRequest, page: @escaping (RawScan) -> Void, done: @escaping (Error?) -> Void) {
-        cancelled = false
+        guard status.canScan else { done(ScanError(message: status.text)); return }
+        guard (50...4800).contains(request.resolution), request.area.minX.isFinite, request.area.minY.isFinite,
+              request.area.width.isFinite, request.area.height.isFinite, request.area.width > 0, request.area.height > 0 else {
+            done(CocoaError(.coderInvalidValue)); return
+        }
         let urls: [URL]
         switch request.source {
         case .feeder:
             if feeder.isEmpty { done(ScanError(message: L("The document feeder is empty. Put the pages in and press Scan."))); return }
             // Simplex scans every other file (the front sides); duplex scans them all.
-            urls = request.duplex ? feeder : feeder.enumerated().filter { $0.offset % 2 == 0 || !feederHasBacks }.map(\.element)
+            urls = request.duplex ? feeder : feeder.filter { !Self.isBackSide($0) }
         default:
             guard let g = currentGlass else { done(ScanError(message: L("This part of the scanner (glass or feeder) is not available."))); return }
             urls = [g]
         }
-        warmUp { [self] in
+        generation = UUID(); let token = generation
+        scanDone = done
+        warmUp(token) { [self] in
             status = .scanning(0)
             let queue = DispatchQueue.global(qos: .userInitiated)
             func step(_ i: Int) {
-                guard i < urls.count, !cancelled else {
-                    DispatchQueue.main.async {
-                        self.status = .ready
-                        if request.source == .flatbed && request.lastInJob { self.glassIndex += 1 }
-                        done(self.cancelled ? ScanError(message: L("The scan was cancelled.")) : nil)
-                    }
+                guard self.generation == token else { return }
+                guard i < urls.count else {
+                    self.status = .ready
+                    if request.source == .flatbed && request.lastInJob { self.glassIndex = (self.glassIndex + 1) % max(1, self.glass.count) }
+                    let completion = self.scanDone; self.scanDone = nil; completion?(nil)
                     return
                 }
                 queue.asyncAfter(deadline: .now() + pageTime) {
                     let result = FakeScanner.load(urls[i]).flatMap { self.simulate($0, request) }
                     DispatchQueue.main.async {
+                        guard self.generation == token else { return }
+                        guard let result else {
+                            self.status = .ready
+                            let completion = self.scanDone; self.scanDone = nil
+                            completion?(CocoaError(.fileReadCorruptFile)); return
+                        }
                         self.status = .scanning(Double(i + 1) / Double(urls.count) * 100)
-                        if let result { page(result) }
+                        page(result)
                         step(i + 1)
                     }
                 }
@@ -514,9 +606,16 @@ final class FakeScanner: ScannerBackend {
     }
 
     /// Simplex skips back sides only when the files say they are backs (`feed-02b.png`).
-    private var feederHasBacks: Bool { feeder.contains { $0.deletingPathExtension().lastPathComponent.lowercased().hasSuffix("b") } }
+    private static func isBackSide(_ url: URL) -> Bool { url.deletingPathExtension().lastPathComponent.lowercased().hasSuffix("b") }
 
-    func cancel() { cancelled = true }
+    func cancel() {
+        generation = UUID()
+        let overview = overviewDone, scan = scanDone
+        overviewDone = nil; scanDone = nil
+        if status != .offline { status = .ready }
+        let error = ScanError(message: L("The scan was cancelled."))
+        overview?(.failure(error)); scan?(error)
+    }
 
     /// Area crop, resampling to the requested resolution and the colour mode, like a scanner would deliver.
     private func simulate(_ raw: RawScan, _ r: ScanRequest) -> RawScan? {
@@ -524,12 +623,16 @@ final class FakeScanner: ScannerBackend {
         if r.source == .flatbed {
             let w = CGFloat(image.width), h = CGFloat(image.height)
             let a = r.area.intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
+            guard !a.isNull, !a.isEmpty else { return nil }
             let px = CGRect(x: a.minX * w, y: a.minY * h, width: a.width * w, height: a.height * h).integral
-            if let c = image.cropping(to: px) { image = c }
+            guard let c = image.cropping(to: px) else { return nil }; image = c
         }
         let s = Double(r.resolution) / raw.dpi
+        let width = Double(image.width) * s, height = Double(image.height) * s
+        guard width.isFinite, height.isFinite, width >= 1, height >= 1, width <= 32768, height <= 32768,
+              width * height <= 256_000_000 else { return nil }
         let gray = r.colorMode != .color
-        let bmp = Bitmap(image, gray: gray).resized(width: max(1, Int(Double(image.width) * s)), height: max(1, Int(Double(image.height) * s)))
+        let bmp = Bitmap(image, gray: gray).resized(width: Int(width), height: Int(height))
         guard let out = bmp.cgImage() else { return nil }
         return RawScan(image: out, dpi: Double(r.resolution))
     }

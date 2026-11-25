@@ -19,7 +19,8 @@ final class LiveTextHost: NSView, ImageAnalysisOverlayViewDelegate {
     /// The image the current analysis belongs to, and a few recent ones (flipping back is instant).
     private(set) var analysedImage: CGImage?
     private var cache: [(image: CGImage, analysis: ImageAnalysis)] = []
-    private var waiting: [() -> Void] = []
+    private var waiting: [@MainActor () -> Void] = []
+    private var isAnalyzing = false
 
     override var isFlipped: Bool { true }
 
@@ -51,6 +52,8 @@ final class LiveTextHost: NSView, ImageAnalysisOverlayViewDelegate {
     func analyze(_ image: CGImage?) {
         guard image !== analysedImage else { return }
         task?.cancel()
+        waiting.removeAll()
+        isAnalyzing = false
         overlay.resetSelection()
         overlay.analysis = nil
         analysedImage = image
@@ -61,11 +64,13 @@ final class LiveTextHost: NSView, ImageAnalysisOverlayViewDelegate {
             return
         }
         let analyzer = analyzer
+        isAnalyzing = true
         var config = ImageAnalyzer.Configuration([.text, .machineReadableCode])
         config.locales = Self.languages
         task = Task { @MainActor [weak self] in
             let analysis = try? await analyzer.analyze(image, orientation: .up, configuration: config)
             guard let self, !Task.isCancelled, self.analysedImage === image else { return }
+            self.isAnalyzing = false
             if let analysis {
                 self.overlay.analysis = analysis
                 self.cache.append((image, analysis))
@@ -76,8 +81,8 @@ final class LiveTextHost: NSView, ImageAnalysisOverlayViewDelegate {
     }
 
     /// Calls `done` once the current image's analysis has finished (debug hooks).
-    func whenAnalysed(_ done: @escaping () -> Void) {
-        if overlay.analysis != nil || analysedImage == nil { done() } else { waiting.append(done) }
+    func whenAnalysed(_ done: @escaping @MainActor () -> Void) {
+        if !isAnalyzing { done() } else { waiting.append(done) }
     }
 
     private func flushWaiting() {
@@ -145,6 +150,12 @@ final class LiveTextHost: NSView, ImageAnalysisOverlayViewDelegate {
         if let keyTarget { keyTarget.keyDown(with: event) } else { super.keyDown(with: event) }
     }
 
+    override func cancelOperation(_ sender: Any?) {
+        guard overlay.hasActiveTextSelection else { super.cancelOperation(sender); return }
+        overlay.resetSelection()
+        onSelectionChange?()
+    }
+
     // MARK: ImageAnalysisOverlayViewDelegate
 
     func contentsRect(for overlayView: ImageAnalysisOverlayView) -> CGRect { CGRect(x: 0, y: 0, width: 1, height: 1) }
@@ -155,8 +166,11 @@ final class LiveTextHost: NSView, ImageAnalysisOverlayViewDelegate {
     }
 
     func overlayView(_ overlayView: ImageAnalysisOverlayView, shouldHandleKeyDownEvent event: NSEvent) -> Bool {
-        // ⌘C / ⌘A go through the Edit menu (window controller); everything else to the canvas.
-        false
+        // VisionKit does not forward a rejected key to this host's keyDown. Clear its selection here,
+        // and handle the standard cancelOperation route above when the text responder interprets Escape.
+        if event.keyCode == 53, overlayView.hasActiveTextSelection { cancelOperation(nil) }
+        // ⌘C / ⌘A go through the Edit menu (window controller).
+        return false
     }
 
     func textSelectionDidChange(_ overlayView: ImageAnalysisOverlayView) { onSelectionChange?() }

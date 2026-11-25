@@ -1,36 +1,90 @@
 # Suite42 — PDF42 · DOC42 · XLS42 · IMG42 · PPT42 · SCN42
 
-A small native office suite for macOS: six apps that share one menu system and design (the Kit42 library).
-Core editing works offline and uses Apple's system frameworks, with no third-party runtime packages.
-Network features, such as trusted signature timestamps and opening web links, need a connection.
-Interface in English, Russian and Turkish.
+Suite42 is a suite of six native apps for **macOS and Windows**, covering documents, spreadsheets, presentations,
+PDFs, images and scanning. The macOS apps are written in Swift and share Kit42 for menus, toolbars, language
+selection, signatures and stamps. The Windows apps use a separate Rust implementation and native Windows controls.
+Available features, file-format support and runtime dependencies depend on the platform.
+
+Core editing works offline. The macOS implementation uses Apple's system frameworks; barcode generation uses
+a bundled, licensed bwip-js encoder. No separate runtime installation is needed for that encoder.
+The macOS interface is available in **20 languages**: English, Simplified Chinese, Traditional Chinese (Taiwan), Spanish,
+Arabic, French, Portuguese, Indonesian, Russian, German, Japanese, Vietnamese, Turkish, Filipino, Korean, Thai,
+Italian, Polish, Malay and Hungarian. Network features in the macOS apps, such as trusted signature timestamps and opening web links,
+need a connection.
+
+The format table and detailed app descriptions below cover the **macOS implementation**.
+The separate Rust/Windows workspace documents its own formats, build instructions and current limits.
 
 | App | For | Opens | Saves |
 |---|---|---|---|
 | **PDF42** | reading, editing, signing PDFs | PDF, images | PDF (also signed, compressed, password-protected), DOCX, RTF, HTML, TXT, PNG/JPEG |
-| **DOC42** | documents | DOCX, DOC, RTF, ODT, Markdown, TXT, HTML | the same + PDF |
-| **XLS42** | spreadsheets | XLSX, XLS (97–2003), ODS, CSV/TSV | XLSX, ODS, CSV, PDF |
+| **DOC42** | rich documents and page layout | DOCX, DOC, RTF, ODT, Markdown, TXT, HTML | the same + PDF |
+| **XLS42** | spreadsheets, formulas and charts | XLSX, XLS (97–2003), ODS, CSV/TSV | XLSX, ODS, CSV, PDF |
 | **IMG42** | viewing and quick editing of images | JPEG, PNG, HEIC, AVIF, WebP, GIF, TIFF, PSD, RAW, SVG, PDF, … | writable original formats; PNG, JPEG, HEIC, TIFF, AVIF where supported |
 | **PPT42** | presentations and slide shows | PPTX, ODP (PPT: a message suggesting conversion) | PPTX/ODP, POTX/OTP templates, PDF (slides, notes pages), PNG/JPEG, outline RTF/Markdown, MP4/MOV |
-| **SCN42** | scanning (replaces Image Capture) | scanners (USB, network, AirScan), iPhone/iPad camera, images, PDF | searchable PDF, PDF/A-style, multi-page TIFF, JPEG, PNG, HEIC, TXT/RTF |
+| **SCN42** | scanning, page cleanup and OCR | scanners (USB, network, AirScan), iPhone/iPad camera, images, PDF | searchable PDF, PDF/A-style, multi-page TIFF, JPEG, PNG, HEIC, TXT/RTF |
 
-**По-русски.** Набор из шести программ для macOS: PDF42 (PDF: правка, подписи, сжатие), DOC42 (тексты Word/ODT/RTF/
-Markdown), XLS42 (таблицы Excel/ODS/CSV), IMG42 (просмотр и простая правка изображений), PPT42 (презентации PPTX/ODP, показ слайдов) и SCN42 (сканирование: сканеры и iPhone, автообрезка, распознавание текста, PDF). Основные операции работают без интернета,
-интерфейс на английском, русском и турецком.
+## What's new on macOS
+
+- **Symbols, codes and labels on macOS.** PDF42, DOC42 and XLS42 share Insert → Symbol or Code and File → Create Labels. QR, Data Matrix, Code 128 and Aztec codes retain editable values after saving. Label sheets use selected spreadsheet rows, document content/tables or a PDF page/region; printer calibration lives in the native print panel. These commands are optional toolbar items.
+- **Twenty languages across all six apps.** Bundled translations, native language names in the welcome-screen
+  picker, shared language preference and localized Quick Look previews. Interface language is independent of
+  document content, OCR language support and formula syntax.
+- **Your signature, from your samples.** Draw in the signature pad or import a scan or photo, then create new copies
+  with ballpoint, gel, fountain or felt-tip ink. Name-based signatures and 132 editable stamp templates remain in the
+  shared library; each insertion creates a fresh impression.
+- **Deeper editing and file checks.** Recent work covers PDF markup, redaction, forms and page operations;
+  XLS42 protected cells, arrays, dates and file round trips; DOC42 rulers and complete-document pagination;
+  and PPT42 text, tables, object geometry, slide shows and export. Regression scenarios exercise native controls,
+  Undo/Redo and saved output. [STATUS.md](STATUS.md) identifies the tested binaries, results and remaining gaps.
+
+## Labels and technical codes (macOS)
+
+Use **Insert → Symbol or Code…** to add a mark or barcode at a width in millimetres. The mark list has 97 entries
+grouped by category: conformity marks (CE, UKCA, UKNI, FCC, UL, ETL, CCC, EAC, KC, RCM, BIS, BSMI, NOM, ANATEL,
+GOST-R, INMETRO, GS, VDE, ENEC, PSE, CSA), electrical safety (IEC 60417/ISO 7000 symbols), environmental (WEEE,
+RoHS, recycling, energy labels), OSHA GHS hazard pictograms, handling, interface logos and ISO 9001. Under the
+preview the dialog shows each mark's purpose and conditions of use. Inserting a mark is artwork only: it does not
+certify the product, and conformity marks and trademarks need the certificate or licence they stand for. Some
+drawings (marked “unverified”) were withheld by Lably and should be compared with the official artwork.
+Select an inserted object and use **Edit Symbol or Code…** to change it. Recipes survive PDF, DOCX,
+XLSX and ODS saves. Spreadsheet codes capture the current value; they are not linked formulas.
+
+**File → Create Labels…** opens one preview sheet. PDF42 accepts the current page or a drawn region;
+DOC42 accepts selected content, a picture or the current table; XLS42 accepts the selected cells.
+Table sources offer header/visible-row settings, text and code columns, a copies column, and a starting
+position on a partially used sheet. Choose a stock format or custom rectangular A4 grid, save a template,
+then export PDF or print. Preview errors block output instead of truncating data silently.
+XLS42 also offers serial identifiers with prefix, suffix and leading zeroes in **Fill Series…**.
+
+The print panel's calibration accessory applies millimetre offsets and separate X/Y scales, with saved
+printer/paper profiles and a 100 mm measurement sheet. Corrections affect printing, not document geometry
+or normal PDF export. Paper/printer tolerances still require a physical test. New feature strings are
+available in English, Russian and Turkish; other interface languages currently use English fallback.
 
 ## Current status
 
-The [status report dated 2026-11-05](STATUS.md) records the audit fixes, verified builds and tests, known limitations,
-and what has been published. The six local app bundles build successfully; the audit fixes and documentation are
-currently changes in the working tree, not a published release. See the report before treating the GitHub baseline
-or an installed copy as the audited version.
+This README describes the source as of **2026-11-06**. The [status report](STATUS.md) records dated audit results,
+known limitations, source publication and the exact builds installed locally. Publishing source on GitHub does not
+update an installed app or imply a notarized binary release. Use the recorded revision and binary identity when
+matching a test result to an app bundle.
 
-## Install
+## Windows Rust workspace
+
+Suite42 also includes six native Windows apps implemented in a separate Rust workspace. This source snapshot
+contains the Swift/macOS tree; use the Windows workspace's README for build instructions, supported formats and
+runtime dependencies. Windows functionality differs from macOS, and native Windows interaction, printing,
+scanner hardware and PDFium interoperability still require verification on Windows.
+
+<a id="install"></a>
+
+## Build and install on macOS
 
 ```bash
-git clone https://github.com/sfzorin/kit42.git && cd kit42
+git clone https://github.com/sfzorin/off42.git && cd off42
 ./build.sh                  # all apps → build/*.app
 ./build.sh PDF42 install    # one app, plus a copy in /Applications
+SUITE42_BUILD_DIR=build/languages ./build.sh # isolated output directory for verification
 ```
 
 The package declares macOS 14+ and Swift tools 5.9; the verified environment is listed in [STATUS.md](STATUS.md).
@@ -50,34 +104,53 @@ lets you switch extensions off.
 
 ## PDF42 — PDF
 
+The PDF42 audit and local installation recorded on 2026-11-06 use a fixed shared-library revision with EN/RU/TR
+and the existing signature/stamp generators. Concurrent signature-learning, pen-rendering and expanded-language work
+described under Common is outside that installed binary; see [STATUS.md](STATUS.md#pdf42-detailed-follow-up--2026-11-06).
+
 - Reading: thumbnails and contents, zoom, display modes, search, go to page, forms, password-protected files.
 - Pages: add blank pages, delete, rotate, reorder, insert from other PDFs, extract, export as PNG.
+  Move Up/Down and rotation apply to the selected thumbnail pages. Reordering, deletion and insertion restore page order,
+  current page and selection with Undo/Redo; internal destinations and attachment lookup follow page identities.
 - Markup (⇧⌘A): highlight, underline, strikethrough, pencil, shapes, whiteout, text boxes, notes;
-  move and resize, change colour, undo.
+  move and resize, change colour and border width, Undo/Redo. The controls show the selected annotation's effective style;
+  border width applies to rectangles, ellipses, ink and widgets. Text boxes, image stamps, text markup and page-content
+  overlays have no border-width command; image stamps have no recolour action. Escape or choosing another tool cancels
+  an unfinished drag/resize/drawing.
+  Deleting and undoing an annotation preserves its order among overlapping annotations.
 - Text editing: the Edit Text tool (Edit menu, markup bar, or ⌘E with nothing selected) — click a line of page text
   (⌥-click: one word), edit it in place, Return applies, Esc cancels. The original glyphs are covered with white and the
   new text is drawn on the same baseline in the original font (when installed; otherwise Helvetica/Times) and size.
   Double-click to re-edit, undo works; on save the edit is flattened into the page content. A multi-line selection + ⌘E
-  places an editable text box instead. On save the replaced text is truly removed from the file (see Redaction).
+  places an editable text box instead. Moving edited text retains its original source area for removal on Save, as well as
+  covering its new position. Pending in-place text participates in dirty state and is committed before Save/export;
+  an unchanged edit creates no Undo entry. Failed Revert keeps the document and draft; successful Revert cancels pending
+  edits and interactions, restores saved metadata and clears stale Undo. On save the replaced text is removed from the
+  emitted file (see Redaction).
 - Redaction: the Redact tool (Markup menu / markup bar) marks boxes (black, or any colour picked); they can be moved,
   resized, deleted. Markup › Apply Redactions… (after a warning) or saving removes everything under the boxes, under
   edited text and under Whiteout boxes from the file: glyphs are cut out of the text operators (Tj/TJ/'/", all text state
   operators, Form XObjects, Type0/CID 2-byte and embedded-CMap fonts, simple TrueType/Type1 fonts with /Widths or the
   standard 14 metrics, Type3) and replaced by equal TJ offsets, so the rest of the line does not move; image pixels
   under a box are overwritten and the image re-encoded (raw samples in their colour space, JPEG/JPEG 2000 re-encoded);
-  notes, text boxes, markup, links and form fields mostly under a box are dropped; /ActualText of marked content and
+  explicit redaction, whiteout or crop-removal boxes drop an annotation or form field even on partial overlap, so its
+  concealed contents cannot survive; /ActualText of marked content and
   the page thumbnail go too; the file is rewritten without the old objects. Vector graphics stay (under the box).
   Pages that cannot be rewritten safely (vertical text, unknown CMaps, inline images under a box…) become a 300 dpi
   picture with an OCR text layer, and the app says so. CLI: `--redact in out x,y,w,h[@page] … [white]` prints what
-  was removed (so does `--edit-text`).
+  was removed (so does `--edit-text`). Saving/exporting fails if redaction or rendering cannot complete; it does not emit an
+  unredacted fallback. Apply Redactions changes the document that Save writes, with Undo/Redo and retained document parts.
+  Saving itself builds a separate snapshot and preserves the live annotation stack and editor state.
 - Forms: fill existing AcroForm fields with the Select tool (values are saved). Form menu / markup bar: drag to add a
   text field, checkbox or dropdown list with a name (and options); with a form tool, fields can be moved, resized and
-  deleted. Saved as real widgets with an /AcroForm entry and checkbox on/off appearances, fillable in Acrobat and Preview.
+  deleted. Form tools pick widgets without moving unrelated markup; empty values clear text fields. Saved as real widgets
+  with an /AcroForm entry and checkbox on/off appearances, fillable in Acrobat and Preview.
 - Merge Files… (⌥⌘M): PDFs and images in a chosen order → a new document. Split… (File): every N pages,
   by ranges ("1-3, 4-10") or one file per page, into a chosen folder.
 - Page › Watermark…: text (font size, colour, opacity, rotation — diagonal by default) or an image, on all pages or a range.
   Page › Page Numbers…: position, format ("1", "Page 1 of N", "- 1 -"), start number, skip first page, font size, range.
-  Both stay editable (undo, Remove Watermarks and Page Numbers) until saved, then become page content.
+  Their saved representation is page content. In the open editor they remain removable and undoable; reopening the saved
+  file shows the flattened content. Invalid/nonfinite measurements and overflowing number sequences are rejected.
 - File › Compare With…: word-level text differences per page in a list (click to jump); removed/replaced words are
   highlighted in the document. The highlights are not saved unless "Keep highlights when saving" is ticked.
 - Command line (headless): `--watermark in out TEXT [pages]`, `--number-pages in out [format] [position] [skip-first]`,
@@ -87,18 +160,35 @@ lets you switch extensions off.
   Other CLI commands: `--ocr in out`, `--images-to-pdf out images…`, `--export in out.docx|out.txt`,
   `--verify file`, `--sign in identity.p12 password out [visible] [tsa]`.
   `--verify` prints signature statuses; its exit code is not a signature-validity result.
+  Invalid ranges, dimensions and unsupported export formats fail explicitly. Missing/unreadable merge inputs do not
+  produce a partial merged document. Output files are replaced atomically after successful generation; a set of split
+  or batch outputs is not one atomic transaction.
 - Signatures and stamps (⇧⌘K): a library of PNGs/scans, the white background is removed automatically; or create them
-  (see Common › Signature and stamp generator).
+  (see Common › Signature and stamp generator). A picture is not a signature: for one that identifies you and
+  detects changes, use Digital signature below.
+  Inserting shows a preview of this impression (New Impression draws another) and the resolution to draw it at:
+  300, 600 or 1200 dpi (maximum) at its placed width. On a scanned page the scan's own resolution is offered and
+  preselected (detected from the page-sized image); on a page of lines and text the maximum is preselected. Every app
+  uses this dialog: PDF42 detects scans, IMG42 and SCN42 use the image's or scan's resolution, DOC42/XLS42/PPT42 pages
+  are vector. The image is embedded losslessly. Imported SVG/PDF stamps are drawn at 2400 px; a scan cannot become
+  sharper than it is, so for the best result import your stamp as SVG/PDF or a 600-dpi scan.
 - Digital signature (⌥⌘D): standard PDF signature (PKCS#7/CMS, adbe.pkcs7.detached, SHA-256), readable by Acrobat.
   Certificate from the macOS Keychain, .p12 import or a self-signed one. Counter-signing is supported
   (incremental update). Visible signature (select a placed signature image first, or bottom right of the page)
   and RFC 3161 trusted timestamp (default TSA: DigiCert). Verification (⌥⌘V) and a status banner on open.
+  Timestamp addresses must be valid HTTP/HTTPS URLs. Visible-signature images are rendered at 3× resolution with the
+  same 16,384-pixel side and 64,000,000-pixel total limits as image export.
 - Thumbnails: drag to reorder pages, multi-select, drop PDFs/images to insert.
-- OCR (⌥⌘T): Vision (ru/en/tr) adds an invisible searchable text layer to scans. Print selected pages.
+- OCR (⌥⌘T): Vision (ru/en/tr) adds an invisible searchable text layer to scans. It processes a captured document state,
+  preserves the page's annotation appearance and avoids applying a stale result after intervening document changes.
+  Print selected pages.
 - Reduce File Size (File menu): pictures are downsampled (100 / 150 / 220 dpi) and re-encoded as JPEG, text and vector
   graphics stay untouched; the resulting size of every level is shown before choosing (a 17 MB scan → 2–8 MB). Save a
-  compressed copy or compress the open document; a file is never made bigger. CLI: `--compress in out [smallest|balanced|high]`.
-- Export: Word (.docx), RTF, HTML, text, PNG/JPEG pages (72–300 dpi), copy with a password.
+  compressed copy or compress the open document with Undo/Redo. Compression preserves metadata and attachments;
+  when it cannot reduce the size, the CLI still writes the unchanged copy to the requested destination. CLI: `--compress in out [smallest|balanced|high]`.
+- Export: Word (.docx), RTF, HTML, text, PNG/JPEG pages (72–300 dpi), copy with a password. These outputs use the committed,
+  redacted snapshot used by Save. Image exports account for page rotation. Each rendered image is limited to 16,384 pixels
+  per side and 64,000,000 pixels total; the redaction raster fallback has a 32,768-pixel side limit and the same total cap.
 - Import: open PNG/JPEG/HEIC/TIFF as PDF, "New PDF from Images…", insert images as pages.
 - Bookmarks: the sidebar's Contents tab is editable — ⌘D (Insert › Add Bookmark) adds one for the current view (named
   after the selected text, else "Page N"), double-click or Return renames, Delete removes, drag to reorder and nest,
@@ -109,15 +199,21 @@ lets you switch extensions off.
 - Page › Crop… (⌥⌘K) / the Crop tool (drag a rectangle): margins in mm on the current, all, odd, even pages or a range,
   "remove white margins automatically", Remove Crop; sets the CropBox, and optionally deletes the content outside on save
   with the redaction engine. Page › Page Size…: A3/A4/A5/Letter/Legal/Tabloid/custom, scale the content to fit or keep it
-  and extend/trim the canvas.
+  and extend/trim the canvas. Custom sizes remain custom when the dialog opens; invalid margins or dimensions leave the
+  existing geometry intact. Scaling transforms standard annotation bounds, fonts, ink paths and markup quadrilaterals.
+  Pending page-content overlays (edited text, watermark, numbering, header/footer, redaction/whiteout) are baked into the
+  resized page; Undo restores the original page and its editable annotations. Paper dimensions are limited to 14,400 points
+  per side.
 - Links: the Link tool (Insert, markup bar) — drag a rectangle → web address (e-mail becomes mailto:), page (keep zoom,
   whole page, page width) or bookmark, optional visible border; click a link with the tool to edit or delete it.
   Insert › Create Links from URLs finds web and e-mail addresses in the text; View › Show Link Borders. Saved as /Link
   annotations with /URI or /GoTo (PDFKit's broken or wrong page references are repaired on save).
 - File › Properties… (⌥⌘I): title, author, subject, keywords (written to the Info dictionary and XMP: dc:title,
   dc:creator, dc:description, pdf:Keywords…), creator, producer, dates, file and page size, PDF version; Initial View
-  (page layout, panel, open at page and magnification, fit/centre window, show title, hide toolbar/menu bar — also applied
-  when PDF42 opens the file); fonts with embedded/subset state and pages; encryption, permissions, signatures.
+  (page layout, panel, open at page and magnification, fit/centre window, show title, hide toolbar/menu bar); fonts with
+  embedded/subset state and pages; encryption, permissions, signatures. PDF42 applies supported page layouts, sidebar
+  panels, opening page and whole-page/width/height/percentage magnification when opening. Full-screen and the window/title/
+  toolbar/menu-bar preferences are saved for other PDF viewers; they are not applied automatically by PDF42.
 - Attachments: sidebar tab (⌥⌘3) listing embedded files (/EmbeddedFiles) and file attachment annotations; add with
   Insert › Attach File… or by dropping files, save, open, drag out to Finder, delete (undoable).
 - File › Export as PDF/A-2b… (also in Export As…): fonts embedded (pages with non-embedded fonts are redrawn by Quartz,
@@ -127,9 +223,11 @@ lets you switch extensions off.
   (not installed): DeviceCMYK content, optional content and font program details are not converted.
 - Page › Header & Footer…: six positions, codes <<page>> <<pages>> <<label>> <<date>> <<file>> <<bates>>, Bates
   prefix/suffix/digits/start, font, size, colour, margins, page set; optionally the same on other files with continuing
-  Bates numbers. Editable until saved (Page › Remove Headers and Footers), then real page text.
+  Bates numbers. Written as real page text in the saved file; the open editor retains removable/undoable overlays
+  (Page › Remove Headers and Footers).
 - Page › Page Labels…: ranges of logical numbers (1, i, I, a, A, none) with prefix and start (e.g. i–iv, then 1…, "A-1");
-  shown in thumbnails, the title bar and bookmarks, accepted by Go to Page; saved as /PageLabels.
+  shown in thumbnails, the title bar and bookmarks, accepted by Go to Page; saved as /PageLabels. Overflowing labels are
+  rejected or omitted; letter labels requiring more than 4,096 repeated letters display their decimal value.
 - Document-level parts that PDFKit drops when pages are replaced (labels, initial view, attachments, outline) are put
   back on every save.
 - Command line for these: `--bookmarks in out [clear] [headings[:levels]] "Title@page[:b][:i][:#RRGGBB]" ">Child@page"`,
@@ -147,12 +245,13 @@ lets you switch extensions off.
   `K42_ACTION=watermarkAction|pageNumbersAction|splitAction|signDocumentAction|applyRedactionsAction|mergeList|textField|…`
   (opens that dialog for the snapshot; also propertiesAction, pageSizeAction, headerFooterAction, pageLabelsAction,
   bookmarksFromHeadingsAction, linkDialog, cropDialog), `K42_SIDEBAR=outline|attachments`, `K42_LINK_BORDERS=1`,
-  `K42_DO=action,…` (non-modal actions before the snapshot), `K42_PROPERTIES_TAB=n`.
+  `K42_DO=action,…` (non-modal actions before the snapshot), `K42_PROPERTIES_TAB=n`. The native audit also exercises markup,
+  pages/dialogs, core controls and document lifecycle; a panel screenshot alone does not verify an editing tool.
 
 ## XLS42 — spreadsheets (.xlsx, .xls, .ods, .csv)
 
-This section describes the current local source, including the November 5 follow-up fixes. Those changes have not
-been published as a release; dated test results and installed-bundle state are recorded in [STATUS.md](STATUS.md).
+The capabilities below describe the current source. Dated test results and the installed bundle's revision are
+recorded in [STATUS.md](STATUS.md).
 
 - Opens .xlsx, legacy .xls (Excel 97–2003, formulas decompiled), .ods (LibreOffice/OpenOffice) and CSV/TSV
   (UTF-8/UTF-16/Windows-1251, delimiter detection); saves .xlsx, .ods and CSV. The format is detected by content.
@@ -218,8 +317,8 @@ been published as a release; dated test results and installed-bundle state are r
   repetition is disabled for that sheet so the body remains printable. Row Autofit grows and shrinks wrapped rows
   and supports Undo/Redo.
 - Insert › Function… (also the `fx` button by the formula bar, ⇧⌘F): searchable list of all functions grouped by
-  category, with signature, description (en/ru/tr), argument fields and a live result; while typing a formula the
-  signature of the current function is shown above the grid.
+  category, with signature, description in the selected interface language, argument fields and a live result;
+  while typing a formula the signature of the current function is shown above the grid.
 - Data › Validation…: list (values or a range like `=$H$1:$H$5`, drop-down arrow in the cell, ⌥↓), whole number,
   decimal, date, time, text length, custom formula; stop/warning/information messages. Saved to .xlsx and .ods.
 - Data › Pivot Table…: row field, optional column field, value field with Sum/Count/Average/Min/Max on a new sheet
@@ -414,10 +513,18 @@ been published as a release; dated test results and installed-bundle state are r
 
 ## IMG42 — images (everything ImageIO reads, plus SVG and PDF)
 
+The verified local IMG42 installation recorded on 2026-11-06 uses the fixed shared-library base with EN/RU/TR and
+the older signature generator. Newer shared language and signature-learning work described under Common is outside
+that installed binary; see [STATUS.md](STATUS.md#img42-detailed-follow-up--2026-11-06) for the exact tests and limitations.
+
 - Formats: whatever ImageIO decodes on this Mac (asked at runtime) — JPEG, PNG, HEIC/HEIF, AVIF, WebP, GIF, TIFF, BMP,
   ICO/ICNS, PSD, TGA, JPEG 2000, OpenEXR, JPEG XL, camera RAW (CR2/CR3/NEF/ARW/DNG/RAF/ORF…), plus SVG and PDF (pages).
   EXIF orientation is applied. Animated GIF/APNG/WebP/HEICS play; multi-page TIFF and PDF page with ⌥← / ⌥→.
-  A broken file shows a message in the window, and navigation carries on.
+  A broken file shows a message in the window, and navigation carries on. Raster display and edit allocations are
+  limited to 16,384 pixels per side and 100,000,000 pixels total. Larger raster files are shown as a reduced preview;
+  pixel edits use Save As, so ordinary Save cannot replace the full-resolution original with that preview. SVG display
+  is rasterized up to 4,096 pixels on its longest side; PDF pages up to 4,000. Animation loading currently retains at
+  most 2,000 frames, rather than streaming arbitrarily long animations.
 - Flipping through: opening a file shows its whole folder in Finder name order; several files or a folder make the set.
   → / ← (also Space / ⇧Space, Page Up/Down, a mouse wheel notch or a two-finger swipe when the image fits), ⌘↑ / ⌘↓ first/last;
   position "12 / 87" in the subtitle; View › Loop Through Folder; Sort By name, date modified, date taken, size.
@@ -435,7 +542,8 @@ been published as a release; dated test results and installed-bundle state are r
   mouse while viewing or in the Select tool — I-beam over text, drag across words and lines (rotated text too),
   double-click a word, triple-click a line, ⌘A selects all text once some is selected, ⌘C copies, Esc deselects; the
   right-click menu has Look Up, Translate, Search With Google, Copy, Share. Links, phone numbers and e-mail addresses are
-  clickable. Drawing tools and marks keep the mouse (no text selection while drawing).
+  clickable. Drawing tools and marks keep the mouse (no text selection while drawing). Image/query changes invalidate
+  pending recognition results so an old search cannot overwrite the current image's highlights.
 - Markup bar like Preview's: Select; Selection ▾ (rectangular, elliptical, lasso, Smart Lasso, aspect ratios; Crop to Selection ⌘K,
   Delete Selection ⌫, Copy, Invert ⇧⌘I); Instant Alpha (drag on a colour: farther = wider range, then ⌫); Sketch
   (a rough line, box, circle or star becomes a clean shape); Draw; Shapes ▾ (line, arrow, rectangle, rounded rectangle,
@@ -443,10 +551,15 @@ been published as a release; dated test results and installed-bundle state are r
   Adjust Colour; Adjust Size; Shape Style ▾ (width, dashed, arrowheads, shadow, loupe zoom); Border and Fill colour;
   Text Style ▾ (font, size, colour, bold/italic/underline, alignment); Image Description (alt text, saved in the metadata).
   Marks stay objects — select, move, resize with handles, restyle, ⌫ deletes — until the image is saved.
-  Save and Export include text still being edited. Revert to Saved discards pending text, and Undo restores it.
+  Save, Export, Copy, Share and Print include text still being edited. Revert to Saved reads the file before changing
+  the editing session: a failed read keeps the draft, a successful Revert discards it, and Undo restores it.
+  Escape/tool changes cancel unfinished gestures. Style controls are enabled only for properties the selected mark
+  supports. Rotating/flipping moves text-box geometry while keeping its glyphs upright; image stamps rotate/flip their
+  actual bitmap. These editable objects are flattened when written.
 - Smart Lasso: paint a wide stroke around the object's edge (24 pt on screen at any zoom); the selection snaps to the
   edge inside the stroke — colour edges across the band, a two-region fit and Vision's subject mask, joined into one
-  closed path by dynamic programming. Then Crop / Delete / Copy / Invert as with any selection.
+  closed path by dynamic programming. Then Crop / Delete / Copy / Invert as with any selection. Excessive or invalid
+  strokes are rejected; contour resampling is bounded to 20,000 points.
 - Adjust panel (Core Image, live, non-destructive): exposure, brightness, contrast, highlights, shadows, saturation,
   vibrance, temperature, tint, sharpness, vignette; looks (Black & White, Noir, Sepia, Invert); Auto Enhance; double-click
   a slider resets it; hold Show Original to compare; Reset All. One undo step per slider drag.
@@ -454,19 +567,30 @@ been published as a release; dated test results and installed-bundle state are r
   otherwise it becomes an edit. Adjust Size ⌥⌘R (pixels, %, cm, inches, resolution, keep proportions), Remove Background
   (Vision subject lifting), Image Description.
   Switching size units preserves pixel dimensions. With Resample image off, changing resolution changes print size
-  without resizing pixels. DPI changes support Undo/Redo and are written on Save and Export. Invalid size or resolution
-  disables OK. Metadata-only saving attempts to preserve the encoded pixels, with ordinary image writing as a fallback.
+  without resizing pixels; width/height controls are read-only in that mode. DPI changes support Undo/Redo and are
+  written on Save and Export. Invalid size or resolution disables OK. Metadata-only saving attempts to preserve the
+  encoded pixels, with ordinary image writing as a fallback where the input is a writable single full-resolution image.
 - Files: for a writable single still image, Save ⌘S writes markup + adjustments in the original format
   (JPEG quality 0.92, EXIF/GPS kept, orientation reset), asking once before replacing. Pixel edits to animated,
   multi-page or read-only inputs use Save As to export the displayed frame/page. Save As ⇧⌘S and Export ⇧⌘E offer
   PNG, JPEG with quality, HEIC, TIFF and AVIF when supported, with size presets.
+  Save As adopts the chosen file even in a different folder or over an existing member of the image set. Export to
+  another file retains the source URL and editable state; writing over the current file establishes a new baseline.
+  Render/encoding failures report an error and leave an existing destination intact instead of writing an image with
+  missing marks/effects. Transparent pixels are preserved by PNG and composited onto white for JPEG; merely having an
+  RGBA buffer does not force an opaque JPEG edit into PNG.
   Leaving an edited image asks Save / Don't Save / Cancel. Move to Trash ⌘⌫ (undo puts it back), Copy ⌘C (image or
   selection), Show in Finder ⇧⌘R, Open With, Share, Print (fit to page), Open Recent.
+  File-level Undo/Redo for Trash and lossless rotation/flip targets the original file even after navigation; exporting
+  over an already viewed neighbour refreshes its cached image before it is displayed again.
 - Command line (headless): `--info files…`, `--edit in out [--brightness N --contrast N … --look sepia --auto --demo-marks
   --rotate right --flip h --resize WxH --crop x,y,w,h --remove-background --description TEXT]`, `--stats file`
   (mean luminance), `--ocr file`, `--rotate file left|right` (lossless), `--types`, `--smart-lasso in "x,y;…" mask.png
   [radius]` (selection mask for a stroke), `--smart-lasso-eval in [--gt mask.png] [--radius r] [--noise a] [--vis out.png]`
-  (simulated rough strokes around the subject: IoU of plain vs Smart Lasso).
+  (simulated rough strokes around the subject: IoU of plain vs Smart Lasso). Invalid options, nonfinite/out-of-range
+  numbers, missing values and unsupported output extensions return a nonzero exit without replacing the destination.
+  CLI `--edit` refuses a reduced-resolution preview rather than silently exporting it as a full-resolution edit.
+  `--demo-marks` follow subsequent resize/crop operations; `--description ""` explicitly clears the caption.
 - UI checks: `K42_SNAPSHOT=out.png` plus `K42_NEXT=n`, `K42_PAGE=n`, `K42_INFO`, `K42_FILMSTRIP`, `K42_ADJUST`, `K42_MARKUP`,
   `K42_DEMO_MARKS`, `K42_TOOL=n`, `K42_SELECT=rect|ellipse|alpha` (+ `K42_CROP`, `K42_DELETE`), `K42_SEARCH=text`,
   `K42_ZOOM=x`, `K42_STAMPS`, `K42_RESIZE`, `K42_DESCRIPTION`, `K42_FULLSCREEN`, `K42_HIDE_ALL`, `K42_SAVE`, `K42_UNDO`,
@@ -558,61 +682,149 @@ been published as a release; dated test results and installed-bundle state are r
 
 ## SCN42 — scanning (replaces Image Capture)
 
+The verified local SCN42 installation recorded on 2026-11-06 uses a fixed shared-library base with EN/RU/TR and
+the older signature generator. Newer shared language and signature-learning work described under Common is outside
+that installed binary; see [STATUS.md](STATUS.md#scn42-detailed-follow-up--2026-11-06) for exact tests and hardware limits.
+
 One window: pages on the left, a big preview in the middle, a few clear settings and one big **Scan** button on the
 right. Every scan adds pages to the document; save them as one searchable PDF when you are done.
 
-- Scanners: everything Image Capture sees (ImageCaptureCore: USB, network/Bonjour, AirScan/eSCL), picked in the
+- Scanners: devices made available by Image Capture (ImageCaptureCore: USB, network/Bonjour, AirScan/eSCL), picked in the
   toolbar and remembered; status in plain words (connecting, warming up, busy, feeder empty or jammed, needs a driver…).
-  Flatbed, document feeder with duplex, transparency unit. **Scan with iPhone or iPad** (Continuity Camera: Take Photo,
+  Flatbed, document feeder with duplex, transparency unit, subject to the device/driver's capabilities. **Scan with iPhone or iPad** (Continuity Camera: Take Photo,
   Scan Documents) from the toolbar, File menu or welcome window — no scanner needed.
 - Settings: presets Document, Photo, Receipt, Draft plus your own (Scan › Save Settings as Preset…, ⌃⌘1…); source, colour
   (colour / gray / B&W), resolution, paper size (Auto, A4, Letter, Legal, A5, A6, business card, custom). More Options:
-  bit depth, brightness, contrast, B&W threshold, descreen.
+  bit depth, brightness, contrast, B&W threshold, descreen. Device source selection completes before using that source's
+  resolution, duplex and paper capabilities; pending selection preserves the requested DPI/duplex. Switching source
+  during a job prepares the next source when that job finishes. Invalid custom paper sizes and nonfinite values cannot start a scan.
 - Overview (⇧⌘B) shows the glass; drag to mark one or several scan areas (move, resize by the corners, ⌫ deletes; hand-drawn
   areas are remembered). **Separate photos on the glass**: the photos are found on the overview (glass background +
-  Vision rectangles) and each one becomes its own straight image.
+  Vision rectangles) and each one becomes its own straight image. Areas stay within the glass; changing source or device
+  clears an obsolete overview. Stop Scanning rejects late scanner callbacks while already received pages can finish
+  processing. Cancelling a Copy job does not print the partially received document.
 - After scanning (Core Image + Vision, in the background while the scanner goes on): crop to the page and straighten
   (perspective correction; text-line deskew for feeder pages), turn sideways / upside-down pages upright (text direction),
   remove blank pages (ink coverage + tone), document clean-up (paper made white: shadows, yellowing and uneven light
-  divided out; sharper text; adaptive B&W; border clean-up), photo auto-enhance.
+  divided out; sharper text; adaptive B&W; border clean-up), photo auto-enhance. Automatic B&W retains existing black
+  ink even on an already binary page. Invalid geometry, failed processing or failed OCR reports an error; it is not
+  recorded as successfully processed pixels or successfully recognized empty text.
+- Import: File › Import and dropping files add raster images and every page of TIFF/PDF, in source order. UI raster
+  import applies EXIF orientation and bounds the decoded image to 6,000 pixels on the longest side; usable source DPI
+  is reduced proportionally to preserve physical page size. PDFs are rasterized at up to 250 dpi, also bounded to
+  6,000 pixels on the longest side with matching effective DPI. Imports reject locked, corrupt or invalid pages instead
+  of silently adding only the readable subset. A multi-page input is limited to 2,000 pages. An animated image imported
+  through the UI contributes its first frame.
 - Pages: thumbnails with drag-to-reorder, drop images/PDFs to insert, rotate ⌘L/⌘R, delete ⌘⌫, move ⌥⌘↑/↓, Rescan Page ⌥⌘B,
   Insert Next Scan After This Page, Split Document Here (rest goes to a new window), Enhance ⌥⌘E, colour per page,
   Crop and Straighten Again, Remove Blank Pages. Rotation, reordering, deletion, rescan and image adjustments support Undo;
   OCR does not. Dropping before the first thumbnail inserts at the start. Rescan replaces its selected page after
-  processing and cannot start while another scan or its image processing is still running.
+  processing and cannot start while another scan or its image processing is still running. Selection and insertion
+  anchors follow page identity through reordering. Undo restores page pixels, processing options, text, dimensions and
+  selection; returning to the saved content clears the unsaved marker. Unchanged commands do not add an Undo entry.
+  Pages created by Split are independent from those retained in the original window.
 - Text: Recognize Text ⌥⌘R (Vision, Russian/English/Turkish + your languages): invisible text layer in PDFs (searchable,
-  selectable), Copy Text ⇧⌘C, Export Text (.txt, .rtf).
+  selectable), Copy Text ⇧⌘C, Export Text (.txt, .rtf). Text exports use top-to-bottom, then left-to-right reading order.
+  Pixel edits invalidate old OCR. Delayed recognition or cleanup results cannot overwrite edited, removed or replaced
+  pages; failed recognition does not mark an empty result as cached text.
 - Saving ⌘S: PDF (one file or one per page), PDF/A-style (XMP pdfaid 2B, sRGB output intent), multi-page TIFF (B&W as 1-bit
   CCITT G4), JPEG/HEIC (quality), PNG. File size presets (lossless / 300 / 200 / 150 dpi with JPEG) with the expected size
-  shown before saving; JPEG data goes into the PDF unchanged, B&W pages stay 1-bit. Name templates (`Scan YYYY-MM-DD HH-mm`,
+  shown before saving; the prepared JPEG stream is embedded without another encoding pass (the source may already
+  have been processed/resampled/recompressed), and B&W pages stay 1-bit. Name templates (`Scan YYYY-MM-DD HH-mm`,
   counter `{n}`, first line of text `{title}`), folder (default ~/Documents/Scans), then open in PDF42, IMG42, Finder or the
   default app. Export… (any name/place/format), Share, Send by Mail, Print, **Copy** ⌥⌘P (scan and print N copies
   on the default printer).
-  Saving writes a snapshot: later scans, edits or OCR results remain unsaved. Close is blocked while scanning or image
-  processing is pending; after that, Close → Save closes only after a successful save with no remaining changes.
+  Saving writes a snapshot: later scans, edits or OCR results remain unsaved. Undo during a write is compared to the
+  actual saved snapshot on completion; Redo to that snapshot becomes clean. Close is blocked while scanning or image
+  processing is pending; after that, Close → Save closes only after a successful save with no remaining changes. Shared
+  busy state disables conflicting scan/import/save operations while the active job finishes. Saved history records the
+  actual exported snapshot. PDF compression keeps the original physical page size and OCR placement when resampling.
   Each output file is replaced only after successful encoding; a multi-file export is not one atomic transaction.
-- History (⌥⌘3): saved scans with thumbnails; double-click opens, right-click reveals or removes.
+- Signature or Stamp ⇧⌘K (Tools menu, optional toolbar item): pick a signature or stamp from the shared library or
+  generator (each insertion is a new impression), place it over the shown page — drag to move, drag a corner to resize
+  keeping proportions, arrows nudge — and press Return or **Print into Page** (Esc cancels). The mark is printed into
+  the page pixels with multiply blending, like ink on paper: text under it stays visible, and it becomes part of the
+  scan in every saved format, including PDF (no annotation or separate layer). Both the shown page and the original
+  behind clean-up get it, so changing clean-up/colour or Crop and Straighten Again keeps the mark; gray pages stay gray
+  and B&W pages stay 1-bit. One Undo step removes it. Showing another page drops an unfinished placement.
+- History (⌥⌘3): saved scans with thumbnails; double-click opens, right-click reveals or removes the history entry.
+  Removing an entry or clearing History does not delete the saved document.
 - Command line (headless, nothing scans for real): `--make-test-inputs dir` (skewed page on a grey glass with a shadow,
   three photos on the glass, feeder pages: blank with noise, skewed, upside down, yellowed, sideways), `--process in out.png|out.jpg
   [--crop --deskew --rotate --enhance --photo --gray --bw --dpi n]`, `--pipeline dir|files… out.pdf [--ocr --text out.txt|out.rtf --remove-blank --compress
   original|high|balanced|smallest --bw --gray --pdfa --format tiff|jpeg|png|heic]` (prints crop angle and box, deskew,
   rotation, ink, blank, OCR sample, sizes), `--detect-photos glass.png [outdir]`, `--fake-scan dir out.pdf [--feeder --duplex
   --photos --dpi n]`, `--list-devices [s]` (read-only discovery), `--name template`.
+  Raster CLI input keeps its full resolution within 32,768 pixels per side and 256,000,000 pixels; oversized input is
+  rejected. PDF CLI input uses the bounded PDF rasterizer described above. `--process` accepts one page; `--pipeline`
+  handles multi-page inputs. Unknown, duplicate, incompatible or incomplete flags and invalid values fail before writing.
+  Without `--format`, an unsupported output extension is rejected; an explicit pipeline `--format` chooses the output
+  format and its actual extension. Explicit `--dpi` accepts finite values from 1 to 2,400 (whole numbers for fake scans).
+  Processing and rendering have the same 32,768-side/256-million-pixel allocation bound, which includes standard Legal
+  paper at 1,200 dpi. Cleanup and geometric rendering use 8-bit channels, or 1-bit B&W; scanner acquisition bit depth
+  does not promise high-bit-depth preservation through those operations.
 - Virtual scanner: `K42_FAKE_SCANNER=dir` replaces Image Capture with a scanner that "scans" the images in `dir` (`glass*`
   for the flatbed in turn, `feed*` for the feeder; areas, resolution, colour, duplex, `K42_FAKE_WARMUP`, `K42_FAKE_SPEED`).
   UI checks: `K42_SNAPSHOT` with `K42_AUTOSCAN=flatbed|feeder|overview|photos`, `K42_DEMO_PAGES=n`, `K42_SHOW=history|settings|more|glass`,
   `K42_SOURCE=feeder` (+ `K42_DUPLEX`, `K42_REMOVE_BLANK`), `K42_PRESET=n`, `K42_SAVE_NOW` (+ `K42_SAVE_FORMAT`, `K42_SAVE_OCR`),
   `K42_SAVE_SHEET`, `K42_ACTIONS="select:2,rotateRight,moveUp,undo,…"`, `K42_CONTINUITY_TEST=file` (private pasteboard),
   `K42_PRINT_TEST`, `K42_DUMP_MENUS`, `K42_WELCOME`, `K42_SCAN_DIR` (saves and history go there), `K42_WATCHDOG=s`.
+  `--selftest` exercises deterministic page, processing and output invariants. Native control scenarios and real Vision
+  fixtures run through `python3 scripts/audit-ui.py --app SCN42`; independent saved-file checks run through
+  `python3 scripts/audit-scans-cli.py --binary .build/debug/SCN42` (Pillow and pypdf required). Exact results belong in STATUS. A virtual scan, a
+  successful model fixture or a generated Print-to-PDF file does not verify physical scanner drivers, duplex hardware,
+  Continuity Camera, Share/Mail delivery or a physical printer. PDF/A-style output is not a certified conformance claim.
+  Unsaved scans still have no document recovery autosave.
 
 ## Common
 
-- Signature and stamp generator (in the Signatures and Stamps popover of PDF42, DOC42, IMG42, PPT42 and XLS42).
+- Signature and stamp generator (in the Signatures and Stamps popover of PDF42, DOC42, IMG42, PPT42 and XLS42; SCN42 prints marks into the page pixels).
+  **A picture of a signature or stamp is not a signature.** It proves nothing about who placed it or whether the
+  document changed afterwards; anyone can draw the same in any image editor. Use these marks only for yourself and for
+  organisations you are entitled to sign for, where a picture is accepted (a copy for the record, a form that asks for
+  it). When the signature has to mean something, sign digitally (PDF42 › Sign Document, ⌥⌘D): the certificate
+  identifies the signer and any later change breaks the signature.
   **Create Signature…**: one or more names (one per line), a form — full name, initial and surname, surname,
   initials and a scribble, capital and a scribble, or any — and three styles out of 1320 (plan × flourish × capital variant × how
-  the initial joins), New Variants (⌘R) for three more. Signatures are written by a kinematic model of a fast hand with
-  a ballpoint pen: hand-drawn centre lines for Latin, Cyrillic and Turkish letters, a smooth spline without stops,
-  speed from curvature (two-thirds power law) setting line width and ink, flying starts and finishes.
+  the initial joins), New Variants (⌘R) for three more, and a pen: ballpoint, gel, fountain or felt-tip.
+  Signatures are written by a model of a fast hand: hand-drawn centre lines for Latin, Cyrillic and Turkish letters
+  with alternative forms of many lowercase letters, a smooth line through the letters, and the pen's speed along it
+  from the sigma-lognormal model of rapid movements. Delayed strokes come after the word as real writers add them:
+  i-dots, t-bars, the breve of й and ğ, the two dots (or one dash) of ё, ö, ü — some styles leave them out. Letters
+  get smaller, flatter and simpler towards the end of a word; most styles climb 2–8°, about one in eight runs level.
+  Between copies the letter shapes stay close while the layout varies (how far the line climbs, run-out and flourish
+  length). A strike-through flourish crosses only the foot of the capital. Speed and direction set the ink: a dense
+  ballpoint line, wider and darker on downstrokes, a full-width touch-down and a tapering lift, rare short skips at
+  the fastest parts, blobs where the pen is slow and fine striations; for a fountain pen, width follows the stroke
+  angle; paper fibres under every pen.
+  **My Signature…** learns your own signature: sign in the box a few times (trackpad or mouse, recorded with time and
+  pressure), open a scan or photo, or take a sketch or photo from an iPhone or iPad (Continuity). New copies combine
+  compatible samples with small variations in movement and ink. Pad input supplies stroke timing, and copies are
+  re-drawn from it by the pen model. Copies of a signature learned from pictures are made from the ink of the samples
+  themselves: one sample (larger, sharper ones more often) is bent the way a hand varies — slant, width, a slight
+  turn, a smooth bend — inked again in the chosen colour with the pen's texture, so tips, loops and dense crossings
+  stay as written. The sample pictures are kept with the recipe in the local library (grey, at most 800 px tall). A
+  copy cannot be sharper than its sample: a signature cut from a photo of a whole sheet looks soft when placed
+  large; scans or close-up photos work best, and 5–10 different samples give the variety. A photo of a sheet
+  signed many times is split into its signatures automatically (ink found against the local paper, only on the
+  paper; fragments, two signatures written into each other and ones cut by the edge are left out), and each becomes
+  a sample. Samples and the chosen pen are stored locally in the library recipe.
+  `PDF42 --signature-bench DIR [designs copies] [--check]` measures the generator with metrics from handwriting
+  research — normalized jerk, velocity peaks, hesitation (near-stops), line wobble, DTW distance between copies and
+  between styles, and whether Vision reads legible forms — against fluent, laboured and shaky reference trajectories;
+  `--check` exits 1 when timing, wobble or variability leave the recorded thresholds.
+  `PDF42 --signature-blindtest REAL_DIR OUT_DIR [copies]` prepares a blind test for people: each real signature
+  picture in REAL_DIR (your own, or with the owner's consent) is learned and generated `copies` times, and real and
+  generated are shuffled into numbered cells of `sheet.pdf` with the same grey ink, size and darkness; `key.json`
+  keeps the answers. `PDF42 --signature-blindtest-score key.json answers.txt` scores the numbers a tester marked as
+  generated: accuracy, hits, false alarms and d′ (0 = indistinguishable).
+  `PDF42 --signature-fidelity INPUT… OUT [--check]` measures learning on a person's sample sheet(s): every third
+  signature is held out, the rest are learned, and copies are compared with the held-out real ones after the same
+  tracing at the same ink size — shape ratio (copies vs real distance to unseen signatures), variation ratio, outliers
+  unlike any real signature, and proportions, slant, line width, path length, strokes and sharp turns in units of the
+  real spread (wobble is reported only: on photos it is dominated by the camera). It writes the split signatures,
+  the copies, a blind-test sheet and `report.md`. `PDF42 --signature-fidelity-synthetic OUT` runs the same on a
+  generated sheet with traps (no real person's data) and is part of `audit-ui.py --mode tests --app PDF42`.
   **Create Stamp…**: 132 stamp and seal styles in 15 categories (Russia and CIS, Europe, UK and Ireland, Turkey,
   USA and Canada, Hong Kong and Taiwan — including the company chop with a signature line and the small round
   chop —, mainland China, Japan, Korea, India, Middle East, Latin America, office stamps, date and registration
@@ -624,8 +836,12 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   signature or stamp with different pen pressure and ink shade, slightly different size, slant and angle (signatures
   ±2°; round stamps 2–8°, rectangular 0.3–2°), uneven pad pressure, grain, skips and sometimes a faint double
   strike. `PDF42 --mark-samples DIR` writes a sample sheet of every form, style and an imported SVG.
-- Interface language (English, Russian, Turkish) is chosen on the welcome screen and shared by all apps; system panels
-  (Print, Save, toolbar items) follow it too.
+- Interface language is chosen from 20 native language names on the welcome screen and shared by all apps.
+  Changing it restarts the current app; already running sister apps pick up the choice at their next launch.
+  Translations are bundled and work offline. System panels (Print, Save, toolbar items) use the chosen language
+  where macOS provides it; Quick Look follows the system language. Arabic text is supported, while document
+  canvases and spreadsheet geometry retain their existing layout. Interface language does not add OCR languages,
+  translate document content or change the accepted formula syntax.
 - Any panel can be hidden: View › Hide All Panels (⇧⌘\\) leaves only the document; View › Show Toolbar (⌥⌘T),
   Show Toolbar Labels (icons only makes the toolbar half as tall) and each app's own bars. Default toolbars carry
   frequent actions only; View › Customize Toolbar offers the rest (for example DOC42's Footnote, Track Changes, Zoom,
@@ -637,7 +853,8 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   IMG42 routes opening through its image controller. SCN42 opens recent saved scans in the system's default app;
   File › Open imports pages into a scan document.
 - Dark mode everywhere; `K42_APPEARANCE=dark` (or `light`) forces it for one run, e.g. with `K42_SNAPSHOT`.
-- `scripts/check_strings.py` — finds UI strings without a Russian/Turkish translation.
+- `scripts/check_strings.py` — checks all 20 languages for missing strings, duplicate/empty catalog entries,
+  unsafe format substitutions, changed shortcuts and broken template/formula/command examples.
 - Distribution to other Macs: `DEVELOPER_ID="Developer ID Application: …" ./scripts/sign_and_notarize.sh PDF42 DOC42 XLS42 IMG42 PPT42 SCN42`
   (needs an Apple Developer account and stored notarization credentials; see the script header).
   Pass the app names explicitly: the script's current no-argument fallback forms one combined name and is not usable.
@@ -665,7 +882,8 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
 
 ## Regression checks
 
-Run these commands from the repository root after installing the Xcode Command Line Tools and Python 3.
+These checks cover the macOS implementation. Run them from the repository root after installing the Xcode Command
+Line Tools and Python 3.
 The document CLI check also needs Poppler's `pdfinfo` and `pdftotext` on PATH. The spreadsheet CLI check uses them for
 PDF checks and records an explicit SKIP when either is missing. The checks use generated fixtures,
 do not need a physical scanner or XCTest, and do not open interactive windows:
@@ -675,17 +893,36 @@ swift build
 .build/debug/PDF42 --selftest
 .build/debug/XLS42 --selftest
 .build/debug/PPT42 --selftest
+.build/debug/IMG42 --selftest
 .build/debug/SCN42 --selftest
 python3 scripts/audit-media-previews.py
 python3 scripts/audit-documents-video.py
 python3 scripts/audit-documents-cli.py
+python3 scripts/audit-pdf-cli.py --binary .build/debug/PDF42
 python3 scripts/audit-spreadsheets-cli.py --binary .build/debug/XLS42
 python3 scripts/audit-presentations-cli.py --binary .build/debug/PPT42
+python3 scripts/audit-images-cli.py --binary .build/debug/IMG42
+python3 scripts/audit-scans-cli.py --binary .build/debug/SCN42
 swiftc -module-cache-path .build/ModuleCache Sources/Kit42/Zip.swift Sources/Kit42/TextDecoding.swift \
   scripts/audit-documents-regressions.swift -o .build/audit-documents-regressions
 .build/audit-documents-regressions
 python3 scripts/check_strings.py
+python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+.build/debug/localization42audit
 ```
+
+The PDF CLI runner requires `pypdf` and uses `openssl` for its default isolated signature checks. It writes fixtures,
+command logs, the tested binary's SHA-256 and `result.json` to `build/pdf-cli-audit`; use `--output-dir` to change the
+location or `--binary build/PDF42.app/Contents/MacOS/PDF42` to test a packaged build. `--skip-signing` records an explicit
+SKIP. Signing fixtures create temporary local keys/certificates and remove their private keys afterwards; they do not
+modify the Keychain or contact a timestamp/network service. They are not a certificate-trust or full PDF/A conformance test.
+
+The IMG42 CLI runner requires Pillow and the macOS image/Vision frameworks. It independently reads PNG/JPEG/TIFF/BMP
+outputs, checks EXIF rotation against Pillow's transforms, inspects crop/resize/alpha/adjustment/markup pixels and TIFF
+description/DPI, checks GIF/TIFF counts and bounded decoding, verifies invalid inputs preserve existing files, and runs
+OCR on a generated text image. Fixtures, command output, binary SHA-256 and `result.json` are stored in
+`build/img-cli-audit`; `--output-dir` changes the destination and `--binary build/IMG42.app/Contents/MacOS/IMG42` checks
+a packaged binary. These fixtures do not certify every installed codec, camera RAW variant or third-party metadata field.
 
 These cover malformed PDF/ZIP input, attachment extraction, spreadsheet references and numeric precision,
 text encodings, CSV/ODS previews, scan save state, and preservation of existing files when exports fail.
@@ -696,6 +933,20 @@ explicitly limited run. The presentation CLI runner writes corresponding artifac
 `build/ppt-cli-audit`; it accepts `--binary build/PPT42.app/Contents/MacOS/PPT42`, `--output-dir`, `--skip-pdf` and
 `--skip-movie`. PDF checks require Poppler and report explicit SKIP results when unavailable; an explicitly skipped
 movie check also remains visible in the report. Movie checks exercise successful creation and replacement.
+
+PDF42's matrix lists the scope of its regression scenarios. It does not assert that all scenarios pass on an arbitrary
+binary; observed results, installation state and unexercised areas are recorded in [STATUS.md](STATUS.md).
+
+| Common PDF workflow | Regression coverage | Boundary of the check |
+|---|---|---|
+| Use toolbar and navigation | Tool selection, search, page navigation, view modes, zoom and responder routing | Native controls/events and generated fixtures; no exhaustive physical shortcut/device coverage |
+| Mark up and edit text | Shape/ink/text/form interactions, drag cancellation, colour/width, stacking, Undo/Redo and pending edits | Representative native gestures and annotation state; saved output checked separately |
+| Rearrange and format pages | Multi-page move/rotate/delete/insert, crop/size dialogs, watermarks/numbers/headers, destinations and metadata | Undo/Redo plus emitted text/destinations; not every external PDF's appearance stream |
+| Fill and save forms | Text, checkbox/dropdown creation, filled/empty values, AcroForm persistence | Supported AcroForm widgets; no XFA or form-script compatibility claim |
+| Save, Revert and process | Pending draft, successful/failed Revert, annotation stack, compression/redaction model, OCR result freshness | Native lifecycle and synthetic PDFs; scanner hardware is not involved |
+| Export and combine | TXT/RTF/HTML/DOCX, images, crop/scale, split/merge, metadata, links, attachments and failure preservation | Independent CLI output inspection and native snapshot checks |
+| Redact sensitive content | Source text removal, moved edited text, covered overlays, bounds and failure without a fallback | Chosen content/annotation fixtures, not exhaustive malformed-PDF or third-party conformance verification |
+| Sign digitally | Generated temporary identity, visible/incremental signing and tamper cases | Local self-signed fixture; Keychain import, trusted PKI, real timestamp services and external-viewer trust remain separate |
 
 XLS42's regression scenarios are listed below as coverage, not as a claim that every scenario has passed on the
 current binary. Actual run results belong in [STATUS.md](STATUS.md); none establishes complete Excel compatibility.
@@ -740,20 +991,44 @@ python3 scripts/audit-ui.py
 # Optional: only the behavioral checks, or screenshots for one app.
 python3 scripts/audit-ui.py --mode tests
 python3 scripts/audit-ui.py --mode tests --app IMG42
+python3 scripts/audit-ui.py --app IMG42 --binary build/IMG42.app/Contents/MacOS/IMG42
 python3 scripts/audit-ui.py --mode tests --app SCN42
+python3 scripts/audit-ui.py --app SCN42 --binary build/SCN42.app/Contents/MacOS/SCN42
 python3 scripts/audit-ui.py --app DOC42
 python3 scripts/audit-ui.py --app XLS42
 python3 scripts/audit-ui.py --app PPT42
+python3 scripts/audit-ui.py --app PPT42 --binary build/PPT42.app/Contents/MacOS/PPT42
+python3 scripts/audit-ui.py --app PDF42
+python3 scripts/audit-ui.py --app PDF42 --binary build/PDF42.app/Contents/MacOS/PDF42
+python3 scripts/audit-ui.py --mode tests --app PDF42 --case pdf-markup --case pdf-files
 python3 scripts/audit-ui.py --mode screenshots --app PDF42
+python3 scripts/audit-ui.py --app DOC42 --output build/doc-check # separate evidence directory
+python3 scripts/audit-localization.py --app DOC42 # native picker/menu/label-fit checks and 20 welcome captures
+python3 scripts/audit-localization.py --app PDF42 --language ar --language zh-Hant --appearance dark
 ```
 
 The runner creates separate test app bundles in `build/ui-audit/apps`. Separate bundle identifiers isolate
 app-specific preferences; the suite-wide interface language remains shared. Test windows may activate the app.
+The localization runner uses process-only `-Suite42Language <code>` overrides and writes native-check reports and
+screenshots to `build/localization-audit`; it does not change the saved suite language. It checks welcome screens,
+picker contents, menu translation and label sizing, not document editing or every translated dialog.
+PDF42 window checks launch through macOS LaunchServices so native field editors and menu routing have an active window.
+`--case` can be repeated to select behavioral scenarios with `--mode tests`; a subset run does not replace the full audit.
 Logs and screenshots go to `build/ui-audit`. It checks recent-file menus,
 spreadsheet selection and formatting, document panels, note replacement, image resizing/DPI and undo,
 and scanner page ordering, rescan and close/save behavior. Scanner checks use generated images.
 XLS42 adds editing/protection/array checks, native Format Cells controls, row Autofit Undo/Redo, pending-edit and
 Revert lifecycle, sheet-reference changes, sparse conditional formatting and actual PDF scope/layout assertions.
+PDF42 adds native markup, page operations and dialogs, toolbar/navigation, pending drafts and Revert, forms, OCR
+snapshot handling, output checks and regression scenarios for document mutations and redaction.
+IMG42 adds native drawing/selection/style controls, pixel edits and colour/size controls, navigation/search/panel state,
+Save/Save As/Export/Revert lifecycle, Trash/Undo/Redo, export format/quality/size controls and pending text in Copy/Share/Print.
+Additional scenarios exercise real full-screen Spaces and slideshow transitions, VisionKit mouse text selection and
+Escape, and real Vision background removal and Smart Lasso masks on a generated subject. Vision errors fail their
+scenario; the deterministic `--selftest` remains independent of model availability. File checks use disposable images,
+a private native pasteboard and Print's save-to-PDF disposition; no job is sent to a physical printer. Run
+`IMG42 --selftest` and the independent image CLI suite alongside these native scenarios; observed results and limitations
+belong in STATUS.
 PPT42 adds canvas manipulation, media-safe copy/paste, text/Find/table commands, document lifecycle, inspector
 controls with rendered fill/border checks, and slideshow navigation/builds.
 DOC42 checks dispatch native mouse events for ruler drags at 25–200% zoom, exercise section/column/header targeting,
@@ -768,13 +1043,13 @@ The snapshots render AppKit views; native material layers may require checking t
 
 ## Structure
 
-- `Sources/Kit42` — shared: commands, menu bar, toolbar, tool strip, banners, welcome window, localisation,
+- `Sources/Kit42` — shared macOS components: commands, menu bar, toolbar, tool strip, banners, welcome window, localisation,
   signature library, certificates, ZIP.
 - `Sources/Previews42` — Quick Look rendering (Markdown → HTML/page, ODS/TSV → table); `Sources/QLPreview42` and
   `Sources/QLThumbnail42` are the extension binaries that `build.sh` packs into `.appex` bundles
   (Info.plist generated, ad-hoc signed with `Resources/QuickLook/Extension.entitlements`); `ql42render` renders the
   same output to files for testing (`ql42render html file.md out.html`, `ql42render thumb file.ods 512 out.png`).
-- `Sources/PDF42`, `Sources/XLS42`, `Sources/DOC42`, `Sources/IMG42`, `Sources/PPT42`, `Sources/SCN42` — the apps. Each has `Commands.swift` (all commands, menus, toolbar)
+- `Sources/PDF42`, `Sources/XLS42`, `Sources/DOC42`, `Sources/IMG42`, `Sources/PPT42`, `Sources/SCN42` — the macOS apps. Each has `Commands.swift` (all commands, menus, toolbar)
   and `Strings.swift` (translations).
 - `DESIGN.md` — the design system: menu order, reserved shortcuts, window layout, how to add an app.
 - `STATUS.md` — dated audit results, local build/publication state and unverified areas.
@@ -783,3 +1058,16 @@ The snapshots render AppKit views; native material layers may require checking t
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## OFF42 public website
+
+The OFF42 product website is live at [off42.cc](https://off42.cc), with a
+[Russian version](https://off42.cc/ru/), 20 languages and separate feature pages.
+Its source is in [`website/`](website/README.md). Build with `cd website && npm run build`,
+verify with `npm run check`, and preview with `npm run preview` (Node.js 22+; no dependency installation).
+Cloudflare Workers Static Assets hosts only `website/dist/`; native app builds are separate.
+The GitHub URL and installer availability are configured once in `website/site.config.json`.
+The current project has no public DMG or EXE release, so the download pages show availability
+and link to source/build instructions for the macOS and Windows implementations.
+The website does not imply a signed or notarised application release. See its README for
+release synchronization and publishing steps, and STATUS.md for deployment evidence.

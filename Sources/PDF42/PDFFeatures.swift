@@ -7,64 +7,113 @@ import Vision
 extension EditorWindowController {
     // MARK: - OCR
 
-    /// Recognises text on the selected pages (or all) and adds an invisible, searchable text layer.
+    struct OCRBatch {
+        let document: PDFDoc
+        let pdf: PDFDocument
+        let revision: UInt64
+        let generation: UUID
+        let items: [(index: Int, original: PDFPage, snapshot: PDFPage)]
+    }
+
+    /// Capture independent pages before leaving the main thread.
+    func captureOCR(indices: [Int]) -> OCRBatch? {
+        guard let document = pdfDoc, let pdf, !pdf.isLocked else { return nil }
+        let chosen = Array(Set(indices)).sorted()
+        var items: [(Int, PDFPage, PDFPage)] = []
+        for i in chosen {
+            guard i >= 0, i < pdf.pageCount, let page = pdf.page(at: i), let snapshot = Self.ocrInput(page) else { return nil }
+            items.append((i, page, snapshot))
+        }
+        guard !items.isEmpty else { return nil }
+        ocrGeneration = UUID()
+        return OCRBatch(document: document, pdf: pdf, revision: document.revision, generation: ocrGeneration, items: items)
+    }
+
+    func isCurrentOCR(_ batch: OCRBatch) -> Bool {
+        pdfDoc === batch.document && pdf === batch.pdf && batch.document.revision == batch.revision &&
+            ocrGeneration == batch.generation && !pdfView.hasPendingTextEdit &&
+            batch.items.allSatisfy { batch.pdf.page(at: $0.index) === $0.original }
+    }
+
+    @discardableResult func applyOCR(_ results: [(Int, PDFPage)], batch: OCRBatch) -> Bool {
+        guard isCurrentOCR(batch) else { return false }
+        replacePages(results, name: L("Recognize Text"))
+        return true
+    }
+
+    /// Recognises selected pages (or all) without touching the live pages in the background.
     @objc func recognizeTextAction(_ sender: Any?) {
-        guard let pdf, let window else { return }
+        guard let pdf, window != nil else { return }
+        prepareForSave()
         let selected = sidebar.thumbnails.selectedPages
-        let pages = selected.count > 1 ? selected : (0..<pdf.pageCount).compactMap { pdf.page(at: $0) }
+        let indices = selected.count > 1 ? selected.map { pdf.index(for: $0) } : Array(0..<pdf.pageCount)
         let alert = NSAlert()
         alert.messageText = L("Recognize Text")
-        alert.informativeText = L("Scanned pages get an invisible text layer: the text can then be searched, selected and copied. Pages: %d.", pages.count)
-        alert.addButton(withTitle: L("Recognize"))
-        alert.addButton(withTitle: L("Cancel"))
+        alert.informativeText = L("Scanned pages get an invisible text layer: the text can then be searched, selected and copied. Pages: %d.", indices.count)
+        alert.addButton(withTitle: L("Recognize")); alert.addButton(withTitle: L("Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        banner.show(.info, L("Recognizing text…"))
-        let items = pages.map { (page: $0, index: pdf.index(for: $0)) }
-        DispatchQueue.global(qos: .userInitiated).async {
-            var results: [(Int, PDFPage)] = []
-            for (n, item) in items.enumerated() {
-                if let page = Self.ocrPage(item.page) { results.append((item.index, page)) }
-                DispatchQueue.main.async { self.banner.show(.info, L("Recognizing text… %d of %d", n + 1, items.count)) }
-            }
-            DispatchQueue.main.async {
-                self.replacePages(results, name: L("Recognize Text"))
-                self.banner.show(.success, L("Text recognized on %d pages", results.count))
-                DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in self?.updateSignatureBanner() }
-                _ = window
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let batch = self.captureOCR(indices: indices) else { return }
+            self.banner.show(.info, L("Recognizing text…"))
+            DispatchQueue.global(qos: .userInitiated).async {
+                var results: [(Int, PDFPage)] = []
+                for (n, item) in batch.items.enumerated() {
+                    if let page = Self.ocrPage(item.snapshot) { results.append((item.index, page)) }
+                    DispatchQueue.main.async {
+                        if self.isCurrentOCR(batch) { self.banner.show(.info, L("Recognizing text… %d of %d", n + 1, batch.items.count)) }
+                    }
+                }
+                DispatchQueue.main.async {
+                    guard self.applyOCR(results, batch: batch) else {
+                        if self.ocrGeneration == batch.generation {
+                            self.banner.show(.warning, L("The document changed during text recognition. Run OCR again."))
+                        }
+                        return
+                    }
+                    self.banner.show(.success, L("Text recognized on %d pages", results.count))
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
+                        if self?.ocrGeneration == batch.generation { self?.updateSignatureBanner() }
+                    }
+                }
             }
         }
     }
 
-    /// New page = original content + invisible text from Vision; annotations are moved over.
+    /// Independent content and typed annotation copies; no changes to the source page or its annotations.
+    static func ocrInput(_ page: PDFPage) -> PDFPage? {
+        guard PDFOutput.imageSize(page, dpi: 180, box: .mediaBox, rotated: false) != nil,
+              let source = page.pageRef else { return nil }
+        let data = NSMutableData(); var media = page.bounds(for: .mediaBox)
+        guard let consumer = CGDataConsumer(data: data), let ctx = CGContext(consumer: consumer, mediaBox: &media, nil) else { return nil }
+        ctx.beginPDFPage(nil); ctx.drawPDFPage(source); ctx.endPDFPage(); ctx.closePDF()
+        guard let copy = PDFDocument(data: data as Data)?.page(at: 0) else { return nil }
+        copy.setBounds(page.bounds(for: .cropBox), for: .cropBox); copy.rotation = page.rotation
+        for annotation in page.annotations {
+            if let a = annotation.duplicateForEditing(on: copy) { copy.addAnnotation(a) }
+        }
+        return copy
+    }
+
+    /// Adds an invisible text layer while preserving rotation, crop and editable annotations.
     static func ocrPage(_ page: PDFPage) -> PDFPage? {
         let box = page.bounds(for: .mediaBox)
-        let rotation = page.rotation
-        let annotations = page.annotations
-        page.rotation = 0
-        annotations.forEach { page.removeAnnotation($0) }
-        defer {
-            page.rotation = rotation
-            annotations.forEach { page.addAnnotation($0) }
-        }
-        let scale: CGFloat = 2.5
-        let thumb = page.thumbnail(of: CGSize(width: box.width * scale, height: box.height * scale), for: .mediaBox)
-        var proposed = CGRect(origin: .zero, size: thumb.size)
-        guard let cg = thumb.cgImage(forProposedRect: &proposed, context: nil, hints: nil) else { return nil }
-
-        let observations = recognizeText(in: cg)
+        guard let size = PDFOutput.imageSize(page, dpi: 180, box: .mediaBox, rotated: false),
+              let source = page.pageRef,
+              let bitmap = CGContext(data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8, bytesPerRow: 0,
+                                     space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return nil }
+        bitmap.setFillColor(CGColor(gray: 1, alpha: 1)); bitmap.fill(CGRect(origin: .zero, size: size))
+        bitmap.scaleBy(x: size.width / box.width, y: size.height / box.height)
+        bitmap.translateBy(x: -box.minX, y: -box.minY); bitmap.drawPDFPage(source)
+        guard let image = bitmap.makeImage() else { return nil }
+        let observations = recognizeText(in: image)
         guard !observations.isEmpty else { return nil }
-
-        let data = NSMutableData()
-        var media = box
+        let data = NSMutableData(); var media = box
         guard let consumer = CGDataConsumer(data: data), let ctx = CGContext(consumer: consumer, mediaBox: &media, nil) else { return nil }
-        ctx.beginPDFPage(nil)
-        page.draw(with: .mediaBox, to: ctx)
-        drawInvisibleText(observations, box: box, in: ctx)
-        ctx.endPDFPage()
-        ctx.closePDF()
+        ctx.beginPDFPage(nil); ctx.drawPDFPage(source); drawInvisibleText(observations, box: box, in: ctx)
+        ctx.endPDFPage(); ctx.closePDF()
         guard let newPage = PDFDocument(data: data as Data)?.page(at: 0) else { return nil }
-        newPage.rotation = rotation
-        for a in annotations { newPage.addAnnotation(a.copy() as! PDFAnnotation) }
+        newPage.rotation = page.rotation; newPage.setBounds(page.bounds(for: .cropBox), for: .cropBox)
+        for a in page.annotations { if let copy = a.duplicateForEditing(on: newPage) { newPage.addAnnotation(copy) } }
         return newPage
     }
 
@@ -99,33 +148,27 @@ extension EditorWindowController {
         ctx.restoreGState()
     }
 
-    /// Swaps pages (undoable).
+    /// Swaps pages with destinations and selection following the replacements (undoable).
     func replacePages(_ replacements: [(Int, PDFPage)], name: String) {
-        guard let pdf, !replacements.isEmpty else { return }
-        pdfView.selectAnnotation(nil)
-        var old: [(Int, PDFPage)] = []
-        for (i, page) in replacements where i < pdf.pageCount {
-            if let previous = pdf.page(at: i) { old.append((i, previous)) }
-            pdf.removePage(at: i)
-            pdf.insert(page, at: i)
-        }
-        pdfView.layoutDocumentView()
-        sidebar.thumbnails.reload()
-        undo?.registerUndo(withTarget: self) { $0.replacePages(old, name: name) }
-        undo?.setActionName(name)
+        swapPages(replacements, name: name)
     }
 
     // MARK: - Print selected pages
 
     @objc func printSelectedPagesAction(_ sender: Any?) {
-        guard let pdf, let window else { return }
+        guard pdf != nil, let window else { return }
         prepareForSave()
-        let indices = sidebar.thumbnails.selectedPages.map { pdf.index(for: $0) }.filter { $0 != NSNotFound }
-        let chosen = indices.isEmpty ? [pdf.index(for: pdfView.currentPage ?? pdf.page(at: 0)!)] : indices.sorted()
+        let chosen = targetIndices
         let part = PDFDocument()
-        let source = PageOverlay.bakedDocument(pdf)
+        let source: PDFDocument
+        do { source = try exportSnapshot() } catch { presentError(error); return }
         for i in chosen { if let p = source.page(at: i)?.copy() as? PDFPage { part.insert(p, at: part.pageCount) } }
-        guard let op = part.printOperation(for: pdfDoc?.printInfo ?? .shared, scalingMode: .pageScaleToFit, autoRotate: true) else { return }
+        guard part.pageCount > 0 else { return }
+        let op: NSPrintOperation
+        do {
+            guard let bytes = part.dataRepresentation() else { throw CocoaError(.fileWriteUnknown) }
+            op = try ProductionPrint.operation(pdfData: bytes, printInfo: pdfDoc?.printInfo ?? .shared, autoFit: true)
+        } catch { presentError(error); return }
         op.jobTitle = pdfDoc?.displayName ?? "PDF42"
         op.printPanel.options.formUnion([.showsPaperSize, .showsOrientation, .showsScaling, .showsPreview, .showsCopies])
         op.runModal(for: window, delegate: nil, didRun: nil, contextInfo: nil)

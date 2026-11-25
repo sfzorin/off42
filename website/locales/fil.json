@@ -1,0 +1,406 @@
+{
+  "nav": {
+    "features": "Mga tampok",
+    "apps": "Mga app",
+    "about": "Open source",
+    "download": "Mga download",
+    "language": "Wika",
+    "menu": "Menu",
+    "skip": "Lumaktaw sa nilalaman",
+    "home": "Home"
+  },
+  "home": {
+    "eyebrow": "Libre · Open source · macOS at Windows",
+    "title": "Buong opisina mo. Walang subscription.",
+    "intro": "Pinagsasama ng OFF42 ang anim na native app para sa macOS at Windows: PDF, mga dokumento, spreadsheet, presentasyon, larawan, at scan. Libre at open source, na may magkahiwalay na implementasyon at dokumentadong limitasyon sa bawat platform.",
+    "primary": "Kunin ang OFF42",
+    "secondary": "Tuklasin ang mga tool",
+    "note": "Libre · Open source · macOS 14+ · Windows",
+    "suiteTitle": "Kumpletong opisina. Mas magaan ang trabaho.",
+    "suiteIntro": "Mula sa unang burador hanggang sa pirmadong PDF, gawin ang pang-araw-araw mong trabaho sa isang pamilyar na pangkat ng mga tool.",
+    "featureEyebrow": "MALILIIT NA DETALYE. MALAKING PAGKAKAIBA.",
+    "featureTitle": "Mas maraming magagawa sa bawat file.",
+    "featureIntro": "Mag-edit ng PDF. Paliitin ang malaking attachment. Gawing nahahanap na teksto ang pahinang papel. Hanapin ang tool para sa iyong gawain.",
+    "privacyTitle": "Sa iyong mesa, hindi sa server ng iba.",
+    "privacyText": "Ang pangunahing pag-edit ay ginagawa sa iyong computer nang hindi ina-upload ang mga file. Kailangan ng koneksyon ang mga opsyonal na online feature; nag-iiba ang availability ayon sa platform.",
+    "privacyLabel": "Para sa lokal na trabaho",
+    "languageTitle": "Pamilyar na karanasan, sa 20 wika.",
+    "languageText": "Nagsasalita ng iyong wika ang website at interface ng mga app. Piliin ang sa iyo at gamitin ang parehong mga tool nang komportable.",
+    "openTitle": "Bukas na opisina, sa lahat ng kahulugan.",
+    "openText": "Inilalabas ang OFF42 sa ilalim ng lisensyang MIT. Basahin ang code, buuin ito, mag-ulat ng bug, o tumulong sa pagpapahusay ng susunod na bersyon.",
+    "openLink": "Tuklasin sa GitHub",
+    "endTitle": "I-off ang mga subscription. Panatilihin ang opisina.",
+    "endText": "Libre · Open source · macOS at Windows",
+    "formatsLabel": "OFFICE AT MGA OPEN FORMAT",
+    "formatsTitle": "Gumagana sa mga file na mayroon ka na.",
+    "formatsText": "Buksan ang ipinapadala ng mga kasamahan at i-save sa format na inaasahan nila. Maaaring mag-iba ang hitsura ng mga kumplikadong layout, kaya suriin ang mahahalagang file pagkatapos mag-import.",
+    "opens": "Nabubuksan",
+    "saves": "Nase-save",
+    "faqTitle": "Mga tanong bago ka magsimula",
+    "faq": [
+      {
+        "q": "Libre ba ang OFF42?",
+        "a": "Oo. Libre at open source ang OFF42 sa ilalim ng MIT license. Walang subscription, account o in-app purchase."
+      },
+      {
+        "q": "Gumagana ba offline ang OFF42?",
+        "a": "Ang pangunahing pag-edit ay ginagawa sa iyong computer nang hindi ina-upload ang mga file. Kailangan ng koneksyon ang mga opsyonal na online feature; nag-iiba ang availability ayon sa platform."
+      },
+      {
+        "q": "Nabubuksan ba ng OFF42 ang mga Microsoft Office file?",
+        "a": "Oo. Binubuksan ng DOC42 ang DOCX at DOC, ng XLS42 ang XLSX at XLS, at ng PPT42 ang PPTX. Suportado rin ang mga OpenDocument file (ODT, ODS, ODP). Hindi lahat ng feature ng Office ay suportado, kaya suriin ang mga kumplikadong file pagkatapos mag-import."
+      },
+      {
+        "q": "Aling mga Mac ang sinusuportahan ng OFF42?",
+        "a": "Para sa macOS 14 o mas bago ang OFF42. Wala pang inilalabas na pampublikong installer; maaari mong i-build ang mga app mula sa source gamit ang Xcode Command Line Tools."
+      },
+      {
+        "q": "May bersyon ba para sa Windows?",
+        "a": "Naipatupad na ang mga native Windows app at makukuha ang source code. Tingnan ang dokumentadong mga feature at limitasyon. Wala pang inilalabas na pampublikong Windows installer."
+      }
+    ]
+  },
+  "name": {
+    "label": "ANO ANG NASA PANGALAN",
+    "title": "OFF, mula sa office. At sa lahat ng puwede mong i-off.",
+    "officeTitle": "Kumpletong opisina",
+    "officeText": "Anim na app para sa bawat file sa iyong mesa: PDF, mga Word at Excel file, slide, larawan, at scan.",
+    "offlineTitle": "Gumagana offline",
+    "offlineText": "Sa iyong computer ginagawa ang pag-edit. Walang account o pag-upload ng file.",
+    "offTitle": "Subscription: off",
+    "offText": "Walang subscription, walang trial period, walang ads. May lisensyang MIT at libre, ngayon at bukas.",
+    "answerTitle": "At ang 42?",
+    "answerText": "Ang sagot sa pinakadakilang tanong tungkol sa buhay, sa sansinukob, at sa lahat ng bagay. Inilapat lang namin ito sa opisina.",
+    "stats": [
+      "app sa iisang suite",
+      "format ng file",
+      "wika ng interface",
+      "subscription",
+      "upload ng iyong mga file"
+    ]
+  },
+  "marks": {
+    "label": "MGA LAGDA AT STAMP",
+    "title": "Pumirma at mag-stamp na parang sa papel. Walang printer, walang scanner.",
+    "text": "Gumagawa ang OFF42 ng lagdang sulat-kamay mula sa isang pangalan at nagtatatak ng stamp ng kompanya, saka inilalagay ang dalawa mismo sa dokumento. Bahagyang naiiba ang bawat paglalagay, gaya ng totoong tinta sa papel.",
+    "points": [
+      "Lagda gamit ang ballpen, gel pen, fountain pen o felt-tip pen",
+      "132 estilo ng stamp: bilog na seal, stamp ng kompanya, “Bayad na” at “Natanggap”",
+      "Natututuhan ang sarili mong lagda mula sa ilang sample",
+      "Gumagana sa PDF, dokumento, slide, spreadsheet, larawan at scan"
+    ],
+    "note": "Ang iginuhit na lagda ay hindi digital signature na nakabatay sa certificate. Kapag kailangan mo iyon, pumipirma ang PDF42 gamit ang iyong certificate.",
+    "signedCaption": "Kontratang nilagdaan at tinatakan sa PDF42. Kathang-isip ang mga pangalan at kompanya."
+  },
+  "codes": {
+    "label": "MGA QR CODE, SIMBOLO AT LABEL",
+    "title": "Mga QR code, CE mark at label sheet, eksakto hanggang milimetro.",
+    "text": "Gawing QR, Data Matrix, Code 128 o Aztec code ang isang cell, row ng table o selection, at idagdag ang mga conformity at safety mark na kailangan ng iyong produkto. Itakda ang laki sa milimetro, saka mag-print ng buong sheet ng label mismo mula sa iyong mga row.",
+    "points": [
+      "Mga QR, Data Matrix, Code 128 at Aztec code na nae-edit pa rin pagkatapos i-save",
+      "97 na mark: CE, UKCA, EAC, FCC, UL, CCC, KC, RCM, WEEE, RoHS, GHS pictogram, IEC safety symbol at iba pa",
+      "Mga label sheet mula sa mga row ng spreadsheet, table sa dokumento, o pahina o bahagi ng PDF",
+      "559 na uri ng label paper o sarili mong grid, mga naka-save na template at calibration ng printer"
+    ],
+    "note": "Artwork para sa iyong label ang isang mark: hindi nito sine-certify ang produkto. Para sa mga conformity mark at trademark, ipinapakita ng app ang mga kondisyon ng paggamit, gaya ng kinakailangang certificate o numero ng lisensya. Available sa PDF42, DOC42 at XLS42 sa macOS.",
+    "qrAlt": "“Insert Symbol or Code” sa XLS42: isang 30 mm na QR code na ginawa mula sa link ng produkto.",
+    "labelsAlt": "“Create Labels” sa XLS42: isang label sheet na may mga QR code na binuo mula sa sampung row ng produkto.",
+    "caption": "Isang label sheet na ginawa mula sa sampung row ng spreadsheet. Kathang-isip ang mga produkto."
+  },
+  "show": {
+    "label": "TINGNAN SA AKTWAL",
+    "title": "Totoong app. Totoong dokumento.",
+    "text": "Bawat larawan dito ay screenshot ng OFF42 sa Mac, na may mga sample na dokumento ng kathang-isip na kompanya na nakabukas sa mga app. Walang mock-up."
+  },
+  "labels": {
+    "learn": "Tuklasin",
+    "allFeatures": "Lahat ng tampok",
+    "useCases": "PARA SA PANG-ARAW-ARAW MONG GAWAIN",
+    "workflow": "Mula pagbukas hanggang matapos",
+    "details": "Mga maaari mong gawin",
+    "goodToKnow": "Mahalagang malaman",
+    "related": "Tuklasin pa",
+    "faq": "Ilang kapaki-pakinabang na sagot",
+    "step": "Hakbang",
+    "illustration": "Ilustrasyon ng daloy ng trabaho",
+    "source": "Source code",
+    "license": "Lisensyang MIT",
+    "release": "Mga release sa GitHub",
+    "available": "Available",
+    "unavailable": "Hindi pa nailalabas",
+    "downloadDmg": "I-download ang DMG",
+    "downloadExe": "I-download ang EXE",
+    "checksum": "SHA-256",
+    "version": "Bersyon",
+    "requirements": "Mga kinakailangan sa system",
+    "footer": "Open-source office suite para sa pang-araw-araw na trabaho.",
+    "privacy": "Privacy",
+    "copyright": "Isang malayang open-source na proyekto.",
+    "back": "Bumalik sa home",
+    "notFound": "Wala sa mesa ang pahinang ito.",
+    "notFoundText": "Subukan ang homepage o pumili ng wika para magpatuloy.",
+    "copy": "Kopyahin",
+    "copied": "Nakopya na",
+    "screenshot": "Screenshot sa macOS. Mga sample na dokumento, kathang-isip na kompanya."
+  },
+  "apps": {
+    "pdf": {
+      "tag": "Mas maraming magagawa sa PDF.",
+      "text": "Basahin, anotahan, ayusin, i-compress, at lagdaan ang iyong mga PDF."
+    },
+    "doc": {
+      "tag": "Mula ideya hanggang dokumento.",
+      "text": "Sumulat at mag-layout ng mga dokumento sa DOCX, ODT, RTF, at Markdown."
+    },
+    "xls": {
+      "tag": "Bigyang-kuwento ang iyong mga numero.",
+      "text": "Gumamit ng mga spreadsheet, formula, at chart sa XLSX, ODS, at CSV."
+    },
+    "ppt": {
+      "tag": "Mga ideyang dapat maipakita.",
+      "text": "Gumawa ng mga slide, gumamit ng mga talahanayan at hugis, at ilahad ang iyong kuwento."
+    },
+    "img": {
+      "tag": "Kaunting edit. Mas magandang larawan.",
+      "text": "Tingnan, i-crop, baguhin ang laki, anotahan, at ayusin ang iyong mga larawan."
+    },
+    "scn": {
+      "tag": "Bagong posibilidad para sa papel.",
+      "text": "Mag-scan, maglinis ng mga pahina, at kilalanin ang teksto gamit ang OCR sa device."
+    }
+  },
+  "features": {
+    "documents": {
+      "title": "Puwang para sa susunod mong magandang ideya",
+      "seoTitle": "Libreng Word Processor para sa Mac — DOCX, ODT, RTF | OFF42",
+      "seoDescription": "Sumulat ng liham at ulat sa DOC42: buksan at i-save ang DOCX, ODT, RTF, Markdown, mag-layout na may talahanayan at larawan, i-export sa PDF. Libre, open source.",
+      "short": "Mga dokumento",
+      "intro": "Sumulat ng mga liham, ulat, at susunod na burador gamit ang DOC42. Pagsamahin ang rich text at page layout sa pamilyar na mga format ng dokumento.",
+      "points": [
+        "Buksan at i-save ang DOCX, ODT, RTF, Markdown, at iba pang format ng teksto.",
+        "Gumamit ng formatting, talahanayan, larawan, at page layout.",
+        "I-export bilang PDF kapag handa nang ibahagi ang dokumento."
+      ],
+      "steps": [
+        "Gumawa ng dokumento o magbukas ng umiiral na file.",
+        "Ayusin ang teksto, mga larawan, at page layout.",
+        "Mag-save ng nae-edit na kopya o mag-export ng PDF."
+      ],
+      "note": "Maaaring magkaiba ang hitsura ng mga kumplikadong Office document. Suriin ang na-import na layout at na-export na file bago umasa sa eksaktong pagkakatulad.",
+      "question": "Maaari ba akong gumawa gamit ang mga Word document?",
+      "answer": "Sinusuportahan ng DOC42 ang DOCX at nabubuksan nito ang lumang DOC. Hindi nangangahulugang kapareho ang paghawak sa lahat ng tampok ng Microsoft Word dahil lamang suportado ang format."
+    },
+    "spreadsheets": {
+      "title": "Unawain ang kuwento ng mga numero",
+      "seoTitle": "Libreng Spreadsheet App para sa Mac — XLSX, ODS, CSV | OFF42",
+      "seoDescription": "Buksan ang XLSX at XLS, gumamit ng formula, formatting at chart, i-save sa XLSX, ODS o CSV, i-export sa PDF sa XLS42. Libreng open-source spreadsheet sa Mac.",
+      "short": "Mga spreadsheet",
+      "intro": "Mula sa simpleng listahan hanggang sa ulat na may kalkulasyon, dinadala ng XLS42 ang mga cell, formula, at chart sa iyong pang-araw-araw na trabaho.",
+      "points": [
+        "Buksan ang XLSX, lumang XLS, ODS, at mga delimited text file.",
+        "Gumamit ng mga formula, formatting, at chart upang ipaliwanag ang datos.",
+        "Mag-save ng XLSX, ODS, o CSV, o mag-export ng PDF."
+      ],
+      "steps": [
+        "Magbukas ng workbook o magsimula sa blangkong sheet.",
+        "Maglagay ng datos, gumamit ng mga formula, at magdagdag ng chart.",
+        "Suriin ang mga kalkulasyon at i-save sa tamang format."
+      ],
+      "note": "Nag-iiba ayon sa file ang suporta sa formula at formatting. Isang talahanayan ng mga value ang iniimbak ng CSV, hindi isang buong workbook na may formatting at maraming sheet.",
+      "question": "Maaari ko bang buksan ang mga Excel spreadsheet?",
+      "answer": "Oo, nabubuksan ng XLS42 ang XLSX at lumang XLS. Suriin ang mga kumplikadong formula at na-import na formatting; hindi lahat ng tampok ng Excel ay suportado."
+    },
+    "presentations": {
+      "title": "Bigyang-entablado ang iyong mga ideya",
+      "seoTitle": "Libreng Presentation App para sa Mac — PPTX, ODP | OFF42",
+      "seoDescription": "Gumawa ng slide na may teksto, larawan, hugis at talahanayan, mag-present na may speaker notes, i-export sa PDF o larawan. PPT42: libre, open source, pang-Mac.",
+      "short": "Mga presentasyon",
+      "intro": "Bumuo ng malinaw na biswal na kuwento gamit ang PPT42. Ayusin ang teksto, larawan, hugis, at talahanayan, saka lumipat mula pag-edit tungo sa slide show.",
+      "points": [
+        "Gumamit ng mga presentasyong PPTX at OpenDocument.",
+        "Ayusin ang mga object sa slide, talahanayan, at speaker note.",
+        "I-export ang mga slide bilang PDF at larawan para madaling ibahagi."
+      ],
+      "steps": [
+        "Gumawa ng deck o magbukas ng suportadong presentasyon.",
+        "Pagandahin ang bawat slide at ihanda ang iyong mga tala.",
+        "Patakbuhin ang slide show o i-export ang iyong mga slide."
+      ],
+      "note": "Kailangang i-convert muna ang lumang PPT. Maaaring mag-iba ang kumplikadong na-import na layout; suriin ang buong deck bago magpresenta.",
+      "question": "Maaari ko bang ibahagi ang mga slide bilang PDF?",
+      "answer": "Oo. Sinusuportahan ng PPT42 ang PDF export para sa mga slide at pahina ng tala, pati ang mga larawang PNG at JPEG ng slide."
+    },
+    "edit-pdf": {
+      "title": "Mag-edit ng PDF sa iyong Mac",
+      "seoTitle": "Libreng PDF Editor sa Mac — Edit, Annotate, Form | OFF42",
+      "seoDescription": "Mag-edit ng PDF text, mag-highlight, mag-annotate, mag-fill out ng form at ayusin ang pahina gamit ang PDF42 sa Mac. Libre, open source, offline, walang upload.",
+      "short": "Pag-edit ng PDF",
+      "intro": "Gawing dokumentong magagamit sa trabaho ang PDF. I-edit ang teksto ng pahina, magdagdag ng tala, i-highlight ang mahalaga, punan ang mga form, at ayusin ang mga pahina sa PDF42.",
+      "points": [
+        "I-edit ang teksto ng pahina at mag-anotasyon gamit ang highlight, text box, hugis, at malayang guhit.",
+        "Magsingit, mag-extract, mag-rotate, magtanggal, at mag-ayos ng mga pahina.",
+        "Punan ang mga suportadong PDF form at i-save ang mga pagbabago."
+      ],
+      "steps": [
+        "Magbukas ng PDF mula sa iyong Mac.",
+        "Piliin ang mga tool para sa anotasyon, form, o pahina ayon sa gawain.",
+        "Mag-save ng kopya at suriin ang natapos na dokumento."
+      ],
+      "note": "Pinagsasama sa nilalaman ng pahina ang mga pagbabago sa teksto kapag sine-save. Maaaring mag-iba ang mga kumplikadong PDF layout at form; suriin ang naka-save na kopya bago ibahagi.",
+      "question": "Maaari bang mag-edit ng PDF nang hindi ito ina-upload?",
+      "answer": "Oo. Gumagamit ang PDF42 ng mga lokal na file sa iyong Mac. Hindi kailangan ng online editor ang pangunahing anotasyon at mga operasyon sa pahina."
+    },
+    "scan-ocr": {
+      "title": "Gawing nahahanap na dokumento ang papel",
+      "seoTitle": "Scanner App na may OCR sa Mac — Nahahanap na PDF | OFF42",
+      "seoDescription": "Mag-scan mula sa scanner o iPhone camera, ituwid at linisin ang pahina, kilalanin ang teksto sa Mac at mag-export ng nahahanap na PDF sa SCN42. Libre, offline.",
+      "short": "Pag-scan at OCR",
+      "intro": "Dalhin ang papel sa iyong digital na opisina gamit ang SCN42. Kumuha ng mga pahina, ituwid at linisin ang mga ito, saka kilalanin ang teksto sa iyong Mac.",
+      "points": [
+        "Kumuha mula sa mga suportadong scanner o mag-import ng mga larawan at PDF.",
+        "I-crop, ituwid, at ayusin ang mga pahina bago kilalanin ang teksto.",
+        "Mag-export ng nahahanap na PDF o ng nakilalang teksto."
+      ],
+      "steps": [
+        "I-scan o i-import ang iyong mga pahina.",
+        "Suriin ang pagkakasunod-sunod ng pahina at linisin ang mga larawan.",
+        "Patakbuhin ang OCR at i-export sa format na kailangan mo."
+      ],
+      "note": "Nakadepende sa hardware ang suporta sa scanner at Continuity. Nakadepende sa Apple Vision at orihinal na larawan ang mga wika at katumpakan ng OCR; hiwalay na tampok ang 20 wika ng interface.",
+      "question": "Maaari ko bang hanapin ang teksto sa isang scan?",
+      "answer": "Mag-export ng nahahanap na PDF pagkatapos ng OCR upang magdagdag ng text layer. Palaging suriin ang resulta, lalo na ang mga pangalan, numero, at scan na mababa ang kalidad."
+    },
+    "compress-pdf": {
+      "title": "I-compress ang PDF at ituloy ang trabaho",
+      "seoTitle": "Compress PDF sa Mac — Paliitin ang File Offline | OFF42",
+      "seoDescription": "Paliitin ang PDF na maraming larawan gamit ang PDF42 sa Mac. Pumili ng 100, 150 o 220 dpi, i-preview ang laki, panatilihing malinaw ang teksto. Libre, offline.",
+      "short": "PDF compression",
+      "intro": "Mas madaling ibahagi ang PDF na maraming larawan. May mga compression control ang PDF42 para balansehin ang laki ng file at detalye ng larawan.",
+      "points": [
+        "Pumili ng mga image preset na 100, 150, o 220 dpi.",
+        "Tingnan ang inaasahang laki ng file habang pinananatiling malinaw ang teksto at vector content.",
+        "Mag-save ng hiwalay na file at ihambing ang resulta sa orihinal."
+      ],
+      "steps": [
+        "Buksan ang PDF at piliin ang compression.",
+        "Pumili ng image preset at ihambing ang mga tinatayang laki.",
+        "I-save ang resulta, saka suriin ang laki at linaw nito."
+      ],
+      "note": "Nakadepende sa orihinal na file ang resulta at maaaring hindi lumiit ang file. Binabawasan ng compression ang kalidad ng larawan at inaalis ang mga umiiral na digital signature.",
+      "question": "Gaano kaliit ang magiging PDF ko?",
+      "answer": "Walang takdang pagbawas. Karaniwang mas napapaliit ang mga na-scan at maraming-larawang PDF kaysa sa mga file na na-optimize na."
+    },
+    "labels-codes": {
+      "title": "Mga code, simbolo at label sa milimetro",
+      "seoTitle": "Label Maker ng QR Code, Barcode at CE Mark para sa Mac | OFF42",
+      "seoDescription": "Gumawa ng QR, Data Matrix, Code 128 at Aztec code, magdagdag ng CE, UKCA, EAC, FCC at iba pang product mark, at mag-print ng label sheet mula sa mga row ng spreadsheet sa Mac. Libre.",
+      "short": "QR code at label",
+      "intro": "Maglagay ng nai-scan na code o conformity mark sa PDF, dokumento o spreadsheet, saka mag-print ng buong sheet ng label mula sa iyong data. Sa milimetro itinatakda ang mga laki.",
+      "points": [
+        "Maglagay ng QR, Data Matrix, Code 128 at Aztec code na nae-edit pa rin pagkatapos i-save.",
+        "Magdagdag ng 97 na product mark — conformity (CE, UKCA, EAC, FCC, UL, CCC), pangkapaligiran (WEEE, RoHS), GHS hazard pictogram at IEC safety symbol — kasama ang mga kondisyon ng paggamit nito.",
+        "Mag-print ng label sheet mula sa mga row ng spreadsheet, table sa dokumento o bahagi ng PDF sa 559 na format ng papel o sa sarili mong grid."
+      ],
+      "steps": [
+        "Pumili ng cell, table, teksto o bahagi ng PDF, saka piliin ang “Insert › Symbol or Code” o “File › Create Labels”.",
+        "Piliin ang uri ng code o simbolo, ang lapad sa milimetro, ang label paper at ang column ng code.",
+        "Suriin ang preview, saka mag-save ng PDF o mag-print gamit ang calibration ng iyong printer."
+      ],
+      "note": "Artwork lamang ang mga mark: hindi sine-certify ang produkto kapag naglagay ng isa. Gumamit lamang ng conformity mark at trademark kung certified ang iyong produkto o hawak mo ang lisensya; ipinapakita ng app ang mga kondisyon ng bawat mark. Suriin ang tolerance ng papel at printer sa isang test print. Sa macOS; nakasalin ang dialog sa English, Russian at Turkish, at ang mga pangalan ng mark sa 11 wika.",
+      "question": "Nae-edit pa rin ba ang mga code pagkatapos kong i-save ang file?",
+      "answer": "Oo. Iniimbak ng mga PDF, DOCX, XLSX at ODS file ang recipe ng code, kaya muli itong binubuksan ng “Edit Symbol or Code”; karaniwang larawan ang nakikita ng ibang app. Kinukuha ng code sa spreadsheet ang value ng cell sa oras na inilagay ito at hindi sumusunod sa mga susunod na pagbabago."
+    },
+    "sign-pdf": {
+      "title": "Ilagay ang iyong lagda sa PDF",
+      "seoTitle": "Sign PDF sa Mac — Lagda, Stamp, Digital Signature | OFF42",
+      "seoDescription": "Maglagay ng lagdang parang sulat-kamay o stamp sa PDF, o pumirma gamit ang certificate. Iniimbak ng PDF42 ang marka mo para magamit muli. Libre, open source.",
+      "short": "Mga lagda sa PDF",
+      "intro": "Panatilihing madaling gamitin ang mga lagda at stamp. Magdagdag ng biswal na lagda, muling gumamit ng stamp, o gumamit ng digital signature na nakabatay sa certificate sa PDF42.",
+      "points": [
+        "Itago ang mga nagagamit-muling lagda at stamp sa iisang library.",
+        "Maglagay at mag-adjust ng biswal na marka sa pahina.",
+        "Gumamit ng certificate-based signing kapag kailangan ng iyong gawain."
+      ],
+      "steps": [
+        "Buksan ang dokumento at piliin ang signature tool.",
+        "Pumili ng biswal na marka o digital-signature workflow.",
+        "I-save at suriin ang resulta sa PDF software ng tatanggap."
+      ],
+      "note": "Ang biswal na lagda ay hindi digital signature na may certificate. Nakadepende sa certificate, serbisyo, at software ng tatanggap ang pagtitiwala sa certificate at pagkakatugma ng timestamp.",
+      "question": "Pareho ba ang biswal at digital na lagda?",
+      "answer": "Hindi. Ang biswal na lagda ay marka sa pahina. Gumagamit ng certificate ang digital signature upang makatulong na matukoy ang pagbabago sa dokumento at ang lumagda."
+    },
+    "image-editor": {
+      "title": "Panghuling ayos, walang abala",
+      "seoTitle": "Libreng Image Editor sa Mac — Crop, Resize, Annotate | OFF42",
+      "seoDescription": "Buksan ang JPEG, PNG, HEIC, WebP at TIFF, saka mag-crop, mag-resize, mag-rotate, mag-adjust at mag-annotate sa IMG42. Libreng open-source image editor, offline.",
+      "short": "Pag-edit ng larawan",
+      "intro": "Magbukas ng larawan, i-crop ang nakagagambalang bahagi, mag-adjust, o magdagdag ng malinaw na anotasyon. Pinadadali ng IMG42 ang mga pang-araw-araw na gawain sa larawan.",
+      "points": [
+        "Tingnan ang mga karaniwang format ng larawan, kabilang ang JPEG, PNG, HEIC, at TIFF.",
+        "I-crop, baguhin ang laki, i-rotate, at ayusin ang mga larawan.",
+        "Magdagdag ng anotasyon at mag-export sa mga suportadong format ng larawan."
+      ],
+      "steps": [
+        "Magbukas ng larawan sa iyong Mac.",
+        "Gawin ang mga pagbabago at suriin ang mga pixel.",
+        "Mag-export ng kopya sa format na angkop sa paggamit nito."
+      ],
+      "note": "Nag-iiba ayon sa format at available na codec ng macOS ang suporta sa pagbasa at pagsulat. May mga format na nabubuksan ngunit hindi mase-save sa orihinal na anyo.",
+      "question": "Maaari ko bang baguhin ang laki ng larawan bago ibahagi?",
+      "answer": "Oo. Baguhin ang laki at mag-export ng kopya. Suriin ang mga dimensyon at pumili ng format na nagpapanatili ng transparency o kalidad na kailangan mo."
+    }
+  },
+  "download": {
+    "title": "Dito nagsisimula ang susunod mong opisina.",
+    "intro": "Piliin ang platform at tingnan ang katayuan ng release. Available ang source code sa GitHub.",
+    "mac": "OFF42 para sa macOS",
+    "macText": "Para sa macOS 14 o mas bago ang source code. Wala pang pampublikong DMG installer na inilalabas.",
+    "windows": "OFF42 para sa Windows",
+    "windowsText": "Naipatupad na ang mga native Windows app at makukuha ang source code. Tingnan ang dokumentadong mga feature at limitasyon. Wala pang inilalabas na pampublikong Windows installer.",
+    "sourceTitle": "Buuin. Basahin. Iangkop sa iyo.",
+    "sourceText": "Kunin sa GitHub ang source code na may lisensyang MIT. Kailangan ang Xcode Command Line Tools para mag-build sa macOS. Gumagamit ng ad-hoc signing ang lokal na build maliban kung mag-configure ka ng distribution signing.",
+    "checkReleases": "Tingnan ang mga release",
+    "buildGuide": "Mga tagubilin sa pag-build",
+    "releaseNote": "Lilitaw ang mga download button kapag may available nang nailathalang release file. Walang installer na ilalarawang signed o notarized nang walang ebidensya sa release.",
+    "buildTitle": "I-build ang OFF42 sa iyong Mac",
+    "buildText": "Habang wala pang naka-sign na installer, maaari mong i-build mismo ang mga app sa loob ng ilang minuto. Patakbuhin ang mga command na ito sa Terminal.",
+    "buildStep1": "I-install ang Xcode Command Line Tools ng Apple.",
+    "buildStep2": "I-download ang source code mula sa GitHub.",
+    "buildStep3": "I-build ang lahat ng anim na app, o i-build ang isang app at kopyahin ito sa Applications."
+  },
+  "about": {
+    "title": "Isang opisinang walang itinatago.",
+    "intro": "Pinagsasama ng OFF42 ang anim na native app para sa macOS at Windows: PDF, mga dokumento, spreadsheet, presentasyon, larawan, at scan. Libre at open source, na may magkahiwalay na implementasyon at dokumentadong limitasyon sa bawat platform.",
+    "licenseTitle": "May lisensyang MIT. Malayang tuklasin.",
+    "licenseText": "Gamitin, pag-aralan, baguhin, at muling ipamahagi ang software sa ilalim ng lisensyang MIT. Nasa repository ang mga tuntunin ng lisensya at source code.",
+    "contributeTitle": "Sama-samang pagsisikap para sa mas mahusay na mga tool.",
+    "contributeText": "Mag-ulat ng bug na kayang ulitin, magmungkahi ng pagpapabuti, tumulong sa mga salin, o mag-ambag ng code sa GitHub.",
+    "honestTitle": "Bukas ang pagbuo.",
+    "honestText": "Patuloy na umuunlad ang proyekto. Nakatala sa repository ang mga nasubok na build, limitasyon, at saklaw ng audit. Hiwalay ang pagkakaroon ng source code sa mga nakapaketeng release na signed at notarized.",
+    "status": "Basahin ang katayuan ng proyekto",
+    "issues": "Mag-ulat ng isyu"
+  },
+  "privacy": {
+    "title": "Panatilihing malapit ang iyong trabaho.",
+    "intro": "Ipinapakilala ng website na ito ang OFF42 at nagbibigay ng mga link sa source code at mga release. Hindi nito tinatanggap o pinoproseso ang iyong mga dokumento.",
+    "siteTitle": "Isang simpleng website",
+    "siteText": "Walang patalastas, analytics script, o sistema ng account ang site. Maaaring magproseso ng impormasyon ng request ang hosting provider upang maihatid at maprotektahan ang website.",
+    "appTitle": "Lokal na trabaho sa dokumento",
+    "appText": "Ang pangunahing pag-edit ay ginagawa sa iyong computer nang hindi ina-upload ang mga file. Kailangan ng koneksyon ang mga opsyonal na online feature; nag-iiba ang availability ayon sa platform.",
+    "linksTitle": "Mga panlabas na link",
+    "linksText": "May sariling mga patakaran sa privacy ang GitHub at iba pang naka-link na serbisyo. Hindi ina-upload ang iyong mga file kapag bumisita ka sa website na ito."
+  },
+  "seo": {
+    "homeTitle": "OFF42 — Libreng Office para sa macOS at Windows, Walang Subscription",
+    "homeDescription": "Libre at open-source na native office app para sa macOS at Windows: PDF, DOCX, XLSX, PPTX, larawan, at scan. Magkakaiba ang mga feature at saklaw ng pagsubok sa bawat platform.",
+    "featuresTitle": "Mga Tampok: PDF, Dokumento, Spreadsheet, Scan | OFF42",
+    "featuresDescription": "Mag-edit at pumirma ng PDF, paliitin ang malalaking file, mag-scan na may OCR, gumamit ng DOCX, XLSX at PPTX. Tingnan ang kaya ng libreng OFF42 sa Mac.",
+    "downloadTitle": "I-download ang OFF42 para sa macOS at Windows — Libreng Office Suite",
+    "downloadDescription": "OFF42 para sa macOS at Windows: source code, status ng release, gabay sa pag-build, at mga limitasyon. Suriin kung ano ang naipatupad at nasubok bago mag-install.",
+    "aboutTitle": "Open-Source Office Suite na may MIT License | OFF42",
+    "aboutDescription": "Ang OFF42 ay anim na native app para sa macOS at Windows na may lisensyang MIT. Tingnan sa GitHub ang source code, suporta sa platform, at mga limitasyon.",
+    "privacyTitle": "Privacy: Nananatili ang mga File sa Iyong Computer | OFF42",
+    "privacyDescription": "Ang pangunahing pag-edit ay ginagawa sa iyong computer nang hindi ina-upload ang mga file. Kailangan ng koneksyon ang mga opsyonal na online feature; nag-iiba ang availability ayon sa platform."
+  }
+}

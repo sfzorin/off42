@@ -14,18 +14,20 @@ final class ExtrasBox { var x = DocumentExtras() }
 
 enum ToolsCLI {
     static func run(_ args: [String]) -> Int32? {
-        guard args.count >= 3 else { return nil }
+        let commands: Set<String> = ["--watermark", "--number-pages", "--split", "--merge", "--compare", "--edit-text", "--redact", "--add-field", "--fill", "--fields", "--bookmarks", "--crop", "--page-size", "--link", "--autolink", "--props", "--info", "--attach", "--detach", "--attachments", "--pdfa", "--bates", "--bates-batch", "--header-footer", "--labels", "--fonts"]
+        guard args.count >= 2, commands.contains(args[1]) else { return nil }
+        guard args.count >= 3 else { fail("missing arguments for \(args[1])") }
         let a = Array(args.dropFirst(2))
         let box = ExtrasBox()
         func open(_ path: String) -> PDFDocument {
-            guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)), let d = PDFDocument(data: data) else { fail("cannot open \(path)") }
+            guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)), let d = PDFDocument(data: data), !d.isLocked else { fail("cannot open \(path)") }
             box.x = DocumentExtras.read(data, pdf: d)
             return d
         }
         func save(_ pdf: PDFDocument, _ path: String) {
             guard let baked = PageOverlay.bake(pdf) else { fail("cannot write") }
             let data = DocumentWriter.apply(AcroFormFixer.ensureFields(baked.data), extras: box.x, pdf: pdf)
-            do { try data.write(to: URL(fileURLWithPath: path)) } catch { fail("\(error)") }
+            write(data, to: path)
             baked.report.lines.forEach { print($0) }
         }
         if let code = runDocumentTools(args[1], a, open: open, save: save, box: box) { return code }
@@ -34,15 +36,15 @@ enum ToolsCLI {
             let pdf = open(a[0])
             var spec = WatermarkSpec()
             spec.text = a[2]
-            let pages = PDFTools.pageIndices(a.count > 3 ? a[3] : "", pageCount: pdf.pageCount) ?? []
+            guard let pages = PDFTools.pageIndices(a.count > 3 ? a[3] : "", pageCount: pdf.pageCount) else { fail("bad pages") }
             for i in pages { if let p = pdf.page(at: i) { p.addAnnotation(WatermarkOverlay(spec: spec, page: p)) } }
             save(pdf, a[1])
             print("watermarked \(pages.count) pages")
         case "--number-pages" where a.count >= 2:
             let pdf = open(a[0])
             var spec = PageNumberSpec()
-            if a.count > 2, let f = Int(a[2]).flatMap(PageNumberSpec.Format.init) { spec.format = f }
-            if a.count > 3, let p = Int(a[3]).flatMap(PageNumberSpec.Position.init) { spec.position = p }
+            if a.count > 2 { guard let f = Int(a[2]).flatMap(PageNumberSpec.Format.init) else { fail("bad number format") }; spec.format = f }
+            if a.count > 3 { guard let p = Int(a[3]).flatMap(PageNumberSpec.Position.init) else { fail("bad number position") }; spec.position = p }
             spec.skipFirst = a.contains("skip-first")
             let labels = spec.labels(for: Array(0..<pdf.pageCount))
             for (i, text) in labels { if let p = pdf.page(at: i) { p.addAnnotation(PageNumberOverlay(text: text, spec: spec, page: p)) } }
@@ -53,27 +55,33 @@ enum ToolsCLI {
             let mode = a[2]
             let groups: [[Int]]?
             if mode == "each" { groups = PDFTools.everyN(1, pageCount: pdf.pageCount) }
-            else if mode.hasPrefix("every:") { groups = Int(mode.dropFirst(6)).map { PDFTools.everyN($0, pageCount: pdf.pageCount) } }
+            else if mode.hasPrefix("every:"), let n = Int(mode.dropFirst(6)), n > 0 { groups = PDFTools.everyN(n, pageCount: pdf.pageCount) }
             else { groups = PDFTools.parseRanges(mode, pageCount: pdf.pageCount) }
-            guard let groups else { fail("bad ranges \(mode)") }
+            guard let groups, !groups.isEmpty else { fail("bad ranges \(mode)") }
             let dir = URL(fileURLWithPath: a[1])
-            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            do { try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true) } catch { fail("\(error)") }
             let base = URL(fileURLWithPath: a[0]).deletingPathExtension().lastPathComponent
-            for (group, part) in zip(groups, PDFTools.split(PageOverlay.bakedDocument(pdf), groups: groups)) {
+            guard let data = PageOverlay.bakedData(pdf), let source = PDFDocument(data: data) else { fail("cannot prepare split pages") }
+            for (group, part) in zip(groups, PDFTools.split(source, groups: groups)) {
                 let url = dir.appendingPathComponent(PDFTools.partName(base, group))
-                part.write(to: url)
+                guard let data = part.dataRepresentation() else { fail("cannot write split pages") }
+                write(AcroFormFixer.ensureFields(data), to: url.path)
                 print("\(url.lastPathComponent): \(part.pageCount) pages")
             }
         case "--merge" where a.count >= 2:
-            let out = PDFTools.merge(a.dropFirst().map { URL(fileURLWithPath: $0) })
-            out.write(to: URL(fileURLWithPath: a[0]))
-            print("pages: \(out.pageCount)")
+            do {
+                let out = try PDFTools.mergeChecked(a.dropFirst().map { URL(fileURLWithPath: $0) })
+                guard let data = out.dataRepresentation() else { fail("cannot write merged pages") }
+                write(AcroFormFixer.ensureFields(data), to: a[0])
+                print("pages: \(out.pageCount)")
+            } catch { fail("\(error)") }
         case "--compare" where a.count >= 2:
             let base = open(a[0])
             let changes = PDFTools.compare(base, open(a[1]))
             if a.count > 2 {   // also write the base document with the changes highlighted
                 EditorWindowController.addCompareHighlights(changes, to: base)
-                base.write(to: URL(fileURLWithPath: a[2]))
+                guard let data = base.dataRepresentation() else { fail("cannot write comparison") }
+                write(AcroFormFixer.ensureFields(data), to: a[2])
             }
             for c in changes {
                 print("p\(c.page + 1): -[\(c.removed.map(\.text).joined(separator: " "))] +[\(c.added.joined(separator: " "))]")
@@ -90,11 +98,10 @@ enum ToolsCLI {
             let white = a.contains("white")
             var marks = 0
             for spec in a.dropFirst(2) where spec != "white" {
-                let parts = spec.split(separator: "@")
-                let n = parts[0].split(separator: ",").compactMap { Double($0) }
-                let pageIndex = parts.count > 1 ? (Int(parts[1]) ?? 1) - 1 : 0
-                guard n.count == 4, let page = pdf.page(at: pageIndex) else { fail("bad area \(spec) (x,y,w,h[@page])") }
-                page.addAnnotation(RedactOverlay(bounds: CGRect(x: n[0], y: n[1], width: n[2], height: n[3]), color: white ? .white : .black))
+                guard let (bounds, pageIndex) = area(spec, pageCount: pdf.pageCount), let page = pdf.page(at: pageIndex) else {
+                    fail("bad area \(spec) (x,y,w,h[@page])")
+                }
+                page.addAnnotation(RedactOverlay(bounds: bounds, color: white ? .white : .black))
                 marks += 1
             }
             save(pdf, a[1])
@@ -113,9 +120,11 @@ enum ToolsCLI {
         case "--fill" where a.count >= 3:
             let pdf = open(a[0])
             for pair in a.dropFirst(2) {
-                let kv = pair.split(separator: "=", maxSplits: 1).map(String.init)
-                guard kv.count == 2 else { continue }
-                for (_, f) in PDFTools.fields(pdf) where f.fieldName == kv[0] { PDFTools.setValue(kv[1], of: f) }
+                let kv = pair.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+                guard kv.count == 2 else { fail("bad field assignment \(pair)") }
+                let matching = PDFTools.fields(pdf).filter { $0.1.fieldName == kv[0] }
+                guard !matching.isEmpty else { fail("unknown field \(kv[0])") }
+                for (_, field) in matching { PDFTools.setValue(kv[1], of: field) }
             }
             save(pdf, a[1])
             print("filled")
@@ -124,9 +133,26 @@ enum ToolsCLI {
                 print("p\(i + 1) \(f.fieldName ?? "?") type=\(f.widgetFieldType.rawValue) value=\(PDFTools.value(of: f)) choices=\(f.choices ?? [])")
             }
         default:
-            return nil
+            fail("missing or invalid arguments for \(args[1])")
         }
         return 0
+    }
+
+    static func write(_ data: Data, to path: String) {
+        do { try data.write(to: URL(fileURLWithPath: path), options: .atomic) } catch { fail("\(error)") }
+    }
+
+    /// Strict page-space area: reject malformed, nonfinite and allocation-hostile input before mutation.
+    static func area(_ text: String, pageCount: Int) -> (CGRect, Int)? {
+        let parts = text.split(separator: "@", omittingEmptySubsequences: false)
+        guard (1...2).contains(parts.count), pageCount > 0 else { return nil }
+        let components = parts[0].split(separator: ",", omittingEmptySubsequences: false)
+        let values = components.compactMap { Double($0) }
+        guard components.count == 4, values.count == 4,
+              values.allSatisfy({ $0.isFinite && abs($0) <= 1_000_000 }), values[2] > 0, values[3] > 0 else { return nil }
+        let number = parts.count == 2 ? Int(parts[1]) : 1
+        guard let number, number >= 1, number <= pageCount else { return nil }
+        return (CGRect(x: values[0], y: values[1], width: values[2], height: values[3]), number - 1)
     }
 
     static func fail(_ message: String) -> Never {

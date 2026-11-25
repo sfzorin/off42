@@ -65,6 +65,8 @@ enum Cmd {
     static let enhancements: [Command] = Enhancement.allCases.map { Command($0.title, #selector(W.enhancementAction(_:)), tag: $0.rawValue + 1) }
     static let colorModes: [Command] = ColorMode.allCases.map { Command($0.title, #selector(W.pageColorAction(_:)), tag: $0.rawValue + 1) }
     static let removeBlank = Command(L("Remove Blank Pages"), #selector(W.removeBlankAction(_:)), symbol: "doc.badge.ellipsis")
+    static let stamps = Command(L("Signature or Stamp…"), #selector(W.showStampsAction(_:)), symbol: "signature",
+                                shortcut: Shortcut("k", [.command, .shift]), toolTip: L("Print a signature or stamp into the page"), label: L("Stamp"))
     static let straighten = Command(L("Crop and Straighten Again"), #selector(W.restraightenAction(_:)), symbol: "crop.rotate")
 
     static let welcome = Command(L("Welcome Window"), #selector(A.showWelcomeAction(_:)), shortcut: Shortcut("0", [.command, .shift]))
@@ -93,7 +95,7 @@ enum Cmd {
                          .command(moveUp), .command(moveDown), .command(deletePage), .separator,
                          .command(rescan), .command(insertHere), .command(split)]),
             (L("Tools"), [.command(recognize), .command(enhance), .submenu(L("Clean-up"), enhancements.menuElements),
-                          .submenu(L("Colour"), colorModes.menuElements), .command(straighten), .separator, .command(removeBlank)]),
+                          .submenu(L("Colour"), colorModes.menuElements), .command(straighten), .separator, .command(stamps), .separator, .command(removeBlank)]),
         ]
         spec.help = [.command(welcome)]
         return spec

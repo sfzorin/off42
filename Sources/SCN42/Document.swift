@@ -14,6 +14,7 @@ final class ScanPage {
     /// Recognised text (nil = not recognised yet).
     var text: [TextLine]?
     private var cachedThumbnail: NSImage?
+    private(set) var contentRevision = UUID()
 
     init(base: CGImage, image: CGImage, dpi: Double, options: ProcessOptions, report: ProcessReport) {
         self.base = ScanPage.compact(base)
@@ -24,7 +25,7 @@ final class ScanPage {
     }
 
     /// Runs the whole pipeline on a raw scan.
-    static func make(_ raw: RawScan, options: ProcessOptions) -> ScanPage {
+    static func make(_ raw: RawScan, options: ProcessOptions) throws -> ScanPage {
         var o = options
         o.dpi = raw.dpi
         var geometry = o
@@ -34,8 +35,8 @@ final class ScanPage {
         geometry.colorMode = .color
         geometry.brightness = 0
         geometry.contrast = 0
-        let (base, report) = Processor.process(raw.image, geometry)
-        let finished = Processor.finish(base, o) ?? base
+        let (base, report) = try Processor.processChecked(raw.image, geometry)
+        guard let finished = Processor.finish(base, o) else { throw CocoaError(.fileReadCorruptFile) }
         var r = report
         r.outputSize = CGSize(width: finished.width, height: finished.height)
         return ScanPage(base: base, image: finished, dpi: raw.dpi, options: o, report: r)
@@ -62,33 +63,67 @@ final class ScanPage {
         ExportPage(image: image, dpi: dpi, text: text, title: text.flatMap(OCR.title))
     }
 
-    /// Re-runs clean-up with new options (enhancement, colour mode, brightness…).
-    func refinish(_ o: ProcessOptions) {
-        var opts = o
-        opts.dpi = dpi
-        options = opts
-        image = Processor.finish(base, opts) ?? base
+    /// Compute immutable output on a worker, then restore it on the main thread.
+    struct Snapshot {
+        let base: CGImage, image: CGImage, dpi: Double, options: ProcessOptions, report: ProcessReport, text: [TextLine]?
+
+        func hasSameContent(as other: Snapshot) -> Bool {
+            base === other.base && image === other.image && dpi == other.dpi && options == other.options
+                && report == other.report && text == other.text
+        }
+
+        func finished(_ options: ProcessOptions) throws -> Snapshot {
+            var options = options; options.dpi = dpi
+            guard let image = Processor.finish(base, options) else { throw CocoaError(.fileReadCorruptFile) }
+            var report = report
+            report.outputSize = CGSize(width: image.width, height: image.height)
+            report.ink = Processor.inkCoverage(image)
+            report.tone = Processor.toneSpread(image)
+            report.blank = report.ink < options.blankLimit && report.tone < 10
+            return Snapshot(base: base, image: image, dpi: dpi, options: options, report: report, text: nil)
+        }
+    }
+
+    var snapshot: Snapshot { Snapshot(base: base, image: image, dpi: dpi, options: options, report: report, text: text) }
+
+    func restore(_ state: Snapshot) {
+        base = state.base; image = state.image; dpi = state.dpi; options = state.options; report = state.report; text = state.text
+        contentRevision = UUID()
         cachedThumbnail = nil
     }
+
+    /// Same geometry, new pixels (a signature or stamp printed into the page); the recognised text stays valid.
+    func replacePixels(base newBase: CGImage, image newImage: CGImage) {
+        var report = report
+        report.outputSize = CGSize(width: newImage.width, height: newImage.height)
+        report.ink = Processor.inkCoverage(newImage)
+        report.blank = false
+        restore(Snapshot(base: newBase, image: newImage, dpi: dpi, options: options, report: report, text: text))
+    }
+
+    func copy() -> ScanPage {
+        let page = ScanPage(base: base, image: image, dpi: dpi, options: options, report: report)
+        page.restore(snapshot)
+        return page
+    }
+
+    /// Re-runs clean-up with new options (enhancement, colour mode, brightness…).
+    func refinish(_ options: ProcessOptions) throws { restore(try snapshot.finished(options)) }
 
     func rotate(clockwise degrees: Int) {
-        if let b = Processor.rotate90(base, clockwise: degrees) { base = ScanPage.compact(b) }
-        image = Processor.rotate90(image, clockwise: degrees).map { image.bitsPerPixel == 1 ? (Bitmap($0, gray: true).oneBitImage(threshold: 128) ?? $0) : $0 } ?? image
-        text = nil
-        cachedThumbnail = nil
-    }
-
-    /// State for undo of rotation and clean-up.
-    struct Snapshot {
-        let base: CGImage, image: CGImage, options: ProcessOptions, text: [TextLine]?
-    }
-    var snapshot: Snapshot { Snapshot(base: base, image: image, options: options, text: text) }
-    func restore(_ s: Snapshot) {
-        base = s.base
-        image = s.image
-        options = s.options
-        text = s.text
-        cachedThumbnail = nil
+        let turn = (degrees % 360 + 360) % 360
+        guard turn != 0, turn % 90 == 0,
+              let rotatedBase = Processor.rotate90(base, clockwise: turn),
+              let rotatedImage = Processor.rotate90(image, clockwise: turn) else { return }
+        let output: CGImage
+        if image.bitsPerPixel == 1 {
+            guard let bits = Bitmap(rotatedImage, gray: true).oneBitImage(threshold: 128) else { return }
+            output = bits
+        } else { output = rotatedImage }
+        var report = report
+        report.outputSize = CGSize(width: output.width, height: output.height)
+        report.rotation = (report.rotation + turn) % 360
+        restore(Snapshot(base: ScanPage.compact(rotatedBase), image: output, dpi: dpi, options: options, report: report, text: nil))
     }
 }
 
@@ -97,117 +132,132 @@ final class ScanDocument {
     private(set) var pages: [ScanPage] = []
     let undo = UndoManager()
     var onChange: (() -> Void)?
-    /// Changed since the last save.
+    var captureSelection: (() -> [UUID])?
+    var restoreSelection: (([UUID]) -> Void)?
     var isDirty = false
-    /// Identifies the exact state captured by a background save.
+    /// Monotonic revision guards asynchronous saves; complete saved content determines dirty state after Undo.
     private(set) var revision = 0
-
+    typealias SavedContents = [(UUID, ScanPage.Snapshot)]
+    private var savedContents: SavedContents? = []
     var isEmpty: Bool { pages.isEmpty }
 
     init() { undo.groupsByEvent = false }
 
-    /// One undo step per change, also for changes not started by an event (scans arriving, menu hooks).
     private func step(_ body: () -> Void) {
         if undo.isUndoing || undo.isRedoing { body(); return }
-        undo.beginUndoGrouping()
-        body()
-        undo.endUndoGrouping()
+        undo.beginUndoGrouping(); body(); undo.endUndoGrouping()
     }
 
     private func changed(_ name: String) {
         revision += 1
-        isDirty = true
+        isDirty = !matchesSavedContents
         undo.setActionName(name)
         onChange?()
     }
 
-    func insert(_ new: [ScanPage], at index: Int, name: String = L("Add Pages")) {
-        step {
-            let i = min(max(0, index), pages.count)
-            pages.insert(contentsOf: new, at: i)
-            let ids = Set(new.map(\.id))
-            undo.registerUndo(withTarget: self) { d in d.remove(ids: ids, name: name) }
-            changed(name)
+    private var matchesSavedContents: Bool {
+        guard let savedContents else { return false }
+        return pages.count == savedContents.count && zip(pages, savedContents).allSatisfy { page, saved in
+            page.id == saved.0 && page.snapshot.hasSameContent(as: saved.1)
         }
+    }
+
+    func insert(_ new: [ScanPage], at index: Int, name: String = L("Add Pages")) {
+        var ids = Set(pages.map(\.id))
+        let unique = new.filter { ids.insert($0.id).inserted }
+        guard !unique.isEmpty else { return }
+        var order = pages
+        order.insert(contentsOf: unique, at: min(max(0, index), pages.count))
+        setOrder(order, name: name)
     }
 
     func append(_ new: [ScanPage]) { insert(new, at: pages.count) }
 
     func remove(ids: Set<UUID>, name: String = L("Delete Pages")) {
-        step { removeNow(ids: ids, name: name) }
+        setOrder(pages.filter { !ids.contains($0.id) }, name: name)
     }
 
-    private func removeNow(ids: Set<UUID>, name: String) {
-        let removed = pages.enumerated().filter { ids.contains($0.element.id) }
-        guard !removed.isEmpty else { return }
-        pages.removeAll { ids.contains($0.id) }
-        undo.registerUndo(withTarget: self) { d in
-            for (i, p) in removed { d.pages.insert(p, at: min(i, d.pages.count)) }
-            d.undo.registerUndo(withTarget: d) { $0.remove(ids: ids, name: name) }
-            d.changed(name)
-        }
-        changed(name)
-    }
-
-    /// Moves the pages at `indices` so they start at `destination` (index in the current array, before removal).
+    /// Destination is an index before removal; invalid/stale row indices are ignored.
     func move(_ indices: IndexSet, to destination: Int) {
-        let before = pages
-        let moving = indices.map { pages[$0] }
-        var rest = pages.enumerated().filter { !indices.contains($0.offset) }.map(\.element)
-        let shift = indices.filter { $0 < destination }.count
-        rest.insert(contentsOf: moving, at: min(max(0, destination - shift), rest.count))
-        guard rest.map(\.id) != before.map(\.id) else { return }
+        let valid = indices.filteredIndexSet { pages.indices.contains($0) }
+        guard !valid.isEmpty else { return }
+        let moving = valid.map { pages[$0] }
+        var rest = pages.enumerated().filter { !valid.contains($0.offset) }.map(\.element)
+        let position = min(max(0, destination), pages.count)
+        let shift = valid.filter { $0 < position }.count
+        rest.insert(contentsOf: moving, at: min(max(0, position - shift), rest.count))
         setOrder(rest, name: L("Move Pages"))
     }
 
-    func setOrder(_ order: [ScanPage], name: String) {
+    func setOrder(_ order: [ScanPage], name: String) { setOrder(order, name: name, selection: nil) }
+
+    private func setOrder(_ order: [ScanPage], name: String, selection: [UUID]?) {
+        var ids = Set<UUID>()
+        let order = order.filter { ids.insert($0.id).inserted }
+        guard order.map(\.id) != pages.map(\.id) else { return }
         step {
-            let old = pages
+            let old = pages, oldSelection = captureSelection?()
             pages = order
-            undo.registerUndo(withTarget: self) { $0.setOrder(old, name: name) }
+            undo.registerUndo(withTarget: self) { $0.setOrder(old, name: name, selection: oldSelection) }
             changed(name)
+            if let selection { restoreSelection?(selection) }
         }
     }
 
     func replace(_ page: ScanPage, with new: [ScanPage], name: String = L("Rescan Page")) {
-        guard let i = pages.firstIndex(where: { $0 === page }) else { append(new); return }
-        var order = pages
-        order.replaceSubrange(i...i, with: new)
+        guard let index = pages.firstIndex(where: { $0 === page }) else { return }
+        var order = pages; order.replaceSubrange(index...index, with: new)
         setOrder(order, name: name)
     }
 
-    /// Changes pages in place (rotate, enhance) with undo.
     func modify(_ targets: [ScanPage], name: String, _ change: (ScanPage) -> Void) {
+        var seen = Set<UUID>()
+        let targets = targets.filter { target in pages.contains { $0 === target } && seen.insert(target.id).inserted }
+        guard !targets.isEmpty else { return }
+        let before = targets.map { ($0, $0.snapshot) }, selection = captureSelection?()
+        targets.forEach(change)
+        let changedStates = before.filter { !$0.0.snapshot.hasSameContent(as: $0.1) }
+        guard !changedStates.isEmpty else { return }
         step {
-            let before = targets.map { ($0, $0.snapshot) }
-            targets.forEach(change)
-            registerRestore(before, name: name)
+            undo.registerUndo(withTarget: self) { $0.restore(changedStates, name: name, selection: selection) }
             changed(name)
         }
     }
 
-    private func registerRestore(_ states: [(ScanPage, ScanPage.Snapshot)], name: String) {
-        undo.registerUndo(withTarget: self) { d in
-            let redo = states.map { ($0.0, $0.0.snapshot) }
-            states.forEach { $0.0.restore($0.1) }
-            d.registerRestore(redo, name: name)
-            d.changed(name)
-        }
+    private func restore(_ states: [(ScanPage, ScanPage.Snapshot)], name: String, selection: [UUID]?) {
+        let valid = states.filter { page, _ in pages.contains { $0 === page } }
+        guard !valid.isEmpty else { return }
+        let redo = valid.map { ($0.0, $0.0.snapshot) }, redoSelection = captureSelection?()
+        valid.forEach { $0.0.restore($0.1) }
+        undo.registerUndo(withTarget: self) { $0.restore(redo, name: name, selection: redoSelection) }
+        changed(name)
+        if let selection { restoreSelection?(selection) }
     }
 
-    /// OCR results are not an edit (no undo), but the document must be saved again to keep them.
-    func setText(_ page: ScanPage, _ lines: [TextLine]) {
-        guard pages.contains(where: { $0 === page }) else { return }
+    /// Recognition is not undoable; a result must still belong to these exact page pixels.
+    @discardableResult func setText(_ page: ScanPage, _ lines: [TextLine], expectedContentRevision: UUID? = nil) -> Bool {
+        guard pages.contains(where: { $0 === page }), expectedContentRevision == nil || expectedContentRevision == page.contentRevision else { return false }
+        guard page.text != lines else { return true }
         page.text = lines
-        revision += 1
-        isDirty = true
+        revision += 1; isDirty = !matchesSavedContents
         onChange?()
+        return true
     }
 
-    /// A save of an older snapshot must not mark newly scanned/reordered pages as saved.
     func markSaved(revision savedRevision: Int) {
-        guard revision == savedRevision else { return }
-        isDirty = false
+        guard revision == savedRevision else {
+            // Legacy callers without the saved pixels cannot establish a baseline after concurrent edits.
+            savedContents = nil; isDirty = true; onChange?()
+            return
+        }
+        markSaved(contents: captureSavedContents(pages))
+    }
+
+    func captureSavedContents(_ targets: [ScanPage]) -> SavedContents { targets.map { ($0.id, $0.snapshot) } }
+
+    /// The saved snapshot, not the state at callback time, becomes the new disk baseline.
+    func markSaved(contents: SavedContents) {
+        savedContents = contents; isDirty = !matchesSavedContents
         onChange?()
     }
 }

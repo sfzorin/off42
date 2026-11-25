@@ -9,12 +9,14 @@ struct EditState {
     var adjustments: Adjustments
     var imageDescription: String?
     var dpi: CGFloat
+    var pixelSelection: PixelSelection? = nil
+    var selectedMarkID: UUID? = nil
 }
 
 extension ImageWindowController {
     var isDirty: Bool {
         guard base != nil else { return false }
-        return base !== originalBase || canvas.markup.isEditingText || !canvas.markup.marks.isEmpty || !adjustments.isIdentity
+        return base !== originalBase || canvas.markup.hasPendingTextEdit || !canvas.markup.marks.isEmpty || !adjustments.isIdentity
             || imageDescription != originalDescription || imageDPI != originalDPI
     }
 
@@ -25,8 +27,14 @@ extension ImageWindowController {
     }
 
     func resetEditing(base image: CGImage?) {
-        // Commit the field before clearing marks; committing afterwards can reinsert discarded text.
-        canvas.markup.endTextEditing()
+        editGeneration = UUID()
+        // Reset is a discard boundary; Save/Revert take their committed snapshot before entering here.
+        canvas.markup.cancelInteraction()
+        canvas.markup.cancelTextEditing()
+        renderWork?.cancel(); renderWork = nil
+        Self.adjustStart.removeValue(forKey: ObjectIdentifier(self))
+        showingOriginal = false
+        canvas.markup.hideMarks = false
         originalBase = image
         base = image
         adjustments = Adjustments()
@@ -56,23 +64,33 @@ extension ImageWindowController {
 
     // MARK: - Undo
 
-    var state: EditState { EditState(base: base, marks: canvas.markup.marks, adjustments: adjustments, imageDescription: imageDescription, dpi: imageDPI) }
+    var state: EditState {
+        EditState(base: base, marks: canvas.markup.marks, adjustments: adjustments, imageDescription: imageDescription,
+                  dpi: imageDPI, pixelSelection: canvas.markup.pixelSelection, selectedMarkID: canvas.markup.selectedID)
+    }
 
     func restore(_ s: EditState) {
+        editGeneration = UUID()
+        canvas.markup.cancelInteraction()
+        canvas.markup.cancelTextEditing()
+        renderWork?.cancel(); renderWork = nil
+        showingOriginal = false; canvas.markup.hideMarks = false
         let sizeChanged = s.base?.width != base?.width || s.base?.height != base?.height
         base = s.base
         canvas.markup.marks = s.marks
-        canvas.markup.selectedID = nil
-        canvas.markup.pixelSelection = nil
         adjustments = s.adjustments
         imageDescription = s.imageDescription
         imageDPI = s.dpi
         autoFilters = nil
         if inspectorShows === adjustPanel { adjustPanel.set(adjustments) }
         refreshDisplay(resize: sizeChanged)
+        canvas.markup.pixelSelection = s.pixelSelection
+        canvas.markup.selectedID = s.selectedMarkID.flatMap { id in s.marks.contains(where: { $0.id == id }) ? id : nil }
+        markupBar.selectionChanged()
     }
 
     func registerUndo(_ old: EditState, _ name: String) {
+        editGeneration = UUID()
         undo.registerUndo(withTarget: self) { target in
             let current = target.state
             target.restore(old)
@@ -91,6 +109,8 @@ extension ImageWindowController {
 
     /// Replaces the working image (crop, resize, rotate, remove background); marks follow with `transform`.
     func replaceBase(_ image: CGImage, transform: CGAffineTransform?, name: String) {
+        canvas.markup.cancelInteraction()
+        canvas.markup.endTextEditing()
         registerUndo(state, name)
         stopAnimation()
         let t = transform ?? .identity
@@ -111,9 +131,12 @@ extension ImageWindowController {
         if adjustments.autoEnhance, autoFilters == nil { autoFilters = CIImage(cgImage: base).autoAdjustmentFilters() }
         let a = adjustments, filters = autoFilters
         let size = CGSize(width: base.width, height: base.height)
-        if showingOriginal || a.isIdentity {
+        if showingOriginal {
+            let original = originalBase ?? base
+            canvas.setImage(original, size: CGSize(width: original.width, height: original.height), resetZoom: false)
+        } else if a.isIdentity {
             displayed = base
-            canvas.setImage(showingOriginal ? (originalBase ?? base) : base, size: size, resetZoom: false)
+            canvas.setImage(base, size: size, resetZoom: false)
         } else if live, max(base.width, base.height) > 1600, let proxy = ImageLoader.scaled(base, maxPixels: 1600) {
             canvas.setImage(a.render(proxy, autoFilters: filters), size: size, resetZoom: false)
             scheduleFullRender()
@@ -121,7 +144,7 @@ extension ImageWindowController {
             displayed = a.render(base, autoFilters: filters)
             canvas.setImage(displayed, size: size, resetZoom: false)
         }
-        if resize { canvas.setImage(canvas.imageView.image, size: size, resetZoom: false) }
+        if resize, !showingOriginal { canvas.setImage(canvas.imageView.image, size: size, resetZoom: false) }
         canvas.markup.needsDisplay = true
         updateSubtitle()
         window?.toolbar?.validateVisibleItems()
@@ -134,7 +157,7 @@ extension ImageWindowController {
         let work = DispatchWorkItem { [weak self] in
             let image = a.render(base, autoFilters: filters)
             DispatchQueue.main.async {
-                guard let self, self.adjustments == a, self.base === base else { return }
+                guard let self, !self.showingOriginal, self.adjustments == a, self.base === base else { return }
                 self.displayed = image
                 self.canvas.imageView.image = image
                 self.canvas.markup.needsDisplay = true
@@ -148,7 +171,8 @@ extension ImageWindowController {
     func finalImage() -> CGImage? {
         guard let base else { return nil }
         if adjustments.autoEnhance, autoFilters == nil { autoFilters = CIImage(cgImage: base).autoAdjustmentFilters() }
-        return Mark.flatten(canvas.markup.marks, onto: adjustments.render(base, autoFilters: autoFilters))
+        guard let adjusted = adjustments.renderChecked(base, autoFilters: autoFilters) else { return nil }
+        return Mark.flattenChecked(canvas.markup.marks, onto: adjusted)
     }
 
     // MARK: - Adjustments
@@ -156,6 +180,9 @@ extension ImageWindowController {
     private static var adjustStart: [ObjectIdentifier: EditState] = [:]
 
     func beginAdjusting() {
+        editGeneration = UUID()
+        stopAnimation()
+        canvas.markup.endTextEditing()
         Self.adjustStart[ObjectIdentifier(self)] = state
     }
 
@@ -169,6 +196,7 @@ extension ImageWindowController {
     }
 
     func showOriginal(_ on: Bool) {
+        renderWork?.cancel(); renderWork = nil
         showingOriginal = on
         canvas.markup.hideMarks = on
         refreshDisplay()
@@ -187,6 +215,9 @@ extension ImageWindowController {
     }
 
     func applyAdjustments(_ a: Adjustments, name: String) {
+        guard adjustments != a else { return }
+        stopAnimation()
+        canvas.markup.endTextEditing()
         registerUndo(state, name)
         adjustments = a
         stopAnimation()
@@ -212,27 +243,50 @@ extension ImageWindowController {
 
     /// Untouched JPEG/HEIF/PNG/TIFF files get a new orientation tag (lossless); anything else becomes an edit to save.
     func transformImage(_ op: Orientation.Op) {
+        stopAnimation()
+        canvas.markup.cancelInteraction()
+        canvas.markup.endTextEditing()
         guard let url, let l = loaded, let base else { return }
-        if !isDirty, l.pageCount == 1, !l.isAnimated, rotateFileLosslessly(url, op: op, current: l.orientation) {
-            undo.registerUndo(withTarget: fileUndo) { [weak self] _ in
-                let inverse: Orientation.Op = [.rotateLeft: .rotateRight, .rotateRight: .rotateLeft][op] ?? op
-                self?.transformImage(inverse)
-            }
-            undo.setActionName(opName(op))
-            return
-        }
+        if !isDirty, l.pageCount == 1, !l.isAnimated, rotateFileLosslessly(url, op: op) { return }
         let size = CGSize(width: base.width, height: base.height)
         replaceBase(Orientation.apply(op.orientation, to: base), transform: Orientation.transform(op, size: size), name: opName(op))
     }
 
-    private func rotateFileLosslessly(_ url: URL, op: Orientation.Op, current: CGImagePropertyOrientation) -> Bool {
-        guard let type = loaded?.typeIdentifier.flatMap(UTType.init),
-              [UTType.jpeg, .heic, .heif, .png, .tiff].contains(where: { type.conforms(to: $0) }) else { return false }
-        let new = Orientation.compose(op, after: current)
-        guard Orientation.rewriteLosslessly(url, orientation: new) else { return false }
-        invalidateCache(url)
-        // Reload without clearing the undo stack: the rotation itself is undoable.
-        display(ImageLoader.load(url))
+    private func losslessRotationSource(_ target: URL) -> LoadedImage? {
+        let source = ImageLoader.load(target)
+        guard source.error == nil, source.image != nil, source.pageCount == 1, !source.isAnimated,
+              let type = source.typeIdentifier.flatMap(UTType.init),
+              [UTType.jpeg, .heic, .heif, .png, .tiff].contains(where: { type.conforms(to: $0) }) else { return nil }
+        return source
+    }
+
+    private func rotateFileLosslessly(_ target: URL, op: Orientation.Op) -> Bool {
+        guard let source = losslessRotationSource(target) else { return false }
+        return writeLosslessOrientation(target, from: source.orientation,
+                                        to: Orientation.compose(op, after: source.orientation), name: opName(op))
+    }
+
+    /// File operations retain their own destination even when the viewer navigates to another image.
+    /// Store both orientation states so Undo/Redo does not re-run a command against the current document.
+    private func writeLosslessOrientation(_ target: URL, from previous: CGImagePropertyOrientation,
+                                         to orientation: CGImagePropertyOrientation, name: String) -> Bool {
+        let isCurrent = url?.standardizedFileURL == target.standardizedFileURL
+        // Do not discard a draft that was started after this file operation.
+        guard !(isCurrent && isDirty), Orientation.rewriteLosslessly(target, orientation: orientation) else { return false }
+        invalidateCache(target)
+        if isCurrent {
+            // This also invalidates any outstanding load of the old orientation, without clearing file Undo.
+            adoptSavedURL(target, loaded: ImageLoader.load(target))
+        }
+        undo.registerUndo(withTarget: fileUndo) { [weak self] _ in
+            guard let self else { return }
+            guard let source = self.losslessRotationSource(target), source.orientation == orientation,
+                  self.writeLosslessOrientation(target, from: orientation, to: previous, name: name) else {
+                self.showError(CocoaError(.fileWriteUnknown, userInfo: [NSFilePathErrorKey: target.path]))
+                return
+            }
+        }
+        undo.setActionName(name)
         return true
     }
 
@@ -269,6 +323,8 @@ extension ImageWindowController {
             self.markupBar.setTool(.select)
             self.canvas.markup.insertImage(image)
         }
+        // A picture has its own resolution: the mark is drawn to match it.
+        vc.placement = { [weak self] aspect in MarkPlacement.standard(aspect: aspect, scanDPI: self.map { max(72, $0.imageDPI) }) }
         vc.popover = popover
         popover.contentViewController = vc
         popover.behavior = .transient
@@ -282,12 +338,18 @@ extension ImageWindowController {
     // MARK: - Pixel selection
 
     @objc func cropToSelectionAction(_ sender: Any?) {
+        stopAnimation()
+        canvas.markup.cancelInteraction()
+        canvas.markup.endTextEditing()
         guard let sel = canvas.markup.pixelSelection, let base, let cropped = PixelOps.extract(sel, from: base) else { return }
-        let r = sel.bounds.integral
+        let r = sel.bounds.integral.intersection(CGRect(x: 0, y: 0, width: base.width, height: base.height))
         replaceBase(cropped, transform: CGAffineTransform(translationX: -r.minX, y: -r.minY), name: L("Crop"))
     }
 
     @objc func deleteSelectionAction(_ sender: Any?) {
+        stopAnimation()
+        canvas.markup.cancelInteraction()
+        canvas.markup.endTextEditing()
         guard let sel = canvas.markup.pixelSelection, let base, let cleared = PixelOps.delete(sel, from: base) else { return }
         canvas.document.showsCheckerboard = true
         replaceBase(cleared, transform: nil, name: L("Delete Selection"))
@@ -313,17 +375,44 @@ extension ImageWindowController {
 
     // MARK: - Remove background
 
+    struct BackgroundRemovalRequest {
+        let image: CGImage
+        let session: UUID
+        let generation: UUID
+    }
+
+    func captureBackgroundRemoval() -> BackgroundRemovalRequest? {
+        stopAnimation()
+        canvas.markup.cancelInteraction()
+        canvas.markup.endTextEditing()
+        guard let base else { return nil }
+        editGeneration = UUID()
+        return BackgroundRemovalRequest(image: base, session: imageSession, generation: editGeneration)
+    }
+
+    func isCurrentBackgroundRemoval(_ request: BackgroundRemovalRequest) -> Bool {
+        request.image === base && request.session == imageSession && request.generation == editGeneration
+            && !canvas.markup.hasPendingTextEdit
+    }
+
+    @discardableResult func applyBackgroundRemoval(_ image: CGImage, request: BackgroundRemovalRequest) -> Bool {
+        guard isCurrentBackgroundRemoval(request) else { return false }
+        replaceBase(image, transform: nil, name: L("Remove Background"))
+        canvas.document.showsCheckerboard = true
+        return true
+    }
+
     @objc func removeBackgroundAction(_ sender: Any?) {
-        guard let base else { return }
+        guard let request = captureBackgroundRemoval() else { return }
         window?.subtitle = L("Removing background…")
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let result = Result { try PixelOps.removeBackground(base) }
+            let result = Result { try PixelOps.removeBackground(request.image) }
             DispatchQueue.main.async {
-                guard let self, self.base === base else { return }
+                guard let self else { return }
+                guard self.isCurrentBackgroundRemoval(request) else { self.updateSubtitle(); return }
                 switch result {
                 case .success(let image?):
-                    self.replaceBase(image, transform: nil, name: L("Remove Background"))
-                    self.canvas.document.showsCheckerboard = true
+                    self.applyBackgroundRemoval(image, request: request)
                 case .success(nil):
                     self.banner.show(.info, L("No subject found to separate from the background."))
                     self.updateSubtitle()
@@ -341,7 +430,7 @@ extension ImageWindowController {
         guard let base, let window else { return }
         let dialog = ResizeDialog(size: CGSize(width: base.width, height: base.height), dpi: dpi)
         dialog.alert.beginSheetModal(for: window) { [weak self] response in
-            guard response == .alertFirstButtonReturn, let self, let base = self.base else { return }
+            guard response == .alertFirstButtonReturn, dialog.isValid, let self, let base = self.base else { return }
             let target = dialog.pixelSize
             let resolution = dialog.resolutionDPI
             guard target.width >= 1, target.height >= 1 else { return }
@@ -359,7 +448,13 @@ extension ImageWindowController {
     var dpi: CGFloat { imageDPI }
 
     @discardableResult func resizeImage(to target: CGSize) -> Bool {
+        stopAnimation()
         guard let base else { return false }
+        let target = CGSize(width: target.width.rounded(), height: target.height.rounded())
+        guard ImageLoader.validPixelSize(target) else { return false }
+        guard target != CGSize(width: base.width, height: base.height) else { return true }
+        canvas.markup.cancelInteraction()
+        canvas.markup.endTextEditing()
         let cs = base.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }
         guard let resized = ImageLoader.render(size: target, colorSpace: cs, { ctx in
             ctx.interpolationQuality = .high
@@ -446,6 +541,7 @@ final class ResizeDialog: NSObject, NSTextFieldDelegate {
     /// The unit of the values currently displayed; a popup action sees the newly selected unit.
     private var fieldUnit: Unit = .pixels
     private var exactPixelSize: CGSize?
+    private(set) var isValid = false
 
     init(size: CGSize, dpi: CGFloat) {
         original = size
@@ -501,6 +597,9 @@ final class ResizeDialog: NSObject, NSTextFieldDelegate {
     }
 
     private func fill(_ px: CGSize) {
+        width.isEnabled = resample.state == .on
+        height.isEnabled = resample.state == .on
+        keep.isEnabled = resample.state == .on
         fieldUnit = unit
         exactPixelSize = px
         width.stringValue = Self.format(toUnit(px.width, original.width))
@@ -529,11 +628,20 @@ final class ResizeDialog: NSObject, NSTextFieldDelegate {
     var pixelSize: CGSize {
         guard resample.state == .on else { return original }
         if let exactPixelSize { return exactPixelSize }
+        guard [width.doubleValue, height.doubleValue].allSatisfy({ $0.isFinite && $0 > 0 }) else { return .zero }
         return CGSize(width: max(1, toPixels(CGFloat(width.doubleValue), original.width).rounded()),
                       height: max(1, toPixels(CGFloat(height.doubleValue), original.height).rounded()))
     }
 
-    @objc private func unitChanged() { fill(pixelSize) }
+    @objc private func unitChanged() {
+        let px = pixelSize
+        guard ImageLoader.validPixelSize(px) else {
+            units.selectItem(at: fieldUnit.rawValue)
+            updateResult()
+            return
+        }
+        fill(px)
+    }
 
     func controlTextDidChange(_ obj: Notification) {
         guard let field = obj.object as? NSTextField else { return }
@@ -550,6 +658,7 @@ final class ResizeDialog: NSObject, NSTextFieldDelegate {
             } else { updateResult() }
             return
         }
+        guard resample.state == .on else { fill(original); return }
         exactPixelSize = nil
         if keep.state == .on {
             let ratio = original.width / original.height
@@ -568,8 +677,9 @@ final class ResizeDialog: NSObject, NSTextFieldDelegate {
         let px = pixelSize
         let estimatedBytes = px.width * px.height * 4
         let validDimensions = exactPixelSize != nil || [width.doubleValue, height.doubleValue].allSatisfy { $0.isFinite && $0 > 0 }
-        let valid = validDimensions && resolution.doubleValue.isFinite && resolution.doubleValue > 0
+        let valid = validDimensions && resolution.doubleValue.isFinite && resolution.doubleValue > 0 && ImageLoader.validPixelSize(px)
             && estimatedBytes.isFinite && estimatedBytes < CGFloat(Int64.max)
+        isValid = valid
         alert.buttons.first?.isEnabled = valid
         guard valid else {
             result.stringValue = L("The image size or resolution is invalid.")

@@ -134,6 +134,8 @@ extension EditorWindowController {
 
     /// Moves `item` into `parent` at `index` (drag and drop in the sidebar).
     func moveBookmark(_ item: PDFOutline, to parent: PDFOutline, at index: Int) {
+        var ancestor: PDFOutline? = parent
+        while let node = ancestor { if node === item { return }; ancestor = node.parent }
         var target = index
         if item.parent === parent, item.index < index { target -= 1 }
         guard !(item.parent === parent && item.index == target) else { return }

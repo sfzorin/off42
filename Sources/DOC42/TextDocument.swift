@@ -317,16 +317,16 @@ final class TextDocument: NSDocument {
 
     override func printOperation(withSettings printSettings: [NSPrintInfo.AttributeKey: Any]) throws -> NSPrintOperation {
         let view = offscreenPages(accepted: true)
-        if view.hasMixedPageSizes, let pdf = PDFDocument(data: view.pdfData()),
-           let op = pdf.printOperation(for: pageInfo(), scalingMode: .pageScaleNone, autoRotate: true) {
-            view.detach()
+        if view.hasMixedPageSizes {
+            defer { view.detach() }
+            let op = try ProductionPrint.operation(pdfData: view.pdfData(), printInfo: pageInfo())
             op.jobTitle = displayName
-            op.printPanel.options.formUnion([.showsPaperSize, .showsOrientation, .showsScaling, .showsPreview, .showsPageRange])
             return op
         }
         let op = NSPrintOperation(view: view, printInfo: pageInfo())
         op.jobTitle = displayName
         op.printPanel.options.formUnion([.showsPaperSize, .showsOrientation, .showsScaling, .showsPreview, .showsPageRange])
+        ProductionPrint.install(on: op)
         return op
     }
 }

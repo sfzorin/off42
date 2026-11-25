@@ -69,6 +69,7 @@ enum SelfTest {
         failed += deepFiles()
         failed += deepFormulas()
         failed += deepSheetReferences()
+        failed += technicalFiles()
         print(failed == 0 ? "ALL PASSED" : "\(failed) FAILED")
         return failed == 0 ? 0 : 1
     }

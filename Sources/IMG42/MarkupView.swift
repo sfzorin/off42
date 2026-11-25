@@ -32,6 +32,7 @@ final class MarkupView: NSView, NSTextFieldDelegate {
     var selectedID: UUID? { didSet { if oldValue != selectedID { needsDisplay = true; onSelectionChange?() } } }
     var tool: MarkTool = .select {
         didSet {
+            cancelInteraction()
             endTextEditing()
             if !tool.isSelectionTool { pixelSelection = nil }
             if tool == .smartLasso { SmartLasso.prewarm(baseImage?()) }
@@ -42,7 +43,12 @@ final class MarkupView: NSView, NSTextFieldDelegate {
     var markupActive = false { didSet { if !markupActive { selectedID = nil; tool = .select } } }
     var style = MarkStyle()
     var aspect: CropAspect = .free
-    var pixelSelection: PixelSelection? { didSet { needsDisplay = true; onPixelSelectionChange?() } }
+    var pixelSelection: PixelSelection? {
+        didSet {
+            if pixelSelection == nil { invalidateSelectionWork() }
+            needsDisplay = true; onPixelSelectionChange?()
+        }
+    }
     var hideMarks = false { didSet { needsDisplay = true } }
     var searchBoxes: [CGRect] = [] { didSet { needsDisplay = true } }
     var currentSearchBox: Int = -1 { didSet { needsDisplay = true } }
@@ -58,6 +64,7 @@ final class MarkupView: NSView, NSTextFieldDelegate {
     var onCropRequest: (() -> Void)?
     /// Any click on the canvas (outside Live Text): clears a text selection.
     var onMouseDown: (() -> Void)?
+    var onTextEditingChange: (() -> Void)?
 
     private var drag: DragState?
     private var editor: NSTextField?
@@ -68,9 +75,10 @@ final class MarkupView: NSView, NSTextFieldDelegate {
         case draw(Mark, before: [Mark], start: CGPoint)
         case move(id: UUID, start: CGPoint, original: Mark, before: [Mark])
         case resize(id: UUID, handle: Int, original: Mark, before: [Mark])
-        case select(start: CGPoint, points: [CGPoint])
+        case select(start: CGPoint, points: [CGPoint], original: PixelSelection?)
         case moveSelection(start: CGPoint, original: PixelSelection)
-        case alpha(seed: CGPoint, start: NSPoint)
+        case resizeSelection(handle: Int, original: PixelSelection)
+        case alpha(seed: CGPoint, start: NSPoint, original: PixelSelection?)
     }
 
     override var isFlipped: Bool { true }
@@ -96,7 +104,7 @@ final class MarkupView: NSView, NSTextFieldDelegate {
         drawSearch()
         if let m = selected, markupActive, !hideMarks { drawSelection(m) }
         if let sel = pixelSelection { drawPixelSelection(sel) }
-        if case .select(_, let pts) = drag {
+        if case .select(_, let pts, _) = drag {
             if tool == .smartLasso { drawSmartBand(pts) } else if let path = selectionPath(pts) { drawOutline(path) }
         }
         if let pts = pendingSmartStroke { drawSmartBand(pts) }
@@ -218,10 +226,13 @@ final class MarkupView: NSView, NSTextFieldDelegate {
 
     private func constrained(_ r: CGRect, anchor: CGPoint, to p: CGPoint) -> CGRect {
         guard let ratio = aspect.ratio(original: bounds.size) else { return r.intersection(bounds) }
-        var out = r
-        out.size.height = r.width / ratio
-        if p.y < anchor.y { out.origin.y = anchor.y - out.height }
-        return out.intersection(bounds)
+        // Shrink both dimensions together at the image edge; clipping only one breaks the chosen ratio.
+        let availableWidth = p.x < anchor.x ? anchor.x - bounds.minX : bounds.maxX - anchor.x
+        let availableHeight = p.y < anchor.y ? anchor.y - bounds.minY : bounds.maxY - anchor.y
+        let width = max(0, min(r.width, availableWidth, availableHeight * ratio))
+        let height = width / ratio
+        return CGRect(x: p.x < anchor.x ? anchor.x - width : anchor.x,
+                      y: p.y < anchor.y ? anchor.y - height : anchor.y, width: width, height: height)
     }
 
     // MARK: Mouse
@@ -282,16 +293,21 @@ final class MarkupView: NSView, NSTextFieldDelegate {
                 startPan(event)
             }
         case .selectRect, .selectEllipse, .selectLasso, .smartLasso:
-            if let sel = pixelSelection, sel.outline != nil, sel.bounds.contains(p), !event.modifierFlags.contains(.shift) {
+            if let sel = pixelSelection, sel.isRectangle,
+               let handle = corners(sel.bounds).firstIndex(where: { hypot($0.x - p.x, $0.y - p.y) <= tol * 1.5 }),
+               !event.modifierFlags.contains(.shift) {
+                drag = .resizeSelection(handle: handle, original: sel)
+            } else if let sel = pixelSelection, let outline = sel.outline, outline.contains(p, using: .evenOdd), !event.modifierFlags.contains(.shift) {
                 drag = .moveSelection(start: p, original: sel)
             } else {
+                let previous = pixelSelection
                 pixelSelection = nil
-                smartToken += 1
-                pendingSmartStroke = nil
-                drag = .select(start: p, points: [p])
+                invalidateSelectionWork()
+                drag = .select(start: p, points: [p], original: previous)
             }
         case .instantAlpha:
-            drag = .alpha(seed: p, start: event.locationInWindow)
+            invalidateSelectionWork()
+            drag = .alpha(seed: p, start: event.locationInWindow, original: pixelSelection)
             updateInstantAlpha(seed: p, distance: 0, preview: true)
         case .text:
             if let m = marks.last(where: { $0.kind == .text && $0.hitTest(p, tolerance: tol) }) {
@@ -393,16 +409,25 @@ final class MarkupView: NSView, NSTextFieldDelegate {
                 m.rect = nr
                 return m
             }
-        case .select(let start, var pts):
+        case .select(let start, var pts, let original):
             if tool == .selectRect || tool == .selectEllipse { pts = [start, p] } else { pts.append(p) }
-            drag = .select(start: start, points: pts)
+            drag = .select(start: start, points: pts, original: original)
             needsDisplay = true
         case .moveSelection(let start, let original):
-            var t = CGAffineTransform(translationX: p.x - start.x, y: p.y - start.y)
+            let dx = max(bounds.minX - original.bounds.minX, min(bounds.maxX - original.bounds.maxX, p.x - start.x))
+            let dy = max(bounds.minY - original.bounds.minY, min(bounds.maxY - original.bounds.maxY, p.y - start.y))
+            var t = CGAffineTransform(translationX: dx, y: dy)
             if let outline = original.outline, let moved = outline.copy(using: &t) {
                 pixelSelection = PixelSelection.from(path: moved, size: original.size, isRectangle: original.isRectangle)
             }
-        case .alpha(let seed, let start):
+        case .resizeSelection(let handle, let original):
+            let anchor = corners(original.bounds)[(handle + 2) % 4]
+            let proposed = CGRect(x: min(anchor.x, p.x), y: min(anchor.y, p.y), width: abs(p.x - anchor.x), height: abs(p.y - anchor.y))
+            let rect = constrained(proposed, anchor: anchor, to: p)
+            if rect.width >= 1, rect.height >= 1 {
+                pixelSelection = PixelSelection.from(path: CGPath(rect: rect, transform: nil), size: original.size, isRectangle: true)
+            }
+        case .alpha(let seed, let start, _):
             updateInstantAlpha(seed: seed, distance: hypot(event.locationInWindow.x - start.x, event.locationInWindow.y - start.y), preview: true)
         case nil:
             break
@@ -410,15 +435,44 @@ final class MarkupView: NSView, NSTextFieldDelegate {
     }
 
     private var alphaWork: DispatchWorkItem?
+    private var alphaToken = 0
+
+    /// A tool/document change must not allow a background selection to reappear later.
+    func invalidateSelectionWork() {
+        alphaToken &+= 1; smartToken &+= 1
+        alphaWork?.cancel(); alphaWork = nil; pendingSmartStroke = nil
+    }
+
+    /// Abort the preview without creating an Undo entry or leaving a half-applied move behind.
+    func cancelInteraction() {
+        switch drag {
+        case .move(_, _, _, let before), .resize(_, _, _, let before): marks = before
+        case .select(_, _, let original), .alpha(_, _, let original): pixelSelection = original
+        case .moveSelection(_, let original), .resizeSelection(_, let original): pixelSelection = original
+        case .pan: NSCursor.pop()
+        default: break
+        }
+        drag = nil
+        invalidateSelectionWork()
+        needsDisplay = true
+    }
 
     /// Instant Alpha: dragging farther selects a wider range of similar colours.
     private func updateInstantAlpha(seed: CGPoint, distance: CGFloat, preview: Bool) {
         guard let base = baseImage?() else { return }
         let tolerance = min(0.9, 0.04 + distance / 400)
         alphaWork?.cancel()
+        alphaToken &+= 1
+        let token = alphaToken
+        let size = bounds.size
         let work = DispatchWorkItem { [weak self] in
             let sel = PixelSelection.similarColors(in: base, seed: seed, tolerance: tolerance)
-            DispatchQueue.main.async { if self?.alphaWork?.isCancelled == false { self?.pixelSelection = sel } }
+            DispatchQueue.main.async {
+                guard let self, token == self.alphaToken, self.tool == .instantAlpha,
+                      self.bounds.size == size, self.baseImage?() === base else { return }
+                self.pixelSelection = sel
+                self.alphaWork = nil
+            }
         }
         alphaWork = work
         DispatchQueue.global(qos: .userInitiated).async(execute: work)
@@ -431,13 +485,14 @@ final class MarkupView: NSView, NSTextFieldDelegate {
     }
 
     override func mouseUp(with event: NSEvent) {
+        if drag != nil { mouseDragged(with: event) }
         defer { drag = nil }
         switch drag {
         case .pan:
             NSCursor.pop()
         case .draw(var m, let before, let start):
-            let b = m.bounds
-            if max(b.width, b.height) <= 3 / scale, m.kind != .pen, m.kind != .highlighter {
+            let moved = hypot(point(event).x - start.x, point(event).y - start.y)
+            if moved <= 3 / scale, m.kind != .pen, m.kind != .highlighter {
                 // A click places a shape of a default size, like Preview.
                 let s = 120 / scale
                 if m.kind == .line {
@@ -451,13 +506,13 @@ final class MarkupView: NSView, NSTextFieldDelegate {
             marks.append(m)
             selectedID = m.kind == .pen || m.kind == .highlighter ? nil : m.id
             onCommit?(before, tool.title)
-        case .move(_, let start, _, let before):
-            if point(event) != start { onCommit?(before, L("Move")) }
-        case .resize(_, _, _, let before):
-            onCommit?(before, L("Resize"))
-        case .select(_, let pts) where tool == .smartLasso:
+        case .move(let id, _, let original, let before):
+            if let current = marks.first(where: { $0.id == id }), !current.hasSameContent(as: original) { onCommit?(before, L("Move")) }
+        case .resize(let id, _, let original, let before):
+            if let current = marks.first(where: { $0.id == id }), !current.hasSameContent(as: original) { onCommit?(before, L("Resize")) }
+        case .select(_, let pts, _) where tool == .smartLasso:
             finishSmartLasso(pts)
-        case .select(_, let pts):
+        case .select(_, let pts, _):
             if let path = selectionPath(pts), path.boundingBoxOfPath.width >= 2, path.boundingBoxOfPath.height >= 2 {
                 pixelSelection = PixelSelection.from(path: path, size: bounds.size, isRectangle: tool == .selectRect)
             } else {
@@ -489,7 +544,8 @@ final class MarkupView: NSView, NSTextFieldDelegate {
             let path = SmartLasso.refine(stroke: pts, radius: radius, image: image, subject: subject)
             let sel = path.flatMap { PixelSelection.from(path: $0, size: size) }
             DispatchQueue.main.async {
-                guard let self, token == self.smartToken else { return }
+                guard let self, token == self.smartToken, self.tool == .smartLasso,
+                      self.bounds.size == size, self.baseImage?() === image else { return }
                 self.pendingSmartStroke = nil
                 self.pixelSelection = sel
                 self.needsDisplay = true
@@ -509,6 +565,7 @@ final class MarkupView: NSView, NSTextFieldDelegate {
             case 51, 117:   // delete, forward delete
                 if let id = selectedID { deleteMark(id); return }
             case 53:        // escape
+                if drag != nil || pendingSmartStroke != nil || alphaWork != nil { cancelInteraction(); return }
                 if pixelSelection != nil { pixelSelection = nil; return }
                 if selectedID != nil { selectedID = nil; return }
             default: break
@@ -519,6 +576,7 @@ final class MarkupView: NSView, NSTextFieldDelegate {
     }
 
     func deleteMark(_ id: UUID) {
+        guard marks.contains(where: { $0.id == id }) else { return }
         let before = marks
         marks.removeAll { $0.id == id }
         selectedID = nil
@@ -528,10 +586,12 @@ final class MarkupView: NSView, NSTextFieldDelegate {
     /// Changes the selected mark (style controls); returns false when nothing is selected.
     @discardableResult
     func updateSelected(_ name: String, _ change: (inout Mark) -> Void) -> Bool {
+        endTextEditing()
         guard let id = selectedID, let i = marks.firstIndex(where: { $0.id == id }) else { return false }
         let before = marks
         change(&marks[i])
         if marks[i].kind == .text { marks[i].rect.size = marks[i].textSize(width: marks[i].rect.width) }
+        guard !marks[i].hasSameContent(as: before[i]) else { return false }
         onCommit?(before, name)
         return true
     }
@@ -542,7 +602,7 @@ final class MarkupView: NSView, NSTextFieldDelegate {
     func insertImage(_ image: CGImage) {
         let visible = visibleRect.isEmpty ? bounds : visibleRect
         let aspect = CGFloat(image.width) / max(1, CGFloat(image.height))
-        let width = min(visible.width * 0.35, 220 / scale)
+        let width = min(visible.width * 0.35, 220 / scale, visible.height * 0.7 * aspect)
         let size = CGSize(width: width, height: width / aspect)
         let before = marks
         let m = Mark(kind: .image, rect: CGRect(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2, width: size.width, height: size.height), image: image)
@@ -552,6 +612,7 @@ final class MarkupView: NSView, NSTextFieldDelegate {
     }
 
     func selectAllPixels() {
+        invalidateSelectionWork()
         pixelSelection = PixelSelection.from(path: CGPath(rect: bounds, transform: nil), size: bounds.size, isRectangle: true)
     }
 
@@ -591,15 +652,16 @@ final class MarkupView: NSView, NSTextFieldDelegate {
         let r = m.rect.standardized
         field.frame = CGRect(x: r.minX + m.textPadding - 2, y: r.minY + m.textPadding, width: max(r.width - m.textPadding * 2 + 4, m.fontSize * 6), height: max(r.height - m.textPadding * 2, m.fontSize * 1.3))
         addSubview(field)
-        window?.makeFirstResponder(field)
         editor = field
+        window?.makeFirstResponder(field)
     }
 
     func controlTextDidChange(_ obj: Notification) {
         guard let field = editor, var m = editingMark else { return }
-        m.text = field.stringValue
-        let size = m.textSize()
+        m.text = currentEditorText(field)
+        let size = m.textSize(width: editingID == nil ? nil : m.rect.width)
         field.frame.size = CGSize(width: max(size.width, m.fontSize * 6), height: max(size.height - m.textPadding * 2, m.fontSize * 1.3))
+        onTextEditingChange?()
     }
 
     func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
@@ -608,7 +670,7 @@ final class MarkupView: NSView, NSTextFieldDelegate {
             return true
         }
         if selector == #selector(NSResponder.cancelOperation(_:)) {
-            endTextEditing()
+            cancelTextEditing()
             return true
         }
         return false
@@ -618,14 +680,16 @@ final class MarkupView: NSView, NSTextFieldDelegate {
 
     func endTextEditing() {
         guard let field = editor, var m = editingMark else { return }
+        let text = currentEditorText(field)
         editor = nil
         field.delegate = nil
         field.removeFromSuperview()
         let id = editingID
         editingID = nil
         editingMark = nil
-        m.text = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        m.rect.size = m.textSize()
+        let changed = text != m.text
+        m.text = text
+        if changed { m.rect.size = m.textSize(width: id == nil ? nil : m.rect.width) }
         if let id, let i = marks.firstIndex(where: { $0.id == id }) {
             if m.text.isEmpty { marks.remove(at: i) } else { marks[i] = m }
         } else if !m.text.isEmpty {
@@ -633,9 +697,25 @@ final class MarkupView: NSView, NSTextFieldDelegate {
             selectedID = m.id
         }
         needsDisplay = true
-        if id != nil || !m.text.isEmpty { onCommit?(editingBefore, L("Text")) }
+        if changed { onCommit?(editingBefore, L("Text")) }
         window?.makeFirstResponder(self)
+        onTextEditingChange?()
     }
 
     var isEditingText: Bool { editor != nil }
+    var hasPendingTextEdit: Bool {
+        guard let editor, let editingMark else { return false }
+        return currentEditorText(editor) != editingMark.text
+    }
+
+    private func currentEditorText(_ field: NSTextField) -> String { field.currentEditor()?.string ?? field.stringValue }
+
+    func cancelTextEditing() {
+        guard let field = editor else { return }
+        editor = nil; editingID = nil; editingMark = nil
+        field.delegate = nil; field.removeFromSuperview()
+        needsDisplay = true
+        window?.makeFirstResponder(self)
+        onTextEditingChange?()
+    }
 }

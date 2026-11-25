@@ -7,6 +7,14 @@ final class InfoPanelController: NSViewController {
     private let stack = NSStackView()
     private var mapsURL: URL?
 
+    static func exposureDescription(_ seconds: Double) -> String? {
+        guard seconds.isFinite, seconds > 0 else { return nil }
+        if seconds >= 1 { return String(format: "%g s", seconds) }
+        let denominator = (1 / seconds).rounded()
+        guard denominator.isFinite, denominator < Double(Int.max) else { return String(format: "%g s", seconds) }
+        return "1/\(Int(denominator)) s"
+    }
+
     override func loadView() {
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -62,7 +70,7 @@ final class InfoPanelController: NSViewController {
         if let profile = p[kCGImagePropertyProfileName] as? String { file.append((L("Colour Profile"), profile)) }
         else if let model = p[kCGImagePropertyColorModel] as? String { file.append((L("Colour Model"), model)) }
         if let depth = p[kCGImagePropertyDepth] as? Int { file.append((L("Bit Depth"), "\(depth)")) }
-        if let dpi = p[kCGImagePropertyDPIWidth] as? Double { file.append((L("Resolution"), "\(Int(dpi.rounded())) dpi")) }
+        if let dpi = p[kCGImagePropertyDPIWidth] as? Double, dpi.isFinite, dpi > 0 { file.append((L("Resolution"), String(format: "%.0f dpi", dpi))) }
         if let alpha = p[kCGImagePropertyHasAlpha] as? Bool, alpha { file.append((L("Transparency"), L("Yes"))) }
         if let d = values?.contentModificationDate { file.append((L("Modified"), date.string(from: d))) }
         if let d = values?.creationDate { file.append((L("Created"), date.string(from: d))) }
@@ -80,7 +88,7 @@ final class InfoPanelController: NSViewController {
             camera.append((L("Focal Length"), s))
         }
         var exposure: [String] = []
-        if let t = exif[kCGImagePropertyExifExposureTime] as? Double { exposure.append(t >= 1 ? String(format: "%g s", t) : "1/\(Int((1 / t).rounded())) s") }
+        if let t = exif[kCGImagePropertyExifExposureTime] as? Double, let value = Self.exposureDescription(t) { exposure.append(value) }
         if let fn = exif[kCGImagePropertyExifFNumber] as? Double { exposure.append(String(format: "ƒ/%g", fn)) }
         if let iso = (exif[kCGImagePropertyExifISOSpeedRatings] as? [Int])?.first { exposure.append("ISO \(iso)") }
         if let bias = exif[kCGImagePropertyExifExposureBiasValue] as? Double, bias != 0 { exposure.append(String(format: "%+.1f EV", bias)) }
@@ -88,11 +96,15 @@ final class InfoPanelController: NSViewController {
         if let flash = exif[kCGImagePropertyExifFlash] as? Int { camera.append((L("Flash"), flash & 1 == 1 ? L("Fired") : L("Did not fire"))) }
         section(L("Camera"), camera)
 
-        if let lat = gps[kCGImagePropertyGPSLatitude] as? Double, let lon = gps[kCGImagePropertyGPSLongitude] as? Double {
+        if let lat = gps[kCGImagePropertyGPSLatitude] as? Double, let lon = gps[kCGImagePropertyGPSLongitude] as? Double,
+           lat.isFinite, lon.isFinite, (0...90).contains(lat), (0...180).contains(lon) {
             let la = (gps[kCGImagePropertyGPSLatitudeRef] as? String) == "S" ? -lat : lat
             let lo = (gps[kCGImagePropertyGPSLongitudeRef] as? String) == "W" ? -lon : lon
             var rows = [(L("Coordinates"), String(format: "%.5f, %.5f", la, lo))]
-            if let alt = gps[kCGImagePropertyGPSAltitude] as? Double { rows.append((L("Altitude"), String(format: "%.0f m", alt))) }
+            if let alt = gps[kCGImagePropertyGPSAltitude] as? Double, alt.isFinite {
+                let sign: Double = (gps[kCGImagePropertyGPSAltitudeRef] as? Int) == 1 ? -1 : 1
+                rows.append((L("Altitude"), String(format: "%.0f m", alt * sign)))
+            }
             section(L("Location"), rows)
             mapsURL = URL(string: String(format: "maps://?ll=%.6f,%.6f&q=%.6f,%.6f", la, lo, la, lo))
             let maps = NSButton(title: L("Show in Maps"), target: self, action: #selector(openMaps))
@@ -119,11 +131,12 @@ final class InfoPanelController: NSViewController {
             toggle.bezelStyle = .disclosure
             toggle.title = ""
             toggle.state = expanded ? .on : .off
-            let row = NSStackView(views: [toggle, header])
-            row.spacing = 2
             if let i = stack.arrangedSubviews.firstIndex(of: header) {
                 let spacing = stack.customSpacing(after: header)
                 header.removeFromSuperview()
+                // Constructing a stack with `header` reparents it immediately: capture its old index first.
+                let row = NSStackView(views: [toggle, header])
+                row.spacing = 2
                 stack.insertArrangedSubview(row, at: i)
                 stack.setCustomSpacing(spacing, after: row)
                 if i > 0 { stack.setCustomSpacing(16, after: stack.arrangedSubviews[i - 1]) }
@@ -135,6 +148,7 @@ final class InfoPanelController: NSViewController {
 
     private static let allMetadataKey = "img.allMetadataExpanded"
     private weak var allMetadataGrid: NSView?
+    var metadataIsExpanded: Bool { allMetadataGrid?.isHidden == false }
 
     @objc private func toggleAllMetadata(_ sender: NSButton) {
         allMetadataGrid?.isHidden = sender.state != .on

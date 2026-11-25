@@ -45,6 +45,15 @@ final class ThumbnailGrid: NSScrollView, NSCollectionViewDataSource, NSCollectio
         return collection.selectionIndexPaths.map(\.item).sorted().compactMap { doc.page(at: $0) }
     }
 
+    /// Restore page identities after a reorder or Undo, rather than retaining stale numeric indices.
+    func selectPages(_ pages: [PDFPage]) {
+        guard let doc = pdfView?.document else { return }
+        collection.selectionIndexPaths = Set(pages.compactMap { page in
+            let i = doc.index(for: page)
+            return i != NSNotFound ? IndexPath(item: i, section: 0) : nil
+        })
+    }
+
     func reload() {
         cache.removeAll()
         collection.reloadData()

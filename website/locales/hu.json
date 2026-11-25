@@ -1,0 +1,406 @@
+{
+  "nav": {
+    "features": "Funkciók",
+    "apps": "Az alkalmazáscsomag",
+    "about": "Nyílt forráskód",
+    "download": "Letöltések",
+    "language": "Nyelv",
+    "menu": "Menü",
+    "skip": "Ugrás a tartalomra",
+    "home": "Kezdőlap"
+  },
+  "home": {
+    "eyebrow": "Ingyenes · Nyílt forráskód · macOS és Windows rendszerre",
+    "title": "Teljes iroda. Előfizetés nélkül.",
+    "intro": "Az OFF42 hat natív alkalmazást fog össze macOS és Windows rendszeren: PDF-eket, dokumentumokat, táblázatokat, bemutatókat, képeket és beolvasott oldalakat kezel. Ingyenes és nyílt forráskódú, külön platformmegvalósításokkal és dokumentált korlátokkal.",
+    "primary": "OFF42 beszerzése",
+    "secondary": "Fedezd fel az eszközöket",
+    "note": "Ingyenes · Nyílt forráskód · macOS 14+ · Windows",
+    "suiteTitle": "Teljes iroda. Könnyedebb munka.",
+    "suiteIntro": "Az első vázlattól az aláírt PDF-ig végezd mindennapi munkádat egy ismerős eszközcsaláddal.",
+    "featureEyebrow": "APRÓ RÉSZLETEK. NAGY KÜLÖNBSÉG.",
+    "featureTitle": "Több lehetőség minden fájlban.",
+    "featureIntro": "Szerkessz PDF-et. Csökkentsd egy nagy melléklet méretét. Alakítsd a papírlapot kereshető szöveggé. Találd meg a feladathoz illő eszközt.",
+    "privacyTitle": "A te asztalod. Nem más szervere.",
+    "privacyText": "Az alapvető szerkesztés helyben, a számítógépeden történik, fájlfeltöltés nélkül. Az opcionális online funkciókhoz kapcsolat kell; elérhetőségük platformonként eltér.",
+    "privacyLabel": "Helyi munkára tervezve",
+    "languageTitle": "Ismerős hang, 20 nyelven.",
+    "languageText": "A webhely és az alkalmazások felülete a te nyelveden szól. Válaszd ki, és használd kényelmesen ugyanazokat az eszközöket.",
+    "openTitle": "Nyitott iroda, minden értelemben.",
+    "openText": "Az OFF42 MIT-licenccel érhető el. Olvasd a kódot, fordítsd le magadnak, jelents hibát, vagy segíts jobbá tenni a következő verziót.",
+    "openLink": "Fedezd fel a GitHubon",
+    "endTitle": "Előfizetések: off. Az iroda a tiéd.",
+    "endText": "Ingyenes · Nyílt forráskód · macOS és Windows rendszerre",
+    "formatsLabel": "OFFICE- ÉS NYÍLT FORMÁTUMOK",
+    "formatsTitle": "Működik a meglévő fájljaiddal.",
+    "formatsText": "Nyisd meg, amit a kollégáid küldenek, és mentsd olyan formátumban, amilyet várnak. Az összetett elrendezések eltérhetnek, ezért importálás után ellenőrizd a fontos fájlokat.",
+    "opens": "Megnyitás",
+    "saves": "Mentés",
+    "faqTitle": "Kérdések, mielőtt belevágsz",
+    "faq": [
+      {
+        "q": "Ingyenes az OFF42?",
+        "a": "Igen. Az OFF42 ingyenes és nyílt forráskódú, MIT-licenccel. Nincs előfizetés, fiók vagy alkalmazáson belüli vásárlás."
+      },
+      {
+        "q": "Működik az OFF42 internet nélkül?",
+        "a": "Az alapvető szerkesztés helyben, a számítógépeden történik, fájlfeltöltés nélkül. Az opcionális online funkciókhoz kapcsolat kell; elérhetőségük platformonként eltér."
+      },
+      {
+        "q": "Meg tudja nyitni az OFF42 a Microsoft Office-fájlokat?",
+        "a": "Igen. A DOC42 megnyitja a DOCX- és DOC-, az XLS42 az XLSX- és XLS-, a PPT42 pedig a PPTX-fájlokat. Az OpenDocument-fájlokat (ODT, ODS, ODP) is támogatja. Nem minden Office-funkció támogatott, ezért importálás után ellenőrizd az összetett fájlokat."
+      },
+      {
+        "q": "Milyen Maceken fut az OFF42?",
+        "a": "Az OFF42 macOS 14 vagy újabb rendszerre készül. Nyilvános telepítő még nem jelent meg; az alkalmazásokat forráskódból fordíthatod le az Xcode Command Line Tools segítségével."
+      },
+      {
+        "q": "Van Windows-verzió?",
+        "a": "A natív Windows-alkalmazások megvalósultak, és forráskódként elérhetők. Nézd meg a dokumentált funkciókat és korlátokat. Nyilvános Windows-telepítő még nem jelent meg."
+      }
+    ]
+  },
+  "name": {
+    "label": "MI VAN A NÉVBEN?",
+    "title": "Az OFF az office-ból jön. És mindenből, amit ki lehet kapcsolni.",
+    "officeTitle": "Teljes iroda",
+    "officeText": "Hat alkalmazás az asztalodon lévő összes fájlhoz: PDF-ek, Word- és Excel-fájlok, diák, fotók és szkennelt anyagok.",
+    "offlineTitle": "Offline is működik",
+    "offlineText": "A szerkesztés a számítógépeden történik. Fiók és fájlfeltöltés nélkül.",
+    "offTitle": "Előfizetés: off",
+    "offText": "Nincs előfizetés, nincs próbaidőszak, nincsenek hirdetések. MIT-licenc és ingyenes – ma és holnap is.",
+    "answerTitle": "És a 42?",
+    "answerText": "A válasz az életre, a világmindenségre meg mindenre vonatkozó végső kérdésre. Mi csak alkalmaztuk az irodára.",
+    "stats": [
+      "alkalmazás egy csomagban",
+      "fájlformátum",
+      "felületnyelv",
+      "előfizetés",
+      "fájlfeltöltés"
+    ]
+  },
+  "marks": {
+    "label": "ALÁÍRÁSOK ÉS BÉLYEGZŐK",
+    "title": "Aláírás és bélyegző, mint papíron. Nyomtató és szkenner nélkül.",
+    "text": "Az OFF42 egy névből kézzel írt aláírást készít, rányomja a cégbélyegzőt, és mindkettőt egyenesen a dokumentumba helyezi. Minden lenyomat kicsit más, akár a valódi tinta a papíron.",
+    "points": [
+      "Aláírás golyóstollal, zselés tollal, töltőtollal vagy filctollal",
+      "132 bélyegzőstílus: körbélyegzők, cégbélyegzők, „Fizetve” és „Átvéve”",
+      "Néhány mintából megtanulja a saját aláírásodat",
+      "Működik PDF-ekben, dokumentumokban, diákban, táblázatokban, képekben és szkennelt anyagokban"
+    ],
+    "note": "A rajzolt aláírás nem tanúsítványalapú digitális aláírás. Ha ilyenre van szükséged, a PDF42 a saját tanúsítványoddal ír alá.",
+    "signedCaption": "PDF42-ben aláírt és lebélyegzett szerződés. A nevek és a cégek kitaláltak."
+  },
+  "codes": {
+    "label": "QR-KÓDOK, JELÖLÉSEK ÉS CÍMKÉK",
+    "title": "QR-kódok, CE-jelölések és címkeívek, milliméterre pontosan.",
+    "text": "Alakíts egy cellát, táblázatsort vagy kijelölést QR-, Data Matrix-, Code 128- vagy Aztec-kóddá, és add hozzá a termékedhez szükséges megfelelőségi és biztonsági jelöléseket. Állítsd be a méretet milliméterben, majd nyomtass egy teljes címkeívet közvetlenül a soraidból.",
+    "points": [
+      "QR-, Data Matrix-, Code 128- és Aztec-kódok, amelyek mentés után is szerkeszthetők maradnak",
+      "97 jelölés: CE, UKCA, EAC, FCC, UL, CCC, KC, RCM, WEEE, RoHS, GHS-piktogramok, IEC biztonsági szimbólumok és még több",
+      "Címkeívek táblázatsorokból, dokumentumtáblázatokból vagy egy PDF-oldalból, illetve -területből",
+      "559 címkeív-formátum vagy saját rács, mentett sablonok és nyomtatókalibrálás"
+    ],
+    "note": "A jelölés grafika a címkédhez: nem tanúsítja a terméket. A megfelelőségi jelöléseknél és védjegyeknél az alkalmazás megmutatja a használat feltételeit, például a szükséges tanúsítványt vagy licencszámot. Elérhető a PDF42-ben, a DOC42-ben és az XLS42-ben macOS-en.",
+    "qrAlt": "„Insert Symbol or Code” az XLS42-ben: egy termékhivatkozásból készült, 30 mm-es QR-kód.",
+    "labelsAlt": "„Create Labels” az XLS42-ben: tíz terméksorból készült, QR-kódos címkeív.",
+    "caption": "Tíz táblázatsorból készült címkeív. A termékek kitaláltak."
+  },
+  "show": {
+    "label": "MŰKÖDÉS KÖZBEN",
+    "title": "Valódi appok. Valódi dokumentumok.",
+    "text": "Minden kép itt az OFF42 képernyőképe Macen, kitalált cégek mintadokumentumaival az appokban. Semmi látványterv."
+  },
+  "labels": {
+    "learn": "Felfedezés",
+    "allFeatures": "Összes funkció",
+    "useCases": "A MINDENNAPJAIDRA TERVEZVE",
+    "workflow": "A megnyitástól a kész munkáig",
+    "details": "Mire használhatod?",
+    "goodToKnow": "Jó tudni",
+    "related": "Fedezz fel többet",
+    "faq": "Néhány hasznos válasz",
+    "step": "Lépés",
+    "illustration": "A munkafolyamat illusztrációja",
+    "source": "Forráskód",
+    "license": "MIT-licenc",
+    "release": "GitHub-kiadások",
+    "available": "Elérhető",
+    "unavailable": "Még nem jelent meg",
+    "downloadDmg": "DMG letöltése",
+    "downloadExe": "EXE letöltése",
+    "checksum": "SHA-256",
+    "version": "Verzió",
+    "requirements": "Rendszerkövetelmények",
+    "footer": "Nyílt forráskódú irodai csomag a mindennapi munkához.",
+    "privacy": "Adatvédelem",
+    "copyright": "Független, nyílt forráskódú projekt.",
+    "back": "Vissza a kezdőlapra",
+    "notFound": "Ez az oldal lekerült az asztalról.",
+    "notFoundText": "Próbáld a kezdőlapot, vagy válassz nyelvet a további böngészéshez.",
+    "copy": "Másolás",
+    "copied": "Másolva",
+    "screenshot": "Képernyőkép macOS-en. Mintadokumentumok, kitalált cégek."
+  },
+  "apps": {
+    "pdf": {
+      "tag": "PDF-ek, tele lehetőségekkel.",
+      "text": "Olvasd, jegyzeteld, rendszerezd, tömörítsd és írd alá PDF-jeidet."
+    },
+    "doc": {
+      "tag": "Gondolatból dokumentum.",
+      "text": "Írj és tördeld dokumentumaidat DOCX, ODT, RTF és Markdown formátumban."
+    },
+    "xls": {
+      "tag": "Meséljenek a számaid.",
+      "text": "Dolgozz táblázatokkal, képletekkel és diagramokkal XLSX, ODS és CSV formátumban."
+    },
+    "ppt": {
+      "tag": "Ötletek, amelyeket érdemes bemutatni.",
+      "text": "Készíts diákat, használj táblázatokat és alakzatokat, és meséld el a történeted."
+    },
+    "img": {
+      "tag": "Kis módosítás. Jobb kép.",
+      "text": "Tekintsd meg, vágd, méretezd, jegyzeteld és módosítsd képeidet."
+    },
+    "scn": {
+      "tag": "Új lehetőségek a papírnak.",
+      "text": "Szkennelj, tisztítsd meg az oldalakat, és ismerd fel a szöveget helyben futó OCR-rel."
+    }
+  },
+  "features": {
+    "documents": {
+      "title": "Tér a következő jó ötletednek",
+      "seoTitle": "Ingyenes szövegszerkesztő Macre — DOCX, ODT, RTF | OFF42",
+      "seoDescription": "Írj leveleket és jelentéseket a DOC42-vel: DOCX, ODT, RTF és Markdown, tördelés táblázatokkal és képekkel, PDF-export. Ingyenes és nyílt forráskódú.",
+      "short": "Dokumentumok",
+      "intro": "Írj leveleket, jelentéseket és újabb vázlatokat a DOC42-vel. Ötvözd a formázott szöveget és az oldaltördelést ismerős dokumentumformátumokkal.",
+      "points": [
+        "Nyiss meg és ments DOCX, ODT, RTF, Markdown és más szövegformátumokat.",
+        "Dolgozz formázással, táblázatokkal, képekkel és oldaltördeléssel.",
+        "Exportálj PDF-et, ha a dokumentum készen áll a megosztásra."
+      ],
+      "steps": [
+        "Hozz létre dokumentumot, vagy nyiss meg egy meglévő fájlt.",
+        "Formáld a szöveget, a képeket és az oldalak elrendezését.",
+        "Ments szerkeszthető másolatot, vagy exportálj PDF-et."
+      ],
+      "note": "Az összetett Office-dokumentumok megjelenése eltérhet. Ellenőrizd az importált elrendezést és az exportált fájlt, mielőtt pontos egyezésre hagyatkoznál.",
+      "question": "Dolgozhatok Word-dokumentumokkal?",
+      "answer": "A DOC42 támogatja a DOCX-et és megnyitja a régi DOC-fájlokat. A fájlformátum támogatása nem jelenti a Microsoft Word minden funkciójának azonos kezelését."
+    },
+    "spreadsheets": {
+      "title": "Értsd meg a számokat",
+      "seoTitle": "Ingyenes táblázatkezelő Macre — XLSX, ODS, CSV | OFF42",
+      "seoDescription": "Nyiss XLSX- és XLS-fájlt, használj képleteket, formázást, diagramot, ments XLSX-, ODS- vagy CSV-fájlt, exportálj PDF-et. Az XLS42 ingyenes, nyílt forráskódú.",
+      "short": "Táblázatok",
+      "intro": "Az egyszerű listától a számított jelentésig az XLS42 cellákat, képleteket és diagramokat ad a mindennapi munkádhoz.",
+      "points": [
+        "Nyiss meg XLSX, régi XLS, ODS és elválasztójelekkel tagolt szövegfájlokat.",
+        "Mutasd be adataidat képletekkel, formázással és diagramokkal.",
+        "Ments XLSX, ODS vagy CSV fájlt, vagy exportálj PDF-et."
+      ],
+      "steps": [
+        "Nyiss meg egy munkafüzetet, vagy kezdj üres munkalappal.",
+        "Vidd be az adatokat, alkalmazz képleteket, és adj hozzá diagramot.",
+        "Ellenőrizd a számításokat, és ments a megfelelő formátumban."
+      ],
+      "note": "A képletek és a formázás támogatása fájlonként eltér. A CSV egyetlen értéktáblát tárol, nem teljes, formázott, több munkalapos munkafüzetet.",
+      "question": "Megnyithatok Excel-táblázatokat?",
+      "answer": "Igen, az XLS42 megnyitja az XLSX és régi XLS fájlokat. Ellenőrizd az összetett képleteket és az importált formázást; nem minden Excel-funkció támogatott."
+    },
+    "presentations": {
+      "title": "Adj színpadot az ötleteidnek",
+      "seoTitle": "Ingyenes bemutatókészítő Macre — PPTX, ODP | OFF42",
+      "seoDescription": "Készíts diákat szöveggel, képekkel, alakzatokkal és táblázatokkal, adj elő jegyzetekkel, exportálj PDF-et vagy képeket a PPT42-vel. Ingyenes, nyílt forráskódú.",
+      "short": "Bemutatók",
+      "intro": "Építs világos vizuális történetet a PPT42-vel. Rendezd el a szöveget, képeket, alakzatokat és táblázatokat, majd válts szerkesztésről diavetítésre.",
+      "points": [
+        "Dolgozz PPTX és OpenDocument bemutatófájlokkal.",
+        "Rendezd el a diaobjektumokat, táblázatokat és előadói jegyzeteket.",
+        "Exportáld a diákat PDF-be vagy képként az egyszerű megosztáshoz."
+      ],
+      "steps": [
+        "Hozz létre bemutatót, vagy nyiss meg egy támogatott fájlt.",
+        "Finomítsd a diákat, és készítsd elő a jegyzeteidet.",
+        "Indíts diavetítést, vagy exportáld a diákat."
+      ],
+      "note": "A régi PPT-fájlokat előbb át kell alakítani. Az összetett importált elrendezések eltérhetnek; bemutatás előtt nézd át az összes diát.",
+      "question": "Megoszthatom a diákat PDF-ként?",
+      "answer": "Igen. A PPT42 támogatja a diák és jegyzetoldalak PDF-exportját, valamint a diák mentését PNG- és JPEG-képként."
+    },
+    "edit-pdf": {
+      "title": "PDF-szerkesztés a Maceden",
+      "seoTitle": "Ingyenes PDF-szerkesztő Macre — jegyzetek, űrlapok | OFF42",
+      "seoDescription": "Szerkessz PDF-szöveget, emelj ki, jegyzetelj, tölts ki űrlapokat és rendezd az oldalakat a Maceden a PDF42-vel. Ingyenes, nyílt forráskódú, offline működik.",
+      "short": "PDF-szerkesztés",
+      "intro": "Legyen a PDF a munkadokumentumod. Szerkeszd az oldal szövegét, adj hozzá jegyzeteket, emeld ki a lényeget, tölts ki űrlapokat, és rendezd az oldalakat a PDF42-vel.",
+      "points": [
+        "Szerkeszd az oldal szövegét, és adj hozzá kiemeléseket, szövegdobozokat, alakzatokat vagy szabadkézi jeleket.",
+        "Szúrj be, nyerj ki, forgass el, törölj és rendezz át oldalakat.",
+        "Töltsd ki a támogatott PDF-űrlapokat, és mentsd a módosításokat."
+      ],
+      "steps": [
+        "Nyiss meg egy PDF-et a Maceden.",
+        "Válaszd a feladathoz illő jegyzetelési, űrlap- vagy oldaleszközöket.",
+        "Ments egy másolatot, és ellenőrizd a kész dokumentumot."
+      ],
+      "note": "Az oldalszöveg módosításai mentéskor beolvadnak az oldal tartalmába. Az összetett PDF-elrendezések és űrlapok eltérően működhetnek; megosztás előtt ellenőrizd a mentett másolatot.",
+      "question": "Szerkeszthetek PDF-et feltöltés nélkül?",
+      "answer": "Igen. A PDF42 helyi fájlokkal dolgozik a Maceden. Az alapvető jegyzeteléshez és oldalműveletekhez nem kell online szerkesztő."
+    },
+    "scan-ocr": {
+      "title": "Legyen a papírból kereshető dokumentum",
+      "seoTitle": "OCR-es szkennelő program Macre — kereshető PDF | OFF42",
+      "seoDescription": "Szkennelj szkennerrel vagy iPhone-kamerával, egyenesítsd ki és tisztítsd meg az oldalakat, és ments kereshető PDF-et az SCN42-vel a Maceden. Ingyenes, offline.",
+      "short": "Szkennelés és OCR",
+      "intro": "Vidd be a papírt a digitális irodádba az SCN42-vel. Olvasd be, egyenesítsd ki és tisztítsd meg az oldalakat, majd ismerd fel a szöveget a Maceden.",
+      "points": [
+        "Olvass be oldalakat támogatott szkennerekről, vagy importálj képeket és PDF-eket.",
+        "Vágd, egyenesítsd ki és módosítsd az oldalakat a szövegfelismerés előtt.",
+        "Exportálj kereshető PDF-et vagy felismert szöveget."
+      ],
+      "steps": [
+        "Szkenneld vagy importáld az oldalakat.",
+        "Ellenőrizd az oldalsorrendet, és tisztítsd meg a képeket.",
+        "Futtasd az OCR-t, és exportáld a kívánt formátumot."
+      ],
+      "note": "A szkenner- és Continuity-támogatás a hardveredtől függ. Az OCR nyelvei és pontossága az Apple Visiontől és a forrásképtől függ; a felület 20 nyelve ettől különálló funkció.",
+      "question": "Kereshetek szöveget egy szkennelt dokumentumban?",
+      "answer": "OCR után exportálj kereshető PDF-et a szövegréteg hozzáadásához. Mindig ellenőrizd a felismerés eredményét, különösen a neveket, számokat és gyenge minőségű szkenneléseket."
+    },
+    "compress-pdf": {
+      "title": "Tömörítsd a PDF-et, és haladj tovább",
+      "seoTitle": "PDF tömörítése Macen — fájlméret csökkentése offline | OFF42",
+      "seoDescription": "Kicsinyítsd a sok képet tartalmazó PDF-eket a PDF42-vel. Válassz 100, 150 vagy 220 dpi-t, nézd meg a méretet, a szöveg éles marad. Ingyenes, offline működik.",
+      "short": "PDF-tömörítés",
+      "intro": "Könnyebben megoszthatod a sok képet tartalmazó PDF-eket. A PDF42 tömörítési beállításaival megtalálhatod az egyensúlyt a fájlméret és a képek részletessége között.",
+      "points": [
+        "Válassz 100, 150 vagy 220 dpi-s képbeállítást.",
+        "Tekintsd meg a várható fájlméreteket, miközben a szöveg és a vektoros tartalom éles marad.",
+        "Ments külön fájlt, és hasonlítsd össze az eredetit az eredménnyel."
+      ],
+      "steps": [
+        "Nyisd meg a PDF-et, és válaszd a tömörítést.",
+        "Válassz képbeállítást, és hasonlítsd össze a becsült méreteket.",
+        "Mentsd az eredményt, majd ellenőrizd a méretét és olvashatóságát."
+      ],
+      "note": "Az eredmény a forrásfájltól függ, és előfordulhat, hogy a méret nem csökken. A tömörítés rontja a képminőséget és eltávolítja a meglévő digitális aláírásokat.",
+      "question": "Mennyivel lesz kisebb a PDF-em?",
+      "answer": "Nincs állandó csökkenési arány. A szkennelt és sok képet tartalmazó PDF-ek általában jobban tömöríthetők, mint a már optimalizált fájlok."
+    },
+    "labels-codes": {
+      "title": "Kódok, jelölések és címkék milliméterben",
+      "seoTitle": "QR-kód, vonalkód és CE-jelölés címkekészítő Macre | OFF42",
+      "seoDescription": "Készíts QR-, Data Matrix-, Code 128- és Aztec-kódokat, adj hozzá CE, UKCA, EAC, FCC és más termékjelöléseket, és nyomtass címkeíveket táblázatsorokból a Maceden. Ingyenes.",
+      "short": "QR-kódok és címkék",
+      "intro": "Tegyél beolvasható kódot vagy megfelelőségi jelölést egy PDF-be, dokumentumba vagy táblázatba, majd nyomtass egy teljes címkeívet az adataidból. A méreteket milliméterben adhatod meg.",
+      "points": [
+        "Illessz be QR-, Data Matrix-, Code 128- és Aztec-kódokat, amelyek mentés után is szerkeszthetők maradnak.",
+        "Adj hozzá 97 termékjelölést – megfelelőségi jelöléseket (CE, UKCA, EAC, FCC, UL, CCC), környezetvédelmi jelöléseket (WEEE, RoHS), GHS veszélyességi piktogramokat és IEC biztonsági szimbólumokat – a használatuk feltételeivel együtt.",
+        "Nyomtass címkeíveket táblázatsorokból, dokumentumtáblázatokból vagy PDF-területből, 559 ívformátumra vagy saját rácsra."
+      ],
+      "steps": [
+        "Jelölj ki egy cellát, táblázatot, szöveget vagy PDF-területet, majd válaszd az „Insert › Symbol or Code” vagy a „File › Create Labels” parancsot.",
+        "Válaszd ki a kód típusát vagy a jelölést, a szélességet milliméterben, a címkeívet és a kódot tartalmazó oszlopot.",
+        "Ellenőrizd az előnézetet, majd ments PDF-et, vagy nyomtass a nyomtatód kalibrálásával."
+      ],
+      "note": "A jelölések grafikák: beillesztésük nem tanúsítja a terméket. Megfelelőségi jelöléseket és védjegyeket csak akkor használj, ha a terméked tanúsított, vagy rendelkezel a licenccel; az alkalmazás minden jelölésnél megmutatja a feltételeket. A papír és a nyomtató tűréseit próbanyomtatással ellenőrizd. macOS-en; a párbeszédablak angolul, oroszul és törökül, a jelölések nevei 11 nyelven érhetők el.",
+      "question": "Szerkeszthetők maradnak a kódok a fájl mentése után?",
+      "answer": "Igen. A PDF-, DOCX-, XLSX- és ODS-fájlok megőrzik a kód receptjét, így az „Edit Symbol or Code” újra megnyitja; más alkalmazások egyszerű képet látnak. A táblázatban lévő kód a beillesztés pillanatában rögzíti a cella értékét, és nem követi a későbbi módosításokat."
+    },
+    "sign-pdf": {
+      "title": "Hagyd rajta a kézjegyed a PDF-en",
+      "seoTitle": "PDF aláírása Macen — aláírás, bélyegző, tanúsítvány | OFF42",
+      "seoDescription": "Adj kézírásos hatású aláírást vagy bélyegzőt PDF-hez, vagy írd alá tanúsítvánnyal. A PDF42 gyűjteményben őrzi a jeleidet. Ingyenes, nyílt forráskódú.",
+      "short": "PDF-aláírások",
+      "intro": "Legyenek kéznél az aláírások és bélyegzők. Adj hozzá látható aláírást, használj újra egy bélyegzőt, vagy dolgozz tanúsítványalapú digitális aláírásokkal a PDF42-ben.",
+      "points": [
+        "Tartsd az újrahasználható aláírásokat és bélyegzőket a közös gyűjteményben.",
+        "Helyezz el és igazíts egy látható jelet az oldalon.",
+        "Használj tanúsítványalapú aláírást, ha a munkafolyamat megköveteli."
+      ],
+      "steps": [
+        "Nyisd meg a dokumentumot, és válaszd az aláírás eszközét.",
+        "Válassz látható jelet vagy digitális aláírási folyamatot.",
+        "Mentsd az eredményt, és ellenőrizd a címzett PDF-programjában."
+      ],
+      "note": "A látható aláírás nem tanúsítvánnyal hitelesített digitális aláírás. A tanúsítvány megbízhatósága és az időbélyegek együttműködése a tanúsítványtól, a szolgáltatástól és a fogadó szoftvertől függ.",
+      "question": "Ugyanaz a látható és a digitális aláírás?",
+      "answer": "Nem. A látható aláírás egy jel az oldalon. A digitális aláírás tanúsítvánnyal segíti a dokumentum változásainak felismerését és az aláíró azonosítását."
+    },
+    "image-editor": {
+      "title": "Az utolsó simítás, bonyodalmak nélkül",
+      "seoTitle": "Ingyenes képszerkesztő Macre — vágás, átméretezés | OFF42",
+      "seoDescription": "Nyiss meg JPEG, PNG, HEIC, WebP és TIFF képet, vágd, méretezd át, forgasd, javítsd és jelöld meg az IMG42-vel. Ingyenes, nyílt forráskódú, offline is működik.",
+      "short": "Képszerkesztés",
+      "intro": "Nyiss meg egy fotót, vágd le a zavaró részletet, módosítsd a képet, vagy adj hozzá világos jelölést. Az IMG42 kéznél tartja a mindennapi képes feladatok eszközeit.",
+      "points": [
+        "Tekints meg gyakori képformátumokat, köztük JPEG, PNG, HEIC és TIFF fájlokat.",
+        "Vágj, méretezz, forgass és módosíts képeket.",
+        "Adj hozzá jelöléseket, és exportálj támogatott képformátumokba."
+      ],
+      "steps": [
+        "Nyiss meg egy képet a Maceden.",
+        "Végezd el a módosításokat, és ellenőrizd a képpontokat.",
+        "Exportálj másolatot a felhasználáshoz illő formátumban."
+      ],
+      "note": "Az olvasás és írás támogatása a formátumtól és a macOS-en elérhető kodekektől függ. Egyes formátumok megnyithatók, de eredeti formájukban nem menthetők.",
+      "question": "Átméretezhetek egy képet megosztás előtt?",
+      "answer": "Igen. Méretezd át a képet, és exportálj másolatot. Ellenőrizd a méreteket, és válassz olyan formátumot, amely megőrzi a szükséges átlátszóságot vagy képminőséget."
+    }
+  },
+  "download": {
+    "title": "Itt kezdődik az új irodád.",
+    "intro": "Válassz platformot, és ellenőrizd a kiadás állapotát. A forráskód elérhető a GitHubon.",
+    "mac": "OFF42 macOS-re",
+    "macText": "A forráskód macOS 14 vagy újabb rendszerhez készült. Nyilvános DMG-telepítő még nem jelent meg.",
+    "windows": "OFF42 Windowsra",
+    "windowsText": "A natív Windows-alkalmazások megvalósultak, és forráskódként elérhetők. Nézd meg a dokumentált funkciókat és korlátokat. Nyilvános Windows-telepítő még nem jelent meg.",
+    "sourceTitle": "Építsd meg. Olvasd el. Alakítsd magadra.",
+    "sourceText": "Szerezd be az MIT-licencű forráskódot a GitHubon. A macOS-en történő fordításhoz Xcode Command Line Tools szükséges. A helyi fordítások ad-hoc aláírást használnak, hacsak nem állítasz be terjesztési aláírást.",
+    "checkReleases": "Kiadások megtekintése",
+    "buildGuide": "Fordítási útmutató",
+    "releaseNote": "A letöltési gombok akkor jelennek meg, amikor közzétett kiadási fájlok érhetők el. Kiadási bizonyíték nélkül egy telepítőt sem jelölünk aláírtnak vagy Apple által hitelesítettnek.",
+    "buildTitle": "Fordítsd le az OFF42-t a Maceden",
+    "buildText": "Amíg nem jelenik meg aláírt telepítő, néhány perc alatt magad is lefordíthatod az alkalmazásokat. Futtasd ezeket a parancsokat a Terminálban.",
+    "buildStep1": "Telepítsd az Apple Xcode Command Line Tools csomagját.",
+    "buildStep2": "Töltsd le a forráskódot a GitHubról.",
+    "buildStep3": "Fordítsd le mind a hat alkalmazást, vagy csak egyet, és másold az Alkalmazások mappába."
+  },
+  "about": {
+    "title": "Iroda, titkok nélkül.",
+    "intro": "Az OFF42 hat natív alkalmazást fog össze macOS és Windows rendszeren: PDF-eket, dokumentumokat, táblázatokat, bemutatókat, képeket és beolvasott oldalakat kezel. Ingyenes és nyílt forráskódú, külön platformmegvalósításokkal és dokumentált korlátokkal.",
+    "licenseTitle": "MIT-licenccel. Szabadon felfedezhető.",
+    "licenseText": "Használd, tanulmányozd, módosítsd és terjeszd tovább a szoftvert az MIT-licenc feltételei szerint. A tároló tartalmazza a licencet és a forráskódot.",
+    "contributeTitle": "A jobb eszközök közös munka eredményei.",
+    "contributeText": "Jelents reprodukálható hibát, javasolj fejlesztést, segíts a fordításban, vagy járulj hozzá kóddal a GitHubon.",
+    "honestTitle": "Nyíltan fejlődik.",
+    "honestText": "A projekt folyamatosan fejlődik. A tároló dokumentálja a tesztelt fordításokat, korlátokat és az ellenőrzések körét. A forráskód elérhetősége különbözik a csomagolt, aláírt és Apple által hitelesített kiadásoktól.",
+    "status": "A projekt állapota",
+    "issues": "Hiba bejelentése"
+  },
+  "privacy": {
+    "title": "Tartsd közel a munkádat.",
+    "intro": "Ez a webhely bemutatja az OFF42-t, és a projekt forráskódjára, illetve kiadásaira mutat. Nem fogadja és nem dolgozza fel a dokumentumaidat.",
+    "siteTitle": "Egyszerű webhely",
+    "siteText": "A webhelyen nincs reklám, elemzőszkript vagy fiókrendszer. A tárhelyszolgáltatók a webhely kiszolgálásához és védelméhez feldolgozhatják a kérések adatait.",
+    "appTitle": "Helyi dokumentumkezelés",
+    "appText": "Az alapvető szerkesztés helyben, a számítógépeden történik, fájlfeltöltés nélkül. Az opcionális online funkciókhoz kapcsolat kell; elérhetőségük platformonként eltér.",
+    "linksTitle": "Külső hivatkozások",
+    "linksText": "A GitHubnak és más hivatkozott szolgáltatásoknak saját adatvédelmi szabályzatuk van. A webhely meglátogatása nem tölti fel a fájljaidat."
+  },
+  "seo": {
+    "homeTitle": "OFF42 — ingyenes iroda macOS és Windows rendszerre",
+    "homeDescription": "Ingyenes, nyílt forráskódú, natív irodai alkalmazások macOS és Windows rendszerre: PDF, DOCX, XLSX, PPTX, képek és szkennelés. A funkciók és tesztek platformonként eltérnek.",
+    "featuresTitle": "Funkciók: PDF, dokumentumok, táblázatok, szkennelés | OFF42",
+    "featuresDescription": "Szerkessz és írj alá PDF-et, kicsinyíts nagy fájlokat, szkennelj OCR-rel, írj DOCX-et, kezelj XLSX- és PPTX-fájlt. Nézd meg, mit tud az ingyenes OFF42 Macen.",
+    "downloadTitle": "OFF42 letöltése macOS és Windows rendszerre",
+    "downloadDescription": "OFF42 macOS és Windows rendszerre: forráskód, kiadási állapot, fordítási útmutatók és platformkorlátok. Telepítés előtt nézd meg, mi készült el és mit teszteltek.",
+    "aboutTitle": "Nyílt forráskódú irodai csomag, MIT-licenc | OFF42",
+    "aboutDescription": "Az OFF42 hat natív alkalmazás macOS és Windows rendszerre, MIT-licenccel. A forráskód, a platformtámogatás és a korlátok a GitHubon olvashatók.",
+    "privacyTitle": "Adatvédelem: a fájljaid a számítógépeden maradnak | OFF42",
+    "privacyDescription": "Az alapvető szerkesztés helyben, a számítógépeden történik, fájlfeltöltés nélkül. Az opcionális online funkciókhoz kapcsolat kell; elérhetőségük platformonként eltér."
+  }
+}

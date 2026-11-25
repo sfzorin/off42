@@ -38,7 +38,10 @@ enum PageLabels {
     /// Logical number of page `index`, nil when the document has no labels.
     static func label(_ index: Int, _ ranges: [PageLabelRange]) -> String? {
         guard let r = ranges.filter({ $0.start <= index }).max(by: { $0.start < $1.start }) else { return nil }
-        return r.prefix + format(r.first + index - r.start, r.style)
+        let (delta, subtractOverflow) = index.subtractingReportingOverflow(r.start)
+        let (number, addOverflow) = r.first.addingReportingOverflow(delta)
+        guard !subtractOverflow, !addOverflow, number > 0 else { return nil }
+        return r.prefix + format(number, r.style)
     }
 
     static func format(_ n: Int, _ style: PageLabelRange.Style) -> String {
@@ -65,7 +68,10 @@ enum PageLabels {
     static func letters(_ n: Int) -> String {
         guard n > 0 else { return "" }
         let letter = Character(UnicodeScalar(UInt8(65 + (n - 1) % 26)))
-        return String(repeating: letter, count: (n - 1) / 26 + 1)
+        let count = (n - 1) / 26 + 1
+        // Malformed or extreme /St values must not allocate gigabytes for one thumbnail caption.
+        guard count <= 4096 else { return "\(n)" }
+        return String(repeating: letter, count: count)
     }
 
     /// Page index of the page whose label (or number) is `text`; labels first, then plain numbers.
@@ -147,6 +153,7 @@ struct AnnotationFile {
     var rect: CGRect
     var name: String
     var data: Data
+    var annotation: PDFAnnotation? = nil
 }
 
 struct OutlineStyle: Equatable {
@@ -173,6 +180,11 @@ struct DocumentExtras {
     /// Header version, encryption, file ID as read (for the Properties window).
     var version = ""
     var hadXMP = false
+
+    func annotationFile(for annotation: PDFAnnotation, on page: Int) -> AnnotationFile? {
+        annotationFiles.first { $0.annotation === annotation }
+            ?? annotationFiles.first { $0.page == page && $0.annotation == nil && abs($0.rect.minX - annotation.bounds.minX) < 1 && abs($0.rect.minY - annotation.bounds.minY) < 1 }
+    }
 
     func label(_ index: Int) -> String? { PageLabels.label(index, labels) }
 
@@ -209,9 +221,11 @@ extension DocumentExtras {
                 var d: CGPDFDictionaryRef?
                 if CGPDFObjectGetValue(obj, .dictionary, &d), let d { pairs.append((key, d)) }
             }
-            x.labels = pairs.sorted { $0.0 < $1.0 }.map { key, d in
-                PageLabelRange(start: key, style: CGPDF.name(d, "S").flatMap(PageLabelRange.Style.init) ?? .none,
-                               prefix: PDFRead.text(d, "P") ?? "", first: Int(CGPDF.number(d, "St") ?? 1))
+            x.labels = pairs.sorted { $0.0 < $1.0 }.compactMap { key, d in
+                let value = CGPDF.number(d, "St") ?? 1
+                guard key >= 0, key < pdf.pageCount, value.isFinite, value >= 1, value < Double(Int.max) else { return nil }
+                return PageLabelRange(start: key, style: CGPDF.name(d, "S").flatMap(PageLabelRange.Style.init) ?? .none,
+                                      prefix: PDFRead.text(d, "P") ?? "", first: Int(value))
             }
         }
         // Initial view.
@@ -232,7 +246,7 @@ extension DocumentExtras {
             let kind = CGPDF.name(open, 1) ?? ""
             if kind == "XYZ", CGPDFArrayGetCount(open) >= 5 {
                 var z: CGPDFReal = 0
-                if CGPDFArrayGetNumber(open, 4, &z), z > 0 { x.view.openZoom = "\(Int((z * 100).rounded()))" }
+                if CGPDFArrayGetNumber(open, 4, &z), z.isFinite, z > 0, z <= 100 { x.view.openZoom = "\(Int((z * 100).rounded()))" }
             } else if let fit = ["Fit": "Fit", "FitB": "Fit", "FitH": "FitH", "FitBH": "FitH", "FitV": "FitV", "FitBV": "FitV"][kind] {
                 x.view.openZoom = fit
             }
@@ -254,7 +268,14 @@ extension DocumentExtras {
                       let fs = CGPDF.dict(a, "FS"), let file = PDFRead.embeddedFile(fs, fallbackName: L("Attachment")) else { continue }
                 let r = CGPDF.numbers(CGPDF.array(a, "Rect"))
                 let rect = r.count == 4 ? CGRect(x: min(r[0], r[2]), y: min(r[1], r[3]), width: abs(r[2] - r[0]), height: abs(r[3] - r[1])) : .zero
-                x.annotationFiles.append(AnnotationFile(page: i, rect: rect, name: file.name, data: file.data))
+                let used = Set(x.annotationFiles.compactMap { $0.annotation.map(ObjectIdentifier.init) })
+                let candidates: [PDFAnnotation] = pdf.page(at: i)?.annotations ?? []
+                let match: PDFAnnotation? = candidates.first(where: { annotation in
+                    guard annotation.kind == "FileAttachment", !used.contains(ObjectIdentifier(annotation)) else { return false }
+                    let dx = abs(annotation.bounds.minX - rect.minX), dy = abs(annotation.bounds.minY - rect.minY)
+                    return dx < 1 && dy < 1
+                })
+                x.annotationFiles.append(AnnotationFile(page: i, rect: rect, name: file.name, data: file.data, annotation: match))
             }
         }
         // Outline styles: the file's items in document order match PDFKit's tree in the same order.
@@ -264,7 +285,8 @@ extension DocumentExtras {
                 var st = OutlineStyle()
                 let c = CGPDF.numbers(CGPDF.array(item, "C"))
                 if c.count == 3, c != [0, 0, 0] { st.color = NSColor(srgbRed: c[0], green: c[1], blue: c[2], alpha: 1) }
-                let f = Int(CGPDF.number(item, "F") ?? 0)
+                let raw = CGPDF.number(item, "F") ?? 0
+                let f = raw.isFinite && raw >= 0 && raw <= 3 ? Int(raw) : 0
                 st.italic = f & 1 != 0
                 st.bold = f & 2 != 0
                 styles.append(st)
@@ -575,8 +597,8 @@ final class Writer {
         let names = resolve(catalog["Names"])
         if x.dirty.contains(.info) || pdfa || (trailer["Info"] == nil && x.info != DocumentInfo()) { writeInfo(x.info, pdfa: pdfa) }
         if x.dirty.contains(.labels) || (!x.labels.isEmpty && catalog["PageLabels"] == nil) { writeLabels(x.labels) }
-        if x.dirty.contains(.view) || (!x.view.pageLayout.isEmpty && catalog["PageLayout"] == nil)
-            || (!x.view.pageMode.isEmpty && catalog["PageMode"] == nil) { writeView(x.view) }
+        // PDFKit may discard OpenAction even when no PageLayout/PageMode was authored.
+        if x.dirty.contains(.view) || x.view != InitialView() { writeView(x.view) }
         if x.dirty.contains(.files) || pdfa || (!x.files.isEmpty && names?["EmbeddedFiles"] == nil) { writeFiles(pdfa ? [] : x.files) }
         if x.dirty.contains(.outline) || needsOutline(pdf) { writeOutline(pdf, styles: x.outlineStyles) }
         repairLinks(pdf, fit: x.linkFit)
@@ -664,7 +686,7 @@ final class Writer {
         if case .dict(let pairs) = vp, pairs.isEmpty { catalog = catalog.removing("ViewerPreferences") }
         else { catalog = catalog.setting("ViewerPreferences", vp) }
         // Open at a page / magnification; a JavaScript or other action stays when nothing is chosen.
-        if (v.openPage > 0 || !v.openZoom.isEmpty), v.openPage < pages.count {
+        if (v.openPage > 0 || !v.openZoom.isEmpty), v.openPage >= 0, v.openPage < pages.count {
             let page = PDFObject.ref(pages[v.openPage], file.gen(pages[v.openPage]))
             let dest: [PDFObject]
             switch v.openZoom {

@@ -1,0 +1,54 @@
+{
+  "rtl": false,
+  "brand": "BẾN XANH STUDIO",
+  "brandLine": "Nhận diện thương hiệu · Web · Chuyển động",
+  "number": "Hợp đồng số BX-2026-114",
+  "title": "Hợp đồng dịch vụ thiết kế",
+  "intro": "Hợp đồng này được lập ngày 6 tháng 11 năm 2026 giữa Công ty TNHH Thiết kế Bến Xanh (“Studio”) và Công ty CP Truyền thông Phương Bắc (“Khách hàng”) về việc thiết kế bộ nhận diện và website mới cho Khách hàng.",
+  "sections": [
+    ["1. Phạm vi công việc", "Studio sẽ bàn giao hệ thống logo, hướng dẫn kiểu chữ và màu sắc, thiết kế website mười hai trang và thư viện mẫu bài đăng mạng xã hội."],
+    ["2. Tiến độ", "Công việc bắt đầu ngày 16/11/2026. Các ý tưởng đầu tiên được trình bày trong vòng ba tuần; tệp hoàn chỉnh được bàn giao trước ngày 29/01/2027."],
+    ["3. Sở hữu trí tuệ", "Sau khi thanh toán đầy đủ, mọi quyền đối với thiết kế cuối cùng thuộc về Khách hàng. Studio được giới thiệu sản phẩm trong hồ sơ năng lực."]
+  ],
+  "feeTitle": "4. Phí dịch vụ",
+  "fees": [["Bộ nhận diện và cẩm nang", "180.000.000 ₫"], ["Thiết kế website, 12 trang", "270.000.000 ₫"], ["Mẫu bài đăng mạng xã hội", "60.000.000 ₫"]],
+  "total": ["Tổng cộng, chưa gồm thuế GTGT", "510.000.000 ₫"],
+  "signTitle": "Đại diện các bên ký tên",
+  "parties": [
+    {"role": "Đại diện Studio", "company": "Công ty TNHH Thiết kế Bến Xanh", "person": "Nguyễn Thu Hà", "title": "Giám đốc",
+     "date": "TP. Hồ Chí Minh, ngày 6/11/2026", "signName": "Nguyễn Thu Hà", "pen": "ballpoint", "design": 2424853,
+     "stamp": {"id": "cn.company", "width": 104, "values": {"edge": "CÔNG TY TNHH THIẾT KẾ BẾN XANH * MST: 0314200042 *"}}},
+    {"role": "Đại diện Khách hàng", "company": "Công ty CP Truyền thông Phương Bắc", "person": "Trần Minh Quân", "title": "Tổng Giám đốc",
+     "date": "Hà Nội, ngày 6/11/2026", "signName": "Trần Minh Quân", "pen": "fountain", "design": 2425381,
+     "stamp": {"id": "cn.company", "width": 104, "values": {"edge": "CÔNG TY CP TRUYỀN THÔNG PHƯƠNG BẮC * MST: 0109000042 *"}}}
+  ],
+  "invoiceTitle": "Hóa đơn",
+  "invoiceNumber": "Hóa đơn số 2026-0418 · ngày 30/01/2027",
+  "billTo": "Người mua",
+  "billLines": ["Công ty CP Truyền thông Phương Bắc", "7 Tràng Tiền, Phường Hoàn Kiếm, Hà Nội", "MST 0109000042"],
+  "items": [["Bộ nhận diện và cẩm nang", "1", "180.000.000 ₫"], ["Thiết kế website, 12 trang", "1", "270.000.000 ₫"], ["Mẫu bài đăng mạng xã hội", "1", "60.000.000 ₫"]],
+  "invoiceTotal": ["Tổng số tiền thanh toán", "510.000.000 ₫"],
+  "paid": {"id": "us.paid", "width": 170, "values": {"top": "CÔNG TY TNHH THIẾT KẾ BẾN XANH", "word": "ĐÃ THANH TOÁN"}},
+  "note": "Đã nhận thanh toán, xin cảm ơn. Chuyển khoản, nội dung: BX-2026-114.",
+  "generatorName": "Nguyễn Thu Hà",
+  "letter": {
+    "brand": "BẾN XANH STUDIO", "addr": "42 Lê Thánh Tôn, Phường Sài Gòn, TP. Hồ Chí Minh · xinchao@benxanh.example",
+    "date": "TP. Hồ Chí Minh, ngày 6 tháng 11 năm 2026", "to": ["Ông Trần Minh Quân", "Công ty CP Truyền thông Phương Bắc", "7 Tràng Tiền, Phường Hoàn Kiếm, Hà Nội"],
+    "subject": "Đề xuất: bộ nhận diện mới cho Truyền thông Phương Bắc",
+    "body": ["Kính gửi anh Quân,", "Cảm ơn anh về buổi trao đổi rất thú vị tuần trước. Như đã hẹn, chúng tôi gửi đề xuất cho bộ nhận diện mới của Phương Bắc: hệ thống logo tiết chế hơn, bảng màu ấm áp và website đặt phim tài liệu của quý công ty lên hàng đầu.", "Chúng tôi đề xuất ba giai đoạn, mỗi giai đoạn kết thúc bằng buổi duyệt tại Hà Nội:"],
+    "table": [["Giai đoạn", "Tuần", "Phí"], ["Nghiên cứu và ý tưởng", "3", "135.000.000 ₫"], ["Nhận diện và cẩm nang", "4", "180.000.000 ₫"], ["Website và mẫu thiết kế", "6", "195.000.000 ₫"]],
+    "close": ["Chúng tôi rất mong được bắt đầu từ ngày 16/11. Hợp đồng đính kèm đã được chúng tôi ký sẵn.", "Trân trọng,"],
+    "name": "Nguyễn Thu Hà", "role": "Giám đốc, Công ty TNHH Thiết kế Bến Xanh"
+  },
+  "budget": {
+    "sheet": "Ngân sách 2027", "head": "Ngân sách studio, 6 tháng đầu năm 2027, triệu đồng", "total": "Tổng", "share": "Tỷ trọng",
+    "months": ["T1", "T2", "T3", "T4", "T5", "T6"],
+    "rows": [["Thiết kế", [135, 160, 180, 110, 105, 120]], ["Phát triển", [70, 90, 150, 200, 190, 160]], ["Tiếp thị", [40, 45, 56, 85, 100, 112]], ["Hosting và công cụ", [9, 9, 10, 10, 11, 11]]]
+  },
+  "deck": {
+    "title": "Truyền thông Phương Bắc", "subtitle": "Làm mới thương hiệu 2027 · Duyệt thiết kế",
+    "ideasTitle": "Điềm tĩnh, ấm áp, phương Bắc", "ideasSubtitle": "Ba ý tưởng cho bộ nhận diện mới",
+    "ideas": [["Ánh sáng", "Những chiều đông Hà Nội: tương phản dịu, điểm nhấn ấm."], ["Câu chuyện", "Phim tài liệu là trọng tâm: website mở đầu bằng phim."], ["Thủ công", "Dấu ấn vẽ tay, kiểu chữ giàu cá tính."]],
+    "timelineTitle": "Tiến độ", "steps": [["T11", "Nghiên cứu"], ["T12", "Ý tưởng"], ["T1", "Nhận diện"], ["T2", "Website"]]
+  }
+}

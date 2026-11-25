@@ -61,6 +61,7 @@ extension DocWindowController {
             case "ruler": toggleRulerAction(nil)
             case "auditpanels": if !auditPanelPreferences() { exit(1) }
             case "auditediting": if !auditEditing() { exit(1) }
+            case "audittechnical": if !auditTechnicalElements() { exit(1) }
             case "auditrulers": if !auditRulers() { exit(1) }
             case "auditdocument": if !auditDocumentLifecycle() { exit(1) }
             case "auditpagination": if !auditPagination() { exit(1) }

@@ -51,7 +51,10 @@ struct Adjustments: Equatable {
 
     subscript(key: Key) -> Double {
         get { values[key] ?? 0 }
-        set { values[key] = newValue == 0 ? nil : newValue }
+        set {
+            let value = newValue.isFinite ? min(key.range.upperBound, max(key.range.lowerBound, newValue)) : 0
+            values[key] = value == 0 ? nil : value
+        }
     }
 
     var isIdentity: Bool { values.isEmpty && look == .none && !autoEnhance }
@@ -62,7 +65,9 @@ struct Adjustments: Equatable {
         let extent = input.extent
         var image = input
         if autoEnhance {
-            for f in autoFilters ?? input.autoAdjustmentFilters() {
+            for template in autoFilters ?? input.autoAdjustmentFilters() {
+                // Live proxies and the delayed full-size render may run concurrently. CIFilter is mutable.
+                guard let f = template.copy() as? CIFilter else { continue }
                 f.setValue(image, forKey: kCIInputImageKey)
                 image = f.outputImage ?? image
             }
@@ -77,9 +82,19 @@ struct Adjustments: Equatable {
         }
         if self[.highlights] != 0 || self[.shadows] != 0 {
             image = image.applyingFilter("CIHighlightShadowAdjust", parameters: [
-                "inputHighlightAmount": 1 + min(0, self[.highlights]) / 100 + max(0, self[.highlights]) / 300,
+                "inputHighlightAmount": 1 + min(0, self[.highlights]) / 100,
                 "inputShadowAmount": self[.shadows] / 100,
             ])
+            // CIHighlightShadowAdjust caps highlights at 1 (its identity). Values above 1 silently do
+            // nothing, so the positive half of our Highlights control needs a highlight-lifting curve.
+            if self[.highlights] > 0 {
+                image = image.applyingFilter("CIToneCurve", parameters: [
+                    "inputPoint0": CIVector(x: 0, y: 0), "inputPoint1": CIVector(x: 0.25, y: 0.25),
+                    "inputPoint2": CIVector(x: 0.5, y: 0.5),
+                    "inputPoint3": CIVector(x: 0.75, y: 0.75 + self[.highlights] / 500),
+                    "inputPoint4": CIVector(x: 1, y: 1),
+                ])
+            }
         }
         if self[.brightness] != 0 || self[.contrast] != 0 || self[.saturation] != 0 {
             image = image.applyingFilter("CIColorControls", parameters: [
@@ -117,11 +132,16 @@ struct Adjustments: Equatable {
 
     /// Renders the adjusted image in the source colour space (8 bit).
     func render(_ base: CGImage, autoFilters: [CIFilter]? = nil) -> CGImage {
+        renderChecked(base, autoFilters: autoFilters) ?? base
+    }
+
+    /// File output must fail when rendering fails instead of silently dropping visible adjustments.
+    func renderChecked(_ base: CGImage, autoFilters: [CIFilter]? = nil) -> CGImage? {
         guard !isIdentity else { return base }
         let input = CIImage(cgImage: base)
         let output = apply(to: input, autoFilters: autoFilters)
         let cs = base.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpace(name: CGColorSpace.sRGB)!
-        return Self.context.createCGImage(output, from: input.extent, format: .RGBA8, colorSpace: cs) ?? base
+        return Self.context.createCGImage(output, from: input.extent, format: .RGBA8, colorSpace: cs)
     }
 }
 
@@ -130,14 +150,17 @@ final class ResettingSlider: NSSlider {
     var onReset: (() -> Void)?
     var onBegin: (() -> Void)?
     var onEnd: (() -> Void)?
+    private(set) var isTrackingDrag = false
 
     override func mouseDown(with event: NSEvent) {
         if event.clickCount == 2 {
             onReset?()
             return
         }
+        isTrackingDrag = true
         onBegin?()
         super.mouseDown(with: event)   // tracks until mouse up
+        isTrackingDrag = false
         onEnd?()
     }
 }
@@ -301,9 +324,11 @@ final class AdjustPanelController: NSViewController {
 
     @objc private func sliderMoved(_ sender: ResettingSlider) {
         guard let raw = sender.identifier?.rawValue, let key = Adjustments.Key(rawValue: raw) else { return }
+        // Keyboard/accessibility actions do not pass through mouseDown's begin/end callbacks.
+        if !sender.isTrackingDrag { onBeginChange?() }
         adjustments[key] = sender.doubleValue.rounded()
         valueLabels[key]?.stringValue = Self.format(adjustments[key])
-        onChange?(adjustments, false)
+        onChange?(adjustments, !sender.isTrackingDrag)
     }
 
     @objc private func lookChanged() {

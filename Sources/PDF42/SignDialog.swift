@@ -6,12 +6,14 @@ enum SignDialog {
     static func run(stampSelected: Bool) -> (options: PDFSigner.Options, visible: Bool)? {
         var identities = CertificateStore.identities()
         let popup = NSPopUpButton(frame: .zero, pullsDown: false)
+        var signButton: NSButton?
         func fill(select name: String? = nil) {
             popup.removeAllItems()
             popup.addItems(withTitles: identities.map(\.displayName))
             if identities.isEmpty { popup.addItem(withTitle: L("No certificates")) }
             if let name, let i = identities.firstIndex(where: { $0.displayName == name }) { popup.selectItem(at: i) }
             popup.isEnabled = !identities.isEmpty
+            signButton?.isEnabled = !identities.isEmpty
         }
         fill()
 
@@ -40,19 +42,31 @@ enum SignDialog {
                                  rows: [(L("Certificate:"), popup), ("", actions), (L("Reason:"), reason), (L("Location:"), location),
                                         ("", visible), ("", timestamp), (L("TSA server:"), tsa)])
         alert.icon = Theme42.symbol("checkmark.seal.fill", size: 40)
+        signButton = alert.buttons.first
+        signButton?.isEnabled = !identities.isEmpty
         while true {
             guard alert.runModal() == .alertFirstButtonReturn else { return nil }
             guard !identities.isEmpty, popup.indexOfSelectedItem >= 0, popup.indexOfSelectedItem < identities.count else {
                 NSSound.beep()
                 continue
             }
+            let timestampURL: URL?
+            if timestamp.state == .on {
+                let value = tsa.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard let url = URL(string: value), ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
+                      url.host?.isEmpty == false else {
+                    let error = NSAlert(); error.messageText = L("Enter a valid HTTP or HTTPS timestamp URL.")
+                    error.runModal(); continue
+                }
+                timestampURL = url
+            } else { timestampURL = nil }
             d.set(reason.stringValue, forKey: "sign.reason")
             d.set(location.stringValue, forKey: "sign.location")
             d.set(visible.state == .on, forKey: "sign.visible")
             d.set(timestamp.state == .on, forKey: "sign.tsa")
             d.set(tsa.stringValue, forKey: "sign.tsaURL")
             var o = PDFSigner.Options(identity: identities[popup.indexOfSelectedItem], reason: reason.stringValue, location: location.stringValue)
-            if timestamp.state == .on { o.timestampURL = URL(string: tsa.stringValue.trimmingCharacters(in: .whitespaces)) }
+            o.timestampURL = timestampURL
             return (o, visible.state == .on)
         }
     }

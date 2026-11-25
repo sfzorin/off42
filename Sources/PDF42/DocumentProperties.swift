@@ -101,6 +101,7 @@ extension EditorWindowController {
         guard let view = pdfDoc?.extras.view, let pdf else { return }
         switch view.pageLayout {
         case "SinglePage": pdfView.displayMode = .singlePage
+        case "OneColumn": pdfView.displayMode = .singlePageContinuous
         case "TwoColumnLeft", "TwoColumnRight": pdfView.displayMode = .twoUpContinuous
         case "TwoPageLeft", "TwoPageRight": pdfView.displayMode = .twoUp
         default: break
@@ -113,8 +114,24 @@ extension EditorWindowController {
         case "UseAttachments": showSidebarMode(.attachments)
         default: break
         }
-        if view.openPage > 0, let page = pdf.page(at: view.openPage) { pdfView.go(to: page) }
-        if view.openZoom == "FitH" || view.openZoom == "FitV" { zoomMode = .width }
+        if view.openPage >= 0, let page = pdf.page(at: view.openPage) { pdfView.go(to: page) }
+        switch view.openZoom {
+        case "Fit": zoomMode = .page
+        case "FitH": zoomMode = .width
+        case "FitV":
+            if let page = pdfView.currentPage {
+                let height = Self.displayedSize(page).height
+                if height.isFinite, height > 0 {
+                    zoomMode = .custom; pdfView.autoScales = false
+                    pdfView.scaleFactor = min(pdfView.maxScaleFactor, max(pdfView.minScaleFactor, (pdfView.bounds.height - 32) / height))
+                }
+            }
+        default:
+            if let percentage = Double(view.openZoom), percentage.isFinite, percentage > 0 {
+                zoomMode = .custom; pdfView.autoScales = false
+                pdfView.scaleFactor = min(pdfView.maxScaleFactor, max(pdfView.minScaleFactor, percentage / 100))
+            }
+        }
     }
 
     // MARK: - Properties
@@ -261,7 +278,9 @@ extension EditorWindowController {
         var view = x.view
         view.pageLayout = InitialView.layouts[max(0, layout.indexOfSelectedItem)]
         view.pageMode = InitialView.modes[max(0, mode.indexOfSelectedItem)]
-        view.openPage = PageLabels.index(of: openPage.stringValue, x.labels, pageCount: pdf.pageCount) ?? 0
+        let requestedPage = openPage.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard requestedPage.isEmpty || PageLabels.index(of: requestedPage, x.labels, pageCount: pdf.pageCount) != nil else { NSSound.beep(); return }
+        view.openPage = PageLabels.index(of: requestedPage, x.labels, pageCount: pdf.pageCount) ?? 0
         view.openZoom = zooms[max(0, zoom.indexOfSelectedItem)].0
         view.fitWindow = fit.state == .on
         view.centerWindow = center.state == .on

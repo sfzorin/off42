@@ -1,0 +1,54 @@
+{
+  "rtl": false,
+  "brand": "ATELIER CLAIRE-RIVE",
+  "brandLine": "Identité de marque · Web · Motion",
+  "number": "Contrat n° CR-2026-114",
+  "title": "Contrat de prestations de design",
+  "intro": "Le présent contrat est conclu le 6 novembre 2026 entre Atelier Claire-Rive SARL (l’« Atelier ») et Horizon Bleu Médias SAS (le « Client ») pour la création de la nouvelle identité de marque et du site web du Client.",
+  "sections": [
+    ["1. Objet", "L’Atelier livre un système de logo, une charte typographique et chromatique, la maquette d’un site de douze pages et des modèles pour les réseaux sociaux."],
+    ["2. Calendrier", "Les travaux débutent le 16 novembre 2026. Les premières pistes sont présentées sous trois semaines ; les fichiers finaux sont livrés au plus tard le 29 janvier 2027."],
+    ["3. Propriété intellectuelle", "Après paiement intégral, les droits sur les créations finales sont cédés au Client. L’Atelier peut présenter le projet dans son portfolio."]
+  ],
+  "feeTitle": "4. Honoraires",
+  "fees": [["Identité et charte graphique", "8 400 €"], ["Maquette du site, 12 pages", "12 600 €"], ["Modèles réseaux sociaux", "2 800 €"]],
+  "total": ["Total HT", "23 800 €"],
+  "signTitle": "Signatures des parties",
+  "parties": [
+    {"role": "Pour l’Atelier", "company": "Atelier Claire-Rive SARL", "person": "Camille Moreau", "title": "Gérante",
+     "date": "Lyon, le 6 novembre 2026", "signName": "Camille Moreau", "pen": "ballpoint", "design": 2424853,
+     "stamp": {"id": "fr.tampon", "width": 145, "values": {"name": "Atelier Claire-Rive SARL", "lines": "12 quai Saint-Vincent\n69001 Lyon", "numbers": "SIRET 912 000 042 00017"}}},
+    {"role": "Pour le Client", "company": "Horizon Bleu Médias SAS", "person": "Julien Lefèvre", "title": "Président",
+     "date": "Paris, le 6 novembre 2026", "signName": "Julien Lefèvre", "pen": "fountain", "design": 2425381,
+     "stamp": {"id": "eu.round", "width": 104, "values": {"edge": "HORIZON BLEU MÉDIAS SAS * PARIS *", "centre": "RCS Paris\n904 000 042"}}}
+  ],
+  "invoiceTitle": "Facture",
+  "invoiceNumber": "Facture n° 2026-0418 · 30 janvier 2027",
+  "billTo": "Facturer à",
+  "billLines": ["Horizon Bleu Médias SAS", "7 rue des Martyrs, 75009 Paris, France", "TVA FR42 904000042"],
+  "items": [["Identité et charte graphique", "1", "8 400 €"], ["Maquette du site, 12 pages", "1", "12 600 €"], ["Modèles réseaux sociaux", "1", "2 800 €"]],
+  "invoiceTotal": ["Net à payer", "23 800 €"],
+  "paid": {"id": "us.paid", "width": 150, "values": {"top": "ATELIER CLAIRE-RIVE SARL", "word": "PAYÉ"}},
+  "note": "Paiement reçu, merci. Virement bancaire, réf. CR-2026-114.",
+  "generatorName": "Camille Moreau",
+  "letter": {
+    "brand": "ATELIER CLAIRE-RIVE", "addr": "12 quai Saint-Vincent, 69001 Lyon · bonjour@claire-rive.example",
+    "date": "Lyon, le 6 novembre 2026", "to": ["M. Julien Lefèvre", "Horizon Bleu Médias SAS", "7 rue des Martyrs, 75009 Paris"],
+    "subject": "Proposition : une nouvelle identité pour Horizon Bleu Médias",
+    "body": ["Cher Julien,", "Merci pour notre échange de la semaine dernière. Comme convenu, voici notre proposition pour la nouvelle identité : un logo plus apaisé, une palette chaleureuse et un site qui met vos documentaires au premier plan.", "Nous proposons trois étapes, chacune conclue par une revue à Paris :"],
+    "table": [["Étape", "Semaines", "Montant"], ["Recherche et pistes", "3", "6 200 €"], ["Identité et charte", "4", "8 400 €"], ["Site et modèles", "6", "9 200 €"]],
+    "close": ["Nous serions ravis de commencer le 16 novembre. Le contrat est joint et déjà signé de notre côté.", "Bien cordialement,"],
+    "name": "Camille Moreau", "role": "Gérante, Atelier Claire-Rive SARL"
+  },
+  "budget": {
+    "sheet": "Budget 2027", "head": "Budget de l’atelier, 1er semestre 2027 (€)", "total": "Total", "share": "Part",
+    "months": ["Janv.", "Févr.", "Mars", "Avr.", "Mai", "Juin"],
+    "rows": [["Design", [6200, 7400, 8400, 5100, 4800, 5600]], ["Développement", [3200, 4100, 6900, 9200, 8800, 7300]], ["Marketing", [1800, 2100, 2600, 3900, 4700, 5200]], ["Hébergement et outils", [420, 420, 460, 460, 510, 510]]]
+  },
+  "deck": {
+    "title": "Horizon Bleu Médias", "subtitle": "Refonte de marque 2027 · Revue design",
+    "ideasTitle": "Calme, chaleureux, lumineux", "ideasSubtitle": "Trois idées derrière la nouvelle identité",
+    "ideas": [["Lumière", "Les soirs d’été : contraste doux et reflets chauds."], ["Récit", "Le documentaire d’abord : le site s’ouvre sur les films."], ["Savoir-faire", "Signes dessinés à la main, typographie de caractère."]],
+    "timelineTitle": "Calendrier", "steps": [["Nov.", "Recherche"], ["Déc.", "Pistes"], ["Janv.", "Identité"], ["Févr.", "Site web"]]
+  }
+}

@@ -2,6 +2,8 @@ import Kit42
 
 // PDF42 UI strings: [English, Русский, Türkçe].
 let pdf42Strings: [[String]] = [
+    ["The document changed during text recognition. Run OCR again.", "Документ изменился во время распознавания текста. Запустите распознавание снова.", "Metin tanıma sırasında belge değişti. OCR işlemini yeniden çalıştırın."],
+    ["The image size is invalid", "Недопустимый размер изображения", "Görüntü boyutu geçersiz"],
     ["View and edit PDF", "Просмотр и редактирование PDF", "PDF görüntüleme ve düzenleme"],
     ["Open PDF…", "Открыть PDF…", "PDF Aç…"],
     ["New Document", "Новый документ", "Yeni Belge"],
@@ -546,4 +548,7 @@ let pdf42Strings: [[String]] = [
     ["not embedded", "не встроен", "gömülü değil"],
     ["pages: %@", "страницы: %@", "sayfalar: %@"],
     ["More", "Ещё", "Daha Fazla"],
+    ["The image size is invalid", "Недопустимый размер изображения", "Görüntü boyutu geçersiz"],
+    ["The document changed during text recognition. Run OCR again.", "Документ изменился во время распознавания. Запустите OCR ещё раз.", "Metin tanıma sırasında belge değişti. OCR işlemini yeniden başlatın."],
+    ["Enter a valid HTTP or HTTPS timestamp URL.", "Введите корректный HTTP- или HTTPS-адрес сервера меток времени.", "Geçerli bir HTTP veya HTTPS zaman damgası adresi girin."],
 ]

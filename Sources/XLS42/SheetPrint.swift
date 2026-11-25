@@ -1,6 +1,33 @@
 import AppKit
 import Kit42
 
+extension Sheet {
+    /// Floating objects can be the only content on a sheet, and can extend beyond populated cells.
+    /// Keep this separate from usedRange so CSV and cell-selection behavior stay cell-based.
+    var printableRange: CellRange? {
+        var result = usedRange
+        func include(anchor: CellRef, offset: CGPoint, size: CGSize) {
+            guard anchor.row >= 0, anchor.col >= 0, anchor.row <= RefPart.maxRow, anchor.col <= RefPart.maxCol,
+                  size.width.isFinite, size.height.isFinite, offset.x.isFinite, offset.y.isFinite,
+                  size.width > 0, size.height > 0 else { return }
+            var column = anchor.col, row = anchor.row
+            var remainingX = max(0, offset.x) + size.width, remainingY = max(0, offset.y) + size.height
+            while column < RefPart.maxCol && remainingX > width(column) {
+                remainingX -= width(column); column += 1
+            }
+            while row < RefPart.maxRow && remainingY > height(row) {
+                remainingY -= height(row); row += 1
+            }
+            let first = result.map { CellRef(row: min($0.start.row, anchor.row), col: min($0.start.col, anchor.col)) } ?? anchor
+            let last = CellRef(row: max(result?.end.row ?? row, row), col: max(result?.end.col ?? column, column))
+            result = CellRange(first, last)
+        }
+        for image in images { include(anchor: image.anchor, offset: image.offset, size: image.size) }
+        for chart in charts { include(anchor: chart.anchor, offset: .zero, size: chart.size) }
+        return result
+    }
+}
+
 /// Print layout for sheets: each page shows a block of cells, the repeated title rows
 /// (frozen rows) and a footer with the sheet name and page number.
 final class SheetPrintView: NSView {
@@ -38,11 +65,11 @@ final class SheetPrintView: NSView {
             guard let selection, workbook.sheets.indices.contains(activeSheet) else { return [] }
             return [(activeSheet, selection)]
         case .workbook:
-            return workbook.sheets.indices.filter { !workbook.sheets[$0].hidden }.compactMap { i in (workbook.sheets[i].printArea ?? workbook.sheets[i].usedRange).map { (i, $0) } }
+            return workbook.sheets.indices.filter { !workbook.sheets[$0].hidden }.compactMap { i in (workbook.sheets[i].printArea ?? workbook.sheets[i].printableRange).map { (i, $0) } }
         case .sheet:
             guard workbook.sheets.indices.contains(activeSheet) else { return [] }
             let s = workbook.sheets[activeSheet]
-            return (s.printArea ?? s.usedRange).map { [(activeSheet, $0)] } ?? []
+            return (s.printArea ?? s.printableRange).map { [(activeSheet, $0)] } ?? []
         }
     }
 
@@ -135,6 +162,9 @@ final class SheetPrintView: NSView {
             let origin = CGFloat(i) * slot.height
             let pageRect = NSRect(x: 0, y: origin, width: slot.width, height: slot.height)
             guard pageRect.intersects(dirtyRect) else { continue }
+            ctx.saveGState()
+            ProductionPrint.concatenate(in: ctx, pageRect: pageRect, flipped: true)
+            defer { ctx.restoreGState() }
             let w = page.cols.1 - page.cols.0 + 1
             // Title rows
             if page.titleHeight > 0 {

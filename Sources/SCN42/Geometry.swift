@@ -7,6 +7,19 @@ struct Quad: Codable, Equatable {
 
     var points: [CGPoint] { [tl, tr, br, bl] }
 
+    /// A usable perspective region is finite, nondegenerate and strictly convex.
+    var isValid: Bool {
+        guard points.allSatisfy({ $0.x.isFinite && $0.y.isFinite }), area > 1e-12 else { return false }
+        var sign: CGFloat = 0
+        for i in 0..<4 {
+            let a = points[i], b = points[(i + 1) % 4], c = points[(i + 2) % 4]
+            let cross = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x)
+            guard cross.isFinite, abs(cross) > 1e-12 else { return false }
+            if sign == 0 { sign = cross } else if cross * sign <= 0 { return false }
+        }
+        return true
+    }
+
     var bounds: CGRect {
         let xs = points.map(\.x), ys = points.map(\.y)
         return CGRect(x: xs.min()!, y: ys.min()!, width: xs.max()! - xs.min()!, height: ys.max()! - ys.min()!)
@@ -36,6 +49,8 @@ struct Quad: Codable, Equatable {
 
     /// Moves every corner towards the centre by `d` pixels (trims a dark edge left by the glass).
     func inset(_ d: CGFloat) -> Quad {
+        guard isValid, d.isFinite, d >= 0 else { return self }
+        let d = min(d, CGFloat(min(width, height)) / 4)
         let c = CGPoint(x: points.map(\.x).reduce(0, +) / 4, y: points.map(\.y).reduce(0, +) / 4)
         func move(_ p: CGPoint) -> CGPoint {
             let dx = c.x - p.x, dy = c.y - p.y
@@ -47,6 +62,9 @@ struct Quad: Codable, Equatable {
 
     /// Orders four arbitrary corners as top-left, top-right, bottom-right, bottom-left.
     static func ordered(_ pts: [CGPoint]) -> Quad {
+        guard pts.count == 4, pts.allSatisfy({ $0.x.isFinite && $0.y.isFinite }) else {
+            return Quad(tl: .zero, tr: .zero, br: .zero, bl: .zero)
+        }
         let c = CGPoint(x: pts.map(\.x).reduce(0, +) / 4, y: pts.map(\.y).reduce(0, +) / 4)
         let sorted = pts.sorted { atan2($0.y - c.y, $0.x - c.x) < atan2($1.y - c.y, $1.x - c.x) }
         // atan2 order with y down: starts near "left", goes up (negative y) … ; pick tl as the one with min x+y.
@@ -58,6 +76,7 @@ struct Quad: Codable, Equatable {
 
     /// Overlap of two quads (intersection over union), estimated on a grid.
     func iou(_ other: Quad) -> Double {
+        guard isValid, other.isValid else { return 0 }
         let box = bounds.union(other.bounds)
         guard box.width > 0, box.height > 0 else { return 0 }
         let n = 80
@@ -65,7 +84,7 @@ struct Quad: Codable, Equatable {
         for j in 0..<n {
             for i in 0..<n {
                 let p = CGPoint(x: box.minX + (CGFloat(i) + 0.5) / CGFloat(n) * box.width, y: box.minY + (CGFloat(j) + 0.5) / CGFloat(n) * box.height)
-                let a = contains(p), b = other.contains(p)
+                let a = containsConvex(p), b = other.containsConvex(p)
                 if a && b { inter += 1 }
                 if a || b { uni += 1 }
             }
@@ -74,6 +93,11 @@ struct Quad: Codable, Equatable {
     }
 
     func contains(_ p: CGPoint) -> Bool {
+        guard isValid, p.x.isFinite, p.y.isFinite else { return false }
+        return containsConvex(p)
+    }
+
+    private func containsConvex(_ p: CGPoint) -> Bool {
         let pts = points
         var sign = 0
         for i in 0..<4 {
@@ -95,7 +119,7 @@ struct Quad: Codable, Equatable {
 enum Hull {
     /// Convex hull (Andrew's monotone chain).
     static func convex(_ points: [CGPoint]) -> [CGPoint] {
-        let p = points.sorted { $0.x == $1.x ? $0.y < $1.y : $0.x < $1.x }
+        let p = points.filter { $0.x.isFinite && $0.y.isFinite }.sorted { $0.x == $1.x ? $0.y < $1.y : $0.x < $1.x }
         guard p.count > 2 else { return p }
         func cross(_ o: CGPoint, _ a: CGPoint, _ b: CGPoint) -> CGFloat { (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x) }
         var lower: [CGPoint] = [], upper: [CGPoint] = []
@@ -112,7 +136,7 @@ enum Hull {
 
     /// Minimum-area enclosing rectangle of a convex polygon (one side is collinear with a hull edge).
     static func minAreaRect(_ hull: [CGPoint]) -> Quad? {
-        guard hull.count >= 3 else { return nil }
+        guard hull.count >= 3, hull.allSatisfy({ $0.x.isFinite && $0.y.isFinite }) else { return nil }
         var best: (area: CGFloat, quad: Quad)?
         for i in 0..<hull.count {
             let a = hull[i], b = hull[(i + 1) % hull.count]
@@ -132,6 +156,6 @@ enum Hull {
                 best = (area, Quad.ordered([pt(minU, minV), pt(maxU, minV), pt(maxU, maxV), pt(minU, maxV)]))
             }
         }
-        return best?.quad
+        return best.flatMap { $0.quad.isValid ? $0.quad : nil }
     }
 }

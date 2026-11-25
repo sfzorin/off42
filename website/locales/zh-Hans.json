@@ -1,0 +1,406 @@
+{
+  "nav": {
+    "features": "功能",
+    "apps": "应用套件",
+    "about": "开源",
+    "download": "下载",
+    "language": "语言",
+    "menu": "菜单",
+    "skip": "跳转到正文",
+    "home": "首页"
+  },
+  "home": {
+    "eyebrow": "免费 · 开源 · macOS 和 Windows",
+    "title": "整套办公。无需订阅。",
+    "intro": "OFF42 提供六款适用于 macOS 和 Windows 的原生应用，用于处理 PDF、文档、表格、演示文稿、图片和扫描件。免费开源，各平台独立实现，相关限制已在文档中说明。",
+    "primary": "获取 OFF42",
+    "secondary": "探索工具",
+    "note": "免费 · 开源 · macOS 14+ · Windows",
+    "suiteTitle": "完整的办公工具，轻松的工作体验。",
+    "suiteIntro": "从第一份草稿到最终签署的 PDF，让熟悉的一套工具陪伴你的日常工作。",
+    "featureEyebrow": "小细节，大不同。",
+    "featureTitle": "每个文件，都有更多可能。",
+    "featureIntro": "编辑 PDF，压缩大附件，将纸张转为可搜索的文字。为手头的工作找到合适的工具。",
+    "privacyTitle": "在你的桌面上处理文件。",
+    "privacyText": "核心编辑操作在你的电脑本地完成，无需上传文件。可选的在线功能需要网络连接，支持情况因平台而异。",
+    "privacyLabel": "为本地工作而生",
+    "languageTitle": "20 种语言，熟悉的体验。",
+    "languageText": "网站和应用界面支持你的语言。选择熟悉的语言，让同一套工具随时触手可及。",
+    "openTitle": "真正开放的办公套件。",
+    "openText": "OFF42 采用 MIT 许可证发布。查看代码、自行构建、报告问题，或一起让下个版本更好。",
+    "openLink": "在 GitHub 上探索",
+    "endTitle": "订阅，off。办公，归你。",
+    "endText": "免费 · 开源 · macOS 和 Windows",
+    "formatsLabel": "OFFICE 与开放格式",
+    "formatsTitle": "直接打开你手头已有的文件。",
+    "formatsText": "打开同事发来的文件，并保存为对方需要的格式。复杂版式的显示可能有所不同，导入后请检查重要文件。",
+    "opens": "可打开",
+    "saves": "可保存",
+    "faqTitle": "开始之前，你可能想知道",
+    "faq": [
+      {
+        "q": "OFF42 免费吗？",
+        "a": "是的。OFF42 免费且开源，采用 MIT 许可证。没有订阅、账号或应用内购买。"
+      },
+      {
+        "q": "OFF42 可以离线使用吗？",
+        "a": "核心编辑操作在你的电脑本地完成，无需上传文件。可选的在线功能需要网络连接，支持情况因平台而异。"
+      },
+      {
+        "q": "OFF42 能打开 Microsoft Office 文件吗？",
+        "a": "可以。DOC42 能打开 DOCX 和 DOC，XLS42 能打开 XLSX 和 XLS，PPT42 能打开 PPTX，同时也支持 OpenDocument 文件（ODT、ODS、ODP）。并非所有 Office 功能都受支持，导入复杂文件后请检查。"
+      },
+      {
+        "q": "OFF42 支持哪些 Mac？",
+        "a": "OFF42 面向 macOS 14 及更高版本。公开安装程序尚未发布；你可以使用 Xcode Command Line Tools 从源代码构建这些应用。"
+      },
+      {
+        "q": "有 Windows 版本吗？",
+        "a": "Windows 原生应用已经实现，并提供源代码。请查看文档中的功能范围和限制。目前尚未发布公开的 Windows 安装程序。"
+      }
+    ]
+  },
+  "name": {
+    "label": "名字里的故事",
+    "title": "OFF 取自 office。也取自一切可以关掉的东西。",
+    "officeTitle": "完整的办公套件",
+    "officeText": "六款应用，搞定桌上的每一个文件：PDF、Word 和 Excel 文件、幻灯片、照片与扫描件。",
+    "offlineTitle": "离线可用",
+    "offlineText": "在你的电脑本地编辑，无需账号或上传文件。",
+    "offTitle": "订阅：off",
+    "offText": "没有订阅，没有试用期，没有广告。MIT 许可，今天免费，明天也免费。",
+    "answerTitle": "那 42 呢？",
+    "answerText": "生命、宇宙以及任何事情的终极答案。我们只是把它用在了办公上。",
+    "stats": [
+      "款应用，一套搞定",
+      "种文件格式",
+      "种界面语言",
+      "订阅",
+      "文件上传"
+    ]
+  },
+  "marks": {
+    "label": "签名与印章",
+    "title": "像在纸上一样签字盖章，不用打印，也不用扫描。",
+    "text": "输入姓名，OFF42 就能写出手写签名，盖上公司印章，并直接放进文档。每一次落款都略有不同，就像真实的墨迹落在纸上。",
+    "points": [
+      "圆珠笔、中性笔、钢笔或马克笔笔迹",
+      "132 种印章样式：圆形公章、公司印章、“已付款”与“已收讫”",
+      "只需几份样本，即可学会你本人的签名",
+      "适用于 PDF、文档、幻灯片、表格、图像和扫描件"
+    ],
+    "note": "手绘签名不等同于基于证书的数字签名。需要时，PDF42 可使用你的证书进行签署。",
+    "signedCaption": "在 PDF42 中签字盖章的合同。人名和公司均为虚构。"
+  },
+  "codes": {
+    "label": "QR 码、标志与标签",
+    "title": "QR 码、CE 等认证标志和标签纸，精确到毫米。",
+    "text": "将单元格、表格行或选中内容转换为 QR、Data Matrix、Code 128 或 Aztec 码，并添加产品所需的合格标志和安全标志。以毫米设定尺寸，然后直接根据表格行打印整页标签。",
+    "points": [
+      "QR、Data Matrix、Code 128 和 Aztec 码，保存后仍可编辑",
+      "97 种标志：CE、UKCA、EAC、FCC、UL、CCC、KC、RCM、WEEE、RoHS、GHS 象形图、IEC 安全符号等",
+      "根据电子表格行、文档表格或 PDF 页面及区域生成标签纸",
+      "559 种标签纸规格或自定义网格，可保存模板并校准打印机"
+    ],
+    "note": "标志只是用于标签的图形：插入标志并不代表产品通过认证。对于合格标志和商标，应用会显示使用条件，例如所需的证书或许可证编号。适用于 macOS 上的 PDF42、DOC42 和 XLS42。",
+    "qrAlt": "XLS42 中的“Insert Symbol or Code”：由产品链接生成的 30 毫米 QR 码。",
+    "labelsAlt": "XLS42 中的“Create Labels”：根据十行产品数据生成的 QR 码标签纸。",
+    "caption": "由十行电子表格数据生成的标签纸。产品均为虚构。"
+  },
+  "show": {
+    "label": "实际效果",
+    "title": "真实的应用，真实的文档。",
+    "text": "这里的每张图片都是 OFF42 在 Mac 上的截图，应用中打开的是虚构公司的示例文档。没有效果图。"
+  },
+  "labels": {
+    "learn": "探索",
+    "allFeatures": "全部功能",
+    "useCases": "为日常工作而生",
+    "workflow": "从打开到完成",
+    "details": "你可以做什么",
+    "goodToKnow": "使用须知",
+    "related": "继续探索",
+    "faq": "常见问题",
+    "step": "步骤",
+    "illustration": "工作流程示意图",
+    "source": "源代码",
+    "license": "MIT 许可证",
+    "release": "GitHub 发布版本",
+    "available": "可用",
+    "unavailable": "尚未发布",
+    "downloadDmg": "下载 DMG",
+    "downloadExe": "下载 EXE",
+    "checksum": "SHA-256",
+    "version": "版本",
+    "requirements": "系统要求",
+    "footer": "日常工作的开源办公套件。",
+    "privacy": "隐私",
+    "copyright": "独立开源项目。",
+    "back": "返回首页",
+    "notFound": "这个页面暂时不在桌面上。",
+    "notFoundText": "前往首页，或选择一种语言继续探索。",
+    "copy": "复制",
+    "copied": "已复制",
+    "screenshot": "macOS 实机截图。示例文档，公司均为虚构。"
+  },
+  "apps": {
+    "pdf": {
+      "tag": "PDF，更多可能。",
+      "text": "阅读、批注、整理、压缩和签署 PDF。"
+    },
+    "doc": {
+      "tag": "让想法成为文档。",
+      "text": "编写和排版 DOCX、ODT、RTF 和 Markdown 文档。"
+    },
+    "xls": {
+      "tag": "让数字讲述故事。",
+      "text": "使用 XLSX、ODS 和 CSV 处理表格、公式与图表。"
+    },
+    "ppt": {
+      "tag": "让想法精彩呈现。",
+      "text": "制作幻灯片，使用表格与形状，讲述你的故事。"
+    },
+    "img": {
+      "tag": "小小调整，更好图像。",
+      "text": "查看、裁剪、缩放、批注和调整图像。"
+    },
+    "scn": {
+      "tag": "让纸张焕发新可能。",
+      "text": "扫描、清理页面，并在设备上通过 OCR 识别文字。"
+    }
+  },
+  "features": {
+    "documents": {
+      "title": "为下一个好想法留出空间",
+      "seoTitle": "免费 Mac 文字处理软件：DOCX、ODT、RTF | OFF42",
+      "seoDescription": "用 DOC42 撰写信函和报告：打开和保存 DOCX、ODT、RTF 和 Markdown，用表格和图像排版页面，并导出 PDF。免费开源。",
+      "short": "文档",
+      "intro": "用 DOC42 撰写信函、报告和下一份草稿。将富文本与页面排版结合，使用熟悉的文档格式。",
+      "points": [
+        "打开和保存 DOCX、ODT、RTF、Markdown 及其他文本格式。",
+        "处理文字格式、表格、图像和页面布局。",
+        "文档准备好分享时，导出为 PDF。"
+      ],
+      "steps": [
+        "新建文档或打开现有文件。",
+        "调整文字、图像和页面布局。",
+        "保存可编辑副本或导出 PDF。"
+      ],
+      "note": "复杂 Office 文档的呈现可能有所不同。若需要精确保留版式，请先检查导入布局和导出文件。",
+      "question": "可以处理 Word 文档吗？",
+      "answer": "DOC42 支持 DOCX，并能打开旧版 DOC 文件。支持文件格式并不意味着能够完全一致地处理 Microsoft Word 的每项功能。"
+    },
+    "spreadsheets": {
+      "title": "让数字清晰有序",
+      "seoTitle": "免费 Mac 电子表格软件：XLSX、ODS、CSV | OFF42",
+      "seoDescription": "用 XLS42 打开 XLSX 和 XLS 文件，使用公式、格式和图表，保存为 XLSX、ODS 或 CSV，并导出 PDF。一款免费开源的 Mac 表格软件。",
+      "short": "电子表格",
+      "intro": "从简单清单到计算报表，XLS42 为日常办公带来单元格、公式与图表。",
+      "points": [
+        "打开 XLSX、旧版 XLS、ODS 和分隔符文本文件。",
+        "使用公式、格式和图表说明数据。",
+        "保存为 XLSX、ODS 或 CSV，或导出 PDF。"
+      ],
+      "steps": [
+        "打开工作簿，或从空白工作表开始。",
+        "输入数据、应用公式并添加图表。",
+        "检查计算结果，并保存为适当格式。"
+      ],
+      "note": "公式与格式支持因文件而异。CSV 仅存储单个数据表，不包含完整工作簿的格式或多个工作表。",
+      "question": "可以打开 Excel 表格吗？",
+      "answer": "可以，XLS42 能打开 XLSX 和旧版 XLS 文件。请检查复杂公式和导入的格式；并非所有 Excel 功能都受支持。"
+    },
+    "presentations": {
+      "title": "让想法登场",
+      "seoTitle": "免费 Mac 幻灯片软件：PPTX、ODP | OFF42",
+      "seoDescription": "用 PPT42 制作包含文字、图像、形状和表格的幻灯片，借助演讲者备注进行放映，并导出 PDF 或图像。免费开源，专为 Mac 打造。",
+      "short": "演示文稿",
+      "intro": "用 PPT42 构建清晰的视觉故事。安排文字、图像、形状和表格，再从编辑切换到幻灯片放映。",
+      "points": [
+        "处理 PPTX 和 OpenDocument 演示文稿。",
+        "安排幻灯片对象、表格和演讲者备注。",
+        "将幻灯片导出为 PDF 或图像，方便分享。"
+      ],
+      "steps": [
+        "新建演示文稿或打开受支持的文件。",
+        "完善每张幻灯片并准备备注。",
+        "开始放映或导出幻灯片。"
+      ],
+      "note": "旧版 PPT 文件需要先转换。复杂的导入布局可能有所不同，请在演示前检查整套幻灯片。",
+      "question": "可以将幻灯片作为 PDF 分享吗？",
+      "answer": "可以。PPT42 支持将幻灯片和备注页导出为 PDF，也支持导出 PNG 和 JPEG 幻灯片图像。"
+    },
+    "edit-pdf": {
+      "title": "在 Mac 上编辑 PDF",
+      "seoTitle": "免费 Mac PDF 编辑器：编辑、批注、填表 | OFF42",
+      "seoDescription": "用 PDF42 在 Mac 上编辑 PDF 文字、高亮、批注、填写表单和调整页面顺序。免费开源，离线可用，无需上传到在线编辑器。",
+      "short": "PDF 编辑",
+      "intro": "让 PDF 成为工作文档。使用 PDF42 编辑页面文字、添加备注、突出重点、填写表单，并整理页面顺序。",
+      "points": [
+        "编辑页面文字，使用高亮、文本框、形状和手绘标记添加批注。",
+        "插入、提取、旋转、删除和重新排列页面。",
+        "填写受支持的 PDF 表单并保存更改。"
+      ],
+      "steps": [
+        "打开 Mac 上的 PDF。",
+        "根据任务选择批注、表单或页面工具。",
+        "另存副本并检查完成的文档。"
+      ],
+      "note": "页面文字编辑会在保存时扁平化。复杂 PDF 的布局和表单表现可能有所不同，请在分享前检查已保存的副本。",
+      "question": "不上传文件也能编辑 PDF 吗？",
+      "answer": "可以。PDF42 直接处理 Mac 上的本地文件。核心批注和页面操作不需要在线编辑器。"
+    },
+    "scan-ocr": {
+      "title": "让纸张成为可搜索的资料",
+      "seoTitle": "Mac 扫描 OCR 软件：生成可搜索 PDF | OFF42",
+      "seoDescription": "用 SCN42 从扫描仪或 iPhone 相机扫描，校正并清理页面，在 Mac 上识别文字，导出可搜索的 PDF。免费，离线可用。",
+      "short": "扫描与 OCR",
+      "intro": "通过 SCN42 将纸张带入数字办公。采集页面、校正倾斜并清理图像，然后在 Mac 上识别文字。",
+      "points": [
+        "从受支持的扫描仪采集，或导入图像和 PDF。",
+        "识别前裁剪、纠偏和调整页面。",
+        "导出可搜索的 PDF 或识别出的文字。"
+      ],
+      "steps": [
+        "扫描或导入页面。",
+        "检查页面顺序并清理图像。",
+        "运行 OCR，并导出所需格式。"
+      ],
+      "note": "扫描仪和连续互通功能的支持取决于硬件。OCR 语言和准确度取决于 Apple Vision 及原始图像；20 种界面语言属于另一项功能。",
+      "question": "可以搜索扫描件中的文字吗？",
+      "answer": "OCR 后导出可搜索的 PDF，即可添加文字层。请始终检查识别结果，尤其是姓名、数字和低质量扫描件。"
+    },
+    "compress-pdf": {
+      "title": "压缩 PDF，让分享更轻松",
+      "seoTitle": "Mac PDF 压缩：离线减小文件大小 | OFF42",
+      "seoDescription": "用 PDF42 在 Mac 上压缩图片较多的 PDF。可选 100、150 或 220 dpi，先预览文件大小，文字依然清晰。免费离线，无需上传文件。",
+      "short": "PDF 压缩",
+      "intro": "让包含大量图像的 PDF 更易分享。PDF42 提供压缩设置，帮助你在文件大小与图像细节之间找到实用的平衡。",
+      "points": [
+        "选择 100、150 或 220 dpi 图像预设。",
+        "预览文件大小，同时保持文字与矢量内容清晰。",
+        "另存文件，并将结果与原件比较。"
+      ],
+      "steps": [
+        "打开 PDF 并选择压缩。",
+        "选择图像预设，比较预计文件大小。",
+        "保存结果，然后检查大小与可读性。"
+      ],
+      "note": "效果取决于原始文件，也可能无法减小体积。压缩会降低图像质量，并移除现有的数字签名。",
+      "question": "PDF 能缩小多少？",
+      "answer": "没有固定比例。扫描件和含有大量图像的 PDF，通常比已优化的文件有更大的压缩空间。"
+    },
+    "labels-codes": {
+      "title": "条码、标志与标签，以毫米为单位",
+      "seoTitle": "Mac 二维码、条码与 CE 标志标签制作工具 | OFF42",
+      "seoDescription": "在 Mac 上创建 QR、Data Matrix、Code 128 和 Aztec 码，添加 CE、UKCA、EAC、FCC 等 97 种产品标志，并根据电子表格行打印整页标签。尺寸以毫米设定，免费开源。",
+      "short": "二维码与标签",
+      "intro": "将可扫描的条码或合格标志放入 PDF、文档或电子表格，再用你的数据打印整页标签。尺寸以毫米设定。",
+      "points": [
+        "插入保存后仍可编辑的 QR、Data Matrix、Code 128 和 Aztec 码。",
+        "添加 97 种产品标志——合格标志（CE、UKCA、EAC、FCC、UL、CCC）、环保标志（WEEE、RoHS）、GHS 危险象形图和 IEC 安全符号——并附带使用条件。",
+        "根据电子表格行、文档表格或 PDF 区域打印标签纸，可选 559 种现成规格或自定义网格。"
+      ],
+      "steps": [
+        "选中单元格、表格、文本或 PDF 区域，然后选择“Insert › Symbol or Code”或“File › Create Labels”。",
+        "选择条码类型或标志、宽度（毫米）、标签纸规格和条码所在列。",
+        "检查预览，然后保存为 PDF，或按打印机校准设置打印。"
+      ],
+      "note": "标志只是图形：插入标志并不代表产品通过认证。仅在产品已获认证或你持有许可时才可使用合格标志和商标；应用会显示每个标志的使用条件。请通过试印检查纸张和打印机的误差。适用于 macOS；对话框已翻译为英语、俄语和土耳其语，标志名称已翻译为 11 种语言。",
+      "question": "保存文件后，条码还能编辑吗？",
+      "answer": "可以。PDF、DOCX、XLSX 和 ODS 文件会保留条码的生成参数，因此可通过“Edit Symbol or Code”重新打开；其他应用看到的是普通图像。电子表格中的条码在插入时读取单元格的值，之后不会随单元格修改而更新。"
+    },
+    "sign-pdf": {
+      "title": "在 PDF 上留下你的签名",
+      "seoTitle": "Mac PDF 签名：手写签名、印章、数字签名 | OFF42",
+      "seoDescription": "在 PDF 上添加手写风格的签名或印章，或使用证书进行数字签名。PDF42 将你的标记保存在可重复使用的库中。免费开源。",
+      "short": "PDF 签名",
+      "intro": "让签名与印章随时可用。在 PDF42 中添加可视签名、重复使用印章，或采用基于证书的数字签名。",
+      "points": [
+        "在共享库中保存可重复使用的签名和印章。",
+        "在页面上放置并调整可视标记。",
+        "在工作流程需要时使用基于证书的签名。"
+      ],
+      "steps": [
+        "打开文档并选择签名工具。",
+        "选择可视标记或数字签名流程。",
+        "保存后，在接收方使用的 PDF 软件中检查结果。"
+      ],
+      "note": "可视签名不等同于有证书支持的数字签名。证书信任和时间戳互操作性取决于证书、服务及接收方的软件。",
+      "question": "可视签名和数字签名一样吗？",
+      "answer": "不一样。可视签名是页面上的标记；数字签名使用证书，帮助检测文档更改并识别签署者。"
+    },
+    "image-editor": {
+      "title": "轻松完成最后一笔",
+      "seoTitle": "免费 Mac 图片编辑器：裁剪、缩放、标注 | OFF42",
+      "seoDescription": "打开 JPEG、PNG、HEIC、WebP 和 TIFF 图片，用 IMG42 裁剪、调整大小、旋转、调色和标注。一款免费开源、离线可用的图片编辑器。",
+      "short": "图像编辑",
+      "intro": "打开照片、裁去干扰、调整图像或添加清晰的批注。IMG42 让日常图像任务随手可办。",
+      "points": [
+        "查看 JPEG、PNG、HEIC 和 TIFF 等常见图像格式。",
+        "裁剪、缩放、旋转和调整图像。",
+        "添加标记并导出为受支持的图像格式。"
+      ],
+      "steps": [
+        "打开 Mac 上的图像。",
+        "完成调整并检查像素细节。",
+        "按用途选择适当格式，导出副本。"
+      ],
+      "note": "读写支持取决于格式及 macOS 编解码器的可用性。部分格式可以打开，但无法按原格式保存。",
+      "question": "分享前可以调整图像大小吗？",
+      "answer": "可以。调整图像大小后导出副本。检查尺寸，并选择能保留所需透明度或图像质量的格式。"
+    }
+  },
+  "download": {
+    "title": "你的新办公套件，从这里开始。",
+    "intro": "选择平台并查看发布状态。源代码已在 GitHub 公开。",
+    "mac": "macOS 版 OFF42",
+    "macText": "源代码面向 macOS 14 及更高版本。尚未发布公开的 DMG 安装程序。",
+    "windows": "Windows 版 OFF42",
+    "windowsText": "Windows 原生应用已经实现，并提供源代码。请查看文档中的功能范围和限制。目前尚未发布公开的 Windows 安装程序。",
+    "sourceTitle": "构建它，阅读它，让它为你所用。",
+    "sourceText": "在 GitHub 获取 MIT 许可的源代码。在 macOS 上构建需要 Xcode Command Line Tools。除非配置分发签名，否则本地构建使用临时签名。",
+    "checkReleases": "查看发布版本",
+    "buildGuide": "构建说明",
+    "releaseNote": "有已发布的安装文件后才会显示下载按钮。没有发布证据时，不会将安装程序标示为已签名或已公证。",
+    "buildTitle": "在你的 Mac 上构建 OFF42",
+    "buildText": "在签名安装程序发布之前，你可以在几分钟内自行构建这些应用。请在“终端”中运行以下命令。",
+    "buildStep1": "安装 Apple 的 Xcode Command Line Tools。",
+    "buildStep2": "从 GitHub 下载源代码。",
+    "buildStep3": "构建全部六款应用，或只构建一款应用并拷贝到“应用程序”文件夹。"
+  },
+  "about": {
+    "title": "一个坦诚开放的办公套件。",
+    "intro": "OFF42 提供六款适用于 macOS 和 Windows 的原生应用，用于处理 PDF、文档、表格、演示文稿、图片和扫描件。免费开源，各平台独立实现，相关限制已在文档中说明。",
+    "licenseTitle": "MIT 许可，欢迎探索。",
+    "licenseText": "根据 MIT 许可证使用、研究、修改和再分发软件。仓库包含许可条款和源代码。",
+    "contributeTitle": "更好的工具，来自共同努力。",
+    "contributeText": "通过 GitHub 报告可复现的问题、提出改进建议、协助翻译或贡献代码。",
+    "honestTitle": "公开开发。",
+    "honestText": "项目正在持续演进。仓库记录了已测试的构建、限制和审计覆盖范围。提供源代码与发布已打包、签名和公证的版本是不同的事项。",
+    "status": "查看项目状态",
+    "issues": "报告问题"
+  },
+  "privacy": {
+    "title": "让工作留在身边。",
+    "intro": "本网站介绍 OFF42，并提供项目源代码和发布版本的链接。不接收或处理你的文档。",
+    "siteTitle": "一个简单的网站",
+    "siteText": "网站没有广告、分析脚本或账号系统。托管服务商可能会处理请求信息，以提供和保护网站。",
+    "appTitle": "在本地处理文档",
+    "appText": "核心编辑操作在你的电脑本地完成，无需上传文件。可选的在线功能需要网络连接，支持情况因平台而异。",
+    "linksTitle": "外部链接",
+    "linksText": "GitHub 及其他链接服务各有隐私政策。访问本网站不会上传你的文件。"
+  },
+  "seo": {
+    "homeTitle": "OFF42 — 免费 macOS 和 Windows 办公软件，无需订阅",
+    "homeDescription": "适用于 macOS 和 Windows 的免费开源原生办公应用：PDF、DOCX、XLSX、PPTX、图片和扫描件。功能覆盖范围和验证情况因平台而异。",
+    "featuresTitle": "功能一览：PDF、文档、表格与扫描 | OFF42",
+    "featuresDescription": "编辑和签署 PDF、压缩大文件、扫描并 OCR 识别文字、编写 DOCX，处理 XLSX 和 PPTX。看看免费的 OFF42 办公套件能在 Mac 上为你做什么。",
+    "downloadTitle": "下载 OFF42 macOS 和 Windows 版 — 免费办公套件",
+    "downloadDescription": "查看 macOS 和 Windows 版 OFF42 的源代码、发布状态、构建说明和平台限制。安装前请确认已实现和已测试的功能范围。",
+    "aboutTitle": "开源办公套件，MIT 许可 | OFF42",
+    "aboutDescription": "OFF42 以 MIT 许可提供六款适用于 macOS 和 Windows 的原生应用。源代码、平台支持情况和限制可在 GitHub 查看。",
+    "privacyTitle": "隐私：文件始终留在你的电脑上 | OFF42",
+    "privacyDescription": "核心编辑操作在你的电脑本地完成，无需上传文件。可选的在线功能需要网络连接，支持情况因平台而异。"
+  }
+}

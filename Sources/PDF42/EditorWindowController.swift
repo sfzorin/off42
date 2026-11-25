@@ -8,7 +8,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
     private(set) lazy var sidebar = SidebarViewController(pdfView: pdfView)
     private let splitController = NSSplitViewController()
     let banner = BannerView()
-    private let toolbarController = ToolbarController(identifier: "PDF42.toolbar", elements: Cmd.toolbar)
+    private let toolbarController = ToolbarController(identifier: "PDF42.toolbar", elements: Cmd.toolbar, optional: Cmd.toolbarOptional)
     private let colorButton = ColorButton(symbol: "paintpalette", toolTip: L("Colour of the tool or selected annotation"),
                                           color: .systemRed, allowsNone: false)
     private lazy var widthButton = StripButton(symbol: "lineweight", toolTip: L("Line width"), menu: widthMenu)
@@ -36,6 +36,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
     private let widths: [CGFloat] = [1, 2, 3, 5, 8, 12]
     private var fontSize: CGFloat = 14
     private var warnedSignedEdit = false
+    var ocrGeneration = UUID()
 
     /// Open "Compare With…" results for this document.
     var compareWindow: CompareWindowController?
@@ -60,6 +61,9 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
         setupContent()
         window.toolbar = toolbarController.toolbar
+        toolbarController.searchItem?.visibilityPriority = .high
+        toolbarController.item(for: Cmd.sign)?.visibilityPriority = .low
+        toolbarController.item(for: Cmd.print)?.visibilityPriority = .low
         markupStrip.isShown = false
         window.addTitlebarAccessoryViewController(markupStrip)
         window.setContentSize(Self.windowSize(for: pdf))
@@ -117,32 +121,35 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
     private var applyingZoom = false
 
     func applyZoom() {
+        guard !applyingZoom, zoomMode != .custom, let pdf,
+              let page = pdfView.currentPage ?? pdf.page(at: 0), pdfView.bounds.width > 50, pdfView.bounds.height > 50 else { return }
         applyingZoom = true
         defer { applyingZoom = false }
-        switch zoomMode {
-        case .width:
-            pdfView.autoScales = true
-        case .page:
-            guard let page = pdfView.currentPage ?? pdf?.page(at: 0), pdfView.bounds.width > 50 else { return }
-            let size = Self.displayedSize(page)
-            guard size.width > 0, size.height > 0 else { return }
-            let margin: CGFloat = 16
-            let scale = min((pdfView.bounds.width - margin * 2) / size.width, (pdfView.bounds.height - margin * 2) / size.height)
-            pdfView.autoScales = false
-            pdfView.scaleFactor = max(pdfView.minScaleFactor, min(pdfView.maxScaleFactor, scale))
-            pdfView.go(to: page)
-        case .custom:
-            break
+        var size = Self.displayedSize(page)
+        if pdfView.displayMode == .twoUp || pdfView.displayMode == .twoUpContinuous {
+            let index = pdf.index(for: page)
+            let first = pdfView.displaysAsBook ? (index == 0 ? 0 : 1 + (index - 1) / 2 * 2) : index / 2 * 2
+            let other = index == first ? first + 1 : first
+            if !(pdfView.displaysAsBook && index == 0), let adjacent = pdf.page(at: other) {
+                let adjacentSize = Self.displayedSize(adjacent)
+                size.width += adjacentSize.width + 8; size.height = max(size.height, adjacentSize.height)
+            }
         }
+        guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else { return }
+        let widthScale = (pdfView.bounds.width - 32) / size.width
+        let scale = zoomMode == .width ? widthScale : min(widthScale, (pdfView.bounds.height - 32) / size.height)
+        pdfView.autoScales = false
+        pdfView.scaleFactor = max(pdfView.minScaleFactor, min(pdfView.maxScaleFactor, scale))
+        if zoomMode == .page { pdfView.go(to: page) }
     }
 
     @objc private func pdfViewResized(_ note: Notification) {
-        if zoomMode == .page { applyZoom() }
+        if zoomMode != .custom { applyZoom() }
     }
 
     /// A pinch or a scale set elsewhere ends the automatic modes.
     @objc private func pdfViewScaleChanged(_ note: Notification) {
-        if !applyingZoom, zoomMode == .page || (zoomMode == .width && !pdfView.autoScales) { zoomMode = .custom }
+        if !applyingZoom, zoomMode != .custom { zoomMode = .custom }
     }
 
     private func setupContent() {
@@ -199,6 +206,10 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
 
     func replaceDocument(_ pdf: PDFDocument) {
+        ocrGeneration = UUID()
+        pdfView.cancelTextEdit()
+        pdfView.cancelInteraction()
+        compareWindow?.close(); compareWindow = nil
         pdfView.selectAnnotation(nil)
         pdfView.document = pdf
         sidebar.thumbnails.reload()
@@ -211,6 +222,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
 
     func prepareForSave() {
+        pdfView.commitTextEdit()
+        pdfView.cancelInteraction()
         pdfView.selectAnnotation(nil)
         window?.makeFirstResponder(pdfView)
     }
@@ -235,7 +248,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     func windowWillReturnUndoManager(_ window: NSWindow) -> UndoManager? { undo }
 
-    @objc private func pageChanged(_ note: Notification) { updateSubtitle() }
+    @objc private func pageChanged(_ note: Notification) { updateSubtitle(); applyZoom() }
 
     func updateSubtitleNow() { updateSubtitle() }
 
@@ -287,10 +300,22 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
     func setTool(_ tool: Tool) {
         pdfView.tool = tool
         markupStrip.select(tag: tool.rawValue)
-        colorButton.color = colors[tool] ?? tool.defaultColor
-        colorButton.isEnabled = tool != .whiteout && !tool.isFormField && !tool.isAreaTool
-        pdfView.color = colorButton.color ?? tool.defaultColor
+        pdfView.color = colors[tool] ?? tool.defaultColor
+        annotationSelectionChanged()
         if tool != .select, !markupStrip.isShown { markupStrip.isShown = true }
+    }
+
+    func annotationSelectionChanged() {
+        let tool = pdfView.tool
+        let annotation = pdfView.selectedAnnotation
+        colorButton.color = annotation.map { $0.isKind(.freeText) ? ($0.fontColor ?? .black) : $0.color }
+            ?? colors[tool] ?? tool.defaultColor
+        colorButton.isEnabled = tool != .whiteout && !tool.isFormField && !tool.isAreaTool
+            && !(annotation?.isKind(.stamp) == true && !(annotation is PageOverlay)) && annotation?.isWhiteout != true
+        widthButton.isEnabled = annotation.map(\.hasEditableBorder)
+            ?? [.ink, .rectangle, .oval].contains(tool)
+        let width = annotation?.border?.lineWidth ?? pdfView.lineWidth
+        widthMenu.items.forEach { $0.state = widths.indices.contains($0.tag) && widths[$0.tag] == width ? .on : .off }
     }
 
     @objc func selectToolAction(_ sender: Any?) {
@@ -313,8 +338,31 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
 
     @objc private func widthChosen(_ sender: NSMenuItem) {
-        pdfView.lineWidth = widths[max(0, sender.tag)]
-        widthMenu.items.forEach { $0.state = $0 === sender ? .on : .off }
+        guard widths.indices.contains(sender.tag) else { return }
+        let width = widths[sender.tag]
+        if let annotation = pdfView.selectedAnnotation, let page = pdfView.selectedPage {
+            guard annotation.hasEditableBorder else { return }
+            setLineWidth(annotation, to: width, on: page)
+        } else { pdfView.lineWidth = width }
+        annotationSelectionChanged()
+    }
+
+    private func setLineWidth(_ annotation: PDFAnnotation, to width: CGFloat, on page: PDFPage) {
+        let old = annotation.border?.copy() as? PDFBorder
+        guard old?.lineWidth != width else { return }
+        let border = old?.copy() as? PDFBorder ?? PDFBorder()
+        border.lineWidth = width
+        setBorder(annotation, border, on: page)
+    }
+
+    private func setBorder(_ annotation: PDFAnnotation, _ border: PDFBorder?, on page: PDFPage) {
+        let old = annotation.border?.copy() as? PDFBorder
+        annotation.border = border?.copy() as? PDFBorder
+        pdfView.annotationsChanged(on: page)
+        sidebar.thumbnails.refresh(page)
+        annotationSelectionChanged()
+        undo?.registerUndo(withTarget: self) { $0.setBorder(annotation, old, on: page) }
+        undo?.setActionName(L("Line width"))
     }
 
     private var currentColor: NSColor { colors[pdfView.tool] ?? pdfView.tool.defaultColor }
@@ -336,11 +384,28 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     func remove(_ annotation: PDFAnnotation, from page: PDFPage, name: String) {
         if pdfView.selectedAnnotation === annotation { pdfView.selectAnnotation(nil) }
-        if let popup = annotation.popup { page.removeAnnotation(popup) }
+        let index = page.annotations.firstIndex { $0 === annotation } ?? page.annotations.count
+        let popup = annotation.popup
+        let popupIndex = popup.flatMap { p in page.annotations.firstIndex { $0 === p } }
+        if let popup { page.removeAnnotation(popup) }
         page.removeAnnotation(annotation)
         pdfView.annotationsChanged(on: page)
         sidebar.thumbnails.refresh(page)
-        undo?.registerUndo(withTarget: self) { $0.add(annotation, to: page, name: name) }
+        undo?.registerUndo(withTarget: self) { $0.restoreAnnotation(annotation, at: index, popup: popup, popupIndex: popupIndex, on: page, name: name) }
+        undo?.setActionName(name)
+    }
+
+    private func restoreAnnotation(_ annotation: PDFAnnotation, at index: Int, popup: PDFAnnotation?, popupIndex: Int?, on page: PDFPage, name: String) {
+        var annotations = page.annotations
+        let restored = [(index, annotation)] + (popup.flatMap { p in popupIndex.map { [($0, p)] } } ?? [])
+        for (position, item) in restored.sorted(by: { $0.0 < $1.0 }) {
+            annotations.insert(item, at: min(position, annotations.count))
+        }
+        page.annotations.forEach { page.removeAnnotation($0) }
+        annotations.forEach { page.addAnnotation($0) }
+        pdfView.annotationsChanged(on: page)
+        sidebar.thumbnails.refresh(page)
+        undo?.registerUndo(withTarget: self) { $0.remove(annotation, from: page, name: name) }
         undo?.setActionName(name)
     }
 
@@ -355,23 +420,30 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
         annotation.bounds = rect
         pdfView.annotationsChanged(on: page)
         pdfView.refreshMarker()
+        sidebar.thumbnails.refresh(page)
         undo?.registerUndo(withTarget: self) { $0.setBounds(annotation, old, on: page, name: name) }
         undo?.setActionName(name)
     }
 
     private func recolor(_ annotation: PDFAnnotation, to color: NSColor, on page: PDFPage) {
+        setAnnotationColor(annotation, to: annotation.isKind(.highlight) ? color.withAlphaComponent(0.45) : color, on: page)
+    }
+
+    private func setAnnotationColor(_ annotation: PDFAnnotation, to color: NSColor, on page: PDFPage) {
         let isText = annotation.isKind(.freeText)
         let old = (isText ? annotation.fontColor : annotation.color) ?? .black
-        let newColor = annotation.isKind(.highlight) ? color.withAlphaComponent(0.45) : color
-        if isText { annotation.fontColor = newColor } else { annotation.color = newColor }
+        guard old != color else { return }
+        if isText { annotation.fontColor = color } else { annotation.color = color }
         pdfView.annotationsChanged(on: page)
-        undo?.registerUndo(withTarget: self) { $0.recolor(annotation, to: old, on: page) }
+        sidebar.thumbnails.refresh(page)
+        annotationSelectionChanged()
+        undo?.registerUndo(withTarget: self) { $0.setAnnotationColor(annotation, to: old, on: page) }
         undo?.setActionName(L("Colour"))
     }
 
     func addMarkup(for selection: PDFSelection, tool: Tool) {
         let subtype: PDFAnnotationSubtype = tool == .highlight ? .highlight : tool == .underline ? .underline : .strikeOut
-        let color = currentColor
+        let color = colors[tool] ?? tool.defaultColor
         for line in selection.selectionsByLine() {
             for page in line.pages {
                 let b = line.bounds(for: page)
@@ -433,12 +505,14 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
 
     func editAnnotationText(_ annotation: PDFAnnotation, on page: PDFPage) {
+        if annotation.technicalElement != nil { editTechnicalElement(annotation, on: page); return }
         if let edited = annotation as? EditedTextOverlay { editPageText(edited, on: page); return }
         guard annotation.isKind(.freeText) || annotation.isKind(.text) else { return }
         let isText = annotation.isKind(.freeText)
         let currentFont = annotation.font ?? Self.textFont(fontSize)
         guard let (text, size) = promptText(title: isText ? L("Edit Text") : L("Note"), initial: annotation.contents ?? "",
                                             fontSize: isText ? currentFont.pointSize : nil) else { return }
+        guard text != (annotation.contents ?? "") || (isText && size != currentFont.pointSize) else { return }
         var bounds = annotation.bounds
         var font: NSFont? = annotation.font
         if isText {
@@ -484,7 +558,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
         let sourceColor = (attributes[.foregroundColor] as? NSColor) ?? .black
         let lines = selection.selectionsByLine()
         guard let firstLine = lines.first, let firstPage = firstLine.pages.first,
-              let (text, size) = promptText(title: L("Edit Text"), initial: original, fontSize: (sourceFont?.pointSize ?? 12).rounded())
+              let (text, size) = promptText(title: L("Edit Text"), initial: original, fontSize: sourceFont?.pointSize ?? 12)
         else { return }
 
         for line in lines {
@@ -524,6 +598,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
     @objc func showStampsAction(_ sender: Any?) {
         let popover = NSPopover()
         let vc = StampLibraryViewController { [weak self] image in self?.insertImage(image) }
+        // The resolution dialog: the scan's own resolution on a scanned page, the maximum on a vector page.
+        vc.placement = { [weak self] aspect in
+            guard let self, let page = self.pdfView.currentPage else { return MarkPlacement.standard(aspect: aspect) }
+            return MarkPlacement(widthPoints: Self.markWidth(aspect: aspect, on: page), scanDPI: ScanResolution.dpi(of: page))
+        }
         vc.popover = popover
         popover.contentViewController = vc
         popover.behavior = .transient
@@ -539,13 +618,19 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
         insertImage(image)
     }
 
+    /// Width of a newly placed signature or stamp (points): 6 cm, smaller on small pages.
+    static func markWidth(aspect: CGFloat, on page: PDFPage) -> CGFloat {
+        let box = page.bounds(for: .cropBox)
+        return min(170, box.width * 0.4, box.height * 0.6 * aspect)
+    }
+
     /// Places an image (signature, seal) in the middle of the visible part of the current page.
     func insertImage(_ image: CGImage) {
         guard let page = pdfView.currentPage else { return }
         let pageBox = page.bounds(for: .cropBox)
         let center = pdfView.convert(CGPoint(x: pdfView.bounds.midX, y: pdfView.bounds.midY), to: page)
         let aspect = CGFloat(image.width) / max(1, CGFloat(image.height))
-        let width = min(170, pageBox.width * 0.4)
+        let width = Self.markWidth(aspect: aspect, on: page)
         let size = CGSize(width: width, height: width / aspect)
         var origin = CGPoint(x: center.x - size.width / 2, y: center.y - size.height / 2)
         origin.x = min(max(origin.x, pageBox.minX), pageBox.maxX - size.width)
@@ -576,27 +661,41 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
         prepareForSave()
         // A selected signature image becomes the visible signature (removed from the base copy).
         var removedStamp: (PDFAnnotation, PDFPage)?
+        var stampOrder: [PDFAnnotation]?
         if visible, let page = stamp != nil ? stampPage : pdfView.currentPage {
             let rect: CGRect
             if let stamp { rect = stamp.bounds } else {
                 let box = page.bounds(for: .cropBox)
                 rect = CGRect(x: box.maxX - 36 - 220, y: box.minY + 36, width: 220, height: 72)
             }
-            let appearance = Self.signatureAppearance(size: rect.size, image: stamp?.image, name: options.identity.name,
-                                                      reason: options.reason, date: Date())
+            guard let appearance = Self.signatureAppearance(size: rect.size, image: stamp?.image, name: options.identity.name,
+                                                             reason: options.reason, date: Date()) else {
+                presentError(NSError(domain: NSCocoaErrorDomain, code: NSFileWriteUnknownError,
+                                     userInfo: [NSLocalizedDescriptionKey: L("The image size is invalid")]))
+                return
+            }
             options.visible = (pdf.index(for: page), rect, appearance)
             if let stamp, !(alreadySigned && !doc.isDocumentEdited) {
+                stampOrder = page.annotations
                 page.removeAnnotation(stamp)
                 removedStamp = (stamp, page)
             }
         }
         let base: Data
-        if alreadySigned, !doc.isDocumentEdited, let original = doc.originalData {
-            base = original
-        } else if let data = PageOverlay.bakedData(pdf).map(AcroFormFixer.ensureFields) {
-            base = data
-        } else { return }
-        if let (a, p) = removedStamp { p.addAnnotation(a) }
+        do {
+            // Restore the live stamp even when serialization fails, including its original stacking order.
+            defer {
+                if let (a, p) = removedStamp {
+                    p.addAnnotation(a)
+                    if let annotations = stampOrder {
+                        p.annotations.forEach { p.removeAnnotation($0) }
+                        annotations.forEach { p.addAnnotation($0) }
+                    }
+                }
+            }
+            if alreadySigned, !doc.isDocumentEdited, let original = doc.originalData { base = original }
+            else { base = try doc.data(ofType: "com.adobe.pdf") }
+        } catch { presentError(error); return }
 
         var signed: Data
         do { signed = try PDFSigner.sign(base, options: options) } catch {
@@ -621,7 +720,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
         panel.beginSheetModal(for: window!) { response in
             guard response == .OK, let url = panel.url else { return }
             do {
-                try signed.write(to: url)
+                try signed.write(to: url, options: .atomic)
                 if url == doc.fileURL {
                     try doc.revert(toContentsOf: url, ofType: doc.fileType ?? "com.adobe.pdf")
                 } else {
@@ -634,11 +733,14 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
     @objc func verifySignaturesAction(_ sender: Any?) { showSignatures() }
 
     /// Appearance of a visible signature: optional signature image, name, reason and date (3× resolution).
-    static func signatureAppearance(size: CGSize, image: CGImage?, name: String, reason: String, date: Date) -> CGImage {
+    static func signatureAppearance(size: CGSize, image: CGImage?, name: String, reason: String, date: Date) -> CGImage? {
         let scale: CGFloat = 3
+        guard size.width.isFinite, size.height.isFinite, size.width >= 1, size.height >= 1,
+              size.width * scale <= 16384, size.height * scale <= 16384,
+              size.width * size.height * scale * scale <= 64_000_000 else { return nil }
         let w = Int(size.width * scale), h = Int(size.height * scale)
-        let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
         ctx.scaleBy(x: scale, y: scale)
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: false)
@@ -667,13 +769,13 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
         text.draw(with: CGRect(x: textRect.minX, y: textRect.midY - bounds.height / 2, width: textRect.width, height: bounds.height),
                   options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
         NSGraphicsContext.restoreGraphicsState()
-        return ctx.makeImage()!
+        return ctx.makeImage()
     }
 
     // MARK: - Export
 
     @objc func exportWithPasswordAction(_ sender: Any?) {
-        guard let pdf, let window else { return }
+        guard pdf != nil, let window else { return }
         let p1 = NSSecureTextField(), p2 = NSSecureTextField()
         let alert = NSAlert.form(L("Export with Password"), info: L("The copy will open only with the password."),
                                  ok: L("Continue…"), rows: [(L("Password:"), p1), (L("Repeat:"), p2)])
@@ -691,13 +793,13 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
         panel.beginSheetModal(for: window) { [self] response in
             guard response == .OK, let url = panel.url else { return }
             prepareForSave()
-            let ok = PageOverlay.bakedDocument(pdf).write(to: url, withOptions: [.userPasswordOption: p1.stringValue, .ownerPasswordOption: p1.stringValue])
-            if !ok { presentError(NSError(domain: NSCocoaErrorDomain, code: NSFileWriteUnknownError)) }
+            do { try PDFOutput.protectedData(exportSnapshot(), password: p1.stringValue).write(to: url, options: .atomic) }
+            catch { presentError(error) }
         }
     }
 
     @objc func exportPNGAction(_ sender: Any?) {
-        guard let pdf, let window else { return }
+        guard pdf != nil, let window else { return }
         let format = NSPopUpButton(frame: .zero, pullsDown: false)
         format.addItems(withTitles: ["PNG", "JPEG"])
         let dpi = NSPopUpButton(frame: .zero, pullsDown: false)
@@ -719,16 +821,16 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
             guard response == .OK, let dir = panel.url else { return }
             prepareForSave()
             let name = pdfDoc?.displayName.map { ($0 as NSString).deletingPathExtension } ?? L("Page")
-            let scale = [72.0, 150, 200, 300][max(0, dpi.indexOfSelectedItem)] / 72
+            let resolution = [72.0, 150, 200, 300][min(3, max(0, dpi.indexOfSelectedItem))]
             let jpeg = format.indexOfSelectedItem == 1
-            for i in indices {
-                guard let page = pdf.page(at: i) else { continue }
-                let box = page.bounds(for: .cropBox)
-                let image = page.thumbnail(of: CGSize(width: box.width * scale, height: box.height * scale), for: .cropBox)
-                guard let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
-                      let data = rep.representation(using: jpeg ? .jpeg : .png, properties: jpeg ? [.compressionFactor: 0.9] : [:]) else { continue }
-                try? data.write(to: dir.appendingPathComponent("\(name) — \(i + 1).\(jpeg ? "jpg" : "png")"))
-            }
+            do {
+                let snapshot = try exportSnapshot()
+                for i in indices {
+                    guard let page = snapshot.page(at: i) else { continue }
+                    let data = try PDFOutput.imageData(page, dpi: resolution, jpeg: jpeg)
+                    try data.write(to: dir.appendingPathComponent("\(name) — \(i + 1).\(jpeg ? "jpg" : "png")"), options: .atomic)
+                }
+            } catch { presentError(error); return }
             NSWorkspace.shared.activateFileViewerSelecting([dir])
         }
     }
@@ -764,17 +866,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
             guard response == .OK, let url = panel.url else { return }
             prepareForSave()
             if formats[max(0, popup.indexOfSelectedItem)].title == "PDF/A-2b" { exportPDFA(to: url); return }
-            let text = pagesAsText
-            let range = NSRange(location: 0, length: text.length)
-            do {
-                switch formats[max(0, popup.indexOfSelectedItem)].ext {
-                case "docx": try DocxWriter.data(text).write(to: url)
-                case "rtf": try text.data(from: range, documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]).write(to: url)
-                case "html": try text.data(from: range, documentAttributes: [.documentType: NSAttributedString.DocumentType.html,
-                                                                            .characterEncoding: String.Encoding.utf8.rawValue]).write(to: url)
-                default: try Data((pdf?.string ?? "").utf8).write(to: url)
-                }
-            } catch { presentError(error) }
+            do { try exportTextData(format: formats[max(0, popup.indexOfSelectedItem)].ext).write(to: url, options: .atomic) }
+            catch { presentError(error) }
         }
     }
 
@@ -794,6 +887,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
         let sizes: [CGFloat] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 36, 48, 72]
         let sizePopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        var initialSizeIndex = -1
         let stack = NSStackView(views: [scroll])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -801,6 +895,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
             sizePopup.addItems(withTitles: sizes.map { "\(Int($0)) pt" })
             let nearest = sizes.enumerated().min { abs($0.element - fontSize) < abs($1.element - fontSize) }?.offset ?? 8
             sizePopup.selectItem(at: nearest)
+            initialSizeIndex = nearest
             stack.addArrangedSubview(NSStackView(views: [NSTextField(labelWithString: L("Font size:")), sizePopup]))
         }
         stack.frame.size = stack.fittingSize
@@ -815,7 +910,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
         guard alert.runModal() == .alertFirstButtonReturn else { return nil }
         let text = textView.string
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-        return (text, fontSize == nil ? 0 : sizes[max(0, sizePopup.indexOfSelectedItem)])
+        let chosenSize = sizePopup.indexOfSelectedItem == initialSizeIndex ? (fontSize ?? 0) : sizes[max(0, sizePopup.indexOfSelectedItem)]
+        return (text, fontSize == nil ? 0 : chosenSize)
     }
 
     // MARK: - View
@@ -836,6 +932,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     @objc func setDisplayModeAction(_ sender: Any?) {
         pdfView.displayMode = PDFDisplayMode(rawValue: commandTag(of: sender)) ?? .singlePageContinuous
+        applyZoom()
     }
 
     @objc func nextPageAction(_ sender: Any?) { pdfView.goToNextPage(nil) }
@@ -905,8 +1002,9 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
     /// Pages selected in the thumbnail sidebar, or the current page.
     var targetIndices: [Int] {
         guard let pdf else { return [] }
-        let selected = sidebar.thumbnails.selectedPages.map { pdf.index(for: $0) }.filter { $0 != NSNotFound }
-        return selected.count > 1 ? selected.sorted() : [currentIndex]
+        let selected = sidebar.thumbnails.selectedPages.map { pdf.index(for: $0) }.filter { $0 >= 0 && $0 < pdf.pageCount }
+        if !selected.isEmpty { return Array(Set(selected)).sorted() }
+        return currentIndex >= 0 && currentIndex < pdf.pageCount ? [currentIndex] : []
     }
 
     @objc func rotateLeftAction(_ sender: Any?) { rotate(targetIndices, by: -90) }
@@ -914,49 +1012,115 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     private func rotate(_ indices: [Int], by degrees: Int) {
         guard let pdf else { return }
-        for i in indices {
-            guard let page = pdf.page(at: i) else { continue }
-            page.rotation = ((page.rotation + degrees) % 360 + 360) % 360
-        }
+        prepareForSave()
+        let pages = Array(Set(indices.filter { $0 >= 0 && $0 < pdf.pageCount })).sorted().compactMap { pdf.page(at: $0) }
+        guard !pages.isEmpty else { return }
+        for page in pages { page.rotation = ((page.rotation + degrees) % 360 + 360) % 360 }
         pdfView.layoutDocumentView()
         sidebar.thumbnails.reload()
+        sidebar.thumbnails.selectPages(pages)
         undo?.registerUndo(withTarget: self) { $0.rotate(indices, by: -degrees) }
         undo?.setActionName(L("Rotate"))
+    }
+
+    private struct PageArrangement {
+        var pages: [PDFPage]
+        var current: PDFPage?
+        var selected: [PDFPage]
+        var extras: DocumentExtras?
+        var destinations: [() -> Void]
+    }
+
+    private func pageArrangement() -> PageArrangement? {
+        guard let pdf else { return nil }
+        // PDFKit invalidates destination.page during removal. Capture target identities, then recreate the
+        // destinations only after every page has been reinserted. Outline paths survive rebuilt Undo trees.
+        var destinations: [() -> Void] = []
+        func restored(_ d: PDFDestination) -> (() -> PDFDestination?)? {
+            guard let page = d.page else { return nil }
+            let point = d.point, zoom = d.zoom
+            return { guard pdf.index(for: page) != NSNotFound else { return nil }; let value = PDFDestination(page: page, at: point); value.zoom = zoom; return value }
+        }
+        func outline(_ item: PDFOutline, path: [Int]) {
+            if let d = item.destination ?? (item.action as? PDFActionGoTo)?.destination, let make = restored(d) {
+                destinations.append {
+                    var found = pdf.outlineRoot
+                    for index in path { found = found?.child(at: index) }
+                    if let dest = make() { found?.destination = dest }
+                }
+            }
+            for i in 0..<item.numberOfChildren { if let child = item.child(at: i) { outline(child, path: path + [i]) } }
+        }
+        if let root = pdf.outlineRoot { outline(root, path: []) }
+        for i in 0..<pdf.pageCount {
+            for a in pdf.page(at: i)?.annotations ?? [] {
+                if let d = a.destination, let make = restored(d) { destinations.append { if let dest = make() { a.destination = dest } } }
+                if let d = (a.action as? PDFActionGoTo)?.destination, let make = restored(d) { destinations.append { if let dest = make() { a.action = PDFActionGoTo(destination: dest) } } }
+            }
+        }
+        return PageArrangement(pages: (0..<pdf.pageCount).compactMap { pdf.page(at: $0) }, current: pdfView.currentPage,
+                               selected: sidebar.thumbnails.selectedPages, extras: pdfDoc?.extras, destinations: destinations)
+    }
+
+    /// Page identity is shared by bookmarks and links. Retain it while rebuilding the order, and restore the UI
+    /// selection and attachment lookup together with the pages on Undo/Redo.
+    private func applyPageArrangement(_ state: PageArrangement, name: String) {
+        guard let pdf, let old = pageArrangement() else { return }
+        pdfView.selectAnnotation(nil)
+        while pdf.pageCount > 0 { pdf.removePage(at: pdf.pageCount - 1) }
+        for (i, page) in state.pages.enumerated() { pdf.insert(page, at: i) }
+        state.destinations.forEach { $0() }
+        if let extras = state.extras { pdfDoc?.extras = extras }
+        pdfView.layoutDocumentView()
+        if let current = state.current, pdf.index(for: current) != NSNotFound { pdfView.go(to: current) }
+        else if let page = state.pages.first { pdfView.go(to: page) }
+        sidebar.thumbnails.reload()
+        sidebar.thumbnails.selectPages(state.selected)
+        sidebar.reloadOutline()
+        sidebar.reloadAttachments()
+        undo?.registerUndo(withTarget: self) { $0.applyPageArrangement(old, name: name) }
+        undo?.setActionName(name)
+        updateSubtitleNow()
+    }
+
+    private func arrangePages(_ pages: [PDFPage], current: PDFPage? = nil, selected: [PDFPage]? = nil, name: String) {
+        guard let old = pageArrangement(), old.pages.map(ObjectIdentifier.init) != pages.map(ObjectIdentifier.init) else { return }
+        let positions = Dictionary(uniqueKeysWithValues: pages.enumerated().map { (ObjectIdentifier($0.element), $0.offset) })
+        var extras = old.extras
+        extras?.annotationFiles = old.extras?.annotationFiles.compactMap { file in
+            guard old.pages.indices.contains(file.page), let index = positions[ObjectIdentifier(old.pages[file.page])] else { return nil }
+            var copy = file; copy.page = index; return copy
+        } ?? []
+        if let open = extras?.view.openPage, old.pages.indices.contains(open) {
+            let updated = positions[ObjectIdentifier(old.pages[open])] ?? 0
+            if updated != open { extras?.view.openPage = updated; extras?.dirty.insert(.view) }
+        }
+        if (pdf?.outlineRoot?.numberOfChildren ?? 0) > 0 { extras?.dirty.insert(.outline) }
+        applyPageArrangement(PageArrangement(pages: pages, current: current ?? old.current,
+                                            selected: selected ?? old.selected.filter { positions[ObjectIdentifier($0)] != nil },
+                                            extras: extras, destinations: old.destinations), name: name)
     }
 
     @objc func deletePagesAction(_ sender: Any?) {
         guard let pdf else { return }
         let indices = targetIndices
-        guard indices.count < pdf.pageCount else {
-            NSSound.beep()
-            return
-        }
-        deletePages(indices)
-    }
-
-    private func deletePages(_ indices: [Int]) {
-        guard let pdf else { return }
-        pdfView.selectAnnotation(nil)
-        let pages = indices.compactMap { pdf.page(at: $0) }
-        for i in indices.sorted().reversed() { pdf.removePage(at: i) }
-        pdfView.layoutDocumentView()
-        sidebar.thumbnails.reload()
-        undo?.registerUndo(withTarget: self) { $0.insertPages(pages, at: indices) }
-        undo?.setActionName(L("Delete Pages"))
-        updateSubtitle()
+        guard !indices.isEmpty, indices.count < pdf.pageCount else { NSSound.beep(); return }
+        prepareForSave()
+        let chosen = Set(indices)
+        let remaining = (0..<pdf.pageCount).filter { !chosen.contains($0) }.compactMap { pdf.page(at: $0) }
+        let next = remaining[min(indices[0], remaining.count - 1)]
+        arrangePages(remaining, current: next, selected: [next], name: L("Delete Pages"))
     }
 
     private func insertPages(_ pages: [PDFPage], at indices: [Int]) {
-        guard let pdf else { return }
-        for (page, i) in zip(pages, indices).sorted(by: { $0.1 < $1.1 }) {
-            pdf.insert(page, at: min(i, pdf.pageCount))
+        guard let pdf, pages.count == indices.count, !pages.isEmpty else { return }
+        prepareForSave()
+        var order = (0..<pdf.pageCount).compactMap { pdf.page(at: $0) }
+        for (page, index) in zip(pages, indices).sorted(by: { $0.1 < $1.1 }) {
+            guard !order.contains(where: { $0 === page }) else { continue }
+            order.insert(page, at: min(max(0, index), order.count))
         }
-        pdfView.layoutDocumentView()
-        if let first = pages.first { pdfView.go(to: first) }
-        sidebar.thumbnails.reload()
-        undo?.registerUndo(withTarget: self) { $0.deletePages(indices) }
-        undo?.setActionName(L("Insert Pages"))
-        updateSubtitle()
+        arrangePages(order, current: pages.first, selected: pages, name: L("Insert Pages"))
     }
 
     @objc func insertBlankPageAction(_ sender: Any?) {
@@ -989,29 +1153,19 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
         }
     }
 
-    /// Drag & drop in thumbnails: moves `indices` before position `target`.
+    /// Drag & drop in thumbnails: moves valid, distinct `indices` before position `target`.
     func movePages(_ indices: [Int], to target: Int) {
-        guard let pdf, !indices.isEmpty else { return }
-        let order = (0..<pdf.pageCount).compactMap { pdf.page(at: $0) }
-        let moving = indices.sorted().compactMap { $0 < order.count ? order[$0] : nil }
-        var rest = order.enumerated().filter { !indices.contains($0.offset) }.map(\.element)
-        let insertAt = target - indices.filter { $0 < target }.count
-        rest.insert(contentsOf: moving, at: max(0, min(insertAt, rest.count)))
-        setPageOrder(rest, name: L("Move Pages"))
-    }
-
-    private func setPageOrder(_ pages: [PDFPage], name: String) {
         guard let pdf else { return }
-        let old = (0..<pdf.pageCount).compactMap { pdf.page(at: $0) }
-        guard old.map(ObjectIdentifier.init) != pages.map(ObjectIdentifier.init) else { return }
-        pdfView.selectAnnotation(nil)
-        for i in stride(from: pdf.pageCount - 1, through: 0, by: -1) { pdf.removePage(at: i) }
-        for (i, p) in pages.enumerated() { pdf.insert(p, at: i) }
-        pdfView.layoutDocumentView()
-        sidebar.thumbnails.reload()
-        undo?.registerUndo(withTarget: self) { $0.setPageOrder(old, name: name) }
-        undo?.setActionName(name)
-        updateSubtitle()
+        let chosen = Array(Set(indices.filter { $0 >= 0 && $0 < pdf.pageCount })).sorted()
+        guard !chosen.isEmpty else { return }
+        prepareForSave()
+        let order = (0..<pdf.pageCount).compactMap { pdf.page(at: $0) }
+        let moving = chosen.map { order[$0] }
+        let set = Set(chosen), bounded = min(max(0, target), order.count)
+        var rest = order.enumerated().filter { !set.contains($0.offset) }.map(\.element)
+        let insertAt = bounded - chosen.filter { $0 < bounded }.count
+        rest.insert(contentsOf: moving, at: insertAt)
+        arrangePages(rest, selected: moving, name: L("Move Pages"))
     }
 
     /// Files dropped on the thumbnails: PDF pages or images inserted at `index`.
@@ -1025,30 +1179,30 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
             }
         }
         guard !pages.isEmpty else { return }
-        insertPages(pages, at: Array(index..<(index + pages.count)))
+        let start = min(max(0, index), pdf?.pageCount ?? 0)
+        insertPages(pages, at: Array(start..<(start + pages.count)))
     }
 
-    @objc func movePageUpAction(_ sender: Any?) { movePage(currentIndex, by: -1) }
-    @objc func movePageDownAction(_ sender: Any?) { movePage(currentIndex, by: 1) }
+    @objc func movePageUpAction(_ sender: Any?) { moveSelectedPages(by: -1) }
+    @objc func movePageDownAction(_ sender: Any?) { moveSelectedPages(by: 1) }
 
-    private func movePage(_ index: Int, by delta: Int) {
-        guard let pdf else { return }
-        let target = index + delta
-        guard target >= 0, target < pdf.pageCount else { return }
-        pdf.exchangePage(at: index, withPageAt: target)
-        pdfView.layoutDocumentView()
-        if let page = pdf.page(at: target) { pdfView.go(to: page) }
-        sidebar.thumbnails.reload()
-        undo?.registerUndo(withTarget: self) { $0.movePage(target, by: -delta) }
-        undo?.setActionName(L("Move Page"))
-        updateSubtitle()
+    private func moveSelectedPages(by delta: Int) {
+        guard let pdf, delta == -1 || delta == 1 else { return }
+        let indices = targetIndices
+        guard let first = indices.first, let last = indices.last, first + delta >= 0, last + delta < pdf.pageCount else { return }
+        prepareForSave()
+        var order = (0..<pdf.pageCount).compactMap { pdf.page(at: $0) }
+        let selected = indices.map { order[$0] }
+        for index in delta > 0 ? indices.reversed().map({ $0 }) : indices { order.swapAt(index, index + delta) }
+        arrangePages(order, selected: selected, name: L("Move Pages"))
     }
 
     @objc func extractPagesAction(_ sender: Any?) {
-        guard let pdf else { return }
+        guard pdf != nil else { return }
         prepareForSave()
         let newPDF = PDFDocument()
-        let source = PageOverlay.bakedDocument(pdf)
+        let source: PDFDocument
+        do { source = try exportSnapshot() } catch { presentError(error); return }
         for i in targetIndices {
             if let page = source.page(at: i)?.copy() as? PDFPage { newPDF.insert(page, at: newPDF.pageCount) }
         }
@@ -1079,7 +1233,12 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
     private func validate(_ action: Selector?, tag: Int, menuItem: NSMenuItem?) -> Bool {
         guard let pdf else { return false }
+        guard !pdf.isLocked else { return action == #selector(propertiesAction(_:)) || action == #selector(verifySignaturesAction(_:)) }
         switch action {
+        case #selector(editTechnicalElementAction(_:)):
+            return pdfView.selectedAnnotation?.technicalElement != nil
+        case #selector(insertTechnicalElementAction(_:)), #selector(createLabelsAction(_:)), #selector(selectLabelRegionAction(_:)):
+            return pdfView.currentPage != nil
         case #selector(selectToolAction(_:)):
             menuItem?.state = tag == pdfView.tool.rawValue ? .on : .off
         case #selector(setDisplayModeAction(_:)):
@@ -1093,11 +1252,17 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
         case #selector(deleteSelectedAnnotation(_:)):
             return pdfView.selectedAnnotation != nil
         case #selector(deletePagesAction(_:)):
-            return targetIndices.count < pdf.pageCount
+            return !targetIndices.isEmpty && targetIndices.count < pdf.pageCount
         case #selector(movePageUpAction(_:)):
-            return currentIndex > 0
+            return targetIndices.min().map { $0 > 0 } ?? false
         case #selector(movePageDownAction(_:)):
-            return currentIndex < pdf.pageCount - 1
+            return targetIndices.max().map { $0 < pdf.pageCount - 1 } ?? false
+        case #selector(nextPageAction(_:)):
+            return pdfView.canGoToNextPage
+        case #selector(previousPageAction(_:)):
+            return pdfView.canGoToPreviousPage
+        case #selector(highlightSelectionAction(_:)):
+            return pdfView.currentSelection?.string?.isEmpty == false
         case #selector(findNextAction(_:)), #selector(findPreviousAction(_:)):
             return !searchResults.isEmpty
         case #selector(verifySignaturesAction(_:)):

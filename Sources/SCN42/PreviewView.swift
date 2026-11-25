@@ -16,9 +16,12 @@ final class CenteringClipView: NSClipView {
 /// Areas are normalised (0…1, origin top-left): drag on the glass to add one, drag inside to move,
 /// drag a corner to resize, ⌫ deletes the selected one.
 final class PreviewCanvas: NSView {
-    var image: CGImage? { didSet { display = image.map { NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height)) }; needsDisplay = true } }
+    var image: CGImage? { didSet {
+        if oldValue !== image { cancelInteraction() }
+        display = image.map { NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height)) }; needsDisplay = true
+    } }
     private var display: NSImage?
-    var editsAreas = false { didSet { needsDisplay = true; window?.invalidateCursorRects(for: self) } }
+    var editsAreas = false { didSet { if !editsAreas { cancelInteraction() }; needsDisplay = true; window?.invalidateCursorRects(for: self) } }
     var areas: [CGRect] = [] { didSet { needsDisplay = true } }
     var selectedArea: Int? { didSet { needsDisplay = true } }
     var onAreasChanged: (([CGRect]) -> Void)?
@@ -27,6 +30,8 @@ final class PreviewCanvas: NSView {
 
     private enum Drag { case create(CGPoint), move(Int, CGPoint, CGRect), resize(Int, corner: Int, CGRect) }
     private var drag: Drag?
+    private var areasBeforeDrag: [CGRect]?
+    private var selectedBeforeDrag: Int?
 
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
@@ -49,11 +54,16 @@ final class PreviewCanvas: NSView {
 
         guard editsAreas, !areas.isEmpty else { return }
         // Dim what will not be scanned.
-        let outside = NSBezierPath(rect: bounds)
-        for a in areas { outside.append(NSBezierPath(rect: viewRect(a))) }
-        outside.windingRule = .evenOdd
+        NSGraphicsContext.saveGraphicsState()
+        for area in areas {
+            let outside = NSBezierPath(rect: bounds)
+            outside.append(NSBezierPath(rect: viewRect(area)))
+            outside.windingRule = .evenOdd
+            outside.addClip()
+        }
         NSColor.black.withAlphaComponent(0.35).setFill()
-        outside.fill()
+        bounds.fill()
+        NSGraphicsContext.restoreGraphicsState()
         for (i, a) in areas.enumerated() {
             let r = viewRect(a)
             let path = NSBezierPath(rect: r.insetBy(dx: 0.5, dy: 0.5))
@@ -98,6 +108,10 @@ final class PreviewCanvas: NSView {
         window?.makeFirstResponder(self)
         guard editsAreas, image != nil else { return }
         let p = convert(event.locationInWindow, from: nil)
+        guard bounds.contains(p) else { return }
+        cancelInteraction()
+        areasBeforeDrag = areas
+        selectedBeforeDrag = selectedArea
         // Corner of the selected area, then any area, then a new one.
         if let s = selectedArea, areas.indices.contains(s),
            let c = corners(viewRect(areas[s])).firstIndex(where: { hypot($0.x - p.x, $0.y - p.y) < 9 }) {
@@ -122,11 +136,13 @@ final class PreviewCanvas: NSView {
             guard r.width > 0.01, r.height > 0.01 else { return }
             if let s = selectedArea, areas.indices.contains(s) { areas[s] = r } else { areas.append(r); selectedArea = areas.count - 1 }
         case .move(let i, let start, let original):
+            guard areas.indices.contains(i) else { return }
             var r = original.offsetBy(dx: n.x - start.x, dy: n.y - start.y)
             r.origin.x = min(max(0, r.origin.x), 1 - r.width)
             r.origin.y = min(max(0, r.origin.y), 1 - r.height)
             areas[i] = r
         case .resize(let i, let corner, let original):
+            guard areas.indices.contains(i) else { return }
             // The opposite corner stays.
             let fixed = [CGPoint(x: original.maxX, y: original.maxY), CGPoint(x: original.minX, y: original.maxY),
                          CGPoint(x: original.minX, y: original.minY), CGPoint(x: original.maxX, y: original.minY)][corner]
@@ -136,12 +152,26 @@ final class PreviewCanvas: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
-        if drag != nil { onAreasChanged?(areas) }
+        let changed = drag != nil && areasBeforeDrag != areas
         drag = nil
+        areasBeforeDrag = nil
+        selectedBeforeDrag = nil
+        if changed { onAreasChanged?(areas) }
     }
 
+    func cancelInteraction() {
+        if let before = areasBeforeDrag { areas = before; selectedArea = selectedBeforeDrag }
+        drag = nil; areasBeforeDrag = nil; selectedBeforeDrag = nil
+    }
+
+    override func cancelOperation(_ sender: Any?) { cancelInteraction() }
+
     override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 { cancelInteraction(); return }
+        if drag != nil, event.keyCode == 51 || event.keyCode == 117 { cancelInteraction(); return }
         if editsAreas, let s = selectedArea, areas.indices.contains(s), event.keyCode == 51 || event.keyCode == 117 {
+            cancelInteraction()
+            guard areas.indices.contains(s) else { return }
             areas.remove(at: s)
             selectedArea = nil
             onAreasChanged?(areas)
@@ -227,6 +257,7 @@ final class PreviewController: NSViewController {
     }
 
     func show(_ image: CGImage?, areas: [CGRect]? = nil) {
+        canvas.cancelInteraction()
         let changed = image?.width != canvas.image?.width || image?.height != canvas.image?.height
         canvas.image = image
         canvas.editsAreas = areas != nil
@@ -258,10 +289,17 @@ final class PreviewController: NSViewController {
         scroll.magnification = m
     }
 
-    func zoom(by factor: CGFloat) { scroll.animator().magnification = min(8, max(0.5, scroll.magnification * factor)) }
+    func zoom(by factor: CGFloat) {
+        guard factor.isFinite, factor > 0, canvas.image != nil else { return }
+        scroll.animator().magnification = min(scroll.maxMagnification, max(scroll.minMagnification, scroll.magnification * factor))
+    }
     func zoomToFit() { scroll.animator().magnification = 1 }
     func actualSize() {
         guard canvas.frame.width > 0, let scale = view.window?.backingScaleFactor else { return }
-        scroll.animator().magnification = min(8, max(0.5, imageSize.width / scale / canvas.frame.width))
+        let magnification = imageSize.width / scale / canvas.frame.width
+        guard magnification.isFinite, magnification > 0 else { return }
+        scroll.minMagnification = min(scroll.minMagnification, magnification / 2)
+        scroll.maxMagnification = max(scroll.maxMagnification, magnification * 2)
+        scroll.animator().magnification = magnification
     }
 }

@@ -4,7 +4,7 @@ import Foundation
 import Vision
 
 /// What to do with a page after it is scanned.
-struct ProcessOptions {
+struct ProcessOptions: Equatable {
     var crop = true
     var deskew = true
     var autoRotate = true
@@ -21,10 +21,17 @@ struct ProcessOptions {
     var dpi = 300.0
     /// Outline already known (from the overview), normalised to the image (0…1, origin top-left).
     var priorQuad: Quad?
+
+    var isValid: Bool {
+        dpi.isFinite && dpi > 0 && dpi <= 9_600 && brightness.isFinite && (-1...1).contains(brightness)
+        && contrast.isFinite && (-1...1).contains(contrast) && threshold.isFinite && (0...1).contains(threshold)
+        && blankLimit.isFinite && (0...1).contains(blankLimit)
+        && (priorQuad.map { $0.isValid && $0.points.allSatisfy { $0.x >= 0 && $0.x <= 1 && $0.y >= 0 && $0.y <= 1 } } ?? true)
+    }
 }
 
 /// What processing found and did (shown in the CLI and kept with the page).
-struct ProcessReport: Codable {
+struct ProcessReport: Codable, Equatable {
     var cropMethod: String?
     var quad: Quad?
     var cropAngle = 0.0
@@ -53,48 +60,63 @@ enum Processor {
                                              .outputColorSpace: CGColorSpace(name: CGColorSpace.sRGB)!])
 
     static func render(_ image: CIImage) -> CGImage? {
-        context.createCGImage(image, from: image.extent.integral, format: .RGBA8, colorSpace: Bitmap.sRGB)
+        let extent = image.extent.integral
+        guard extent.origin.x.isFinite, extent.origin.y.isFinite, extent.width.isFinite, extent.height.isFinite,
+              extent.width > 0, extent.height > 0, extent.width <= 32_768, extent.height <= 32_768,
+              Bitmap.validSize(width: Int(extent.width), height: Int(extent.height), channels: 4) else { return nil }
+        return context.createCGImage(image, from: extent, format: .RGBA8, colorSpace: Bitmap.sRGB)
     }
 
     // MARK: - Pipeline
 
     /// Crop + straighten → upright → blank check → clean-up, in that order.
-    static func process(_ input: CGImage, _ o: ProcessOptions) -> (CGImage, ProcessReport) {
+    static func processChecked(_ input: CGImage, _ o: ProcessOptions) throws -> (CGImage, ProcessReport) {
+        guard o.isValid, Bitmap.validSize(width: input.width, height: input.height, channels: 4) else { throw CocoaError(.fileReadCorruptFile) }
         var report = ProcessReport()
         report.inputSize = CGSize(width: input.width, height: input.height)
         var image = input
 
-        if o.descreen, let d = descreen(image, dpi: o.dpi) { image = d }
+        if o.descreen {
+            guard let d = descreen(image, dpi: o.dpi) else { throw CocoaError(.fileReadCorruptFile) }
+            image = d
+        }
 
         if o.crop, let found = cropQuad(image, o.priorQuad) {
             report.cropMethod = found.method
             report.quad = found.quad
             report.cropAngle = found.quad.angle
-            if let c = perspectiveCrop(image, found.quad.inset(CGFloat(max(2, o.dpi / 100)))) { image = c }
+            guard let c = perspectiveCrop(image, found.quad.inset(CGFloat(max(2, o.dpi / 100)))) else { throw CocoaError(.fileReadCorruptFile) }
+            image = c
         }
         // After a crop only a small correction is plausible; text skew beyond 8 degrees is more likely a picture's lines.
         // Photos are straightened by their outline only.
         if o.deskew, o.enhancement != .photo, let angle = skewAngle(image), abs(angle) >= 0.15, abs(angle) <= (report.cropMethod == nil ? 8 : 1.5) {
             report.deskewAngle = angle
-            if let r = rotate(image, degrees: -angle) { image = r }
+            guard let r = rotate(image, degrees: -angle) else { throw CocoaError(.fileReadCorruptFile) }
+            image = r
         }
         if o.autoRotate {
             let turn = uprightRotation(image)
             report.rotation = turn
-            if turn != 0, let r = rotate90(image, clockwise: turn) { image = r }
+            if turn != 0 {
+                guard let r = rotate90(image, clockwise: turn) else { throw CocoaError(.fileReadCorruptFile) }
+                image = r
+            }
         }
         report.ink = inkCoverage(image)
         // Blank = almost no ink and no picture either (a photo has no "ink" but plenty of tone variation).
         report.tone = toneSpread(image)
         report.blank = report.ink < o.blankLimit && report.tone < 10
 
-        image = finish(image, o) ?? image
+        guard let finished = finish(image, o) else { throw CocoaError(.fileReadCorruptFile) }
+        image = finished
         report.outputSize = CGSize(width: image.width, height: image.height)
         return (image, report)
     }
 
     /// Enhancement, colour mode, brightness/contrast (the part re-run when only those settings change).
     static func finish(_ image: CGImage, _ o: ProcessOptions) -> CGImage? {
+        guard o.isValid, Bitmap.validSize(width: image.width, height: image.height, channels: 4) else { return nil }
         switch o.enhancement {
         case .document:
             return enhanceDocument(image, o)
@@ -111,7 +133,7 @@ enum Processor {
     /// The outline to cut: what detection finds, unless a known outline (from the overview) disagrees with it.
     static func cropQuad(_ image: CGImage, _ prior: Quad?) -> (quad: Quad, method: String)? {
         let found = detectDocument(image)
-        guard let prior else { return found }
+        guard let prior, prior.isValid, prior.points.allSatisfy({ $0.x >= 0 && $0.x <= 1 && $0.y >= 0 && $0.y <= 1 }) else { return found }
         let known = prior.scaled(CGFloat(image.width), CGFloat(image.height))
         if let found, found.quad.iou(known) > 0.85 { return found }
         return (known, "overview")
@@ -150,6 +172,7 @@ enum Processor {
 
     /// Mean brightness difference just inside vs just outside the quad's edges.
     static func edgeContrast(_ image: CGImage, _ q: Quad) -> Double {
+        guard q.isValid else { return 0 }
         let bmp = Bitmap(image, maxSide: 600, gray: true)
         let s = CGFloat(bmp.width) / CGFloat(image.width)
         let small = q.scaled(s, s)
@@ -219,6 +242,7 @@ enum Processor {
 
     /// Cuts out the quad and makes it a straight rectangle (perspective correction also removes the tilt).
     static func perspectiveCrop(_ image: CGImage, _ q: Quad) -> CGImage? {
+        guard q.isValid, q.points.allSatisfy({ $0.x >= 0 && $0.x <= CGFloat(image.width) && $0.y >= 0 && $0.y <= CGFloat(image.height) }) else { return nil }
         let h = CGFloat(image.height)
         func ci(_ p: CGPoint) -> CIVector { CIVector(x: p.x, y: h - p.y) }
         let f = CIFilter.perspectiveCorrection()
@@ -233,6 +257,7 @@ enum Processor {
 
     /// Rotates by `degrees` clockwise around the centre; uncovered corners become white (paper).
     static func rotate(_ image: CGImage, degrees: Double) -> CGImage? {
+        guard degrees.isFinite else { return nil }
         let ci = CIImage(cgImage: image)
         let r = -degrees * .pi / 180   // CI rotates counter-clockwise with y up
         let cx = ci.extent.midX, cy = ci.extent.midY
@@ -365,6 +390,7 @@ enum Processor {
         let g = Bitmap(image, maxSide: 1000, gray: true)
         let bg = g.maxFilter(radius: 3).boxBlur(radius: 10)
         let w = g.width, h = g.height
+        guard w >= 3, h >= 3 else { return 0 }
         var dark = [Bool](repeating: false, count: w * h)
         g.data.withUnsafeBufferPointer { s in
             bg.data.withUnsafeBufferPointer { b in
@@ -408,8 +434,10 @@ enum Processor {
     /// Paper becomes white (shadows, yellowing and uneven light divided out), text dark and sharp;
     /// gray and B&W from the cleaned page (adaptive: the threshold works against the local background).
     static func enhanceDocument(_ image: CGImage, _ o: ProcessOptions) -> CGImage? {
+        guard o.isValid, Bitmap.validSize(width: image.width, height: image.height, channels: 4) else { return nil }
         let gray = o.colorMode != .color
         var src = Bitmap(image, gray: gray)
+        guard src.isValid else { return nil }
         let w = src.width, h = src.height, c = src.channels
         // Background (paper) estimate at low resolution: dilate away the text, smooth.
         let scale = max(1, max(w, h) / 320)
@@ -458,6 +486,7 @@ enum Processor {
     /// Border clean-up: dark marks that touch the page edge (glass, feeder shadow, the corners left by
     /// straightening) become paper, within a band of 4 % of the page; a thin outer margin is always whitened.
     static func cleanBorders(_ bmp: inout Bitmap, below t: UInt8) {
+        guard bmp.isValid else { return }
         let w = bmp.width, h = bmp.height, c = bmp.channels
         let band = max(4, min(w, h) / 25), margin = max(2, min(w, h) / 300)
         func lum(_ i: Int, _ d: UnsafeMutableBufferPointer<UInt8>) -> UInt8 {
@@ -509,6 +538,7 @@ enum Processor {
 
     /// Colour mode and brightness/contrast without the document clean-up.
     static func applyColor(_ image: CGImage, _ o: ProcessOptions) -> CGImage? {
+        guard o.isValid, Bitmap.validSize(width: image.width, height: image.height, channels: 4) else { return nil }
         var img = image
         if o.brightness != 0 || o.contrast != 0 {
             let f = CIFilter.colorControls()
@@ -516,20 +546,23 @@ enum Processor {
             f.brightness = Float(o.brightness * 0.25)
             f.contrast = Float(1 + o.contrast * 0.6)
             f.saturation = 1
-            if let out = f.outputImage, let r = render(out) { img = r }
+            guard let out = f.outputImage, let r = render(out) else { return nil }
+            img = r
         }
         switch o.colorMode {
         case .color: return img
         case .gray: return Bitmap(img, gray: true).cgImage()
         case .bw:
             let g = Bitmap(img, gray: true)
-            let t: UInt8 = abs(o.threshold - 0.5) < 0.01 ? g.otsu() : UInt8(max(20, min(235, o.threshold * 255)))
+            // Otsu returns the highest value in the dark class; oneBitImage treats equality as white.
+            let t: UInt8 = abs(o.threshold - 0.5) < 0.01 ? UInt8(min(255, Int(g.otsu()) + 1)) : UInt8(max(20, min(235, o.threshold * 255)))
             return g.oneBitImage(threshold: t)
         }
     }
 
     /// Softens the dot pattern of printed pictures (magazines, newspapers), then restores edges.
     static func descreen(_ image: CGImage, dpi: Double) -> CGImage? {
+        guard dpi.isFinite, dpi > 0, dpi <= 9_600 else { return nil }
         let ci = CIImage(cgImage: image)
         let blur = CIFilter.gaussianBlur()
         blur.inputImage = ci.clampedToExtent()

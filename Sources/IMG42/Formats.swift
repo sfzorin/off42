@@ -62,6 +62,8 @@ struct LoadedImage {
     var pixelSize: CGSize = .zero
     var orientation: CGImagePropertyOrientation = .up
     var hasAlpha = false
+    /// Display decoding may be bounded; never silently overwrite full-resolution source pixels with a proxy.
+    var wasDownsampled = false
     var error: String?
 
     var image: CGImage? { pages.first }
@@ -69,10 +71,18 @@ struct LoadedImage {
 
 enum ImageLoader {
     static let maxDisplayDimension = 16_384
+    static let maxPixelCount: CGFloat = 100_000_000
+
+    static func validPixelSize(_ size: CGSize) -> Bool {
+        size.width.isFinite && size.height.isFinite && size.width >= 1 && size.height >= 1
+            && size.width <= CGFloat(maxDisplayDimension) && size.height <= CGFloat(maxDisplayDimension)
+            && size.width * size.height <= maxPixelCount
+    }
 
     /// Decodes the first page (all frames for animations). Runs on any thread.
     static func load(_ url: URL, page: Int = 0) -> LoadedImage {
         var result = LoadedImage(url: url)
+        guard page >= 0 else { result.error = L("The image is damaged and cannot be shown."); return result }
         if ImageFormats.isPDF(url) { return loadPDF(url, page: page) }
         if ImageFormats.isSVG(url) { return loadSVG(url) }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary) else {
@@ -106,12 +116,29 @@ enum ImageLoader {
         } else if let image = decode(source, index: min(page, count - 1), orientation: result.orientation) {
             result.pages = [image]
         }
+        if let image = result.image, w > 0, h > 0 {
+            let swapsAxes = !result.isAnimated && Orientation.swapsAxes(result.orientation)
+            let storedSize = swapsAxes ? CGSize(width: h, height: w) : CGSize(width: w, height: h)
+            result.wasDownsampled = image.width != Int(storedSize.width) || image.height != Int(storedSize.height)
+        }
         if result.pages.isEmpty { result.error = L("The image is damaged and cannot be shown.") }
         return result
     }
 
     /// Full-resolution decode with EXIF orientation applied (huge images are limited to what the GPU can show).
     static func decode(_ source: CGImageSource, index: Int, orientation: CGImagePropertyOrientation) -> CGImage? {
+        guard index >= 0, index < CGImageSourceGetCount(source) else { return nil }
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any] ?? [:]
+        let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue ?? 0
+        let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue ?? 0
+        if width.isFinite, height.isFinite, width > 0, height > 0,
+           !validPixelSize(CGSize(width: width, height: height)) {
+            let scale = min(Double(maxDisplayDimension) / max(width, height), sqrt(Double(maxPixelCount) / width / height))
+            let maximum = max(1, Int((max(width, height) * scale).rounded(.down)))
+            let options: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true, kCGImageSourceThumbnailMaxPixelSize: maximum]
+            return CGImageSourceCreateThumbnailAtIndex(source, index, options as CFDictionary)
+        }
         guard let image = CGImageSourceCreateImageAtIndex(source, index, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary) else {
             return nil
         }
@@ -144,7 +171,7 @@ enum ImageLoader {
     static func loadPDF(_ url: URL, page: Int) -> LoadedImage {
         var result = LoadedImage(url: url)
         result.typeIdentifier = UTType.pdf.identifier
-        guard let doc = PDFDocument(url: url), doc.pageCount > 0, let p = doc.page(at: min(page, doc.pageCount - 1)) else {
+        guard page >= 0, let doc = PDFDocument(url: url), !doc.isLocked, doc.pageCount > 0, let p = doc.page(at: min(page, doc.pageCount - 1)) else {
             result.error = L("The image is damaged and cannot be shown.")
             return result
         }
@@ -160,6 +187,7 @@ enum ImageLoader {
             ctx.scaleBy(x: scale, y: scale)
             p.draw(with: .cropBox, to: ctx)
         }].compactMap { $0 }
+        if result.pages.isEmpty { result.error = L("The image is damaged and cannot be shown.") }
         return result
     }
 
@@ -172,7 +200,7 @@ enum ImageLoader {
         }
         // Vector: rasterise sharp enough for zooming.
         let scale = min(4, 4096 / max(image.size.width, image.size.height))
-        let size = CGSize(width: (image.size.width * max(scale, 1)).rounded(), height: (image.size.height * max(scale, 1)).rounded())
+        let size = CGSize(width: max(1, (image.size.width * scale).rounded()), height: max(1, (image.size.height * scale).rounded()))
         result.pixelSize = image.size
         result.hasAlpha = true
         result.pages = [render(size: size) { ctx in
@@ -181,10 +209,12 @@ enum ImageLoader {
             image.draw(in: CGRect(origin: .zero, size: size))
             NSGraphicsContext.restoreGraphicsState()
         }].compactMap { $0 }
+        if result.pages.isEmpty { result.error = L("The image is damaged and cannot be shown.") }
         return result
     }
 
     static func render(size: CGSize, colorSpace: CGColorSpace? = nil, _ body: (CGContext) -> Void) -> CGImage? {
+        guard validPixelSize(size) else { return nil }
         let cs = colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
         guard let ctx = CGContext(data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8, bytesPerRow: 0,
                                   space: cs, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
@@ -218,6 +248,7 @@ enum ImageLoader {
     }
 
     static func scaled(_ image: CGImage, maxPixels: Int) -> CGImage? {
+        guard maxPixels > 0 else { return nil }
         let s = min(1, CGFloat(maxPixels) / CGFloat(max(image.width, image.height)))
         let size = CGSize(width: max(1, (CGFloat(image.width) * s).rounded()), height: max(1, (CGFloat(image.height) * s).rounded()))
         return render(size: size) { $0.draw(image, in: CGRect(origin: .zero, size: size)) }

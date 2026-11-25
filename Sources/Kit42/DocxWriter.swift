@@ -968,7 +968,16 @@ public enum DocxWriter {
     private static func imageXML(_ attachment: NSTextAttachment, ctx: Context, props: DocImage? = nil) -> String {
         var image = attachment.image
         if image == nil, let data = attachment.fileWrapper?.regularFileContents { image = NSImage(data: data) }
-        guard let image, let tiff = image.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return "" }
+        guard let image else { return "" }
+        let png: Data
+        if let original = attachment.fileWrapper?.regularFileContents, TechnicalElement.fromPNG(original) != nil {
+            // Keep the code/symbol recipe embedded in the PNG when saving DOCX.
+            png = original
+        } else {
+            guard let tiff = image.tiffRepresentation,
+                  let encoded = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return "" }
+            png = encoded
+        }
         ctx.media.append((name: "\(ctx.mediaPrefix)image\(ctx.media.count + 1).png", data: png))
         let n = ctx.media.count
         var size = attachment.bounds.size

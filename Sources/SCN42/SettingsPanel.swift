@@ -8,7 +8,7 @@ final class FlippedView: NSView {
 
 /// The settings inspector: a few clear choices (preset, source, colour, resolution, paper, clean-up),
 /// the rest behind "More Options", and one big Scan button at the bottom.
-final class SettingsPanelController: NSViewController {
+final class SettingsPanelController: NSViewController, NSTextFieldDelegate {
     private(set) var settings = Store.settings
     var onChange: ((ScanSettings) -> Void)?
     var onPreset: ((Int) -> Void)?
@@ -39,6 +39,8 @@ final class SettingsPanelController: NSViewController {
     let hint = NSTextField(wrappingLabelWithString: "")
     private var resolutions = ScanSettings.resolutions
     private var sources: [ScanSource] = ScanSource.allCases
+    private var supportsDuplex = false
+    private var capabilitiesKnown = false
     private var mainGrid: NSGridView?
 
     override func loadView() {
@@ -80,6 +82,7 @@ final class SettingsPanelController: NSViewController {
             f.alignment = .right
             f.target = self
             f.action = #selector(changed)
+            f.delegate = self
             f.translatesAutoresizingMaskIntoConstraints = false
             f.widthAnchor.constraint(equalToConstant: 54).isActive = true
             let n = NumberFormatter()
@@ -272,7 +275,7 @@ final class SettingsPanelController: NSViewController {
     }
 
     /// The scanner's possibilities: sources, duplex, resolutions.
-    func update(scanner: ScannerBackend?) {
+    func update(scanner: ScannerBackend?, capabilitiesReady: Bool = true) {
         sources = scanner?.sources ?? [.flatbed, .feeder]
         source.segmentCount = sources.count
         for (i, s) in sources.enumerated() {
@@ -280,17 +283,26 @@ final class SettingsPanelController: NSViewController {
             source.setToolTip(s.title, forSegment: i)
             source.setWidth(0, forSegment: i)
         }
-        resolutions = scanner?.resolutions.filter { ScanSettings.resolutions.contains($0) || $0 % 100 == 0 } ?? ScanSettings.resolutions
+        resolutions = Array(Set(scanner?.resolutions.filter { (50...4800).contains($0) } ?? ScanSettings.resolutions)).sorted()
         if resolutions.isEmpty { resolutions = ScanSettings.resolutions }
         resolution.removeAllItems()
         for r in resolutions { resolution.addItem(withTitle: L("%d dpi", r)) }
         let enabled = scanner != nil
         for c in [source, color, resolution, paper, preset] as [NSControl] { c.isEnabled = enabled || c === preset || c === color }
-        duplex.isEnabled = scanner?.supportsDuplex ?? false
+        supportsDuplex = scanner?.supportsDuplex ?? false
+        capabilitiesKnown = scanner != nil && capabilitiesReady
+        duplex.isEnabled = capabilitiesKnown && supportsDuplex
         apply(settings)
     }
 
     func apply(_ s: ScanSettings) {
+        var s = s.normalized
+        if !sources.contains(s.source), let source = sources.first { s.source = source }
+        if s.source != settings.source { capabilitiesKnown = false }
+        resolution.isEnabled = capabilitiesKnown
+        duplex.isEnabled = capabilitiesKnown && supportsDuplex
+        if capabilitiesKnown { s.resolution = resolutions.min { abs($0 - s.resolution) < abs($1 - s.resolution) } ?? s.resolution }
+        if s.source != .feeder || (capabilitiesKnown && !supportsDuplex) { s.duplex = false }
         settings = s
         source.selectedSegment = sources.firstIndex(of: s.source) ?? 0
         duplex.state = s.duplex ? .on : .off
@@ -321,9 +333,10 @@ final class SettingsPanelController: NSViewController {
     private func read() -> ScanSettings {
         var s = settings
         if sources.indices.contains(source.selectedSegment) { s.source = sources[source.selectedSegment] }
-        s.duplex = duplex.state == .on
+        let currentCapabilities = capabilitiesKnown && s.source == settings.source
+        if currentCapabilities { s.duplex = supportsDuplex && duplex.state == .on }
         s.colorMode = ColorMode(rawValue: color.selectedSegment) ?? .color
-        if resolutions.indices.contains(resolution.indexOfSelectedItem) { s.resolution = resolutions[resolution.indexOfSelectedItem] }
+        if currentCapabilities, resolutions.indices.contains(resolution.indexOfSelectedItem) { s.resolution = resolutions[resolution.indexOfSelectedItem] }
         s.paper = PaperSize(rawValue: paper.indexOfSelectedItem) ?? .auto
         if customW.doubleValue > 0 { s.customWidth = customW.doubleValue / 2.54 }
         if customH.doubleValue > 0 { s.customHeight = customH.doubleValue / 2.54 }
@@ -338,16 +351,36 @@ final class SettingsPanelController: NSViewController {
         s.brightness = abs(brightness.doubleValue) < 0.04 ? 0 : brightness.doubleValue
         s.contrast = abs(contrast.doubleValue) < 0.04 ? 0 : contrast.doubleValue
         s.threshold = abs(threshold.doubleValue - 0.5) < 0.03 ? 0.5 : threshold.doubleValue
-        return s
+        return s.normalized
+    }
+
+    var hasValidInput: Bool {
+        guard PaperSize(rawValue: paper.indexOfSelectedItem) == .custom else { return true }
+        return [customW, customH].allSatisfy { field in
+            guard let formatter = field.formatter as? NumberFormatter,
+                  let number = formatter.number(from: field.stringValue)?.doubleValue else { return false }
+            return number.isFinite && (1...60).contains(number)
+        }
+    }
+
+    func controlTextDidChange(_ notification: Notification) { onChange?(settings) }
+    func controlTextDidEndEditing(_ notification: Notification) { changed() }
+
+    func commitPendingInput() -> Bool {
+        guard hasValidInput else { return false }
+        guard view.window?.makeFirstResponder(nil) != false else { return false }
+        changed()
+        return hasValidInput
     }
 
     @objc private func changed() {
+        guard hasValidInput else { onChange?(settings); return }
         let s = read()
         guard s != settings else { return }
         apply(s)
-        Store.settings = s
+        Store.settings = settings
         markCustom()
-        onChange?(s)
+        onChange?(settings)
     }
 
     @objc private func presetChanged() {
@@ -365,8 +398,8 @@ final class SettingsPanelController: NSViewController {
         Store.presetIndex = i
         preset.selectItem(at: i)
         apply(s)
-        Store.settings = s
-        onChange?(s)
+        Store.settings = settings
+        onChange?(settings)
     }
 
     @objc private func toggleMore() {

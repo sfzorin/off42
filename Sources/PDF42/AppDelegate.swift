@@ -41,6 +41,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DebugSnapshot.scheduleIfRequested {
             let env = ProcessInfo.processInfo.environment
             let editor = NSApp.orderedWindows.compactMap { $0.windowController as? EditorWindowController }.first
+            if let audit = env["K42_AUDIT"] {
+                guard let editor else { print("FAIL PDF audit: no editor window"); exit(1) }
+                let originallyEdited = editor.pdfDoc?.isDocumentEdited == true
+                NSApp.activate(ignoringOtherApps: true)
+                editor.window?.makeKeyAndOrderFront(nil)
+                editor.window?.makeMain()
+                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.15))
+                let passed: Bool
+                switch audit {
+                case "markup": passed = editor.auditMarkup()
+                case "pages": passed = editor.auditPages()
+                case "core": passed = editor.auditCore()
+                case "technical": passed = editor.auditTechnical()
+                case "files": passed = PDFFilesAudit.runUI(owner: editor) == 0
+                default: print("FAIL PDF audit: unknown scenario"); exit(1)
+                }
+                if !passed { exit(1) }
+                // Each scenario restores its disposable source/Undo manager. Restore the original dirty
+                // state too, so snapshot termination cannot open an unrelated Save prompt after PASS.
+                editor.pdfDoc?.updateChangeCount(.changeCleared)
+                if originallyEdited { editor.pdfDoc?.updateChangeCount(.changeDone) }
+            }
             if env["K42_MARKUP"] != nil { editor?.toggleMarkupAction(nil) }
             if env["K42_STAMPS"] != nil { editor?.showStampsAction(nil) }
             if env["K42_COMPRESS"] != nil { editor?.reduceSizeAction(nil) }

@@ -1,0 +1,406 @@
+{
+  "nav": {
+    "features": "Fonctionnalités",
+    "apps": "Les applications",
+    "about": "Code ouvert",
+    "download": "Téléchargements",
+    "language": "Langue",
+    "menu": "Menu",
+    "skip": "Aller au contenu",
+    "home": "Accueil"
+  },
+  "home": {
+    "eyebrow": "Gratuit · Open source · macOS et Windows",
+    "title": "Tout votre bureau. Sans abonnement.",
+    "intro": "OFF42 réunit six applications natives pour macOS et Windows : PDF, documents, tableurs, présentations, images et numérisation. Gratuites et open source, avec des implémentations distinctes et des limites documentées pour chaque plateforme.",
+    "primary": "Obtenir OFF42",
+    "secondary": "Découvrir les outils",
+    "note": "Gratuit · Open source · macOS 14+ · Windows",
+    "suiteTitle": "Tout un bureau. L'esprit plus léger.",
+    "suiteIntro": "Du premier brouillon au PDF signé, retrouvez vos tâches quotidiennes dans une même famille d'outils familiers.",
+    "featureEyebrow": "PETITS DÉTAILS. GRANDE DIFFÉRENCE.",
+    "featureTitle": "Plus de possibilités dans chaque fichier.",
+    "featureIntro": "Modifiez un PDF. Allégez une pièce jointe. Transformez une page papier en texte interrogeable. Trouvez l'outil adapté.",
+    "privacyTitle": "Votre bureau. Pas le serveur d'un autre.",
+    "privacyText": "La retouche et l’édition de base se font sur votre ordinateur, sans téléverser vos fichiers. Les fonctions en ligne facultatives nécessitent une connexion ; leur disponibilité dépend de la plateforme.",
+    "privacyLabel": "Pensé pour le travail local",
+    "languageTitle": "Une voix familière, en 20 langues.",
+    "languageText": "Le site et l'interface des applications parlent votre langue. Choisissez-la et gardez les mêmes outils à portée de main.",
+    "openTitle": "Un bureau ouvert, à tous les sens du terme.",
+    "openText": "OFF42 est distribué sous licence MIT. Consultez le code, compilez-le, signalez un bogue ou contribuez à améliorer la prochaine version.",
+    "openLink": "Découvrir sur GitHub",
+    "endTitle": "Abonnements : off. Le bureau reste à vous.",
+    "endText": "Gratuit · Open source · macOS et Windows",
+    "formatsLabel": "FORMATS OFFICE ET OUVERTS",
+    "formatsTitle": "Compatible avec les fichiers que vous avez déjà.",
+    "formatsText": "Ouvrez ce que vos collègues vous envoient et enregistrez dans le format qu'ils attendent. Les mises en page complexes peuvent différer : vérifiez les fichiers importants après l'import.",
+    "opens": "Ouvre",
+    "saves": "Enregistre",
+    "faqTitle": "Questions avant de commencer",
+    "faq": [
+      {
+        "q": "OFF42 est-il gratuit ?",
+        "a": "Oui. OFF42 est gratuit et open source sous licence MIT. Pas d'abonnement, pas de compte, pas d'achat intégré."
+      },
+      {
+        "q": "OFF42 fonctionne-t-il hors ligne ?",
+        "a": "La retouche et l’édition de base se font sur votre ordinateur, sans téléverser vos fichiers. Les fonctions en ligne facultatives nécessitent une connexion ; leur disponibilité dépend de la plateforme."
+      },
+      {
+        "q": "OFF42 ouvre-t-il les fichiers Microsoft Office ?",
+        "a": "Oui. DOC42 ouvre DOCX et DOC, XLS42 ouvre XLSX et XLS, et PPT42 ouvre PPTX. Les fichiers OpenDocument (ODT, ODS, ODP) sont aussi pris en charge. Toutes les fonctions d'Office ne le sont pas : vérifiez les fichiers complexes après l'import."
+      },
+      {
+        "q": "Quels Mac sont compatibles avec OFF42 ?",
+        "a": "OFF42 cible macOS 14 ou ultérieur. Aucun programme d'installation public n'est encore disponible ; vous pouvez compiler les apps depuis le code source avec les Xcode Command Line Tools."
+      },
+      {
+        "q": "Existe-t-il une version Windows ?",
+        "a": "Les applications Windows natives sont implémentées et disponibles sous forme de code source. Consultez les fonctions et limites documentées. Aucun programme d’installation Windows public n’a encore été publié."
+      }
+    ]
+  },
+  "name": {
+    "label": "QU'Y A-T-IL DANS UN NOM ?",
+    "title": "OFF comme office. Et comme tout ce qu'on peut éteindre.",
+    "officeTitle": "Une suite bureautique complète",
+    "officeText": "Six applications pour tous les fichiers de votre bureau : PDF, fichiers Word et Excel, diapositives, photos et numérisations.",
+    "offlineTitle": "Fonctionne hors ligne",
+    "offlineText": "L’édition se fait sur votre ordinateur. Sans compte ni téléversement de fichiers.",
+    "offTitle": "Abonnements : off",
+    "offText": "Pas d'abonnement, pas de période d'essai, pas de publicité. Sous licence MIT et gratuit, aujourd'hui comme demain.",
+    "answerTitle": "Et 42 ?",
+    "answerText": "La réponse à la grande question sur la vie, l'univers et le reste. Nous l'avons simplement appliquée au bureau.",
+    "stats": [
+      "applications en une suite",
+      "formats de fichiers",
+      "langues d'interface",
+      "abonnement",
+      "envoi de vos fichiers"
+    ]
+  },
+  "marks": {
+    "label": "SIGNATURES ET TAMPONS",
+    "title": "Signez et tamponnez comme sur papier. Sans imprimante ni scanner.",
+    "text": "OFF42 trace une signature manuscrite à partir d'un nom, appose le tampon de l'entreprise et place le tout directement dans le document. Chaque empreinte est légèrement différente, comme de la vraie encre sur du papier.",
+    "points": [
+      "Signatures au stylo bille, stylo gel, stylo plume ou feutre",
+      "132 styles de tampons : cachets ronds, tampons d'entreprise, « Payé » et « Reçu »",
+      "Apprend votre propre signature à partir de quelques exemples",
+      "Fonctionne dans les PDF, documents, présentations, tableurs, images et numérisations"
+    ],
+    "note": "Une signature dessinée n'est pas une signature numérique par certificat. Quand il vous en faut une, PDF42 signe avec votre certificat.",
+    "signedCaption": "Un contrat signé et tamponné dans PDF42. Les noms et les entreprises sont fictifs."
+  },
+  "codes": {
+    "label": "CODES QR, SYMBOLES ET ÉTIQUETTES",
+    "title": "Codes QR, marquages CE et planches d'étiquettes, au millimètre près.",
+    "text": "Transformez une cellule, une ligne de tableau ou une sélection en code QR, Data Matrix, Code 128 ou Aztec, et ajoutez les marquages de conformité et de sécurité dont votre produit a besoin. Réglez la taille en millimètres, puis imprimez une planche entière d'étiquettes directement à partir de vos lignes.",
+    "points": [
+      "Codes QR, Data Matrix, Code 128 et Aztec qui restent modifiables après l'enregistrement",
+      "97 marquages : CE, UKCA, EAC, FCC, UL, CCC, KC, RCM, WEEE, RoHS, pictogrammes GHS, symboles de sécurité IEC et plus",
+      "Planches d'étiquettes à partir de lignes de tableur, de tableaux de documents ou d'une page ou zone PDF",
+      "559 formats d'étiquettes ou votre propre grille, modèles enregistrés et étalonnage de l'imprimante"
+    ],
+    "note": "Un marquage est un graphisme pour votre étiquette : il ne certifie pas le produit. Pour les marquages de conformité et les marques déposées, l'app affiche les conditions d'utilisation, comme un certificat ou un numéro de licence requis. Disponible dans PDF42, DOC42 et XLS42 sur macOS.",
+    "qrAlt": "« Insert Symbol or Code » dans XLS42 : un code QR de 30 mm créé à partir d'un lien produit.",
+    "labelsAlt": "« Create Labels » dans XLS42 : une planche d'étiquettes avec des codes QR créés à partir de dix lignes de produits.",
+    "caption": "Une planche d'étiquettes créée à partir de dix lignes de tableur. Les produits sont fictifs."
+  },
+  "show": {
+    "label": "EN SITUATION",
+    "title": "De vraies apps. De vrais documents.",
+    "text": "Chaque image ici est une capture d'écran d'OFF42 sur Mac, avec des documents d'exemple d'entreprises fictives ouverts dans les apps. Aucune maquette."
+  },
+  "labels": {
+    "learn": "Découvrir",
+    "allFeatures": "Toutes les fonctionnalités",
+    "useCases": "POUR VOTRE QUOTIDIEN",
+    "workflow": "De l'ouverture au résultat",
+    "details": "Ce que vous pouvez faire",
+    "goodToKnow": "Bon à savoir",
+    "related": "Poursuivre la découverte",
+    "faq": "Quelques réponses utiles",
+    "step": "Étape",
+    "illustration": "Illustration du flux de travail",
+    "source": "Code source",
+    "license": "Licence MIT",
+    "release": "Versions sur GitHub",
+    "available": "Disponible",
+    "unavailable": "Pas encore publié",
+    "downloadDmg": "Télécharger le DMG",
+    "downloadExe": "Télécharger l'EXE",
+    "checksum": "SHA-256",
+    "version": "Version",
+    "requirements": "Configuration requise",
+    "footer": "Une suite bureautique open source pour le quotidien.",
+    "privacy": "Confidentialité",
+    "copyright": "Un projet open source indépendant.",
+    "back": "Retour à l'accueil",
+    "notFound": "Cette page a quitté le bureau.",
+    "notFoundText": "Essayez l'accueil ou choisissez une langue pour poursuivre la découverte.",
+    "copy": "Copier",
+    "copied": "Copié",
+    "screenshot": "Capture d'écran sur macOS. Documents d'exemple, entreprises fictives."
+  },
+  "apps": {
+    "pdf": {
+      "tag": "Des PDF pleins de possibilités.",
+      "text": "Lisez, annotez, organisez, compressez et signez vos PDF."
+    },
+    "doc": {
+      "tag": "De l'idée au document.",
+      "text": "Rédigez et mettez en page des documents DOCX, ODT, RTF et Markdown."
+    },
+    "xls": {
+      "tag": "Faites parler vos chiffres.",
+      "text": "Travaillez avec des tableaux, formules et graphiques en XLSX, ODS et CSV."
+    },
+    "ppt": {
+      "tag": "Des idées qui méritent la scène.",
+      "text": "Créez des diapositives, utilisez tableaux et formes, puis présentez votre histoire."
+    },
+    "img": {
+      "tag": "Une petite retouche. Une meilleure image.",
+      "text": "Affichez, recadrez, redimensionnez, annotez et ajustez vos images."
+    },
+    "scn": {
+      "tag": "De nouvelles possibilités pour le papier.",
+      "text": "Numérisez, nettoyez les pages et reconnaissez le texte avec l'OCR sur l'appareil."
+    }
+  },
+  "features": {
+    "documents": {
+      "title": "De la place pour votre prochaine idée",
+      "seoTitle": "Traitement de texte gratuit pour Mac — DOCX, ODT | OFF42",
+      "seoDescription": "Rédigez lettres et rapports dans DOC42 : ouvrez et enregistrez DOCX, ODT, RTF et Markdown, mettez en page tableaux et images, exportez en PDF. Gratuit.",
+      "short": "Documents",
+      "intro": "Rédigez lettres, rapports et nouveaux brouillons avec DOC42. Associez texte enrichi et mise en page aux formats de documents familiers.",
+      "points": [
+        "Ouvrez et enregistrez des fichiers DOCX, ODT, RTF, Markdown et d'autres formats texte.",
+        "Travaillez la mise en forme, les tableaux, les images et la mise en page.",
+        "Exportez en PDF lorsque le document est prêt à être partagé."
+      ],
+      "steps": [
+        "Créez un document ou ouvrez un fichier existant.",
+        "Composez le texte, les images et la mise en page.",
+        "Enregistrez une copie modifiable ou exportez un PDF."
+      ],
+      "note": "Les documents Office complexes peuvent s'afficher différemment. Vérifiez la mise en page importée et le fichier exporté avant de compter sur une fidélité exacte.",
+      "question": "Puis-je travailler avec des documents Word ?",
+      "answer": "DOC42 prend en charge DOCX et ouvre les anciens fichiers DOC. La prise en charge d'un format ne signifie pas que chaque fonction de Microsoft Word est traitée à l'identique."
+    },
+    "spreadsheets": {
+      "title": "Donnez du sens aux chiffres",
+      "seoTitle": "Tableur gratuit pour Mac — XLSX, ODS, CSV | OFF42",
+      "seoDescription": "Ouvrez XLSX et XLS, utilisez formules, mise en forme et graphiques, enregistrez en XLSX, ODS ou CSV, exportez en PDF avec XLS42. Tableur gratuit pour Mac.",
+      "short": "Tableurs",
+      "intro": "D'une simple liste à un rapport calculé, XLS42 apporte cellules, formules et graphiques à votre travail quotidien.",
+      "points": [
+        "Ouvrez des fichiers XLSX, anciens XLS, ODS et texte délimité.",
+        "Utilisez formules, mise en forme et graphiques pour expliquer vos données.",
+        "Enregistrez en XLSX, ODS ou CSV, ou exportez un PDF."
+      ],
+      "steps": [
+        "Ouvrez un classeur ou partez d'une feuille vierge.",
+        "Saisissez les données, appliquez des formules et ajoutez un graphique.",
+        "Vérifiez les calculs et enregistrez au bon format."
+      ],
+      "note": "La prise en charge des formules et de la mise en forme varie selon le fichier. CSV stocke un seul tableau de valeurs, pas un classeur complet avec mise en forme et plusieurs feuilles.",
+      "question": "Puis-je ouvrir des feuilles de calcul Excel ?",
+      "answer": "Oui, XLS42 ouvre les fichiers XLSX et les anciens XLS. Vérifiez les formules complexes et la mise en forme importée ; toutes les fonctions d'Excel ne sont pas prises en charge."
+    },
+    "presentations": {
+      "title": "Donnez la parole à vos idées",
+      "seoTitle": "Logiciel de présentation gratuit Mac — PPTX, ODP | OFF42",
+      "seoDescription": "Créez des diapositives avec texte, images, formes et tableaux, présentez avec notes de l'orateur, exportez en PDF ou images avec PPT42. Gratuit, pour Mac.",
+      "short": "Présentations",
+      "intro": "Construisez un récit visuel clair avec PPT42. Disposez texte, images, formes et tableaux, puis passez de l'édition au diaporama.",
+      "points": [
+        "Travaillez avec les fichiers de présentation PPTX et OpenDocument.",
+        "Organisez les objets des diapositives, les tableaux et les notes du présentateur.",
+        "Exportez les diapositives en PDF et en images pour les partager facilement."
+      ],
+      "steps": [
+        "Créez une présentation ou ouvrez un fichier compatible.",
+        "Peaufinez chaque diapositive et préparez vos notes.",
+        "Lancez le diaporama ou exportez vos diapositives."
+      ],
+      "note": "Les anciens fichiers PPT doivent d'abord être convertis. Les mises en page importées complexes peuvent différer ; vérifiez toute la présentation avant de la montrer.",
+      "question": "Puis-je partager mes diapositives en PDF ?",
+      "answer": "Oui. PPT42 exporte les diapositives et les pages de notes en PDF, ainsi que les diapositives en images PNG et JPEG."
+    },
+    "edit-pdf": {
+      "title": "Modifiez vos PDF sur Mac",
+      "seoTitle": "Éditeur PDF gratuit pour Mac — modifier, annoter | OFF42",
+      "seoDescription": "Modifiez le texte d'un PDF, surlignez, annotez, remplissez des formulaires et réorganisez les pages sur Mac avec PDF42. Gratuit, open source, hors ligne.",
+      "short": "Édition de PDF",
+      "intro": "Faites du PDF votre document de travail. Modifiez le texte, ajoutez des notes, surlignez l'essentiel, remplissez les formulaires et ordonnez les pages avec PDF42.",
+      "points": [
+        "Modifiez le texte et ajoutez surlignages, zones de texte, formes et tracés à main levée.",
+        "Insérez, extrayez, faites pivoter, supprimez et réorganisez les pages.",
+        "Remplissez les formulaires PDF pris en charge et enregistrez les modifications."
+      ],
+      "steps": [
+        "Ouvrez un PDF sur votre Mac.",
+        "Choisissez les outils d'annotation, de formulaire ou de page adaptés.",
+        "Enregistrez une copie et vérifiez le document terminé."
+      ],
+      "note": "Les modifications du texte sont intégrées au contenu de la page à l'enregistrement. Les mises en page et formulaires PDF complexes peuvent varier ; vérifiez la copie enregistrée avant de la partager.",
+      "question": "Puis-je modifier un PDF sans l'envoyer en ligne ?",
+      "answer": "Oui. PDF42 travaille sur les fichiers locaux de votre Mac. Les annotations et opérations de page courantes ne nécessitent pas d'éditeur en ligne."
+    },
+    "scan-ocr": {
+      "title": "Du papier aux documents interrogeables",
+      "seoTitle": "Scanner avec OCR pour Mac — PDF interrogeable | OFF42",
+      "seoDescription": "Numérisez via un scanner ou l'iPhone, redressez et nettoyez les pages, reconnaissez le texte sur Mac et exportez un PDF interrogeable avec SCN42. Gratuit.",
+      "short": "Numérisation et OCR",
+      "intro": "Faites entrer le papier dans votre bureau numérique avec SCN42. Numérisez les pages, redressez-les, nettoyez-les, puis reconnaissez le texte sur votre Mac.",
+      "points": [
+        "Numérisez depuis un scanner compatible ou importez des images et PDF.",
+        "Recadrez, redressez et ajustez les pages avant la reconnaissance.",
+        "Exportez des PDF interrogeables ou le texte reconnu."
+      ],
+      "steps": [
+        "Numérisez ou importez vos pages.",
+        "Vérifiez l'ordre des pages et nettoyez les images.",
+        "Lancez l'OCR et exportez au format souhaité."
+      ],
+      "note": "La prise en charge des scanners et de Continuity dépend de votre matériel. Les langues et la précision de l'OCR dépendent d'Apple Vision et de l'image source ; les 20 langues d'interface sont une fonction distincte.",
+      "question": "Puis-je rechercher du texte dans une numérisation ?",
+      "answer": "Après l'OCR, exportez un PDF interrogeable pour ajouter une couche de texte. Vérifiez toujours le résultat, notamment les noms, les nombres et les numérisations de faible qualité."
+    },
+    "compress-pdf": {
+      "title": "Compressez les PDF, avancez plus vite",
+      "seoTitle": "Compresser un PDF sur Mac — réduire la taille | OFF42",
+      "seoDescription": "Allégez les PDF chargés d'images sur Mac avec PDF42 : 100, 150 ou 220 dpi, aperçu de la taille, texte toujours net. Gratuit, hors ligne, sans envoi en ligne.",
+      "short": "Compression de PDF",
+      "intro": "Partagez plus facilement les PDF riches en images. Les réglages de PDF42 permettent de trouver un équilibre pratique entre taille du fichier et détail des images.",
+      "points": [
+        "Choisissez un réglage d'image à 100, 150 ou 220 dpi.",
+        "Comparez les tailles prévues tout en conservant la netteté du texte et des éléments vectoriels.",
+        "Enregistrez un fichier séparé et comparez-le à l'original."
+      ],
+      "steps": [
+        "Ouvrez votre PDF et choisissez la compression.",
+        "Choisissez un réglage d'image et comparez les tailles estimées.",
+        "Enregistrez le résultat, puis vérifiez sa taille et sa lisibilité."
+      ],
+      "note": "Le résultat dépend du fichier source et peut ne pas réduire sa taille. La compression diminue la qualité des images et supprime les signatures numériques existantes.",
+      "question": "De combien mon PDF sera-t-il réduit ?",
+      "answer": "Il n'y a pas de réduction fixe. Les PDF numérisés ou riches en images offrent souvent plus de marge que les fichiers déjà optimisés."
+    },
+    "labels-codes": {
+      "title": "Codes, symboles et étiquettes au millimètre",
+      "seoTitle": "Créer des étiquettes QR code, code-barres et marquage CE sur Mac | OFF42",
+      "seoDescription": "Créez des codes QR, Data Matrix, Code 128 et Aztec, ajoutez les marquages CE, UKCA, EAC, FCC et d'autres, et imprimez des planches d'étiquettes depuis un tableur sur Mac. Gratuit.",
+      "short": "Codes QR et étiquettes",
+      "intro": "Placez un code lisible par scanner ou un marquage de conformité dans un PDF, un document ou un tableur, puis imprimez une planche complète d'étiquettes à partir de vos données. Les tailles se règlent en millimètres.",
+      "points": [
+        "Insérez des codes QR, Data Matrix, Code 128 et Aztec qui restent modifiables après l'enregistrement.",
+        "Ajoutez 97 marquages produit — conformité (CE, UKCA, EAC, FCC, UL, CCC), environnement (WEEE, RoHS), pictogrammes de danger GHS et symboles de sécurité IEC — avec leurs conditions d'utilisation.",
+        "Imprimez des planches d'étiquettes à partir de lignes de tableur, de tableaux de documents ou d'une zone PDF sur 559 formats ou votre propre grille."
+      ],
+      "steps": [
+        "Sélectionnez une cellule, un tableau, du texte ou une zone PDF, puis choisissez « Insert › Symbol or Code » ou « File › Create Labels ».",
+        "Choisissez le type de code ou le symbole, la largeur en millimètres, le format d'étiquettes et la colonne du code.",
+        "Vérifiez l'aperçu, puis enregistrez un PDF ou imprimez avec l'étalonnage de votre imprimante."
+      ],
+      "note": "Les marquages sont des graphismes : en insérer un ne certifie pas le produit. N'utilisez les marquages de conformité et les marques déposées que si votre produit est certifié ou si vous détenez la licence ; l'app affiche les conditions de chaque marquage. Vérifiez les tolérances du papier et de l'imprimante par une impression d'essai. Sur macOS ; la boîte de dialogue est traduite en anglais, en russe et en turc, les noms des marquages en 11 langues.",
+      "question": "Les codes restent-ils modifiables après l'enregistrement du fichier ?",
+      "answer": "Oui. Les fichiers PDF, DOCX, XLSX et ODS conservent la recette du code, si bien que « Edit Symbol or Code » le rouvre ; les autres applications voient une image ordinaire. Un code de tableur reprend la valeur de la cellule au moment de l'insertion et ne suit pas les modifications ultérieures."
+    },
+    "sign-pdf": {
+      "title": "Apposez votre signature sur un PDF",
+      "seoTitle": "Signer un PDF sur Mac — signature, tampon | OFF42",
+      "seoDescription": "Ajoutez une signature d'aspect manuscrit ou un tampon à un PDF, ou signez avec un certificat. PDF42 les garde dans une bibliothèque. Gratuit et open source.",
+      "short": "Signatures PDF",
+      "intro": "Gardez signatures et tampons à portée de main. Ajoutez une signature visuelle, réutilisez un tampon ou utilisez des signatures numériques par certificat dans PDF42.",
+      "points": [
+        "Conservez les signatures et tampons réutilisables dans la bibliothèque commune.",
+        "Placez et ajustez une marque visuelle sur la page.",
+        "Utilisez une signature par certificat lorsque votre travail l'exige."
+      ],
+      "steps": [
+        "Ouvrez le document et choisissez l'outil de signature.",
+        "Sélectionnez une marque visuelle ou une procédure de signature numérique.",
+        "Enregistrez et vérifiez le résultat dans le logiciel PDF du destinataire."
+      ],
+      "note": "Une signature visuelle n'est pas une signature numérique par certificat. La confiance accordée au certificat et la compatibilité de l'horodatage dépendent du certificat, du service et du logiciel destinataire.",
+      "question": "Les signatures visuelles et numériques sont-elles identiques ?",
+      "answer": "Non. Une signature visuelle est une marque sur la page. Une signature numérique utilise un certificat pour aider à détecter les modifications du document et à identifier le signataire."
+    },
+    "image-editor": {
+      "title": "La touche finale, sans complication",
+      "seoTitle": "Retouche d'image gratuite pour Mac — recadrer | OFF42",
+      "seoDescription": "Ouvrez JPEG, PNG, HEIC, WebP et TIFF, puis recadrez, redimensionnez, pivotez, ajustez et annotez avec IMG42. Retouche d'images gratuite, hors ligne.",
+      "short": "Édition d'images",
+      "intro": "Ouvrez une photo, retirez un élément gênant par recadrage, ajustez l'image ou ajoutez une annotation claire. IMG42 garde les outils courants à portée de main.",
+      "points": [
+        "Affichez les formats courants, dont JPEG, PNG, HEIC et TIFF.",
+        "Recadrez, redimensionnez, faites pivoter et ajustez les images.",
+        "Ajoutez des annotations et exportez dans les formats d'image pris en charge."
+      ],
+      "steps": [
+        "Ouvrez une image sur votre Mac.",
+        "Effectuez vos réglages et examinez les pixels.",
+        "Exportez une copie dans un format adapté à son usage."
+      ],
+      "note": "La lecture et l'écriture dépendent du format et des codecs disponibles dans macOS. Certains formats s'ouvrent mais ne peuvent pas être enregistrés sous leur forme d'origine.",
+      "question": "Puis-je redimensionner une image avant de la partager ?",
+      "answer": "Oui. Redimensionnez l'image et exportez une copie. Vérifiez les dimensions et choisissez un format conservant la transparence ou la qualité souhaitée."
+    }
+  },
+  "download": {
+    "title": "Votre prochain bureau commence ici.",
+    "intro": "Choisissez votre plateforme et consultez l’état des versions. Le code source est disponible sur GitHub.",
+    "mac": "OFF42 pour macOS",
+    "macText": "Le code source cible macOS 14 ou ultérieur. Aucun programme d'installation DMG public n'a encore été publié.",
+    "windows": "OFF42 pour Windows",
+    "windowsText": "Les applications Windows natives sont implémentées et disponibles sous forme de code source. Consultez les fonctions et limites documentées. Aucun programme d’installation Windows public n’a encore été publié.",
+    "sourceTitle": "Compilez. Explorez. Appropriez-vous le code.",
+    "sourceText": "Retrouvez le code sous licence MIT sur GitHub. La compilation sur macOS nécessite Xcode Command Line Tools. Les compilations locales utilisent une signature ad-hoc sauf si vous configurez une signature de distribution.",
+    "checkReleases": "Voir les versions",
+    "buildGuide": "Instructions de compilation",
+    "releaseNote": "Les boutons de téléchargement apparaissent lorsque des fichiers de version sont publiés. Aucun programme d'installation n'est présenté comme signé ou notarié sans preuve dans la publication.",
+    "buildTitle": "Compilez OFF42 sur votre Mac",
+    "buildText": "En attendant la publication d'un programme d'installation signé, vous pouvez compiler les apps vous-même en quelques minutes. Exécutez ces commandes dans le Terminal.",
+    "buildStep1": "Installez les Xcode Command Line Tools d'Apple.",
+    "buildStep2": "Téléchargez le code source depuis GitHub.",
+    "buildStep3": "Compilez les six apps, ou une seule et copiez-la dans le dossier Applications."
+  },
+  "about": {
+    "title": "Un bureau qui n'a rien à cacher.",
+    "intro": "OFF42 réunit six applications natives pour macOS et Windows : PDF, documents, tableurs, présentations, images et numérisation. Gratuites et open source, avec des implémentations distinctes et des limites documentées pour chaque plateforme.",
+    "licenseTitle": "Sous licence MIT. Libre à vous d'explorer.",
+    "licenseText": "Utilisez, étudiez, modifiez et redistribuez le logiciel sous licence MIT. Le dépôt contient les conditions de licence et le code source.",
+    "contributeTitle": "Les meilleurs outils se construisent ensemble.",
+    "contributeText": "Signalez un bogue reproductible, proposez une amélioration, aidez aux traductions ou contribuez au code sur GitHub.",
+    "honestTitle": "Développé au grand jour.",
+    "honestText": "Le projet évolue. Le dépôt documente les compilations testées, les limites et la portée des audits. La disponibilité du code est distincte de celle des versions empaquetées, signées et notariées.",
+    "status": "Lire l'état du projet",
+    "issues": "Signaler un problème"
+  },
+  "privacy": {
+    "title": "Gardez votre travail près de vous.",
+    "intro": "Ce site présente OFF42 et renvoie vers le code source et les versions du projet. Il ne reçoit ni ne traite vos documents.",
+    "siteTitle": "Un site simple",
+    "siteText": "Le site ne contient ni publicité, ni scripts d'analyse, ni système de comptes. Les hébergeurs peuvent traiter les informations des requêtes pour diffuser et protéger le site.",
+    "appTitle": "Des documents traités localement",
+    "appText": "La retouche et l’édition de base se font sur votre ordinateur, sans téléverser vos fichiers. Les fonctions en ligne facultatives nécessitent une connexion ; leur disponibilité dépend de la plateforme.",
+    "linksTitle": "Liens externes",
+    "linksText": "GitHub et les autres services liés ont leurs propres politiques de confidentialité. La visite de ce site n'envoie pas vos fichiers."
+  },
+  "seo": {
+    "homeTitle": "OFF42 — Suite bureautique gratuite pour macOS et Windows, sans abonnement",
+    "homeDescription": "Applications bureautiques natives, gratuites et open source pour macOS et Windows : PDF, DOCX, XLSX, PPTX, images et numérisation. Fonctions et tests varient selon la plateforme.",
+    "featuresTitle": "Fonctions : PDF, documents, tableurs, scans | OFF42",
+    "featuresDescription": "Modifiez et signez vos PDF, réduisez les gros fichiers, numérisez avec OCR, travaillez en DOCX, XLSX et PPTX. Tout ce que fait la suite gratuite OFF42 sur Mac.",
+    "downloadTitle": "Télécharger OFF42 pour macOS et Windows — bureautique gratuite",
+    "downloadDescription": "OFF42 pour macOS et Windows : code source, état des versions, compilation et limites des plateformes. Vérifiez ce qui est implémenté et testé avant l’installation.",
+    "aboutTitle": "Suite bureautique open source sous licence MIT | OFF42",
+    "aboutDescription": "OFF42 réunit six applications natives pour macOS et Windows sous licence MIT. Consultez le code, les plateformes prises en charge et leurs limites sur GitHub.",
+    "privacyTitle": "Confidentialité : vos fichiers restent sur votre ordinateur | OFF42",
+    "privacyDescription": "La retouche et l’édition de base se font sur votre ordinateur, sans téléverser vos fichiers. Les fonctions en ligne facultatives nécessitent une connexion ; leur disponibilité dépend de la plateforme."
+  }
+}

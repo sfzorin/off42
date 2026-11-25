@@ -14,6 +14,9 @@ enum SmartLassoEval {
         func opt(_ name: String) -> String? { a.firstIndex(of: name).flatMap { $0 + 1 < a.count ? a[$0 + 1] : nil } }
         let radius = CGFloat(Double(opt("--radius") ?? "") ?? 14)
         let noise = CGFloat(Double(opt("--noise") ?? "") ?? 0.6)
+        guard radius.isFinite, radius > 0, radius <= 32768, noise.isFinite, noise >= 0 else {
+            print("invalid Smart Lasso radius or noise"); CLI.status = 2; return
+        }
         var rng = SeededRandom(seed: UInt64(opt("--seed") ?? "") ?? 1)
         let size = CGSize(width: image.width, height: image.height)
         let subject = SmartLasso.subjectMask(for: image)
@@ -23,6 +26,7 @@ enum SmartLassoEval {
         // Simulated stroke.
         let base = SmartLasso.resampleClosed(outline, spacing: 2)
         let n = base.count
+        guard n >= 4 else { print("invalid or excessive reference contour"); CLI.status = 2; return }
         let phases = (0..<4).map { _ in CGFloat(rng.next()) * 2 * .pi }
         let freqs: [CGFloat] = [1, 2.3, 4.1, 7.7]
         let outward: CGFloat = SmartLasso.signedArea(base) > 0 ? -1 : 1

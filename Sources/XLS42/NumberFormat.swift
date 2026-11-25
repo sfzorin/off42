@@ -55,7 +55,7 @@ enum NumberFormat {
         case .tr:
             let tr = ["#DIV/0!": "#SAYI/0!", "#VALUE!": "#DEĞER!", "#REF!": "#BAŞV!", "#NAME?": "#AD?", "#N/A": "#YOK", "#NUM!": "#SAYI!", "#NULL!": "#BOŞ!"]
             return tr[e] ?? e
-        case .en: return e
+        default: return e
         }
     }
 

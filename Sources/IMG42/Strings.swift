@@ -20,6 +20,7 @@ let img42Strings: [[String]] = [
     ["Choose an app to open the image", "Выберите программу для открытия изображения", "Görüntüyü açacak uygulamayı seçin"],
 
     // Loading errors
+    ["This image is displayed at reduced resolution. Save creates a copy.", "Изображение показано в уменьшенном разрешении. Сохранение создаст копию.", "Bu görüntü düşük çözünürlükte gösteriliyor. Kaydet işlemi bir kopya oluşturur."],
     ["The file cannot be read.", "Файл не читается.", "Dosya okunamıyor."],
     ["This file is not an image or its format is not supported.", "Это не изображение, или его формат не поддерживается.", "Bu dosya bir görüntü değil veya biçimi desteklenmiyor."],
     ["The image is damaged and cannot be shown.", "Изображение повреждено и не может быть показано.", "Görüntü hasarlı ve gösterilemiyor."],

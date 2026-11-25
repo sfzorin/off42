@@ -15,6 +15,7 @@ final class History {
     }
 
     static let shared = History()
+    static let changed = Notification.Name("SCN42.historyChanged")
     private(set) var entries: [Entry] = []
     var onChange: (() -> Void)?
 
@@ -23,6 +24,19 @@ final class History {
         return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("SCN42", isDirectory: true)
     }
     private var file: URL { folder.appendingPathComponent("history.json") }
+
+    private func thumbnailURL(_ name: String) -> URL? {
+        guard name == (name as NSString).lastPathComponent, (name as NSString).pathExtension == "jpg",
+              UUID(uuidString: (name as NSString).deletingPathExtension) != nil else { return nil }
+        return folder.appendingPathComponent(name)
+    }
+
+    private func removeThumbnails(_ old: [Entry]) {
+        let retained = Set(entries.compactMap(\.thumb))
+        for entry in old {
+            if let name = entry.thumb, !retained.contains(name), let url = thumbnailURL(name) { try? FileManager.default.removeItem(at: url) }
+        }
+    }
 
     init() {
         if let data = try? Data(contentsOf: file), let e = try? JSONDecoder().decode([Entry].self, from: data) { entries = e }
@@ -41,34 +55,37 @@ final class History {
             }
         }
         let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        let previous = entries
         entries.removeAll { $0.path == url.path }
         entries.insert(Entry(path: url.path, date: Date(), pages: pages, size: size, thumb: thumbName), at: 0)
         if entries.count > 200 { entries.removeLast(entries.count - 200) }
+        removeThumbnails(previous)
         persist()
     }
 
     func remove(at i: Int) {
         guard entries.indices.contains(i) else { return }
-        if let t = entries[i].thumb { try? FileManager.default.removeItem(at: folder.appendingPathComponent(t)) }
+        if let t = entries[i].thumb, let url = thumbnailURL(t) { try? FileManager.default.removeItem(at: url) }
         entries.remove(at: i)
         persist()
     }
 
     func clear() {
-        for e in entries { if let t = e.thumb { try? FileManager.default.removeItem(at: folder.appendingPathComponent(t)) } }
+        for e in entries { if let t = e.thumb, let url = thumbnailURL(t) { try? FileManager.default.removeItem(at: url) } }
         entries = []
         persist()
     }
 
     func thumbnail(_ e: Entry) -> NSImage? {
-        if let t = e.thumb, let img = NSImage(contentsOf: folder.appendingPathComponent(t)) { return img }
+        if let t = e.thumb, let url = thumbnailURL(t), let img = NSImage(contentsOf: url) { return img }
         return FileManager.default.fileExists(atPath: e.path) ? NSWorkspace.shared.icon(forFile: e.path) : nil
     }
 
     private func persist() {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        if let data = try? JSONEncoder().encode(entries) { try? data.write(to: file) }
+        if let data = try? JSONEncoder().encode(entries) { try? data.write(to: file, options: .atomic) }
         onChange?()
+        NotificationCenter.default.post(name: Self.changed, object: self)
     }
 }
 
@@ -120,9 +137,11 @@ final class HistoryPanelController: NSViewController, NSTableViewDataSource, NST
             emptyLabel.widthAnchor.constraint(lessThanOrEqualTo: root.widthAnchor, constant: -40),
         ])
         view = root
-        History.shared.onChange = { [weak self] in self?.reload() }
+        NotificationCenter.default.addObserver(self, selector: #selector(historyChanged), name: History.changed, object: History.shared)
         reload()
     }
+
+    @objc private func historyChanged(_ notification: Notification) { reload() }
 
     func reload() {
         table.reloadData()

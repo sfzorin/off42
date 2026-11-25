@@ -38,14 +38,13 @@ extension EditorWindowController {
         let size = { (n: Int) in ByteCountFormatter.string(fromByteCount: Int64(n), countStyle: .file) }
         switch row {
         case .document(let i):
-            guard i < doc.extras.files.count else { return nil }
+            guard i >= 0, i < doc.extras.files.count else { return nil }
             let f = doc.extras.files[i]
             var detail = size(f.data.count)
             if !f.desc.isEmpty { detail += " · " + f.desc }
             return AttachmentInfo(name: f.name, detail: detail, data: f.data)
         case .annotation(let a, let page):
-            let file = doc.extras.annotationFiles.first { $0.page == page && abs($0.rect.minX - a.bounds.minX) < 1 && abs($0.rect.minY - a.bounds.minY) < 1 }
-                ?? doc.extras.annotationFiles.first { $0.page == page }
+            let file = doc.extras.annotationFile(for: a, on: page)
             let name = file?.name ?? a.contents ?? L("Attachment")
             return AttachmentInfo(name: name, detail: L("Page %@", doc.extras.displayLabel(page)) + (file.map { " · " + size($0.data.count) } ?? ""),
                                   data: file?.data ?? Data())
@@ -85,7 +84,7 @@ extension EditorWindowController {
         guard let row = sidebar.selectedAttachment else { return }
         switch row {
         case .document(let i):
-            setExtras({ x in if i < x.files.count { x.files.remove(at: i) } }, part: .files, name: L("Delete Attachment"))
+            setExtras({ x in if i >= 0, i < x.files.count { x.files.remove(at: i) } }, part: .files, name: L("Delete Attachment"))
         case .annotation(let a, let page):
             guard let p = pdf?.page(at: page) else { return }
             remove(a, from: p, name: L("Delete Attachment"))
@@ -99,7 +98,7 @@ extension EditorWindowController {
         panel.nameFieldStringValue = AttachmentExport.fileName(info.name)
         panel.beginSheetModal(for: window) { [weak self] response in
             guard response == .OK, let url = panel.url else { return }
-            do { try info.data.write(to: url) } catch { self?.presentError(error) }
+            do { try info.data.write(to: url, options: .atomic) } catch { self?.presentError(error) }
         }
     }
 

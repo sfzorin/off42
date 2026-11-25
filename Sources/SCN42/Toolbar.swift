@@ -48,7 +48,7 @@ final class ScanToolbar: NSObject, NSSharingServicePickerDelegate {
             .view(id: "share", label: L("Share"), share),
         ], optional: [
             // Overview is the inspector's secondary button; page deletion and enhancement are in the Page menu.
-            .command(Cmd.overview), .command(Cmd.deletePage), .command(Cmd.enhance),
+            .command(Cmd.overview), .command(Cmd.deletePage), .command(Cmd.enhance), .command(Cmd.stamps),
         ])
     }
 

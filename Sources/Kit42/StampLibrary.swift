@@ -112,6 +112,9 @@ public final class StampLibraryViewController: NSViewController {
     public weak var popover: NSPopover?
     /// False when the library is opened only for management (no document to insert into).
     public var canInsert = true
+    /// Where the mark will go, for the mark's aspect ratio (width / height): its width and, on a scanned page, the
+    /// scan's resolution. Asked when a mark is inserted; the default is the usual size on a vector page.
+    public var placement: (CGFloat) -> MarkPlacement = { MarkPlacement.standard(aspect: $0) }
 
     public init(onPick: @escaping (CGImage) -> Void) {
         self.onPick = onPick
@@ -142,8 +145,11 @@ public final class StampLibraryViewController: NSViewController {
         let generate = NSStackView(views: [makeSignature, makeStamp])
         generate.spacing = 10
         generate.distribution = .fillEqually
+        let learn = NSButton(title: L("My Signature…"), target: self, action: #selector(learnSignature))
+        learn.bezelStyle = .push
+        learn.toolTip = L("Teach the generator your own signature: sign a few times or bring a scan")
 
-        let stack = NSStackView(views: [title, grid, generate, buttons])
+        let stack = NSStackView(views: [title, grid, generate, learn, buttons])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 12
@@ -159,6 +165,7 @@ public final class StampLibraryViewController: NSViewController {
             root.widthAnchor.constraint(equalToConstant: Self.width),
             buttons.widthAnchor.constraint(equalTo: stack.widthAnchor),
             generate.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            learn.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
         view = root
         reload()
@@ -231,9 +238,14 @@ public final class StampLibraryViewController: NSViewController {
 
     @objc private func picked(_ sender: NSButton) {
         // Generated signatures and stamps give a new impression every time.
-        guard let path = sender.identifier?.rawValue, let image = StampLibrary.impression(at: URL(fileURLWithPath: path)) else { return }
+        guard let path = sender.identifier?.rawValue else { return }
+        let url = URL(fileURLWithPath: path)
+        let source: MarkInsertDialog.Source
+        if let mark = StampLibrary.mark(at: url) { source = .mark(mark) } else if let image = StampLibrary.image(at: url) { source = .picture(image) } else { return }
+        let window = view.window?.parent ?? NSApp.mainWindow
         popover?.performClose(nil)
-        onPick(image)
+        // A preview of this impression and the resolution to draw it at, then the document places it.
+        MarkInsertDialog.present(source, over: window, placement: placement, insert: onPick)
     }
 
     @objc private func deleteItem(_ sender: NSMenuItem) {
@@ -281,9 +293,15 @@ public final class StampLibraryViewController: NSViewController {
 
     private func openGenerator(_ mode: MarkGeneratorController.Mode) {
         let parent = NSApp.mainWindow
-        let onPick = self.onPick
+        let onPick = self.onPick, placement = self.placement
         popover?.performClose(nil)
         MarkGeneratorController.show(mode, over: parent, onInsert: canInsert ? { onPick($0) } : nil,
+                                     onInsertMark: canInsert ? { mark in
+                                         // After the generator sheet has closed: the preview and resolution dialog.
+                                         DispatchQueue.main.async {
+                                             MarkInsertDialog.present(.mark(mark), over: parent, placement: placement, insert: onPick)
+                                         }
+                                     } : nil,
                                      onLibraryChange: { [weak self] in self?.reload() })
     }
 
@@ -291,9 +309,12 @@ public final class StampLibraryViewController: NSViewController {
 
     @objc private func createStamp() { openGenerator(.seal) }
 
+    @objc private func learnSignature() { openGenerator(.learn) }
+
     @objc private func insertOnce() {
+        let window = view.window?.parent ?? NSApp.mainWindow
         guard let image = StampLibrary.pickImage(window: view.window) else { return }
         popover?.performClose(nil)
-        onPick(image)
+        MarkInsertDialog.present(.picture(image), over: window, placement: placement, insert: onPick)
     }
 }

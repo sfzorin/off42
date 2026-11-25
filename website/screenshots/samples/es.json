@@ -1,0 +1,54 @@
+{
+  "rtl": false,
+  "brand": "ESTUDIO MAREA AZUL",
+  "brandLine": "Identidad de marca · Web · Motion",
+  "number": "Contrato n.º MA-2026-114",
+  "title": "Contrato de servicios de diseño",
+  "intro": "El presente contrato se celebra el 6 de noviembre de 2026 entre Estudio Marea Azul, S.L. (el «Estudio») y Sierra Clara Medios, S.A. (el «Cliente») para el diseño de la nueva identidad de marca y del sitio web del Cliente.",
+  "sections": [
+    ["1. Objeto", "El Estudio entregará un sistema de logotipo, guías de tipografía y color, el diseño de un sitio web de doce páginas y una biblioteca de plantillas para redes sociales."],
+    ["2. Plazos", "Los trabajos comienzan el 16 de noviembre de 2026. Las primeras propuestas se presentan en tres semanas; los archivos finales se entregan antes del 29 de enero de 2027."],
+    ["3. Propiedad intelectual", "Tras el pago íntegro, todos los derechos sobre los diseños finales pasan al Cliente. El Estudio podrá mostrar el trabajo en su portfolio."]
+  ],
+  "feeTitle": "4. Honorarios",
+  "fees": [["Identidad y manual de marca", "8.400 €"], ["Diseño web, 12 páginas", "12.600 €"], ["Plantillas para redes sociales", "2.800 €"]],
+  "total": ["Total, IVA no incluido", "23.800 €"],
+  "signTitle": "Firmado por las partes",
+  "parties": [
+    {"role": "Por el Estudio", "company": "Estudio Marea Azul, S.L.", "person": "Lucía Navarro", "title": "Administradora",
+     "date": "Valencia, 6 de noviembre de 2026", "signName": "Lucía Navarro", "pen": "ballpoint", "design": 2424853,
+     "stamp": {"id": "es.sello", "width": 120, "values": {"edge": "ESTUDIO MAREA AZUL, S.L.", "bottom": "VALENCIA", "centre": "CIF\nB42000042"}}},
+    {"role": "Por el Cliente", "company": "Sierra Clara Medios, S.A.", "person": "Javier Romero", "title": "Consejero delegado",
+     "date": "Madrid, 6 de noviembre de 2026", "signName": "Javier Romero", "pen": "fountain", "design": 2425117,
+     "stamp": {"id": "es.rect", "width": 145, "values": {"name": "Sierra Clara Medios, S.A.", "lines": "C/ de Fuencarral, 7\n28004 Madrid", "numbers": "CIF A28000042"}}}
+  ],
+  "invoiceTitle": "Factura",
+  "invoiceNumber": "Factura n.º 2026-0418 · 30 de enero de 2027",
+  "billTo": "Facturar a",
+  "billLines": ["Sierra Clara Medios, S.A.", "C/ de Fuencarral, 7, 28004 Madrid, España", "CIF A28000042"],
+  "items": [["Identidad y manual de marca", "1", "8.400 €"], ["Diseño web, 12 páginas", "1", "12.600 €"], ["Plantillas para redes sociales", "1", "2.800 €"]],
+  "invoiceTotal": ["Total a pagar", "23.800 €"],
+  "paid": {"id": "es.pagado", "width": 150, "values": {"top": "ESTUDIO MAREA AZUL, S.L.", "word": "PAGADO"}},
+  "note": "Pago recibido, muchas gracias. Transferencia bancaria, ref. MA-2026-114.",
+  "generatorName": "Lucía Navarro",
+  "letter": {
+    "brand": "ESTUDIO MAREA AZUL", "addr": "C/ de la Paz, 12, 46003 Valencia · hola@mareaazul.example",
+    "date": "Valencia, 6 de noviembre de 2026", "to": ["D. Javier Romero", "Sierra Clara Medios, S.A.", "C/ de Fuencarral, 7, 28004 Madrid"],
+    "subject": "Propuesta: una nueva identidad para Sierra Clara Medios",
+    "body": ["Estimado Javier:", "Gracias por la estupenda reunión de la semana pasada. Como acordamos, le enviamos nuestra propuesta para la nueva identidad: un logotipo más sereno, una paleta cálida y un sitio web que pone sus documentales en primer plano.", "Proponemos tres fases, cada una con una revisión en Madrid:"],
+    "table": [["Fase", "Semanas", "Importe"], ["Investigación y conceptos", "3", "6.200 €"], ["Identidad y manual", "4", "8.400 €"], ["Web y plantillas", "6", "9.200 €"]],
+    "close": ["Estaremos encantados de empezar el 16 de noviembre. Adjuntamos el contrato, ya firmado por nuestra parte.", "Un cordial saludo,"],
+    "name": "Lucía Navarro", "role": "Administradora, Estudio Marea Azul, S.L."
+  },
+  "budget": {
+    "sheet": "Presupuesto 2027", "head": "Presupuesto del estudio, primer semestre de 2027 (€)", "total": "Total", "share": "Cuota",
+    "months": ["Ene", "Feb", "Mar", "Abr", "May", "Jun"],
+    "rows": [["Diseño", [6200, 7400, 8400, 5100, 4800, 5600]], ["Desarrollo", [3200, 4100, 6900, 9200, 8800, 7300]], ["Marketing", [1800, 2100, 2600, 3900, 4700, 5200]], ["Hosting y herramientas", [420, 420, 460, 460, 510, 510]]]
+  },
+  "deck": {
+    "title": "Sierra Clara Medios", "subtitle": "Renovación de marca 2027 · Revisión de diseño",
+    "ideasTitle": "Sereno, cálido, luminoso", "ideasSubtitle": "Tres ideas detrás de la nueva identidad",
+    "ideas": [["Luz", "Tardes de sierra: contraste suave y brillos cálidos."], ["Relato", "Primero el documental: la web se abre con las películas."], ["Oficio", "Signos hechos a mano, tipografía con carácter."]],
+    "timelineTitle": "Calendario", "steps": [["Nov", "Investigación"], ["Dic", "Conceptos"], ["Ene", "Identidad"], ["Feb", "Web"]]
+  }
+}

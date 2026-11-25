@@ -77,8 +77,25 @@
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>en</string>
+		<string>zh-Hans</string>
+		<string>zh-Hant</string>
+		<string>es</string>
+		<string>ar</string>
+		<string>fr</string>
+		<string>pt</string>
+		<string>id</string>
 		<string>ru</string>
+		<string>de</string>
+		<string>ja</string>
+		<string>vi</string>
 		<string>tr</string>
+		<string>fil</string>
+		<string>ko</string>
+		<string>th</string>
+		<string>it</string>
+		<string>pl</string>
+		<string>ms</string>
+		<string>hu</string>
 	</array>
 	<key>CFBundleName</key>
 	<string>IMG42</string>

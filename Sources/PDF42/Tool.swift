@@ -90,7 +90,11 @@ extension PDFAnnotation {
 
     var isResizable: Bool { self is RedactOverlay || !(self is PageOverlay) && (isKind(.freeText) || isKind(.square) || isKind(.circle) || isKind(.stamp) || isKind(.widget)) }
 
-    var keepsAspectRatio: Bool { isKind(.stamp) }
+    var keepsAspectRatio: Bool { isKind(.stamp) && !(self is PageOverlay) }
+
+    var hasEditableBorder: Bool {
+        !(self is PageOverlay) && !isWhiteout && (isKind(.square) || isKind(.circle) || isKind(.ink) || isKind(.widget))
+    }
 }
 
 extension PDFPage {

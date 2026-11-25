@@ -39,6 +39,7 @@ import Kit42
             settings.enhancement = .none; settings.removeBlank = false
             settings.resolution = 100
             w.settingsPanel.apply(settings)
+            check("signatures and stamps print into page pixels (see SCN marks lines)", await w.auditMarks())
             func page() -> ScanPage {
                 ScanPage(base: image, image: image, dpi: 100, options: settings.processing, report: ProcessReport())
             }

@@ -1,0 +1,406 @@
+{
+  "nav": {
+    "features": "Özellikler",
+    "apps": "Uygulamalar",
+    "about": "Açık kaynak",
+    "download": "İndirmeler",
+    "language": "Dil",
+    "menu": "Menü",
+    "skip": "İçeriğe geç",
+    "home": "Ana sayfa"
+  },
+  "home": {
+    "eyebrow": "Ücretsiz · Açık kaynak · macOS ve Windows",
+    "title": "Eksiksiz ofis. Abonelik yok.",
+    "intro": "OFF42, macOS ve Windows için altı yerel uygulamayı bir araya getirir: PDF, belge, tablo, sunum, görsel ve tarama. Ücretsiz ve açık kaynaklıdır; platformlar ayrı uygulanır ve sınırlamaları belgelenmiştir.",
+    "primary": "OFF42'yi edinin",
+    "secondary": "Araçları keşfedin",
+    "note": "Ücretsiz · Açık kaynak · macOS 14+ · Windows",
+    "suiteTitle": "Eksiksiz bir ofis. Daha hafif bir deneyim.",
+    "suiteIntro": "İlk taslaktan imzalanmış PDF'ye kadar günlük işlerinizi tanıdık bir araç ailesiyle tamamlayın.",
+    "featureEyebrow": "KÜÇÜK AYRINTILAR. BÜYÜK FARK.",
+    "featureTitle": "Her dosyada daha fazla olanak.",
+    "featureIntro": "PDF düzenleyin. Büyük bir eki küçültün. Kâğıt sayfayı aranabilir metne dönüştürün. İşinize uygun aracı bulun.",
+    "privacyTitle": "Sizin masanız. Başkasının sunucusu değil.",
+    "privacyText": "Temel düzenleme, dosyalar yüklenmeden bilgisayarınızda yerel olarak yapılır. İsteğe bağlı çevrimiçi özellikler bağlantı gerektirir; kullanılabilirlik platforma göre değişir.",
+    "privacyLabel": "Yerel çalışma için tasarlandı",
+    "languageTitle": "20 dilde tanıdık bir ses.",
+    "languageText": "Web sitesi ve uygulama arayüzü sizin dilinizi konuşur. Dilinizi seçin, aynı araçlar elinizin altında olsun.",
+    "openTitle": "Her anlamıyla açık bir ofis.",
+    "openText": "OFF42, MIT lisansıyla sunulur. Kodu inceleyin, kendiniz derleyin, hata bildirin veya sonraki sürümü geliştirmeye yardımcı olun.",
+    "openLink": "GitHub'da keşfedin",
+    "endTitle": "Abonelikler off. Ofis sizde.",
+    "endText": "Ücretsiz · Açık kaynak · macOS ve Windows",
+    "formatsLabel": "OFFICE VE AÇIK BİÇİMLER",
+    "formatsTitle": "Elinizdeki dosyalarla çalışır.",
+    "formatsText": "Çalışma arkadaşlarınızın gönderdiklerini açın, bekledikleri biçimde kaydedin. Karmaşık düzenler farklı görünebilir; önemli dosyaları içe aktardıktan sonra kontrol edin.",
+    "opens": "Açar",
+    "saves": "Kaydeder",
+    "faqTitle": "Başlamadan önce sorular",
+    "faq": [
+      {
+        "q": "OFF42 ücretsiz mi?",
+        "a": "Evet. OFF42, MIT lisansıyla ücretsiz ve açık kaynaklıdır. Abonelik, hesap veya uygulama içi satın alma yoktur."
+      },
+      {
+        "q": "OFF42 çevrimdışı çalışır mı?",
+        "a": "Temel düzenleme, dosyalar yüklenmeden bilgisayarınızda yerel olarak yapılır. İsteğe bağlı çevrimiçi özellikler bağlantı gerektirir; kullanılabilirlik platforma göre değişir."
+      },
+      {
+        "q": "OFF42, Microsoft Office dosyalarını açabilir mi?",
+        "a": "Evet. DOC42 DOCX ve DOC, XLS42 XLSX ve XLS, PPT42 ise PPTX dosyalarını açar. OpenDocument dosyaları (ODT, ODS, ODP) da desteklenir. Her Office özelliği desteklenmez; karmaşık dosyaları içe aktardıktan sonra kontrol edin."
+      },
+      {
+        "q": "OFF42 hangi Mac'leri destekler?",
+        "a": "OFF42, macOS 14 ve üzerini hedefler. Herkese açık bir yükleyici henüz yayımlanmadı; uygulamaları Xcode Command Line Tools ile kaynak koddan derleyebilirsiniz."
+      },
+      {
+        "q": "Windows sürümü var mı?",
+        "a": "Yerel Windows uygulamaları geliştirilmiş ve kaynak koduyla sunulmuştur. Belgelenen özellikleri ve sınırlamaları inceleyin. Henüz herkese açık bir Windows yükleyicisi yayımlanmamıştır."
+      }
+    ]
+  },
+  "name": {
+    "label": "İSMİN ARDINDA NE VAR",
+    "title": "OFF, office'ten gelir. Bir de kapatabileceğiniz her şeyden.",
+    "officeTitle": "Eksiksiz bir ofis",
+    "officeText": "Masanızdaki her dosya için altı uygulama: PDF'ler, Word ve Excel dosyaları, slaytlar, fotoğraflar ve taramalar.",
+    "offlineTitle": "Çevrimdışı çalışır",
+    "offlineText": "Düzenleme bilgisayarınızda yapılır. Hesap veya dosya yükleme gerekmez.",
+    "offTitle": "Abonelikler: off",
+    "offText": "Abonelik yok, deneme süresi yok, reklam yok. MIT lisanslı ve ücretsiz; bugün de, yarın da.",
+    "answerTitle": "Peki ya 42?",
+    "answerText": "Hayat, Evren ve Her Şey hakkındaki Nihai Soru'nun cevabı. Biz sadece onu ofise uyguladık.",
+    "stats": [
+      "uygulama, tek pakette",
+      "dosya biçimi",
+      "arayüz dili",
+      "abonelik",
+      "dosya yüklemesi"
+    ]
+  },
+  "marks": {
+    "label": "İMZALAR VE KAŞELER",
+    "title": "Kâğıttaki gibi imzalayın ve kaşeleyin. Yazıcısız, tarayıcısız.",
+    "text": "OFF42 bir isimden el yazısı imza oluşturur, şirket kaşesini basar ve ikisini doğrudan belgeye yerleştirir. Her baskı biraz farklı çıkar; tıpkı kâğıttaki gerçek mürekkep gibi.",
+    "points": [
+      "Tükenmez, jel, dolma veya keçeli kalemle imzalar",
+      "132 kaşe stili: yuvarlak mühürler, şirket kaşeleri, “Ödendi” ve “Teslim Alındı”",
+      "Birkaç örnekten kendi imzanızı öğrenir",
+      "PDF'lerde, belgelerde, slaytlarda, tablolarda, görsellerde ve taramalarda çalışır"
+    ],
+    "note": "Çizilmiş bir imza, sertifika tabanlı dijital imza değildir. Gerektiğinde PDF42 sizin sertifikanızla imzalar.",
+    "signedCaption": "PDF42'de imzalanmış ve kaşelenmiş bir sözleşme. İsimler ve şirketler kurgusaldır."
+  },
+  "codes": {
+    "label": "QR KODLAR, SEMBOLLER VE ETİKETLER",
+    "title": "QR kodlar, CE işaretleri ve etiket sayfaları, milimetresi milimetresine.",
+    "text": "Bir hücreyi, tablo satırını veya seçimi QR, Data Matrix, Code 128 ya da Aztec koduna dönüştürün ve ürününüzün ihtiyaç duyduğu uygunluk ve güvenlik işaretlerini ekleyin. Boyutu milimetre cinsinden ayarlayın, ardından satırlarınızdan doğrudan bütün bir etiket sayfası yazdırın.",
+    "points": [
+      "Kaydettikten sonra da düzenlenebilen QR, Data Matrix, Code 128 ve Aztec kodları",
+      "97 işaret: CE, UKCA, EAC, FCC, UL, CCC, KC, RCM, WEEE, RoHS, GHS piktogramları, IEC güvenlik sembolleri ve dahası",
+      "Tablo satırlarından, belge tablolarından veya bir PDF sayfasından ya da bölgesinden etiket sayfaları",
+      "559 etiket kâğıdı formatı veya kendi ızgaranız, kayıtlı şablonlar ve yazıcı kalibrasyonu"
+    ],
+    "note": "İşaret, etiketiniz için bir çizimdir: ürünü sertifikalandırmaz. Uygunluk işaretleri ve ticari markalar için uygulama, gerekli sertifika veya lisans numarası gibi kullanım koşullarını gösterir. macOS'ta PDF42, DOC42 ve XLS42'de kullanılabilir.",
+    "qrAlt": "XLS42'de “Sembol veya Kod Ekle”: bir ürün bağlantısından oluşturulmuş 30 mm'lik QR kod.",
+    "labelsAlt": "XLS42'de “Etiket Oluştur”: on ürün satırından oluşturulmuş QR kodlu bir etiket sayfası.",
+    "caption": "On tablo satırından oluşturulmuş bir etiket sayfası. Ürünler kurgusaldır."
+  },
+  "show": {
+    "label": "İŞ BAŞINDA",
+    "title": "Gerçek uygulamalar. Gerçek belgeler.",
+    "text": "Buradaki her görsel, OFF42'nin Mac'teki ekran görüntüsüdür; uygulamalarda kurgusal şirketlere ait örnek belgeler açıktır. Maket yok."
+  },
+  "labels": {
+    "learn": "Keşfedin",
+    "allFeatures": "Tüm özellikler",
+    "useCases": "GÜNLÜK İŞLERİNİZ İÇİN",
+    "workflow": "Dosyadan sonuca",
+    "details": "Yapabilecekleriniz",
+    "goodToKnow": "Bilmenizde yarar var",
+    "related": "Keşfetmeye devam edin",
+    "faq": "Yararlı yanıtlar",
+    "step": "Adım",
+    "illustration": "İş akışı illüstrasyonu",
+    "source": "Kaynak kodu",
+    "license": "MIT lisansı",
+    "release": "GitHub sürümleri",
+    "available": "Kullanılabilir",
+    "unavailable": "Henüz yayımlanmadı",
+    "downloadDmg": "DMG indir",
+    "downloadExe": "EXE indir",
+    "checksum": "SHA-256",
+    "version": "Sürüm",
+    "requirements": "Sistem gereksinimleri",
+    "footer": "Günlük işler için açık kaynaklı bir ofis.",
+    "privacy": "Gizlilik",
+    "copyright": "Bağımsız bir açık kaynak projesi.",
+    "back": "Ana sayfaya dön",
+    "notFound": "Bu sayfa masadan kalkmış.",
+    "notFoundText": "Keşfetmeye devam etmek için ana sayfaya gidin veya bir dil seçin.",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı",
+    "screenshot": "macOS'ta ekran görüntüsü. Örnek belgeler, kurgusal şirketler."
+  },
+  "apps": {
+    "pdf": {
+      "tag": "PDF'lerde yeni olanaklar.",
+      "text": "PDF'lerinizi okuyun, not ekleyin, düzenleyin, sıkıştırın ve imzalayın."
+    },
+    "doc": {
+      "tag": "Düşünceden belgeye.",
+      "text": "DOCX, ODT, RTF ve Markdown belgeleri yazın ve sayfa düzenini oluşturun."
+    },
+    "xls": {
+      "tag": "Sayılarınız bir hikâye anlatsın.",
+      "text": "XLSX, ODS ve CSV dosyalarında tablolar, formüller ve grafiklerle çalışın."
+    },
+    "ppt": {
+      "tag": "Sunulmaya değer fikirler.",
+      "text": "Slaytlar oluşturun, tablolar ve şekillerle çalışın, hikâyenizi sunun."
+    },
+    "img": {
+      "tag": "Küçük bir dokunuş. Daha iyi bir görsel.",
+      "text": "Görsellerinizi görüntüleyin, kırpın, yeniden boyutlandırın, işaretleyin ve ayarlayın."
+    },
+    "scn": {
+      "tag": "Kâğıda yeni olanaklar.",
+      "text": "Tarayın, sayfaları temizleyin ve cihaz üzerinde OCR ile metni tanıyın."
+    }
+  },
+  "features": {
+    "documents": {
+      "title": "Bir sonraki güzel fikrinize yer açın",
+      "seoTitle": "Mac için Ücretsiz Kelime İşlemci — DOCX, ODT, RTF | OFF42",
+      "seoDescription": "DOC42 ile mektup ve rapor yazın: DOCX, ODT, RTF ve Markdown açıp kaydedin, tablo ve görsellerle sayfa düzeni kurun, PDF dışa aktarın. Ücretsiz ve açık kaynak.",
+      "short": "Belgeler",
+      "intro": "DOC42 ile mektuplar, raporlar ve yeni taslaklar yazın. Zengin metni ve sayfa düzenini tanıdık belge biçimleriyle birleştirin.",
+      "points": [
+        "DOCX, ODT, RTF, Markdown ve diğer metin biçimlerini açıp kaydedin.",
+        "Biçimlendirme, tablolar, görseller ve sayfa düzeniyle çalışın.",
+        "Belge paylaşılmaya hazır olduğunda PDF olarak dışa aktarın."
+      ],
+      "steps": [
+        "Belge oluşturun veya mevcut bir dosyayı açın.",
+        "Metni, görselleri ve sayfa düzenini biçimlendirin.",
+        "Düzenlenebilir bir kopya kaydedin veya PDF dışa aktarın."
+      ],
+      "note": "Karmaşık Office belgeleri farklı görüntülenebilir. Tam doğruluğa güvenmeden önce içe aktarılan düzeni ve dışa aktarılan dosyayı kontrol edin.",
+      "question": "Word belgeleriyle çalışabilir miyim?",
+      "answer": "DOC42, DOCX'i destekler ve eski DOC dosyalarını açar. Dosya biçimi desteği, her Microsoft Word özelliğinin aynı şekilde işlendiği anlamına gelmez."
+    },
+    "spreadsheets": {
+      "title": "Sayıları anlamlandırın",
+      "seoTitle": "Mac için Ücretsiz Hesap Tablosu — XLSX, ODS, CSV | OFF42",
+      "seoDescription": "XLS42 ile XLSX ve XLS açın; formül, biçimlendirme ve grafik kullanın; XLSX, ODS veya CSV kaydedin, PDF dışa aktarın. Mac için ücretsiz, açık kaynak tablo aracı.",
+      "short": "Hesap tabloları",
+      "intro": "Basit bir listeden hesaplamalı rapora kadar XLS42; hücreleri, formülleri ve grafikleri günlük ofisinize getirir.",
+      "points": [
+        "XLSX, eski XLS, ODS ve ayraçlı metin dosyalarını açın.",
+        "Verilerinizi açıklamak için formüller, biçimlendirme ve grafikler kullanın.",
+        "XLSX, ODS veya CSV kaydedin ya da PDF dışa aktarın."
+      ],
+      "steps": [
+        "Çalışma kitabı açın veya boş bir sayfayla başlayın.",
+        "Veri girin, formüller uygulayın ve grafik ekleyin.",
+        "Hesaplamaları inceleyin ve doğru biçimde kaydedin."
+      ],
+      "note": "Formül ve biçimlendirme desteği dosyaya göre değişir. CSV, biçimlendirme ve birden fazla sayfa içeren tam bir çalışma kitabı yerine tek bir değer tablosu saklar.",
+      "question": "Excel tablolarını açabilir miyim?",
+      "answer": "Evet, XLS42 XLSX ve eski XLS dosyalarını açar. Karmaşık formülleri ve içe aktarılan biçimlendirmeyi kontrol edin; tüm Excel özellikleri desteklenmez."
+    },
+    "presentations": {
+      "title": "Fikirlerinize söz verin",
+      "seoTitle": "Mac için Ücretsiz Sunum Programı — PPTX, ODP | OFF42",
+      "seoDescription": "PPT42 ile metin, görsel, şekil ve tablolarla slayt hazırlayın, konuşmacı notlarıyla sunun, PDF veya görsel olarak dışa aktarın. Ücretsiz, açık kaynak, Mac için.",
+      "short": "Sunumlar",
+      "intro": "PPT42 ile anlaşılır bir görsel anlatı oluşturun. Metinleri, görselleri, şekilleri ve tabloları yerleştirin; ardından düzenlemeden slayt gösterisine geçin.",
+      "points": [
+        "PPTX ve OpenDocument sunum dosyalarıyla çalışın.",
+        "Slayt nesnelerini, tabloları ve konuşmacı notlarını düzenleyin.",
+        "Kolay paylaşım için slaytları PDF ve görsel olarak dışa aktarın."
+      ],
+      "steps": [
+        "Bir sunum oluşturun veya desteklenen bir sunumu açın.",
+        "Her slaytı iyileştirin ve notlarınızı hazırlayın.",
+        "Slayt gösterisini başlatın veya slaytları dışa aktarın."
+      ],
+      "note": "Eski PPT dosyalarının önce dönüştürülmesi gerekir. Karmaşık içe aktarılmış düzenler farklı olabilir; sunumdan önce tüm slaytları inceleyin.",
+      "question": "Slaytları PDF olarak paylaşabilir miyim?",
+      "answer": "Evet. PPT42, slaytları ve not sayfalarını PDF; slayt görsellerini de PNG ve JPEG olarak dışa aktarabilir."
+    },
+    "edit-pdf": {
+      "title": "Mac'inizde PDF düzenleyin",
+      "seoTitle": "Mac için Ücretsiz PDF Düzenleyici ve Form Doldurma | OFF42",
+      "seoDescription": "PDF42 ile Mac'inizde PDF metnini düzenleyin, vurgulayın, not ekleyin, formları doldurun ve sayfaları sıralayın. Ücretsiz, açık kaynak, çevrimdışı; yükleme yok.",
+      "short": "PDF düzenleme",
+      "intro": "PDF'yi çalışma belgenize dönüştürün. PDF42 ile sayfa metnini düzenleyin, not ekleyin, önemli bölümleri vurgulayın, formları doldurun ve sayfaları sıralayın.",
+      "points": [
+        "Sayfa metnini düzenleyin; vurgular, metin kutuları, şekiller ve serbest çizimlerle işaretleyin.",
+        "Sayfa ekleyin, çıkarın, döndürün, silin ve sıralamayı değiştirin.",
+        "Desteklenen PDF formlarını doldurun ve değişiklikleri kaydedin."
+      ],
+      "steps": [
+        "Mac'inizden bir PDF açın.",
+        "İşinize uygun işaretleme, form veya sayfa araçlarını seçin.",
+        "Bir kopya kaydedin ve bitmiş belgeyi gözden geçirin."
+      ],
+      "note": "Sayfa metni düzenlemeleri kaydederken sayfa içeriğine birleştirilir. Karmaşık PDF düzenleri ve formlar farklılık gösterebilir; paylaşmadan önce kaydedilen kopyayı inceleyin.",
+      "question": "PDF'yi yüklemeden düzenleyebilir miyim?",
+      "answer": "Evet. PDF42, Mac'inizdeki yerel dosyalarla çalışır. Temel işaretleme ve sayfa işlemleri çevrimiçi düzenleyici gerektirmez."
+    },
+    "scan-ocr": {
+      "title": "Kâğıdı aranabilir belgelere dönüştürün",
+      "seoTitle": "Mac için OCR'li Tarama Uygulaması — Aranabilir PDF | OFF42",
+      "seoDescription": "Tarayıcıdan veya iPhone kamerasından tarayın, sayfaları düzeltip temizleyin, Mac'inizde metni tanıyın ve SCN42 ile aranabilir PDF alın. Ücretsiz ve çevrimdışı.",
+      "short": "Tarama ve OCR",
+      "intro": "SCN42 ile kâğıdı dijital ofisinize taşıyın. Sayfaları alın, düzeltip temizleyin ve Mac'inizde metin tanıma uygulayın.",
+      "points": [
+        "Desteklenen tarayıcılardan alın veya görsel ve PDF içe aktarın.",
+        "Tanımadan önce sayfaları kırpın, eğriliğini giderin ve ayarlayın.",
+        "Aranabilir PDF'leri veya tanınan metni dışa aktarın."
+      ],
+      "steps": [
+        "Sayfalarınızı tarayın veya içe aktarın.",
+        "Sayfa sırasını kontrol edin ve görselleri temizleyin.",
+        "OCR çalıştırın ve gereken biçimde dışa aktarın."
+      ],
+      "note": "Tarayıcı ve Continuity desteği donanımınıza bağlıdır. OCR dilleri ve doğruluğu Apple Vision'a ve kaynak görsele bağlıdır; 20 arayüz dili ayrı bir özelliktir.",
+      "question": "Taramadaki metni arayabilir miyim?",
+      "answer": "OCR sonrasında metin katmanı eklemek için aranabilir PDF olarak dışa aktarın. Özellikle adları, sayıları ve düşük kaliteli taramaları içeren tanıma sonuçlarını mutlaka gözden geçirin."
+    },
+    "compress-pdf": {
+      "title": "PDF'leri sıkıştırın, işler hızlansın",
+      "seoTitle": "Mac'te PDF Sıkıştırma — Çevrimdışı Boyut Küçültme | OFF42",
+      "seoDescription": "PDF42 ile görsel ağırlıklı PDF'leri Mac'inizde küçültün. 100, 150 veya 220 dpi seçin, boyutu önizleyin, metni net tutun. Ücretsiz, çevrimdışı, dosya yüklemeden.",
+      "short": "PDF sıkıştırma",
+      "intro": "Görsel ağırlıklı PDF'leri daha kolay paylaşın. PDF42'nin sıkıştırma ayarlarıyla dosya boyutu ve görsel ayrıntısı arasında uygun dengeyi seçin.",
+      "points": [
+        "100, 150 veya 220 dpi görsel ön ayarlarından birini seçin.",
+        "Metin ve vektör içeriğinin netliğini koruyarak dosya boyutlarını önizleyin.",
+        "Ayrı bir dosya kaydedin ve sonucu aslıyla karşılaştırın."
+      ],
+      "steps": [
+        "PDF'nizi açın ve sıkıştırmayı seçin.",
+        "Bir görsel ön ayarı seçip tahmini boyutları karşılaştırın.",
+        "Sonucu kaydedin, ardından boyutunu ve okunaklılığını kontrol edin."
+      ],
+      "note": "Sonuç kaynak dosyaya bağlıdır; boyut küçülmeyebilir. Sıkıştırma, görsel kalitesini düşürür ve mevcut dijital imzaları kaldırır.",
+      "question": "PDF'm ne kadar küçülür?",
+      "answer": "Sabit bir küçülme oranı yoktur. Taranmış veya görsel ağırlıklı PDF'ler, zaten optimize edilmiş dosyalara göre genellikle daha fazla sıkıştırılabilir."
+    },
+    "labels-codes": {
+      "title": "Milimetre hassasiyetinde kodlar, semboller ve etiketler",
+      "seoTitle": "Mac için QR Kod, Barkod ve CE İşareti Etiket Oluşturucu | OFF42",
+      "seoDescription": "Mac'inizde QR, Data Matrix, Code 128 ve Aztec kodları oluşturun, CE, UKCA, EAC, FCC ve diğer ürün işaretlerini ekleyin, tablo satırlarından etiket sayfaları yazdırın. Ücretsiz.",
+      "short": "QR kodlar ve etiketler",
+      "intro": "Bir PDF'ye, belgeye veya tabloya taranabilir bir kod ya da uygunluk işareti ekleyin, ardından verilerinizden bütün bir etiket sayfası yazdırın. Boyutlar milimetre cinsinden ayarlanır.",
+      "points": [
+        "Kaydettikten sonra da düzenlenebilen QR, Data Matrix, Code 128 ve Aztec kodları ekleyin.",
+        "97 ürün işaretini kullanım koşullarıyla birlikte ekleyin: uygunluk (CE, UKCA, EAC, FCC, UL, CCC), çevre (WEEE, RoHS), GHS tehlike piktogramları ve IEC güvenlik sembolleri.",
+        "Tablo satırlarından, belge tablolarından veya bir PDF bölgesinden 559 kâğıt formatında ya da kendi ızgaranızda etiket sayfaları yazdırın."
+      ],
+      "steps": [
+        "Bir hücre, tablo, metin veya PDF bölgesi seçin, ardından “Ekle › Sembol veya Kod” ya da “Dosya › Etiket Oluştur” komutunu seçin.",
+        "Kod türünü veya sembolü, milimetre cinsinden genişliği, etiket kâğıdını ve kod sütununu seçin.",
+        "Önizlemeyi kontrol edin, ardından PDF olarak kaydedin veya yazıcınızın kalibrasyonuyla yazdırın."
+      ],
+      "note": "İşaretler çizimdir: bir işaret eklemek ürünü sertifikalandırmaz. Uygunluk işaretlerini ve ticari markaları yalnızca ürününüz sertifikalıysa veya lisansa sahipseniz kullanın; uygulama her işaretin koşullarını gösterir. Kâğıt ve yazıcı toleranslarını bir deneme baskısıyla kontrol edin. macOS'ta; iletişim kutusu İngilizce, Rusça ve Türkçeye, işaret adları 11 dile çevrilmiştir.",
+      "question": "Dosyayı kaydettikten sonra kodlar düzenlenebilir kalır mı?",
+      "answer": "Evet. PDF, DOCX, XLSX ve ODS dosyaları kodun tarifini saklar, böylece “Sembolü veya Kodu Düzenle” onu yeniden açar; diğer uygulamalar sıradan bir görsel görür. Tablodaki bir kod, eklendiği andaki hücre değerini alır ve sonraki düzenlemeleri izlemez."
+    },
+    "sign-pdf": {
+      "title": "PDF'ye imzanızı atın",
+      "seoTitle": "Mac'te PDF İmzalama — İmza, Kaşe, Dijital İmza | OFF42",
+      "seoDescription": "PDF'ye el yazısı görünümlü imza veya kaşe ekleyin ya da sertifikayla imzalayın. PDF42 işaretlerinizi tekrar kullanım için saklar. Ücretsiz ve açık kaynak.",
+      "short": "PDF imzaları",
+      "intro": "İmza ve kaşelerinizi elinizin altında tutun. PDF42'de görsel imza ekleyin, kaşeyi yeniden kullanın veya sertifika tabanlı dijital imzalarla çalışın.",
+      "points": [
+        "Yeniden kullanılabilir imza ve kaşeleri ortak kitaplıkta saklayın.",
+        "Sayfaya görsel bir işaret yerleştirin ve ayarlayın.",
+        "İş akışınız gerektiriyorsa sertifika tabanlı imzalama kullanın."
+      ],
+      "steps": [
+        "Belgeyi açın ve imza aracını seçin.",
+        "Görsel bir işaret veya dijital imza işlemi seçin.",
+        "Kaydedin ve sonucu alıcınızın PDF yazılımında kontrol edin."
+      ],
+      "note": "Görsel imza, sertifika tabanlı dijital imza değildir. Sertifikaya güven ve zaman damgası uyumluluğu; sertifikaya, hizmete ve alıcı yazılıma bağlıdır.",
+      "question": "Görsel ve dijital imzalar aynı mı?",
+      "answer": "Hayır. Görsel imza sayfadaki bir işarettir. Dijital imza, belge değişikliklerini saptamaya ve imzalayanı belirlemeye yardımcı olmak için sertifika kullanır."
+    },
+    "image-editor": {
+      "title": "Zahmetsiz son dokunuş",
+      "seoTitle": "Mac için Ücretsiz Görsel Düzenleyici: Kırp, Not Ekle | OFF42",
+      "seoDescription": "JPEG, PNG, HEIC, WebP ve TIFF açın; IMG42 ile kırpın, boyutlandırın, döndürün, ayarlayın ve işaretleyin. Çevrimdışı çalışan ücretsiz, açık kaynak düzenleyici.",
+      "short": "Görsel düzenleme",
+      "intro": "Fotoğraf açın, fazlalıkları kırpın, görseli ayarlayın veya açıklayıcı bir not ekleyin. IMG42, günlük görsel işlerinizi elinizin altında tutar.",
+      "points": [
+        "JPEG, PNG, HEIC ve TIFF dâhil yaygın görsel biçimlerini görüntüleyin.",
+        "Görselleri kırpın, yeniden boyutlandırın, döndürün ve ayarlayın.",
+        "İşaretleme ekleyin ve desteklenen görsel biçimlerine dışa aktarın."
+      ],
+      "steps": [
+        "Mac'inizde bir görsel açın.",
+        "Ayarlamalarınızı yapın ve pikselleri inceleyin.",
+        "Kullanım amacına uygun bir biçimde kopya dışa aktarın."
+      ],
+      "note": "Okuma ve yazma desteği, biçime ve kullanılabilir macOS kodeklerine göre değişir. Bazı biçimler açılabilir ancak özgün biçimlerinde kaydedilemez.",
+      "question": "Paylaşmadan önce görselin boyutunu değiştirebilir miyim?",
+      "answer": "Evet. Görseli yeniden boyutlandırın ve bir kopya dışa aktarın. Boyutları kontrol edin; gereken saydamlığı veya görsel kalitesini koruyan bir biçim seçin."
+    }
+  },
+  "download": {
+    "title": "Yeni ofisiniz burada başlıyor.",
+    "intro": "Platformunuzu seçin ve sürüm durumunu kontrol edin. Kaynak kodu GitHub’da erişime açıktır.",
+    "mac": "macOS için OFF42",
+    "macText": "Kaynak kodu macOS 14 veya üzerini hedefler. Herkese açık bir DMG yükleyicisi henüz yayımlanmadı.",
+    "windows": "Windows için OFF42",
+    "windowsText": "Yerel Windows uygulamaları geliştirilmiş ve kaynak koduyla sunulmuştur. Belgelenen özellikleri ve sınırlamaları inceleyin. Henüz herkese açık bir Windows yükleyicisi yayımlanmamıştır.",
+    "sourceTitle": "Derleyin. İnceleyin. Kendinize uyarlayın.",
+    "sourceText": "MIT lisanslı kaynak kodunu GitHub'dan edinin. macOS üzerinde derleme için Xcode Command Line Tools gerekir. Dağıtım imzası ayarlamadıkça yerel derlemeler ad-hoc imzalama kullanır.",
+    "checkReleases": "Sürümleri kontrol edin",
+    "buildGuide": "Derleme talimatları",
+    "releaseNote": "Yayımlanmış sürüm dosyaları hazır olduğunda indirme düğmeleri görünür. Sürüm kanıtı olmadan hiçbir yükleyici imzalı veya noter onaylı olarak sunulmaz.",
+    "buildTitle": "OFF42'yi Mac'inizde derleyin",
+    "buildText": "İmzalı bir yükleyici yayımlanana kadar uygulamaları birkaç dakikada kendiniz derleyebilirsiniz. Bu komutları Terminal'de çalıştırın.",
+    "buildStep1": "Apple'ın Xcode Command Line Tools paketini yükleyin.",
+    "buildStep2": "Kaynak kodunu GitHub'dan indirin.",
+    "buildStep3": "Altı uygulamanın tümünü derleyin ya da tek bir uygulamayı derleyip Uygulamalar klasörüne kopyalayın."
+  },
+  "about": {
+    "title": "Saklayacak şeyi olmayan bir ofis.",
+    "intro": "OFF42, macOS ve Windows için altı yerel uygulamayı bir araya getirir: PDF, belge, tablo, sunum, görsel ve tarama. Ücretsiz ve açık kaynaklıdır; platformlar ayrı uygulanır ve sınırlamaları belgelenmiştir.",
+    "licenseTitle": "MIT lisanslı. Keşfetmeye açık.",
+    "licenseText": "Yazılımı MIT lisansı kapsamında kullanın, inceleyin, değiştirin ve yeniden dağıtın. Lisans koşulları ve kaynak kodu depoda bulunur.",
+    "contributeTitle": "Daha iyi araçlar ortak emekle oluşur.",
+    "contributeText": "Tekrarlanabilir bir hata bildirin, iyileştirme önerin, çevirilere yardım edin veya GitHub üzerinden kod katkısında bulunun.",
+    "honestTitle": "Açıkça geliştiriliyor.",
+    "honestText": "Proje gelişmeye devam ediyor. Test edilen derlemeler, sınırlamalar ve denetim kapsamı depoda belgelenir. Kaynak kodunun erişilebilir olması, paketlenmiş, imzalı ve noter onaylı sürümlerin hazır olması anlamına gelmez.",
+    "status": "Proje durumunu okuyun",
+    "issues": "Sorun bildirin"
+  },
+  "privacy": {
+    "title": "Çalışmanız size yakın kalsın.",
+    "intro": "Bu web sitesi OFF42'yi tanıtır ve projenin kaynak kodu ile sürümlerine bağlantı verir. Belgelerinizi kabul etmez veya işlemez.",
+    "siteTitle": "Sade bir web sitesi",
+    "siteText": "Sitede reklam, analiz betikleri veya hesap sistemi yoktur. Barındırma sağlayıcıları, siteyi sunmak ve korumak için istek bilgilerini işleyebilir.",
+    "appTitle": "Yerel belgelerle çalışma",
+    "appText": "Temel düzenleme, dosyalar yüklenmeden bilgisayarınızda yerel olarak yapılır. İsteğe bağlı çevrimiçi özellikler bağlantı gerektirir; kullanılabilirlik platforma göre değişir.",
+    "linksTitle": "Dış bağlantılar",
+    "linksText": "GitHub ve bağlantı verilen diğer hizmetlerin kendi gizlilik politikaları vardır. Bu siteyi ziyaret etmeniz dosyalarınızı yüklemez."
+  },
+  "seo": {
+    "homeTitle": "OFF42 — macOS ve Windows için Ücretsiz Ofis Paketi, Abonelik Yok",
+    "homeDescription": "macOS ve Windows için ücretsiz, açık kaynaklı yerel ofis uygulamaları: PDF, DOCX, XLSX, PPTX, görseller ve taramalar. Özellik kapsamı ve doğrulama platforma göre değişir.",
+    "featuresTitle": "Özellikler: PDF, Belgeler, Tablolar, Tarama | OFF42",
+    "featuresDescription": "PDF düzenleyin ve imzalayın, büyük dosyaları küçültün, OCR ile tarayın, DOCX yazın, XLSX ve PPTX ile çalışın. Ücretsiz OFF42'nin Mac'te yapabildiklerini görün.",
+    "downloadTitle": "OFF42'yi macOS ve Windows için İndirin — Ücretsiz Ofis Paketi",
+    "downloadDescription": "macOS ve Windows için OFF42: kaynak kodu, sürüm durumu, derleme yönergeleri ve platform sınırlamaları. Kurmadan önce nelerin uygulandığını ve test edildiğini kontrol edin.",
+    "aboutTitle": "Açık Kaynak Ofis Paketi, MIT Lisanslı | OFF42",
+    "aboutDescription": "OFF42, macOS ve Windows için MIT lisanslı altı yerel uygulamadan oluşur. Kaynak kodunu, platform desteğini ve sınırlamaları GitHub’da inceleyin.",
+    "privacyTitle": "Gizlilik: Dosyalarınız Bilgisayarınızda Kalır | OFF42",
+    "privacyDescription": "Temel düzenleme, dosyalar yüklenmeden bilgisayarınızda yerel olarak yapılır. İsteğe bağlı çevrimiçi özellikler bağlantı gerektirir; kullanılabilirlik platforma göre değişir."
+  }
+}

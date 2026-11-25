@@ -51,6 +51,7 @@ final class MarkupBar: NSObject, NSMenuDelegate {
         markup.markupActive = true
         markup.tool = tool
         markup.style = style
+        if tool != .select { markup.selectedID = nil }
         strip.select(tag: tool.rawValue)
         if MarkTool.selectionTools.contains(tool) { lastSelectionTool = tool; selectionButton.setSymbol(tool.symbol) }
         if MarkTool.shapeTools.contains(tool) { lastShapeTool = tool; shapesButton.setSymbol(tool.symbol) }
@@ -61,6 +62,7 @@ final class MarkupBar: NSObject, NSMenuDelegate {
             strip.select(tag: -1)
         }
         if !strip.isShown { strip.isShown = true }
+        selectionChanged()
     }
 
     func show(_ on: Bool) {
@@ -145,6 +147,17 @@ final class MarkupBar: NSObject, NSMenuDelegate {
                 loupe.submenu?.addItem(item(String(format: "%g×", z), #selector(loupeChosen(_:)), tag: Int(z * 10), on: abs((selMark?.zoom ?? s.loupeZoom) - z) < 0.01))
             }
             m.addItem(loupe)
+            m.autoenablesItems = false
+            for entry in m.items {
+                switch entry.action {
+                case #selector(widthChosen(_:)): entry.isEnabled = selMark?.supportsStroke ?? true
+                case #selector(dashChosen(_:)): entry.isEnabled = selMark?.supportsDash ?? true
+                case #selector(arrowChosen(_:)): entry.isEnabled = selMark.map { $0.kind == .line } ?? true
+                case #selector(shadowChosen(_:)): entry.isEnabled = selMark?.supportsShadow ?? true
+                default: break
+                }
+            }
+            loupe.isEnabled = selMark.map { $0.kind == .loupe } ?? true
         }
         // Text style
         if let m = textButton.dropDown {
@@ -185,11 +198,13 @@ final class MarkupBar: NSObject, NSMenuDelegate {
         guard let m = owner?.canvas.markup.selected else { return style }
         var s = style
         s.stroke = m.color
+        s.width = m.width * (owner?.canvas.markup.screenScale ?? 1)
         s.fill = m.fill
         s.dashed = m.dashed
         s.shadow = m.shadow
         s.arrowStart = m.arrowStart
         s.arrowEnd = m.arrowEnd
+        s.loupeZoom = m.zoom
         if m.kind == .text {
             s.fontName = m.fontName
             s.bold = m.bold
@@ -197,7 +212,7 @@ final class MarkupBar: NSObject, NSMenuDelegate {
             s.underline = m.underline
             s.alignment = m.alignment
             s.textColor = m.textColor
-            s.fontSize = (m.fontSize * (owner?.canvas.markup.screenScale ?? 1)).rounded()
+            s.fontSize = m.fontSize * (owner?.canvas.markup.screenScale ?? 1)
         }
         return s
     }
@@ -206,6 +221,11 @@ final class MarkupBar: NSObject, NSMenuDelegate {
         let s = currentStyle
         borderButton.color = s.stroke == .clear ? nil : s.stroke
         fillButton.color = s.fill
+        let mark = owner?.canvas.markup.selected
+        borderButton.isEnabled = mark?.supportsStroke ?? true
+        fillButton.isEnabled = mark?.supportsFill ?? true
+        styleButton.isEnabled = mark.map { $0.supportsStroke || $0.supportsShadow } ?? true
+        textButton.isEnabled = mark.map { $0.kind == .text } ?? true
     }
 
     static func lineImage(_ w: CGFloat, dashed: Bool = false) -> NSImage {
@@ -243,17 +263,20 @@ final class MarkupBar: NSObject, NSMenuDelegate {
     @objc func copySelection(_ sender: Any?) { owner?.copy(nil) }
 
     @objc func widthChosen(_ sender: NSMenuItem) {
-        let w = Self.widths[max(0, sender.tag)]
+        guard Self.widths.indices.contains(sender.tag), owner?.canvas.markup.selected?.supportsStroke != false else { return }
+        let w = Self.widths[sender.tag]
         let scale = owner?.canvas.markup.screenScale ?? 1
         change(L("Line width"), style: { $0.width = w }, mark: { $0.width = w / scale })
     }
 
     @objc func dashChosen(_ sender: NSMenuItem) {
+        guard owner?.canvas.markup.selected?.supportsDash != false else { return }
         let on = sender.tag == 1
         change(L("Shape Style"), style: { $0.dashed = on }, mark: { $0.dashed = on })
     }
 
     @objc func arrowChosen(_ sender: NSMenuItem) {
+        guard owner?.canvas.markup.selected.map({ $0.kind == .line }) != false else { return }
         let s = currentStyle
         if sender.tag == 0 {
             change(L("Shape Style"), style: { $0.arrowStart = !s.arrowStart }, mark: { $0.arrowStart = !s.arrowStart })
@@ -263,37 +286,44 @@ final class MarkupBar: NSObject, NSMenuDelegate {
     }
 
     @objc func shadowChosen(_ sender: NSMenuItem) {
+        guard owner?.canvas.markup.selected?.supportsShadow != false else { return }
         let on = !currentStyle.shadow
         change(L("Shadow"), style: { $0.shadow = on }, mark: { $0.shadow = on })
     }
 
     @objc func loupeChosen(_ sender: NSMenuItem) {
+        guard [15, 20, 30, 40, 60].contains(sender.tag), owner?.canvas.markup.selected.map({ $0.kind == .loupe }) != false else { return }
         let z = CGFloat(sender.tag) / 10
         change(L("Loupe Magnification"), style: { $0.loupeZoom = z }, mark: { if $0.kind == .loupe { $0.zoom = z } })
     }
 
     @objc func borderChanged(_ sender: ColorButton) {
+        guard owner?.canvas.markup.selected?.supportsStroke != false else { return }
         let c = sender.color ?? .clear
         change(L("Border Colour"), style: { $0.stroke = c }, mark: { $0.color = c })
     }
 
     @objc func fillChanged(_ sender: ColorButton) {
+        guard owner?.canvas.markup.selected?.supportsFill != false else { return }
         let c = sender.color
         change(L("Fill Colour"), style: { $0.fill = c }, mark: { $0.fill = c })
     }
 
     @objc func fontChosen(_ sender: NSMenuItem) {
+        guard Self.fonts.indices.contains(sender.tag), owner?.canvas.markup.selected.map({ $0.kind == .text }) != false else { return }
         let f = Self.fonts[sender.tag]
         change(L("Font"), style: { $0.fontName = f }, mark: { $0.fontName = f })
     }
 
     @objc func fontSizeChosen(_ sender: NSMenuItem) {
+        guard Self.fontSizes.indices.contains(sender.tag), owner?.canvas.markup.selected.map({ $0.kind == .text }) != false else { return }
         let z = Self.fontSizes[sender.tag]
         let scale = owner?.canvas.markup.screenScale ?? 1
         change(L("Size"), style: { $0.fontSize = z }, mark: { $0.fontSize = z / scale })
     }
 
     @objc func textColorChosen(_ sender: NSMenuItem) {
+        guard Self.textColors.indices.contains(sender.tag), owner?.canvas.markup.selected.map({ $0.kind == .text }) != false else { return }
         let c = Self.textColors[sender.tag].1
         change(L("Text Colour"), style: { $0.textColor = c }, mark: { $0.textColor = c })
     }
@@ -307,11 +337,13 @@ final class MarkupBar: NSObject, NSMenuDelegate {
     }
 
     @objc func colorPanelChanged(_ sender: NSColorPanel) {
+        guard owner?.canvas.markup.selected.map({ $0.kind == .text }) != false else { return }
         let c = sender.color
         change(L("Text Colour"), style: { $0.textColor = c }, mark: { $0.textColor = c })
     }
 
     @objc func traitChosen(_ sender: NSMenuItem) {
+        guard (0...2).contains(sender.tag), owner?.canvas.markup.selected.map({ $0.kind == .text }) != false else { return }
         let s = currentStyle
         switch sender.tag {
         case 0: change(L("Bold"), style: { $0.bold = !s.bold }, mark: { $0.bold = !s.bold })
@@ -321,6 +353,7 @@ final class MarkupBar: NSObject, NSMenuDelegate {
     }
 
     @objc func alignChosen(_ sender: NSMenuItem) {
+        guard (0...2).contains(sender.tag), owner?.canvas.markup.selected.map({ $0.kind == .text }) != false else { return }
         let a: NSTextAlignment = [.left, .center, .right][max(0, min(2, sender.tag))]
         change(L("Alignment"), style: { $0.alignment = a }, mark: { $0.alignment = a })
     }

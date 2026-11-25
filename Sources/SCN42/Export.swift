@@ -129,7 +129,7 @@ enum Exporter {
         s = s.replacingOccurrences(of: "{n}", with: String(format: "%03d", counter))
         s = s.replacingOccurrences(of: "###", with: String(format: "%03d", counter))
         s = s.replacingOccurrences(of: "{title}", with: title ?? "")
-        s = s.components(separatedBy: CharacterSet(charactersIn: "/:\\")).joined(separator: "-")
+        s = s.components(separatedBy: CharacterSet(charactersIn: "/:\\").union(.controlCharacters)).joined(separator: "-")
         s = s.trimmingCharacters(in: .whitespaces.union(CharacterSet(charactersIn: "-_.")))
         while s.contains("  ") { s = s.replacingOccurrences(of: "  ", with: " ") }
         return s.isEmpty ? L("Scan") : s
@@ -151,6 +151,11 @@ enum Exporter {
     /// Writes the pages; returns the files made (one, or one per page for single-page formats).
     static func write(_ pages: [ExportPage], folder: URL, baseName: String, options: SaveOptions,
                       replaceExisting: Bool = false) throws -> [URL] {
+        try validate(pages, options)
+        guard !baseName.isEmpty, baseName != ".", baseName != "..", baseName.utf8.count <= 240,
+              baseName.rangeOfCharacter(from: CharacterSet(charactersIn: "/:\\").union(.controlCharacters)) == nil else {
+            throw CocoaError(.fileWriteInvalidFileName)
+        }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let f = options.format
         if f.isMultiPage || pages.count == 1 {
@@ -161,18 +166,30 @@ enum Exporter {
         }
         var urls: [URL] = []
         for (i, page) in pages.enumerated() {
-            let url = uniqueURL(folder, "\(baseName) \(String(format: "%03d", i + 1))", f.ext)
+            let name = "\(baseName) \(String(format: "%03d", i + 1))"
+            let url = replaceExisting ? folder.appendingPathComponent(name).appendingPathExtension(f.ext) : uniqueURL(folder, name, f.ext)
             try data([page], options).write(to: url, options: .atomic)
             urls.append(url)
         }
         return urls
     }
 
-    /// The file contents for `pages` in the chosen format.
+    private static func validate(_ pages: [ExportPage], _ options: SaveOptions) throws {
+        guard !pages.isEmpty, options.quality.isFinite, (0...1).contains(options.quality),
+              pages.allSatisfy({ page in
+                  page.dpi.isFinite && page.dpi > 0 && page.image.width > 0 && page.image.height > 0
+                      && (Double(page.image.width) * 72 / page.dpi).isFinite
+                      && (Double(page.image.height) * 72 / page.dpi).isFinite
+              }) else { throw CocoaError(.fileWriteInvalidFileName) }
+    }
+
+    /// The file contents for `pages` in the chosen format. Single-page formats never silently drop pages.
     static func data(_ pages: [ExportPage], _ options: SaveOptions) throws -> Data {
+        try validate(pages, options)
+        guard options.format.isMultiPage || pages.count == 1 else { throw CocoaError(.fileWriteUnknown) }
         switch options.format {
         case .pdf, .pdfPerPage, .pdfA:
-            return pdf(pages, compression: options.compression, ocr: options.ocr, archival: options.format == .pdfA)
+            return try pdfChecked(pages, compression: options.compression, ocr: options.ocr, archival: options.format == .pdfA)
         case .jpeg, .png, .tiff, .heic:
             return try imageFile(pages, options)
         }
@@ -184,7 +201,8 @@ enum Exporter {
         var o = options
         o.ocr = false
         let sample = Array(pages.prefix(3))
-        let size = (try? data(sample, o).count) ?? 0
+        let size = o.format.isMultiPage ? ((try? data(sample, o).count) ?? 0)
+            : sample.reduce(0) { $0 + ((try? data([$1], o).count) ?? 0) }
         return Int(Double(size) * Double(pages.count) / Double(sample.count))
     }
 
@@ -194,6 +212,11 @@ enum Exporter {
 
     /// Image pages with an invisible text layer. JPEG data is embedded as is (DCT), 1-bit pages stay 1-bit.
     static func pdf(_ pages: [ExportPage], compression: Compression, ocr: Bool, archival: Bool, title: String? = nil) -> Data {
+        (try? pdfChecked(pages, compression: compression, ocr: ocr, archival: archival, title: title)) ?? Data()
+    }
+
+    static func pdfChecked(_ pages: [ExportPage], compression: Compression, ocr: Bool, archival: Bool, title: String? = nil) throws -> Data {
+        try validate(pages, SaveOptions())
         let data = NSMutableData()
         var info: [CFString: Any] = [kCGPDFContextCreator: "SCN42"]
         let docTitle = title ?? pages.first?.title
@@ -207,11 +230,12 @@ enum Exporter {
                 kCGPDFXDestinationOutputProfile: CGColorSpace(name: CGColorSpace.sRGB)!,
             ] as [CFString: Any]
         }
-        guard let consumer = CGDataConsumer(data: data), let ctx = CGContext(consumer: consumer, mediaBox: nil, info as CFDictionary) else { return Data() }
+        guard let consumer = CGDataConsumer(data: data), let ctx = CGContext(consumer: consumer, mediaBox: nil, info as CFDictionary) else { throw CocoaError(.fileWriteUnknown) }
         if archival { ctx.addDocumentMetadata(xmp(title: docTitle) as CFData) }
         for page in pages {
-            let (image, dpi) = encodedForPDF(page, compression)
-            var box = CGRect(x: 0, y: 0, width: Double(image.width) * 72 / dpi, height: Double(image.height) * 72 / dpi)
+            let (image, _) = try encodedForPDF(page, compression)
+            // Resampling rounds pixel counts; the scanned physical page size must remain exact.
+            var box = CGRect(x: 0, y: 0, width: Double(page.image.width) * 72 / page.dpi, height: Double(page.image.height) * 72 / page.dpi)
             let boxData = Data(bytes: &box, count: MemoryLayout<CGRect>.size) as CFData
             ctx.beginPDFPage([kCGPDFContextMediaBox: boxData] as CFDictionary)
             ctx.interpolationQuality = .high
@@ -220,30 +244,35 @@ enum Exporter {
             ctx.endPDFPage()
         }
         ctx.closePDF()
+        guard data.length > 0 else { throw CocoaError(.fileWriteUnknown) }
         return data as Data
     }
 
     /// The page image ready for a PDF: downsampled to the preset's resolution and JPEG-compressed;
     /// 1-bit (B&W) pages are kept as they are (Flate-compressed bits are smaller than JPEG).
-    static func encodedForPDF(_ page: ExportPage, _ c: Compression) -> (CGImage, Double) {
+    static func encodedForPDF(_ page: ExportPage, _ c: Compression) throws -> (CGImage, Double) {
+        try validate([page], SaveOptions())
         if page.image.bitsPerPixel == 1 || c == .original { return (page.image, page.dpi) }
         var image = page.image, dpi = page.dpi
         if let maxDPI = c.maxDPI, dpi > maxDPI + 1 {
             let s = maxDPI / dpi
             let gray = image.colorSpace?.model == .monochrome
             let bmp = Bitmap(image, gray: gray).resized(width: max(1, Int(Double(image.width) * s)), height: max(1, Int(Double(image.height) * s)))
-            if let r = bmp.cgImage() { image = r; dpi = maxDPI }
+            guard let resized = bmp.cgImage() else { throw CocoaError(.fileWriteUnknown) }
+            image = resized; dpi = maxDPI
         }
-        if let jpeg = jpegData(image, quality: c.quality, dpi: dpi), let provider = CGDataProvider(data: jpeg as CFData),
-           let decoded = CGImage(jpegDataProviderSource: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent) {
-            return (decoded, dpi)
+        guard let jpeg = jpegData(image, quality: c.quality, dpi: dpi), let provider = CGDataProvider(data: jpeg as CFData),
+              let decoded = CGImage(jpegDataProviderSource: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent) else {
+            throw CocoaError(.fileWriteUnknown)
         }
-        return (image, dpi)
+        return (decoded, dpi)
     }
 
     static func jpegData(_ image: CGImage, quality: Double, dpi: Double) -> Data? {
+        guard quality.isFinite, (0...1).contains(quality), dpi.isFinite, dpi > 0 else { return nil }
         let out = NSMutableData()
         guard let dest = CGImageDestinationCreateWithData(out, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
+        guard let image = Bitmap(image, gray: image.colorSpace?.model == .monochrome).cgImage() else { return nil }
         CGImageDestinationAddImage(dest, image, [kCGImageDestinationLossyCompressionQuality: quality,
                                                  kCGImagePropertyDPIWidth: dpi, kCGImagePropertyDPIHeight: dpi] as CFDictionary)
         return CGImageDestinationFinalize(dest) ? out as Data : nil
@@ -270,6 +299,8 @@ enum Exporter {
     // MARK: Images
 
     static func imageFile(_ pages: [ExportPage], _ o: SaveOptions) throws -> Data {
+        try validate(pages, o)
+        guard o.format.isMultiPage || pages.count == 1 else { throw CocoaError(.fileWriteUnknown) }
         let out = NSMutableData()
         let count = o.format == .tiff ? pages.count : 1
         guard let dest = CGImageDestinationCreateWithData(out, o.format.type.identifier as CFString, count, nil) else {
@@ -281,8 +312,11 @@ enum Exporter {
             switch o.format {
             case .jpeg, .heic:
                 props[kCGImageDestinationLossyCompressionQuality] = o.quality
-                // JPEG/HEIC have no 1-bit mode: store B&W as gray.
-                if image.bitsPerPixel == 1, let g = Bitmap(image, gray: true).cgImage() { image = g }
+                // Opaque output uses white for transparent paper; B&W expands to gray without losing content.
+                guard let opaque = Bitmap(image, gray: image.bitsPerPixel == 1 || image.colorSpace?.model == .monochrome).cgImage() else {
+                    throw CocoaError(.fileWriteUnknown)
+                }
+                image = opaque
             case .tiff:
                 props[kCGImagePropertyTIFFDictionary] = [kCGImagePropertyTIFFCompression: image.bitsPerPixel == 1 ? 4 : 5]
             default: break

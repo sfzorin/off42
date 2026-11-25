@@ -32,17 +32,29 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     var loaded: LoadedImage?
     var page = 0
     private var loadToken = 0
+    private var cacheGeneration = UUID()
+    var imageSession = UUID()
+    var searchGeneration = UUID()
+    var editGeneration = UUID()
     private var cache: [URL: LoadedImage] = [:]
     private var animationTimer: Timer?
     private var frameIndex = 0
     var slideshowTimer: Timer?
     var slideshowPaused = false
+    private var slideshowEnteredFullScreen = false
     var panelsBeforeFullScreen: Panels?
     var panelsBeforeHideAll: Panels?
 
     // Editing session (see Editing.swift)
     var originalBase: CGImage?
-    var base: CGImage? { didSet { if base !== oldValue { canvas.liveText.analyze(base) } } }
+    var base: CGImage? {
+        didSet {
+            if base !== oldValue {
+                textLines = nil; textLinesFor = nil
+                if animationTimer == nil { canvas.liveText.analyze(base) }
+            }
+        }
+    }
     var adjustments = Adjustments()
     var imageDescription: String?
     var originalDescription: String?
@@ -106,6 +118,7 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
         markup.baseImage = { [weak self] in self?.displayed ?? self?.base }
         markup.onCommit = { [weak self] before, name in self?.marksCommitted(before: before, name: name) }
         markup.onSelectionChange = { [weak self] in self?.markupBar.selectionChanged() }
+        markup.onTextEditingChange = { [weak self] in self?.updateSubtitle() }
         markup.onPixelSelectionChange = { [weak self] in
             guard let self else { return }
             if self.canvas.markup.pixelSelection != nil, self.canvas.liveText.overlay.hasActiveTextSelection { self.canvas.liveText.overlay.resetSelection() }
@@ -119,6 +132,8 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
         }
         markup.onCropRequest = { [weak self] in self?.cropToSelectionAction(nil) }
         markup.onMouseDown = { [weak self] in
+            self?.editGeneration = UUID()
+            self?.stopAnimation()
             if self?.canvas.liveText.overlay.hasActiveTextSelection == true { self?.canvas.liveText.overlay.resetSelection() }
         }
         canvas.liveText.allowsInteraction = { [weak markup] p in markup?.allowsLiveText(at: p) ?? false }
@@ -180,11 +195,13 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     // MARK: - Image set
 
     func setSet(_ newURLs: [URL], current: URL?) {
-        urls = sortOrder.sort(newURLs)
+        var seen = Set<URL>()
+        urls = sortOrder.sort(newURLs.filter { seen.insert($0.standardizedFileURL).inserted })
         filmstrip.urls = urls
         let start = current.flatMap { c in urls.firstIndex { $0.standardizedFileURL == c.standardizedFileURL } } ?? 0
         index = start
         cache.removeAll()
+        cacheGeneration = UUID()
         show(index: start)
     }
 
@@ -210,9 +227,11 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
             filmstrip.current = index
             return
         }
+        let destination = urls[i]
         confirmLeaving { [weak self] proceed in
             guard let self else { return }
-            if proceed { self.show(index: i) } else { self.filmstrip.current = self.index }
+            if proceed, let target = self.urls.firstIndex(of: destination) { self.show(index: target) }
+            else { self.filmstrip.current = self.index }
         }
     }
 
@@ -223,12 +242,21 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
         let url = urls[i]
         loadToken += 1
         let token = loadToken
+        imageSession = UUID(); searchGeneration = UUID()
+        stopAnimation(); renderWork?.cancel(); renderWork = nil
         window?.title = url.lastPathComponent
         window?.representedURL = url
         filmstrip.current = i
         if newPage == 0, let hit = cache[url] {
             display(hit)
         } else {
+            // The selected URL must never coexist with editable pixels from the previous image.
+            loaded = nil
+            resetEditing(base: nil)
+            canvas.setImage(nil, size: .zero, resetZoom: true)
+            canvas.markup.searchBoxes = []; searchIndex = -1
+            banner.hide(); window?.isDocumentEdited = false
+            updateControlAvailability()
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 let result = ImageLoader.load(url, page: newPage)
                 DispatchQueue.main.async {
@@ -242,19 +270,26 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     }
 
     private func showEmpty() {
+        loadToken += 1; imageSession = UUID(); searchGeneration = UUID(); cacheGeneration = UUID()
+        stopAnimation(); renderWork?.cancel(); renderWork = nil
         loaded = nil
         resetEditing(base: nil)
         canvas.setImage(nil, size: .zero, resetZoom: true)
         window?.title = "IMG42"
         window?.subtitle = ""
+        window?.isDocumentEdited = false
+        updateControlAvailability()
         showMessage(L("No images"))
     }
 
     func display(_ result: LoadedImage) {
+        imageSession = UUID(); searchGeneration = UUID()
         stopAnimation()
         loaded = result
         textLines = nil
+        textLinesFor = nil; searchIndex = -1
         canvas.markup.searchBoxes = []
+        banner.hide()
         if let error = result.error {
             resetEditing(base: nil)
             canvas.setImage(nil, size: .zero, resetZoom: true)
@@ -266,11 +301,12 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
             resetEditing(base: image)
             canvas.setImage(image, size: CGSize(width: image.width, height: image.height), resetZoom: true)
             if result.isAnimated, result.pages.count > 1 { startAnimation() }
+            if result.wasDownsampled { banner.show(.info, L("This image is displayed at reduced resolution. Save creates a copy.")) }
         }
         if !inspectorItem.isCollapsed, inspectorContainer.children.first === infoPanel { infoPanel.show(url: result.url, loaded: result) }
         updateSubtitle()
         preloadNeighbours()
-        window?.toolbar?.validateVisibleItems()
+        updateControlAvailability()
         markupBar.selectionChanged()
         if let q = toolbarImpl.searchField?.stringValue, !q.isEmpty { runSearch(q) }
     }
@@ -280,11 +316,11 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
         let wanted = Set([index - 1, index + 1].map { (($0 % urls.count) + urls.count) % urls.count }.map { urls[$0] } + [urls[index]])
         cache = cache.filter { wanted.contains($0.key) }
         for u in wanted where cache[u] == nil {
-            let token = loadToken
+            let generation = cacheGeneration
             DispatchQueue.global(qos: .utility).async { [weak self] in
                 let result = ImageLoader.load(u)
                 DispatchQueue.main.async {
-                    guard let self, token == self.loadToken || self.cache.count < 3 else { return }
+                    guard let self, generation == self.cacheGeneration, self.urls.contains(u) else { return }
                     self.cache[u] = result
                 }
             }
@@ -292,6 +328,7 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     }
 
     func invalidateCache(_ url: URL) {
+        cacheGeneration = UUID()
         cache[url] = nil
         filmstrip.reloadItem(url)
     }
@@ -305,10 +342,18 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
 
     func removeFromSet(_ url: URL) {
         guard let i = urls.firstIndex(of: url) else { return }
+        let current = self.url
         urls.remove(at: i)
         filmstrip.urls = urls
+        cacheGeneration = UUID()
         cache[url] = nil
         if urls.isEmpty { showEmpty(); return }
+        if current != url, let current, let currentIndex = urls.firstIndex(of: current) {
+            index = currentIndex
+            filmstrip.current = index
+            updateSubtitle()
+            return
+        }
         show(index: min(i, urls.count - 1))
     }
 
@@ -318,6 +363,21 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
         index = urls.firstIndex(of: current) ?? 0
         filmstrip.current = index
         updateSubtitle()
+    }
+
+    /// Save As changes the editing destination and the visible decoded baseline together.
+    func adoptSavedURL(_ destination: URL, loaded result: LoadedImage) {
+        loadToken += 1; cacheGeneration = UUID(); cache.removeAll()
+        let destination = destination.standardizedFileURL
+        if !urls.contains(where: { $0.standardizedFileURL == destination }) { urls.append(destination) }
+        urls = sortOrder.sort(urls)
+        index = urls.firstIndex(where: { $0.standardizedFileURL == destination }) ?? 0
+        page = 0
+        filmstrip.urls = urls; filmstrip.current = index; filmstrip.reloadItem(destination)
+        window?.title = destination.lastPathComponent; window?.representedURL = destination
+        NSDocumentController.shared.noteNewRecentDocumentURL(destination)
+        cache[destination] = result
+        display(result)
     }
 
     func insertIntoSet(_ url: URL) {
@@ -332,22 +392,34 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     private func startAnimation() {
         guard let l = loaded, l.pages.count > 1 else { return }
         frameIndex = 0
+        canvas.liveText.analyze(nil)
         scheduleFrame(after: l.frameDelays.first ?? 0.1)
     }
 
     private func scheduleFrame(after delay: Double) {
         animationTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             guard let self, let l = self.loaded, l.pages.count > 1, !self.isDirty else { return }
-            self.frameIndex = (self.frameIndex + 1) % l.pages.count
-            self.canvas.imageView.image = l.pages[self.frameIndex]
+            self.advanceAnimationFrame()
             self.scheduleFrame(after: l.frameDelays.indices.contains(self.frameIndex) ? l.frameDelays[self.frameIndex] : 0.1)
         }
     }
 
+    func advanceAnimationFrame() {
+        guard let l = loaded, l.isAnimated, l.pages.count > 1, !isDirty else { return }
+        frameIndex = (frameIndex + 1) % l.pages.count
+        let frame = l.pages[frameIndex]
+        originalBase = frame; base = frame; displayed = frame
+        canvas.setImage(frame, size: CGSize(width: frame.width, height: frame.height), resetZoom: false)
+    }
+
     func stopAnimation() {
+        let wasPlaying = animationTimer != nil
         animationTimer?.invalidate()
         animationTimer = nil
+        if wasPlaying { canvas.liveText.analyze(base) }
     }
+
+    func freezeDisplayedAnimationFrame() { stopAnimation() }
 
     // MARK: - Subtitle
 
@@ -414,9 +486,10 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
         guard let l = loaded, l.pageCount > 1 else { return }
         let p = page + d
         guard p >= 0, p < l.pageCount else { NSSound.beep(); return }
+        let sourceURL = l.url
         confirmLeaving { [weak self] ok in
-            guard ok, let self else { return }
-            self.show(index: self.index, page: p)
+            guard ok, let self, let target = self.urls.firstIndex(of: sourceURL) else { return }
+            self.show(index: target, page: p)
         }
     }
 
@@ -432,11 +505,11 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     @objc func toggleInfoAction(_ sender: Any?) { toggleInspector(infoPanel) }
     @objc func toggleAdjustAction(_ sender: Any?) { toggleInspector(adjustPanel) }
 
-    func toggleInspector(_ panel: NSViewController, forceShow: Bool = false) {
+    func toggleInspector(_ panel: NSViewController, forceShow: Bool = false, remember: Bool = true) {
         let showing = !inspectorItem.isCollapsed && inspectorContainer.children.first === panel
         if showing && !forceShow {
             inspectorItem.animator().isCollapsed = true
-            DispatchQueue.main.async { self.rememberPanels() }
+            if remember { DispatchQueue.main.async { self.rememberPanels() } }
             return
         }
         if inspectorContainer.children.first !== panel {
@@ -454,7 +527,7 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
         if panel === infoPanel { infoPanel.show(url: url, loaded: loaded) }
         if panel === adjustPanel { adjustPanel.set(adjustments) }
         if inspectorItem.isCollapsed { inspectorItem.isCollapsed = false }
-        rememberPanels()
+        if remember { rememberPanels() }
     }
 
     var inspectorShows: NSViewController? { inspectorItem.isCollapsed ? nil : inspectorContainer.children.first }
@@ -488,8 +561,14 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
 
     @objc func slideshowAction(_ sender: Any?) {
         if slideshowTimer != nil { stopSlideshow(); return }
+        startSlideshow()
+    }
+
+    func startSlideshow(enterFullScreen: Bool = true) {
+        guard slideshowTimer == nil, !urls.isEmpty else { return }
         slideshowPaused = false
-        if window?.styleMask.contains(.fullScreen) == false { window?.toggleFullScreen(nil) }
+        slideshowEnteredFullScreen = enterFullScreen && window?.styleMask.contains(.fullScreen) == false
+        if slideshowEnteredFullScreen { window?.toggleFullScreen(nil) }
         canvas.backgroundColor = .black
         slideshowTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
             guard let self, !self.slideshowPaused else { return }
@@ -503,8 +582,9 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     func stopSlideshow() {
         slideshowTimer?.invalidate()
         slideshowTimer = nil
-        canvas.backgroundColor = background.color
-        if window?.styleMask.contains(.fullScreen) == true { window?.toggleFullScreen(nil) }
+        canvas.backgroundColor = window?.styleMask.contains(.fullScreen) == true ? .black : background.color
+        if slideshowEnteredFullScreen, window?.styleMask.contains(.fullScreen) == true { window?.toggleFullScreen(nil) }
+        slideshowEnteredFullScreen = false
         updateSubtitle()
     }
 
@@ -519,6 +599,8 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     }
 
     func windowWillClose(_ notification: Notification) {
+        loadToken += 1; imageSession = UUID(); searchGeneration = UUID(); cacheGeneration = UUID()
+        renderWork?.cancel(); renderWork = nil
         rememberPanels()
         stopAnimation()
         slideshowTimer?.invalidate()
@@ -548,6 +630,7 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     }
 
     func windowWillExitFullScreen(_ notification: Notification) {
+        slideshowEnteredFullScreen = false
         if slideshowTimer != nil {
             slideshowTimer?.invalidate()
             slideshowTimer = nil
@@ -592,8 +675,8 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     func setPanels(_ p: Panels, remember: Bool = true) {
         if markupBar.strip.isShown != p.contains(.markup) { markupBar.show(p.contains(.markup)) }
         filmstrip.isHidden = !p.contains(.filmstrip)
-        if p.contains(.info) { toggleInspector(infoPanel, forceShow: true) }
-        else if p.contains(.adjust) { toggleInspector(adjustPanel, forceShow: true) }
+        if p.contains(.info) { toggleInspector(infoPanel, forceShow: true, remember: false) }
+        else if p.contains(.adjust) { toggleInspector(adjustPanel, forceShow: true, remember: false) }
         else if !inspectorItem.isCollapsed { inspectorItem.isCollapsed = true }
         if window?.styleMask.contains(.fullScreen) != true { window?.toolbar?.isVisible = p.contains(.toolbar) }
         if !filmstrip.isHidden { DispatchQueue.main.async { self.filmstrip.current = self.index } }
@@ -636,6 +719,14 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     }
 
     func validateToolbarItem(_ item: NSToolbarItem) -> Bool { validate(item.action, tag: item.tag) }
+
+    func updateControlAvailability() {
+        let enabled = base != nil
+        toolbarImpl.highlight.isEnabled = enabled
+        toolbarImpl.share.isEnabled = enabled
+        toolbarImpl.searchField?.isEnabled = enabled
+        window?.toolbar?.validateVisibleItems()
+    }
 
 
     func validate(_ action: Selector?, tag: Int) -> Bool {

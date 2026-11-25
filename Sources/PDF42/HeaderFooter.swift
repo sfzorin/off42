@@ -27,7 +27,7 @@ struct HeaderFooterSpec {
 
     func bates(_ n: Int) -> String {
         let digits = String(n)
-        return batesPrefix + String(repeating: "0", count: max(0, batesDigits - digits.count)) + digits + batesSuffix
+        return batesPrefix + String(repeating: "0", count: max(0, min(12, batesDigits) - digits.count)) + digits + batesSuffix
     }
 
     /// Text for position `slot` on a page: `page`/`pages` are 1-based numbers in the document, `bates` the running number.
@@ -80,9 +80,11 @@ final class HeaderFooterOverlay: PageOverlay {
     /// Overlays for `indices` of `pdf`; Bates numbers run from `bates` up. Returns the next Bates number.
     static func make(_ spec: HeaderFooterSpec, pdf: PDFDocument, indices: [Int], fileName: String, labels: [PageLabelRange],
                      bates: Int) -> (overlays: [(Int, HeaderFooterOverlay)], next: Int) {
+        let chosen = Array(Set(indices.filter { $0 >= 0 && $0 < pdf.pageCount })).sorted()
+        guard !bates.addingReportingOverflow(chosen.count).overflow else { return ([], bates) }
         var n = bates
         var out: [(Int, HeaderFooterOverlay)] = []
-        for i in indices.sorted() {
+        for i in chosen {
             guard let page = pdf.page(at: i) else { continue }
             let label = PageLabels.label(i, labels) ?? "\(i + 1)"
             let lines = (0..<6).map { spec.text($0, page: i + 1, pages: pdf.pageCount, label: label, file: fileName, bates: n) }
@@ -154,17 +156,25 @@ extension EditorWindowController {
         alert.window.initialFirstResponder = slots[4]
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         guard let targets = pages.indices(current: currentIndex, selected: targetIndices, pageCount: pdf.pageCount) else { NSSound.beep(); return }
-        func number(_ f: NSTextField, _ d: Double) -> Double { Double(f.stringValue.replacingOccurrences(of: ",", with: ".")) ?? d }
+        func number(_ field: NSTextField) -> Double? {
+            guard let n = Double(field.stringValue.replacingOccurrences(of: ",", with: ".")), n.isFinite else { return nil }
+            return n
+        }
+        guard let fontSize = number(size), fontSize >= 4, fontSize <= 72,
+              let topMargin = number(vertical), topMargin >= 0, topMargin <= 5000,
+              let sideMargin = number(horizontal), sideMargin >= 0, sideMargin <= 5000,
+              let first = Int(start.stringValue), first >= 0, first <= Int.max - targets.count,
+              let places = Int(digits.stringValue), places >= 1, places <= 12 else { NSSound.beep(); return }
         spec.texts = slots.map(\.stringValue)
         spec.fontName = HeaderFooterSpec.fonts[max(0, font.indexOfSelectedItem)]
-        spec.fontSize = CGFloat(number(size, 10)).clamped(4, 72)
+        spec.fontSize = CGFloat(fontSize)
         spec.color = Self.overlayColors[max(0, color.indexOfSelectedItem)].1
-        spec.vertical = CGFloat(number(vertical, 10)) * PageGeometry.mm
-        spec.horizontal = CGFloat(number(horizontal, 12)) * PageGeometry.mm
+        spec.vertical = CGFloat(topMargin) * PageGeometry.mm
+        spec.horizontal = CGFloat(sideMargin) * PageGeometry.mm
         spec.batesPrefix = prefix.stringValue
         spec.batesSuffix = suffix.stringValue
-        spec.batesDigits = max(1, min(12, Int(digits.stringValue) ?? 6))
-        spec.batesStart = max(0, Int(start.stringValue) ?? 1)
+        spec.batesDigits = places
+        spec.batesStart = first
         spec.date = Date()
         guard !spec.isEmpty else { return }
         Self.lastHeaderFooter = spec
@@ -214,7 +224,7 @@ extension EditorWindowController {
             guard let baked = PageOverlay.bake(doc) else { continue }
             let out = DocumentWriter.apply(AcroFormFixer.ensureFields(baked.data), extras: extras, pdf: doc)
             let target = dir.appendingPathComponent(url.lastPathComponent)
-            try out.write(to: target)
+            try out.write(to: target, options: .atomic)
             written.append(target)
         }
         return written

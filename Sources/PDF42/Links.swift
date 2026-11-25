@@ -96,7 +96,8 @@ extension EditorWindowController {
         guard response == .alertFirstButtonReturn else { return nil }
         switch kind.indexOfSelectedItem {
         case 0:
-            var text = url.stringValue.trimmingCharacters(in: .whitespaces)
+            var text = url.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { NSSound.beep(); return nil }
             if text.contains("@"), !text.contains(":") { text = "mailto:" + text }
             else if !text.contains(":") { text = "https://" + text }
             guard !text.isEmpty, let u = URL(string: text) else { NSSound.beep(); return nil }
@@ -127,7 +128,8 @@ extension EditorWindowController {
             link.action = PDFActionGoTo(destination: d)
             pdfDoc?.extras.linkFit[ObjectIdentifier(link)] = zoom.isEmpty ? nil : zoom
         case .destination(let d):
-            link.action = PDFActionGoTo(destination: PDFDestination(page: d.page!, at: d.point))
+            guard let page = d.page, pdf.index(for: page) != NSNotFound else { return }
+            link.action = PDFActionGoTo(destination: PDFDestination(page: page, at: d.point))
             pdfDoc?.extras.linkFit[ObjectIdentifier(link)] = nil
         }
         let b = PDFBorder()

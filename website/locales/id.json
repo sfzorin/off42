@@ -1,0 +1,406 @@
+{
+  "nav": {
+    "features": "Fitur",
+    "apps": "Rangkaian aplikasi",
+    "about": "Sumber terbuka",
+    "download": "Unduhan",
+    "language": "Bahasa",
+    "menu": "Menu",
+    "skip": "Lewati ke konten",
+    "home": "Beranda"
+  },
+  "home": {
+    "eyebrow": "Gratis · Sumber terbuka · macOS dan Windows",
+    "title": "Seluruh kantor Anda. Tanpa langganan.",
+    "intro": "OFF42 menyatukan enam aplikasi native untuk macOS dan Windows: PDF, dokumen, spreadsheet, presentasi, gambar, dan pemindaian. Gratis dan bersumber terbuka, dengan implementasi platform terpisah serta batasan yang didokumentasikan.",
+    "primary": "Dapatkan OFF42",
+    "secondary": "Jelajahi alatnya",
+    "note": "Gratis · Sumber terbuka · macOS 14+ · Windows",
+    "suiteTitle": "Kantor lengkap. Kerja terasa ringan.",
+    "suiteIntro": "Dari draf pertama hingga PDF bertanda tangan, kerjakan tugas sehari-hari dalam satu keluarga alat yang familier.",
+    "featureEyebrow": "DETAIL KECIL. PERBEDAAN BESAR.",
+    "featureTitle": "Lebih banyak kemungkinan di setiap file.",
+    "featureIntro": "Edit PDF. Perkecil lampiran besar. Ubah halaman kertas menjadi teks yang dapat dicari. Temukan alat yang sesuai.",
+    "privacyTitle": "Di meja Anda, bukan server orang lain.",
+    "privacyText": "Penyuntingan utama berjalan secara lokal di komputer Anda tanpa mengunggah file. Fitur daring opsional memerlukan koneksi; ketersediaannya berbeda menurut platform.",
+    "privacyLabel": "Dibuat untuk bekerja secara lokal",
+    "languageTitle": "Terasa akrab, dalam 20 bahasa.",
+    "languageText": "Situs dan antarmuka aplikasi berbicara dalam bahasa Anda. Pilih bahasa Anda dan gunakan alat yang sama dengan nyaman.",
+    "openTitle": "Terbuka dalam setiap arti.",
+    "openText": "OFF42 dirilis dengan lisensi MIT. Baca kodenya, bangun sendiri, laporkan bug, atau bantu menyempurnakan versi berikutnya.",
+    "openLink": "Jelajahi di GitHub",
+    "endTitle": "Langganan: off. Kantor tetap milik Anda.",
+    "endText": "Gratis · Sumber terbuka · macOS dan Windows",
+    "formatsLabel": "FORMAT OFFICE DAN TERBUKA",
+    "formatsTitle": "Bekerja dengan file yang sudah Anda miliki.",
+    "formatsText": "Buka file kiriman rekan kerja dan simpan dalam format yang mereka harapkan. Tata letak yang rumit bisa tampak berbeda, jadi periksa file penting setelah diimpor.",
+    "opens": "Membuka",
+    "saves": "Menyimpan",
+    "faqTitle": "Pertanyaan sebelum memulai",
+    "faq": [
+      {
+        "q": "Apakah OFF42 gratis?",
+        "a": "Ya. OFF42 gratis dan sumber terbuka dengan lisensi MIT. Tidak ada langganan, akun, atau pembelian dalam aplikasi."
+      },
+      {
+        "q": "Apakah OFF42 bisa digunakan offline?",
+        "a": "Penyuntingan utama berjalan secara lokal di komputer Anda tanpa mengunggah file. Fitur daring opsional memerlukan koneksi; ketersediaannya berbeda menurut platform."
+      },
+      {
+        "q": "Bisakah OFF42 membuka file Microsoft Office?",
+        "a": "Ya. DOC42 membuka DOCX dan DOC, XLS42 membuka XLSX dan XLS, dan PPT42 membuka PPTX. File OpenDocument (ODT, ODS, ODP) juga didukung. Tidak semua fitur Office didukung, jadi periksa file yang rumit setelah diimpor."
+      },
+      {
+        "q": "Mac mana saja yang didukung OFF42?",
+        "a": "OFF42 menargetkan macOS 14 atau lebih baru. Penginstal publik belum dirilis; Anda dapat membangun aplikasinya dari kode sumber dengan Xcode Command Line Tools."
+      },
+      {
+        "q": "Apakah ada versi Windows?",
+        "a": "Aplikasi native Windows sudah diimplementasikan dan tersedia sebagai kode sumber. Periksa fitur dan batasan yang didokumentasikan. Penginstal publik Windows belum dirilis."
+      }
+    ]
+  },
+  "name": {
+    "label": "APALAH ARTI SEBUAH NAMA",
+    "title": "OFF berasal dari office. Juga dari semua yang bisa dimatikan.",
+    "officeTitle": "Kantor yang lengkap",
+    "officeText": "Enam aplikasi untuk setiap file di meja Anda: PDF, file Word dan Excel, slide, foto, dan hasil pindaian.",
+    "offlineTitle": "Bekerja secara offline",
+    "offlineText": "Penyuntingan berjalan di komputer Anda. Tanpa akun atau unggahan file.",
+    "offTitle": "Langganan: off",
+    "offText": "Tanpa langganan, tanpa masa uji coba, tanpa iklan. Berlisensi MIT dan gratis, hari ini dan seterusnya.",
+    "answerTitle": "Lalu 42?",
+    "answerText": "Jawaban atas Pertanyaan Pamungkas tentang Kehidupan, Alam Semesta, dan Segalanya. Kami hanya menerapkannya pada urusan kantor.",
+    "stats": [
+      "aplikasi dalam satu paket",
+      "format file",
+      "bahasa antarmuka",
+      "langganan",
+      "unggahan file Anda"
+    ]
+  },
+  "marks": {
+    "label": "TANDA TANGAN DAN STEMPEL",
+    "title": "Tanda tangan dan stempel seperti di kertas. Tanpa printer, tanpa pemindai.",
+    "text": "OFF42 menulis tanda tangan tulisan tangan dari sebuah nama, membubuhkan stempel perusahaan, lalu menaruh keduanya langsung di dokumen. Setiap bubuhan sedikit berbeda, seperti tinta asli di atas kertas.",
+    "points": [
+      "Tanda tangan dengan pulpen, pena gel, pena tinta, atau spidol",
+      "132 gaya stempel: stempel bulat, stempel perusahaan, “Lunas” dan “Diterima”",
+      "Mempelajari tanda tangan Anda sendiri dari beberapa contoh",
+      "Berfungsi di PDF, dokumen, slide, spreadsheet, gambar, dan hasil pindaian"
+    ],
+    "note": "Tanda tangan yang digambar bukan tanda tangan digital berbasis sertifikat. Saat Anda memerlukannya, PDF42 menandatangani dengan sertifikat Anda.",
+    "signedCaption": "Kontrak yang ditandatangani dan distempel di PDF42. Nama dan perusahaan adalah fiktif."
+  },
+  "codes": {
+    "label": "KODE QR, SIMBOL, DAN LABEL",
+    "title": "Kode QR, tanda CE, dan lembar label, presisi hingga milimeter.",
+    "text": "Ubah sel, baris tabel, atau pilihan menjadi kode QR, Data Matrix, Code 128, atau Aztec, lalu tambahkan tanda kesesuaian dan keselamatan yang dibutuhkan produk Anda. Atur ukurannya dalam milimeter, lalu cetak satu lembar label penuh langsung dari baris data Anda.",
+    "points": [
+      "Kode QR, Data Matrix, Code 128, dan Aztec yang tetap dapat diedit setelah disimpan",
+      "97 tanda: CE, UKCA, EAC, FCC, UL, CCC, KC, RCM, WEEE, RoHS, piktogram GHS, simbol keselamatan IEC, dan lainnya",
+      "Lembar label dari baris spreadsheet, tabel dokumen, atau halaman maupun area PDF",
+      "559 jenis kertas label atau kisi Anda sendiri, templat tersimpan, dan kalibrasi printer"
+    ],
+    "note": "Tanda adalah gambar untuk label Anda: tanda tidak menyertifikasi produk. Untuk tanda kesesuaian dan merek dagang, aplikasi menampilkan syarat penggunaannya, seperti sertifikat atau nomor lisensi yang diwajibkan. Tersedia di PDF42, DOC42, dan XLS42 di macOS.",
+    "qrAlt": "“Insert Symbol or Code” di XLS42: kode QR 30 mm yang dibuat dari tautan produk.",
+    "labelsAlt": "“Create Labels” di XLS42: lembar label berisi kode QR yang dibuat dari sepuluh baris produk.",
+    "caption": "Lembar label yang dibuat dari sepuluh baris spreadsheet. Produknya fiktif."
+  },
+  "show": {
+    "label": "LIHAT CARA KERJANYA",
+    "title": "Aplikasi nyata. Dokumen nyata.",
+    "text": "Setiap gambar di sini adalah tangkapan layar OFF42 di Mac, dengan contoh dokumen perusahaan fiktif yang dibuka di aplikasi. Bukan mock-up."
+  },
+  "labels": {
+    "learn": "Jelajahi",
+    "allFeatures": "Semua fitur",
+    "useCases": "UNTUK PEKERJAAN SEHARI-HARI",
+    "workflow": "Dari membuka hingga selesai",
+    "details": "Yang dapat Anda lakukan",
+    "goodToKnow": "Perlu diketahui",
+    "related": "Terus jelajahi",
+    "faq": "Beberapa jawaban bermanfaat",
+    "step": "Langkah",
+    "illustration": "Ilustrasi alur kerja",
+    "source": "Kode sumber",
+    "license": "Lisensi MIT",
+    "release": "Rilis GitHub",
+    "available": "Tersedia",
+    "unavailable": "Belum dirilis",
+    "downloadDmg": "Unduh DMG",
+    "downloadExe": "Unduh EXE",
+    "checksum": "SHA-256",
+    "version": "Versi",
+    "requirements": "Persyaratan sistem",
+    "footer": "Paket perkantoran sumber terbuka untuk pekerjaan sehari-hari.",
+    "privacy": "Privasi",
+    "copyright": "Proyek sumber terbuka independen.",
+    "back": "Kembali ke beranda",
+    "notFound": "Halaman ini tidak ada di meja.",
+    "notFoundText": "Coba beranda atau pilih bahasa untuk terus menjelajah.",
+    "copy": "Salin",
+    "copied": "Tersalin",
+    "screenshot": "Tangkapan layar di macOS. Contoh dokumen, perusahaan fiktif."
+  },
+  "apps": {
+    "pdf": {
+      "tag": "PDF dengan lebih banyak kemungkinan.",
+      "text": "Baca, beri anotasi, atur, kompres, dan tandatangani PDF Anda."
+    },
+    "doc": {
+      "tag": "Dari gagasan menjadi dokumen.",
+      "text": "Tulis dan tata dokumen dalam DOCX, ODT, RTF, dan Markdown."
+    },
+    "xls": {
+      "tag": "Buat angka Anda bercerita.",
+      "text": "Olah spreadsheet, rumus, dan grafik dalam XLSX, ODS, dan CSV."
+    },
+    "ppt": {
+      "tag": "Gagasan yang layak dipresentasikan.",
+      "text": "Buat slide, gunakan tabel dan bentuk, lalu sampaikan cerita Anda."
+    },
+    "img": {
+      "tag": "Sedikit edit. Gambar lebih baik.",
+      "text": "Lihat, pangkas, ubah ukuran, beri anotasi, dan sesuaikan gambar."
+    },
+    "scn": {
+      "tag": "Buka kemungkinan baru dari kertas.",
+      "text": "Pindai, bersihkan halaman, dan kenali teks dengan OCR di perangkat."
+    }
+  },
+  "features": {
+    "documents": {
+      "title": "Ruang untuk gagasan hebat berikutnya",
+      "seoTitle": "Pengolah Kata Gratis untuk Mac — DOCX, ODT, RTF | OFF42",
+      "seoDescription": "Tulis surat dan laporan di DOC42: buka dan simpan DOCX, ODT, RTF, dan Markdown, tata halaman dengan tabel dan gambar, lalu ekspor PDF. Gratis, sumber terbuka.",
+      "short": "Dokumen",
+      "intro": "Tulis surat, laporan, dan draf berikutnya dengan DOC42. Gabungkan teks kaya dan tata letak halaman dalam format dokumen yang familier.",
+      "points": [
+        "Buka dan simpan DOCX, ODT, RTF, Markdown, serta format teks lainnya.",
+        "Gunakan pemformatan, tabel, gambar, dan tata letak halaman.",
+        "Ekspor ke PDF saat dokumen siap dibagikan."
+      ],
+      "steps": [
+        "Buat dokumen atau buka file yang sudah ada.",
+        "Tata teks, gambar, dan halaman.",
+        "Simpan salinan yang dapat diedit atau ekspor PDF."
+      ],
+      "note": "Dokumen Office yang rumit dapat ditampilkan berbeda. Periksa tata letak impor dan file ekspor sebelum mengandalkan kesesuaian persis.",
+      "question": "Bisakah saya mengerjakan dokumen Word?",
+      "answer": "DOC42 mendukung DOCX dan membuka file DOC lama. Dukungan format tidak berarti setiap fitur Microsoft Word ditangani dengan cara yang sama."
+    },
+    "spreadsheets": {
+      "title": "Pahami makna di balik angka",
+      "seoTitle": "Aplikasi Spreadsheet Gratis di Mac — XLSX, ODS, CSV | OFF42",
+      "seoDescription": "Buka file XLSX dan XLS, gunakan rumus, format, dan grafik, simpan XLSX, ODS, atau CSV, lalu ekspor PDF dengan XLS42. Spreadsheet gratis sumber terbuka di Mac.",
+      "short": "Spreadsheet",
+      "intro": "Dari daftar sederhana hingga laporan perhitungan, XLS42 menghadirkan sel, rumus, dan grafik untuk pekerjaan sehari-hari.",
+      "points": [
+        "Buka XLSX, XLS lama, ODS, dan file teks berpemisah.",
+        "Gunakan rumus, pemformatan, dan grafik untuk menjelaskan data.",
+        "Simpan XLSX, ODS, atau CSV, atau ekspor PDF."
+      ],
+      "steps": [
+        "Buka buku kerja atau mulai dari lembar kosong.",
+        "Masukkan data, terapkan rumus, dan tambahkan grafik.",
+        "Tinjau perhitungan dan simpan dalam format yang tepat."
+      ],
+      "note": "Dukungan rumus dan pemformatan berbeda menurut file. CSV menyimpan satu tabel nilai, bukan buku kerja lengkap dengan pemformatan dan beberapa lembar.",
+      "question": "Bisakah saya membuka spreadsheet Excel?",
+      "answer": "Ya, XLS42 membuka file XLSX dan XLS lama. Periksa rumus yang rumit serta pemformatan impor; tidak semua fitur Excel didukung."
+    },
+    "presentations": {
+      "title": "Berikan panggung bagi gagasan Anda",
+      "seoTitle": "Aplikasi Presentasi Gratis untuk Mac — PPTX, ODP | OFF42",
+      "seoDescription": "Buat slide dengan teks, gambar, bentuk, dan tabel, presentasikan dengan catatan pembicara, lalu ekspor PDF atau gambar dengan PPT42. Gratis dan sumber terbuka.",
+      "short": "Presentasi",
+      "intro": "Bangun cerita visual yang jelas dengan PPT42. Atur teks, gambar, bentuk, dan tabel, lalu beralih dari pengeditan ke tayangan slide.",
+      "points": [
+        "Gunakan file presentasi PPTX dan OpenDocument.",
+        "Atur objek slide, tabel, dan catatan pembicara.",
+        "Ekspor slide ke PDF dan gambar agar mudah dibagikan."
+      ],
+      "steps": [
+        "Buat presentasi atau buka presentasi yang didukung.",
+        "Sempurnakan setiap slide dan siapkan catatan.",
+        "Jalankan tayangan slide atau ekspor slide Anda."
+      ],
+      "note": "File PPT lama perlu dikonversi terlebih dahulu. Tata letak impor yang rumit dapat berbeda; tinjau seluruh presentasi sebelum menyampaikannya.",
+      "question": "Bisakah saya membagikan slide sebagai PDF?",
+      "answer": "Ya. PPT42 mendukung ekspor PDF untuk slide dan halaman catatan, serta gambar slide PNG dan JPEG."
+    },
+    "edit-pdf": {
+      "title": "Edit PDF di Mac Anda",
+      "seoTitle": "Editor PDF Gratis untuk Mac — Edit & Isi Formulir | OFF42",
+      "seoDescription": "Edit teks PDF, sorot, beri anotasi, isi formulir, dan urutkan halaman di Mac dengan PDF42. Gratis, sumber terbuka, dan offline, tanpa unggah ke editor daring.",
+      "short": "Pengeditan PDF",
+      "intro": "Jadikan PDF dokumen kerja Anda. Edit teks halaman, tambahkan catatan, sorot bagian penting, isi formulir, dan urutkan halaman dengan PDF42.",
+      "points": [
+        "Edit teks halaman dan beri anotasi dengan sorotan, kotak teks, bentuk, serta coretan bebas.",
+        "Sisipkan, ekstrak, putar, hapus, dan urutkan ulang halaman.",
+        "Isi formulir PDF yang didukung dan simpan perubahan."
+      ],
+      "steps": [
+        "Buka PDF dari Mac Anda.",
+        "Pilih alat anotasi, formulir, atau halaman sesuai tugas.",
+        "Simpan salinan dan tinjau dokumen yang sudah selesai."
+      ],
+      "note": "Perubahan teks halaman digabungkan ke konten halaman saat disimpan. Tata letak dan formulir PDF yang rumit dapat berbeda; tinjau salinan tersimpan sebelum membagikannya.",
+      "question": "Bisakah saya mengedit PDF tanpa mengunggahnya?",
+      "answer": "Ya. PDF42 bekerja dengan file lokal di Mac Anda. Anotasi dan operasi halaman utama tidak memerlukan editor daring."
+    },
+    "scan-ocr": {
+      "title": "Ubah kertas menjadi dokumen yang dapat dicari",
+      "seoTitle": "Aplikasi Scan OCR untuk Mac — PDF yang Dapat Dicari | OFF42",
+      "seoDescription": "Pindai dari pemindai atau kamera iPhone, luruskan dan bersihkan halaman, kenali teks di Mac, lalu ekspor PDF yang dapat dicari dengan SCN42. Gratis dan offline.",
+      "short": "Pemindaian & OCR",
+      "intro": "Bawa kertas ke kantor digital Anda dengan SCN42. Ambil halaman, luruskan dan bersihkan, lalu kenali teks di Mac Anda.",
+      "points": [
+        "Ambil halaman dari pemindai yang didukung atau impor gambar dan PDF.",
+        "Pangkas, luruskan, dan sesuaikan halaman sebelum pengenalan teks.",
+        "Ekspor PDF yang dapat dicari atau teks hasil pengenalan."
+      ],
+      "steps": [
+        "Pindai atau impor halaman Anda.",
+        "Periksa urutan halaman dan bersihkan gambar.",
+        "Jalankan OCR dan ekspor ke format yang dibutuhkan."
+      ],
+      "note": "Dukungan pemindai dan Continuity bergantung pada perangkat keras Anda. Bahasa dan akurasi OCR bergantung pada Apple Vision serta gambar sumber; 20 bahasa antarmuka merupakan fitur terpisah.",
+      "question": "Bisakah saya mencari teks dalam hasil pindai?",
+      "answer": "Ekspor PDF yang dapat dicari setelah OCR untuk menambahkan lapisan teks. Selalu tinjau hasil pengenalan, terutama nama, angka, dan hasil pindai berkualitas rendah."
+    },
+    "compress-pdf": {
+      "title": "Kompres PDF, lanjutkan pekerjaan",
+      "seoTitle": "Kompres PDF di Mac — Perkecil Ukuran File Offline | OFF42",
+      "seoDescription": "Perkecil PDF yang penuh gambar di Mac dengan PDF42. Pilih 100, 150, atau 220 dpi, pratinjau ukurannya, dan teks tetap tajam. Gratis, offline, tanpa unggah file.",
+      "short": "Kompresi PDF",
+      "intro": "Permudah berbagi PDF yang penuh gambar. PDF42 menyediakan kontrol kompresi untuk menyeimbangkan ukuran file dan detail gambar.",
+      "points": [
+        "Pilih preset gambar 100, 150, atau 220 dpi.",
+        "Pratinjau ukuran file sambil mempertahankan ketajaman teks dan konten vektor.",
+        "Simpan sebagai file terpisah dan bandingkan hasilnya dengan aslinya."
+      ],
+      "steps": [
+        "Buka PDF dan pilih kompresi.",
+        "Pilih preset gambar dan bandingkan perkiraan ukurannya.",
+        "Simpan hasilnya, lalu periksa ukuran dan keterbacaannya."
+      ],
+      "note": "Hasil bergantung pada file sumber, dan ukurannya mungkin tidak berkurang. Kompresi mengurangi kualitas gambar dan menghapus tanda tangan digital yang ada.",
+      "question": "Seberapa kecil ukuran PDF saya nantinya?",
+      "answer": "Tidak ada pengurangan yang tetap. PDF hasil pindai dan yang penuh gambar biasanya lebih mudah dikompres daripada file yang sudah dioptimalkan."
+    },
+    "labels-codes": {
+      "title": "Kode, simbol, dan label dalam milimeter",
+      "seoTitle": "Pembuat Label Kode QR, Barcode, dan Tanda CE untuk Mac | OFF42",
+      "seoDescription": "Buat kode QR, Data Matrix, Code 128, dan Aztec, tambahkan CE, UKCA, EAC, FCC, dan tanda produk lainnya, lalu cetak lembar label dari baris spreadsheet di Mac Anda. Gratis.",
+      "short": "Kode QR dan label",
+      "intro": "Tempatkan kode yang dapat dipindai atau tanda kesesuaian di PDF, dokumen, atau spreadsheet, lalu cetak satu lembar label penuh dari data Anda. Ukuran diatur dalam milimeter.",
+      "points": [
+        "Sisipkan kode QR, Data Matrix, Code 128, dan Aztec yang tetap dapat diedit setelah disimpan.",
+        "Tambahkan 97 tanda produk — kesesuaian (CE, UKCA, EAC, FCC, UL, CCC), lingkungan (WEEE, RoHS), piktogram bahaya GHS, dan simbol keselamatan IEC — beserta syarat penggunaannya.",
+        "Cetak lembar label dari baris spreadsheet, tabel dokumen, atau area PDF pada 559 format kertas atau kisi Anda sendiri."
+      ],
+      "steps": [
+        "Pilih sel, tabel, teks, atau area PDF, lalu pilih “Insert › Symbol or Code” atau “File › Create Labels”.",
+        "Pilih jenis kode atau simbol, lebar dalam milimeter, jenis kertas label, dan kolom kode.",
+        "Periksa pratinjau, lalu simpan sebagai PDF atau cetak dengan kalibrasi printer Anda."
+      ],
+      "note": "Tanda hanyalah gambar: menyisipkannya tidak menyertifikasi produk. Gunakan tanda kesesuaian dan merek dagang hanya jika produk Anda bersertifikat atau Anda memegang lisensinya; aplikasi menampilkan syarat setiap tanda. Periksa toleransi kertas dan printer dengan cetakan uji. Di macOS; dialog diterjemahkan ke bahasa Inggris, Rusia, dan Turki, nama tanda ke 11 bahasa.",
+      "question": "Apakah kode tetap dapat diedit setelah saya menyimpan file?",
+      "answer": "Ya. File PDF, DOCX, XLSX, dan ODS menyimpan resep kode, sehingga “Edit Symbol or Code” dapat membukanya kembali; aplikasi lain melihatnya sebagai gambar biasa. Kode di spreadsheet mengambil nilai sel saat disisipkan dan tidak mengikuti perubahan berikutnya."
+    },
+    "sign-pdf": {
+      "title": "Bubuhkan tanda Anda pada PDF",
+      "seoTitle": "Tanda Tangan PDF di Mac — Stempel & Sertifikat | OFF42",
+      "seoDescription": "Tambahkan tanda tangan gaya tulisan tangan atau stempel ke PDF, atau gunakan sertifikat. PDF42 menyimpannya untuk dipakai lagi. Gratis dan sumber terbuka.",
+      "short": "Tanda tangan PDF",
+      "intro": "Simpan tanda tangan dan stempel dekat dengan pekerjaan Anda. Tambahkan tanda tangan visual, gunakan kembali stempel, atau gunakan tanda tangan digital berbasis sertifikat di PDF42.",
+      "points": [
+        "Simpan tanda tangan dan stempel yang dapat digunakan kembali dalam pustaka bersama.",
+        "Tempatkan dan sesuaikan tanda visual pada halaman.",
+        "Gunakan penandatanganan berbasis sertifikat bila alur kerja memerlukannya."
+      ],
+      "steps": [
+        "Buka dokumen dan pilih alat tanda tangan.",
+        "Pilih tanda visual atau alur penandatanganan digital.",
+        "Simpan dan periksa hasilnya di perangkat lunak PDF penerima."
+      ],
+      "note": "Tanda tangan visual bukan tanda tangan digital berbasis sertifikat. Kepercayaan sertifikat dan kompatibilitas stempel waktu bergantung pada sertifikat, layanan, dan perangkat lunak penerima.",
+      "question": "Apakah tanda tangan visual dan digital sama?",
+      "answer": "Tidak. Tanda tangan visual adalah tanda pada halaman. Tanda tangan digital menggunakan sertifikat untuk membantu mendeteksi perubahan dokumen dan mengidentifikasi penandatangan."
+    },
+    "image-editor": {
+      "title": "Sentuhan akhir, tanpa repot",
+      "seoTitle": "Editor Gambar Gratis untuk Mac — Pangkas & Anotasi | OFF42",
+      "seoDescription": "Buka JPEG, PNG, HEIC, WebP, dan TIFF, lalu pangkas, ubah ukuran, putar, sesuaikan, dan beri anotasi dengan IMG42. Editor gambar gratis, sumber terbuka, offline.",
+      "short": "Pengeditan gambar",
+      "intro": "Buka foto, pangkas bagian yang mengganggu, sesuaikan gambar, atau tambahkan anotasi yang jelas. IMG42 memudahkan tugas gambar sehari-hari.",
+      "points": [
+        "Lihat format gambar umum, termasuk JPEG, PNG, HEIC, dan TIFF.",
+        "Pangkas, ubah ukuran, putar, dan sesuaikan gambar.",
+        "Tambahkan anotasi dan ekspor ke format gambar yang didukung."
+      ],
+      "steps": [
+        "Buka gambar di Mac Anda.",
+        "Lakukan penyesuaian dan periksa pikselnya.",
+        "Ekspor salinan dalam format yang sesuai penggunaannya."
+      ],
+      "note": "Dukungan baca dan tulis berbeda menurut format dan ketersediaan codec macOS. Beberapa format dapat dibuka tetapi tidak dapat disimpan dalam format aslinya.",
+      "question": "Bisakah saya mengubah ukuran gambar sebelum membagikannya?",
+      "answer": "Ya. Ubah ukuran gambar lalu ekspor salinan. Periksa dimensi dan pilih format yang mempertahankan transparansi atau kualitas yang dibutuhkan."
+    }
+  },
+  "download": {
+    "title": "Kantor Anda berikutnya dimulai di sini.",
+    "intro": "Pilih platform dan periksa status rilis. Kode sumber tersedia di GitHub.",
+    "mac": "OFF42 untuk macOS",
+    "macText": "Kode sumber menargetkan macOS 14 atau lebih baru. Penginstal DMG publik belum dirilis.",
+    "windows": "OFF42 untuk Windows",
+    "windowsText": "Aplikasi native Windows sudah diimplementasikan dan tersedia sebagai kode sumber. Periksa fitur dan batasan yang didokumentasikan. Penginstal publik Windows belum dirilis.",
+    "sourceTitle": "Bangun. Baca. Sesuaikan untuk Anda.",
+    "sourceText": "Dapatkan kode sumber berlisensi MIT di GitHub. Pembuatan di macOS memerlukan Xcode Command Line Tools. Build lokal memakai penandatanganan ad-hoc kecuali Anda mengatur penandatanganan distribusi.",
+    "checkReleases": "Periksa rilis",
+    "buildGuide": "Petunjuk build",
+    "releaseNote": "Tombol unduh muncul saat file rilis yang dipublikasikan tersedia. Tidak ada penginstal yang dinyatakan ditandatangani atau dinotarisasi tanpa bukti rilis.",
+    "buildTitle": "Bangun OFF42 di Mac Anda",
+    "buildText": "Sampai penginstal bertanda tangan diterbitkan, Anda dapat membangun aplikasinya sendiri dalam beberapa menit. Jalankan perintah berikut di Terminal.",
+    "buildStep1": "Instal Xcode Command Line Tools dari Apple.",
+    "buildStep2": "Unduh kode sumber dari GitHub.",
+    "buildStep3": "Bangun keenam aplikasi, atau bangun satu aplikasi lalu salin ke folder Aplikasi."
+  },
+  "about": {
+    "title": "Kantor tanpa hal yang disembunyikan.",
+    "intro": "OFF42 menyatukan enam aplikasi native untuk macOS dan Windows: PDF, dokumen, spreadsheet, presentasi, gambar, dan pemindaian. Gratis dan bersumber terbuka, dengan implementasi platform terpisah serta batasan yang didokumentasikan.",
+    "licenseTitle": "Berlisensi MIT. Bebas Anda jelajahi.",
+    "licenseText": "Gunakan, pelajari, ubah, dan distribusikan kembali perangkat lunak sesuai lisensi MIT. Repositori menyertakan ketentuan lisensi dan kode sumber.",
+    "contributeTitle": "Alat yang lebih baik lahir dari kerja bersama.",
+    "contributeText": "Laporkan bug yang dapat direproduksi, usulkan perbaikan, bantu penerjemahan, atau kontribusikan kode melalui GitHub.",
+    "honestTitle": "Dikembangkan secara terbuka.",
+    "honestText": "Proyek terus berkembang. Repositori mendokumentasikan build yang diuji, keterbatasan, dan cakupan audit. Ketersediaan sumber terpisah dari rilis yang dikemas, ditandatangani, dan dinotarisasi.",
+    "status": "Baca status proyek",
+    "issues": "Laporkan masalah"
+  },
+  "privacy": {
+    "title": "Jaga pekerjaan tetap dekat.",
+    "intro": "Situs ini memperkenalkan OFF42 dan menautkan sumber serta rilis proyek. Situs tidak menerima atau memproses dokumen Anda.",
+    "siteTitle": "Situs sederhana",
+    "siteText": "Situs tidak memiliki iklan, skrip analitik, atau sistem akun. Penyedia hosting dapat memproses informasi permintaan untuk menyediakan dan melindungi situs.",
+    "appTitle": "Pengerjaan dokumen secara lokal",
+    "appText": "Penyuntingan utama berjalan secara lokal di komputer Anda tanpa mengunggah file. Fitur daring opsional memerlukan koneksi; ketersediaannya berbeda menurut platform.",
+    "linksTitle": "Tautan eksternal",
+    "linksText": "GitHub dan layanan tertaut lainnya memiliki kebijakan privasi sendiri. File Anda tidak diunggah saat mengunjungi situs ini."
+  },
+  "seo": {
+    "homeTitle": "OFF42 — Aplikasi Office Gratis untuk macOS dan Windows Tanpa Langganan",
+    "homeDescription": "Aplikasi perkantoran native, gratis, dan sumber terbuka untuk macOS dan Windows: PDF, DOCX, XLSX, PPTX, gambar, dan pemindaian. Cakupan fitur dan pengujian berbeda menurut platform.",
+    "featuresTitle": "Fitur: PDF, Dokumen, Spreadsheet, Pemindaian | OFF42",
+    "featuresDescription": "Edit dan tanda tangani PDF, perkecil file besar, pindai dengan OCR, tulis DOCX, serta olah XLSX dan PPTX. Lihat semua yang bisa dilakukan OFF42 gratis di Mac.",
+    "downloadTitle": "Unduh OFF42 untuk macOS dan Windows — Aplikasi Office Gratis",
+    "downloadDescription": "OFF42 untuk macOS dan Windows: kode sumber, status rilis, petunjuk build, dan batasan platform. Periksa apa yang telah diimplementasikan dan diuji sebelum memasang.",
+    "aboutTitle": "Paket Office Sumber Terbuka, Berlisensi MIT | OFF42",
+    "aboutDescription": "OFF42 terdiri dari enam aplikasi native untuk macOS dan Windows dengan lisensi MIT. Lihat kode sumber, dukungan platform, dan batasannya di GitHub.",
+    "privacyTitle": "Privasi: File Tetap di Komputer Anda | OFF42",
+    "privacyDescription": "Penyuntingan utama berjalan secara lokal di komputer Anda tanpa mengunggah file. Fitur daring opsional memerlukan koneksi; ketersediaannya berbeda menurut platform."
+  }
+}

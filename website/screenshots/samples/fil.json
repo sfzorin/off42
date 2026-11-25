@@ -1,0 +1,54 @@
+{
+  "rtl": false,
+  "brand": "BUGHAW STUDIO",
+  "brandLine": "Brand identity · Web · Motion",
+  "number": "Kasunduan Blg. BS-2026-114",
+  "title": "Kasunduan sa Serbisyo ng Disenyo",
+  "intro": "Ang Kasunduang ito ay ginawa noong 6 Nobyembre 2026 sa pagitan ng Bughaw Studio Inc. (ang “Studio”) at Tala Media Corp. (ang “Kliyente”) para sa disenyo ng bagong brand identity at website ng Kliyente.",
+  "sections": [
+    ["1. Saklaw ng trabaho", "Ihahatid ng Studio ang logo system, gabay sa typography at kulay, disenyo ng website na may labindalawang pahina at mga template para sa social media."],
+    ["2. Iskedyul", "Magsisimula ang trabaho sa 16 Nobyembre 2026. Ihaharap ang unang mga konsepto sa loob ng tatlong linggo; ihahatid ang final files bago ang 29 Enero 2027."],
+    ["3. Intelektwal na ari-arian", "Sa buong pagbabayad, mapupunta sa Kliyente ang lahat ng karapatan sa final na disenyo. Maaaring ipakita ng Studio ang gawa sa portfolio nito."]
+  ],
+  "feeTitle": "4. Bayad",
+  "fees": [["Brand identity at gabay", "₱ 420,000"], ["Disenyo ng website, 12 pahina", "₱ 630,000"], ["Mga template sa social media", "₱ 140,000"]],
+  "total": ["Kabuuan, hindi kasama ang VAT", "₱ 1,190,000"],
+  "signTitle": "Nilagdaan para at sa ngalan ng mga partido",
+  "parties": [
+    {"role": "Para sa Studio", "company": "Bughaw Studio Inc.", "person": "Andrea Villanueva", "title": "Presidente",
+     "date": "Makati, 6 Nobyembre 2026", "signName": "Andrea Villanueva", "pen": "ballpoint", "design": 2424853,
+     "stamp": {"id": "us.corporate", "width": 104, "values": {"edge": "BUGHAW STUDIO INC.", "bottom": "MAKATI CITY, PHILIPPINES", "centre": "CORPORATE\nSEAL\n2019"}}},
+    {"role": "Para sa Kliyente", "company": "Tala Media Corp.", "person": "Miguel Dela Cruz", "title": "CEO",
+     "date": "Quezon City, 6 Nobyembre 2026", "signName": "Miguel Dela Cruz", "pen": "gel", "design": 2425117,
+     "stamp": {"id": "uk.company", "width": 150, "values": {"name": "Tala Media Corp.", "lines": "18 Scout Torillo St., Quezon City 1103", "numbers": "SEC Reg. No. CS201804217"}}}
+  ],
+  "invoiceTitle": "Invoice",
+  "invoiceNumber": "Invoice Blg. 2026-0418 · 30 Enero 2027",
+  "billTo": "Singilin kay",
+  "billLines": ["Tala Media Corp.", "18 Scout Torillo St., Quezon City 1103", "TIN 008-421-736-000"],
+  "items": [["Brand identity at gabay", "1", "₱ 420,000"], ["Disenyo ng website, 12 pahina", "1", "₱ 630,000"], ["Mga template sa social media", "1", "₱ 140,000"]],
+  "invoiceTotal": ["Kabuuang babayaran", "₱ 1,190,000"],
+  "paid": {"id": "us.paid", "width": 150, "values": {"top": "BUGHAW STUDIO INC.", "word": "BAYAD NA"}},
+  "note": "Natanggap ang bayad, maraming salamat. Bank transfer, ref. BS-2026-114.",
+  "generatorName": "Andrea Villanueva",
+  "letter": {
+    "brand": "BUGHAW STUDIO", "addr": "12 Legaspi St., Makati City 1229 · hello@bughaw.example",
+    "date": "Makati, 6 Nobyembre 2026", "to": ["Miguel Dela Cruz", "Tala Media Corp.", "18 Scout Torillo St., Quezon City"],
+    "subject": "Panukala: bagong brand identity para sa Tala Media",
+    "body": ["Mahal na Miguel,", "Salamat sa magandang usapan noong nakaraang linggo. Gaya ng ipinangako, narito ang aming panukala para sa bagong identity ng Tala: mas payapang logo system, mainit na tropical palette at website na inuuna ang inyong mga dokumentaryo.", "Iminumungkahi namin ang tatlong yugto, bawat isa ay may review sa Quezon City:"],
+    "table": [["Yugto", "Linggo", "Bayad"], ["Discovery at mga konsepto", "3", "₱ 310,000"], ["Identity at gabay", "4", "₱ 420,000"], ["Website at mga template", "6", "₱ 460,000"]],
+    "close": ["Ikagagalak naming magsimula sa 16 Nobyembre. Nakalakip ang kasunduan at pirmado na namin.", "Lubos na gumagalang,"],
+    "name": "Andrea Villanueva", "role": "Presidente, Bughaw Studio Inc."
+  },
+  "budget": {
+    "sheet": "Badyet 2027", "head": "Badyet ng studio, unang kalahati ng 2027, libong ₱", "total": "Kabuuan", "share": "Bahagi",
+    "months": ["Ene", "Peb", "Mar", "Abr", "May", "Hun"],
+    "rows": [["Disenyo", [310, 370, 420, 255, 240, 280]], ["Development", [160, 205, 345, 460, 440, 365]], ["Marketing", [90, 105, 130, 195, 235, 260]], ["Hosting at tools", [21, 21, 23, 23, 26, 26]]]
+  },
+  "deck": {
+    "title": "Tala Media", "subtitle": "Brand refresh 2027 · Design review",
+    "ideasTitle": "Payapa, mainit, tropikal", "ideasSubtitle": "Tatlong ideya sa likod ng bagong identity",
+    "ideas": [["Liwanag", "Mahahabang dapithapon: malambot na contrast at mainit na kulay."], ["Kuwento", "Dokumentaryo muna: bubuksan ang website ng mga pelikula."], ["Likha", "Gawang-kamay na marka, typography na may karakter."]],
+    "timelineTitle": "Iskedyul", "steps": [["Nob", "Discovery"], ["Dis", "Mga konsepto"], ["Ene", "Identity"], ["Peb", "Website"]]
+  }
+}

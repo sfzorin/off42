@@ -178,7 +178,11 @@ enum ODS {
                     for case let cellXML as XMLElement in cells {
                         guard cellXML.localName == "table-cell" || cellXML.localName == "covered-table-cell" else { continue }
                         let repeatCols = try count(cellXML, "number-columns-repeated", maximum: maxCols - c)
-                        guard cellXML.localName == "table-cell" else { c += repeatCols; continue }
+                        guard cellXML.localName == "table-cell" else {
+                            for kc in 0..<repeatCols { sheet.images += try readImages(cellXML, anchor: CellRef(row: rr, col: c + kc), zip: zip) }
+                            guard sheet.images.count <= 10_000 else { throw ZipError.corrupt }
+                            c += repeatCols; continue
+                        }
                         if let name = cellXML.attr("content-validation-name"), validationRules[name] != nil {
                             for kc in 0..<repeatCols { validationCells[name, default: []].append(CellRef(row: rr, col: c + kc)) }
                         }
@@ -192,6 +196,8 @@ enum ODS {
                         let isEmpty = value.isEmpty && formula == nil && comment == nil
                         for kc in 0..<repeatCols {
                             let ref = CellRef(row: rr, col: c + kc)
+                            sheet.images += try readImages(cellXML, anchor: ref, zip: zip)
+                            guard sheet.images.count <= 10_000 else { throw ZipError.corrupt }
                             let style = cellStyle(explicit ?? columnDefault[c + kc])
                             if isEmpty && style == cellStyle(nil) { continue }
                             expandedCells += 1
@@ -663,7 +669,14 @@ enum ODS {
 
         var body = ""
         var validations = ""
+        var imageFiles: [String: Data] = [:]
         for (si, sheet) in wb.sheets.enumerated() {
+            var imagesAt: [CellRef: String] = [:]
+            for (index, image) in sheet.images.enumerated() {
+                let path = "Pictures/sheet\(si + 1)-image\(index + 1).png"
+                imageFiles[path] = embeddedImageData(image.data)
+                imagesAt[image.anchor, default: ""] += imageXML(image, path: path, index: index + 1)
+            }
             var t = "<table:table table:name=\"\(xmlEscape(sheet.name))\""
             if sheet.hidden || sheet.tabColor != nil {
                 // Visibility and tab colour (table:tab-color, as LibreOffice writes it).
@@ -695,7 +708,7 @@ enum ODS {
                 }
             }
             let used = sheet.usedRange
-            let lastCol = max(used?.end.col ?? 0, sheet.columnWidths.keys.max() ?? 0, sheet.colLevels.keys.max() ?? 0, sheet.merges.map { $0.end.col }.max() ?? 0, validationAt.keys.map(\.col).max() ?? 0)
+            let lastCol = max(used?.end.col ?? 0, sheet.columnWidths.keys.max() ?? 0, sheet.colLevels.keys.max() ?? 0, sheet.merges.map { $0.end.col }.max() ?? 0, validationAt.keys.map(\.col).max() ?? 0, imagesAt.keys.map(\.col).max() ?? 0)
             var openCols = 0
             for c in 0...lastCol {
                 t += groupTags(sheet, c, rows: false, open: &openCols)
@@ -704,7 +717,7 @@ enum ODS {
                 t += "<table:table-column table:style-name=\"\(style)\"\(w == 0 ? " table:visibility=\"collapse\"" : "")/>"
             }
             t += String(repeating: "</table:table-column-group>", count: openCols)
-            let lastRow = max(used?.end.row ?? 0, sheet.rowHeights.keys.max() ?? 0, sheet.rowLevels.keys.max() ?? 0, sheet.merges.map { $0.end.row }.max() ?? 0, validationAt.keys.map(\.row).max() ?? 0)
+            let lastRow = max(used?.end.row ?? 0, sheet.rowHeights.keys.max() ?? 0, sheet.rowLevels.keys.max() ?? 0, sheet.merges.map { $0.end.row }.max() ?? 0, validationAt.keys.map(\.row).max() ?? 0, imagesAt.keys.map(\.row).max() ?? 0)
             var openRows = 0
             for r in 0...lastRow {
                 t += groupTags(sheet, r, rows: true, open: &openRows)
@@ -716,13 +729,19 @@ enum ODS {
                 func flushEmpty() { if empty > 0 { t += "<table:table-cell\(empty > 1 ? " table:number-columns-repeated=\"\(empty)\"" : "")/>"; empty = 0 } }
                 for c in 0...lastCol {
                     let ref = CellRef(row: r, col: c)
-                    if sheet.merges.contains(where: { $0.start != ref && $0.contains(ref) }) { flushEmpty(); t += "<table:covered-table-cell/>"; continue }
-                    guard let cell = sheet.cells[ref] ?? (sheet.merges.contains(where: { $0.start == ref }) ? Cell() : nil) else {
+                    if sheet.merges.contains(where: { $0.start != ref && $0.contains(ref) }) {
+                        flushEmpty()
+                        t += imagesAt[ref].map { "<table:covered-table-cell>\($0)</table:covered-table-cell>" } ?? "<table:covered-table-cell/>"
+                        continue
+                    }
+                    guard let cell = sheet.cells[ref] ?? (imagesAt[ref] != nil || sheet.merges.contains(where: { $0.start == ref }) ? Cell() : nil) else {
                         if let v = validationAt[ref] { flushEmpty(); t += "<table:table-cell table:content-validation-name=\"\(v)\"/>" } else { empty += 1 }
                         continue
                     }
                     flushEmpty()
-                    t += cellXML(cell, ref: ref, sheet: sheet, style: styleName(cell.style), validation: validationAt[ref], date1904: wb.date1904)
+                    var rendered = cellXML(cell, ref: ref, sheet: sheet, style: styleName(cell.style), validation: validationAt[ref], date1904: wb.date1904)
+                    if let images = imagesAt[ref] { rendered = String(rendered.dropLast("</table:table-cell>".count)) + images + "</table:table-cell>" }
+                    t += rendered
                 }
                 t += "</table:table-row>"
             }
@@ -754,6 +773,7 @@ enum ODS {
         xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0" \
         xmlns:of="urn:oasis:names:tc:opendocument:xmlns:of:1.2" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xlink="http://www.w3.org/1999/xlink" \
         xmlns:config="urn:oasis:names:tc:opendocument:xmlns:config:1.0" xmlns:ooo="http://openoffice.org/2004/office" \
+        xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" \
         xmlns:loext="urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0" office:version="1.3"
         """
         let content = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<office:document-content \(ns)><office:automatic-styles>\(auto)</office:automatic-styles><office:body><office:spreadsheet\(wb.structureProtected ? " table:structure-protected=\"true\"" : "")><table:calculation-settings table:case-sensitive=\"false\" table:use-regular-expressions=\"false\" table:use-wildcards=\"true\"><table:null-date table:date-value=\"\(wb.date1904 ? "1904-01-01" : "1899-12-30")\"/></table:calculation-settings>\(body)</office:spreadsheet></office:body></office:document-content>"
@@ -785,6 +805,7 @@ enum ODS {
         <manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/>
         <manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/>
         <manifest:file-entry manifest:full-path="settings.xml" manifest:media-type="text/xml"/>
+        \(imageFiles.keys.sorted().map { "<manifest:file-entry manifest:full-path=\"\(xmlEscape($0))\" manifest:media-type=\"image/png\"/>" }.joined())
         </manifest:manifest>
         """
         var zip = ZipArchive()
@@ -794,6 +815,7 @@ enum ODS {
         zip["styles.xml"] = Data(styles.utf8)
         zip["settings.xml"] = Data(settings.utf8)
         zip["META-INF/manifest.xml"] = Data(manifest.utf8)
+        for (path, data) in imageFiles { zip[path] = data }
         return zip.data()
     }
 

@@ -1,0 +1,406 @@
+{
+  "nav": {
+    "features": "Ciri",
+    "apps": "Kumpulan aplikasi",
+    "about": "Sumber terbuka",
+    "download": "Muat turun",
+    "language": "Bahasa",
+    "menu": "Menu",
+    "skip": "Langkau ke kandungan",
+    "home": "Laman utama"
+  },
+  "home": {
+    "eyebrow": "Percuma · Sumber terbuka · macOS dan Windows",
+    "title": "Seluruh pejabat anda. Tanpa langganan.",
+    "intro": "OFF42 menghimpunkan enam aplikasi natif untuk macOS dan Windows: PDF, dokumen, hamparan, pembentangan, imej dan imbasan. Percuma dan sumber terbuka, dengan pelaksanaan berasingan bagi setiap platform serta batasan yang didokumenkan.",
+    "primary": "Dapatkan OFF42",
+    "secondary": "Terokai alatnya",
+    "note": "Percuma · Sumber terbuka · macOS 14+ · Windows",
+    "suiteTitle": "Pejabat lengkap. Kerja lebih ringan.",
+    "suiteIntro": "Dari draf pertama hingga PDF yang ditandatangani, lakukan kerja harian dalam satu keluarga alat yang biasa digunakan.",
+    "featureEyebrow": "BUTIRAN KECIL. PERBEZAAN BESAR.",
+    "featureTitle": "Lebih banyak kemungkinan dalam setiap fail.",
+    "featureIntro": "Edit PDF. Kecilkan lampiran besar. Tukar halaman kertas kepada teks yang boleh dicari. Cari alat yang sesuai untuk tugas anda.",
+    "privacyTitle": "Di meja anda, bukan pelayan orang lain.",
+    "privacyText": "Penyuntingan asas berjalan secara setempat pada komputer anda tanpa memuat naik fail. Ciri dalam talian pilihan memerlukan sambungan; ketersediaannya berbeza mengikut platform.",
+    "privacyLabel": "Dibina untuk kerja setempat",
+    "languageTitle": "Terasa biasa, dalam 20 bahasa.",
+    "languageText": "Laman web dan antara muka aplikasi bertutur dalam bahasa anda. Pilih bahasa anda dan gunakan alat yang sama dengan selesa.",
+    "openTitle": "Pejabat terbuka dalam setiap makna.",
+    "openText": "OFF42 dikeluarkan di bawah lesen MIT. Baca kodnya, bina sendiri, laporkan pepijat atau bantu menambah baik versi seterusnya.",
+    "openLink": "Terokai di GitHub",
+    "endTitle": "Langganan: off. Pejabat kekal milik anda.",
+    "endText": "Percuma · Sumber terbuka · macOS dan Windows",
+    "formatsLabel": "FORMAT OFFICE DAN TERBUKA",
+    "formatsTitle": "Serasi dengan fail yang sudah anda miliki.",
+    "formatsText": "Buka fail yang dihantar rakan sekerja dan simpan dalam format yang mereka jangkakan. Susun atur yang rumit mungkin kelihatan berbeza, jadi semak fail penting selepas import.",
+    "opens": "Membuka",
+    "saves": "Menyimpan",
+    "faqTitle": "Soalan sebelum anda bermula",
+    "faq": [
+      {
+        "q": "Adakah OFF42 percuma?",
+        "a": "Ya. OFF42 percuma dan sumber terbuka di bawah lesen MIT. Tiada langganan, akaun atau pembelian dalam aplikasi."
+      },
+      {
+        "q": "Adakah OFF42 berfungsi di luar talian?",
+        "a": "Penyuntingan asas berjalan secara setempat pada komputer anda tanpa memuat naik fail. Ciri dalam talian pilihan memerlukan sambungan; ketersediaannya berbeza mengikut platform."
+      },
+      {
+        "q": "Bolehkah OFF42 membuka fail Microsoft Office?",
+        "a": "Ya. DOC42 membuka DOCX dan DOC, XLS42 membuka XLSX dan XLS, dan PPT42 membuka PPTX. Fail OpenDocument (ODT, ODS, ODP) juga disokong. Bukan semua ciri Office disokong, jadi semak fail yang rumit selepas import."
+      },
+      {
+        "q": "Mac manakah yang disokong OFF42?",
+        "a": "OFF42 menyasarkan macOS 14 atau lebih baharu. Pemasang awam belum dikeluarkan; anda boleh membina aplikasi daripada kod sumber dengan Xcode Command Line Tools."
+      },
+      {
+        "q": "Adakah versi Windows tersedia?",
+        "a": "Aplikasi natif Windows telah dilaksanakan dan tersedia sebagai kod sumber. Semak ciri dan batasan yang didokumenkan. Pemasang Windows awam belum diterbitkan."
+      }
+    ]
+  },
+  "name": {
+    "label": "APA ADA PADA NAMA",
+    "title": "OFF untuk office. Dan untuk semua yang boleh dimatikan.",
+    "officeTitle": "Pejabat yang lengkap",
+    "officeText": "Enam aplikasi untuk setiap fail di meja anda: PDF, fail Word dan Excel, slaid, foto dan imbasan.",
+    "offlineTitle": "Berfungsi luar talian",
+    "offlineText": "Penyuntingan berjalan pada komputer anda. Tanpa akaun atau muat naik fail.",
+    "offTitle": "Langganan: off",
+    "offText": "Tiada langganan, tiada tempoh percubaan, tiada iklan. Berlesen MIT dan percuma, hari ini dan esok.",
+    "answerTitle": "Dan 42?",
+    "answerText": "Jawapan kepada Soalan Muktamad tentang Kehidupan, Alam Semesta dan Segala-galanya. Kami cuma menerapkannya pada urusan pejabat.",
+    "stats": [
+      "aplikasi dalam satu pakej",
+      "format fail",
+      "bahasa antara muka",
+      "langganan",
+      "muat naik fail anda"
+    ]
+  },
+  "marks": {
+    "label": "TANDATANGAN DAN COP",
+    "title": "Tandatangan dan cop seperti di atas kertas. Tanpa pencetak, tanpa pengimbas.",
+    "text": "OFF42 menulis tandatangan tulisan tangan daripada nama dan mengecap cop syarikat, kemudian meletakkan kedua-duanya terus ke dalam dokumen. Setiap sisipan sedikit berbeza, seperti dakwat sebenar di atas kertas.",
+    "points": [
+      "Tandatangan dengan pen mata bulat, pen gel, pen dakwat atau pen felt",
+      "132 gaya cop: cop bulat, cop syarikat, “Telah Dibayar” dan “Diterima”",
+      "Mempelajari tandatangan anda sendiri daripada beberapa sampel",
+      "Berfungsi dalam PDF, dokumen, slaid, hamparan, imej dan imbasan"
+    ],
+    "note": "Tandatangan yang dilukis bukan tandatangan digital berasaskan sijil. Apabila anda memerlukannya, PDF42 menandatangani dengan sijil anda.",
+    "signedCaption": "Kontrak yang ditandatangani dan dicop dalam PDF42. Nama dan syarikat adalah rekaan."
+  },
+  "codes": {
+    "label": "KOD QR, SIMBOL DAN LABEL",
+    "title": "Kod QR, tanda CE dan helaian label, tepat hingga milimeter.",
+    "text": "Tukar sel, baris jadual atau pilihan kepada kod QR, Data Matrix, Code 128 atau Aztec, dan tambah tanda pematuhan serta keselamatan yang diperlukan oleh produk anda. Tetapkan saiz dalam milimeter, kemudian cetak sehelai penuh label terus daripada baris anda.",
+    "points": [
+      "Kod QR, Data Matrix, Code 128 dan Aztec yang kekal boleh disunting selepas disimpan",
+      "97 tanda: CE, UKCA, EAC, FCC, UL, CCC, KC, RCM, WEEE, RoHS, piktogram GHS, simbol keselamatan IEC dan banyak lagi",
+      "Helaian label daripada baris hamparan, jadual dokumen atau halaman mahupun kawasan PDF",
+      "559 jenis kertas label atau grid anda sendiri, templat tersimpan dan penentukuran pencetak"
+    ],
+    "note": "Tanda ialah grafik untuk label anda: ia tidak mensijilkan produk. Bagi tanda pematuhan dan tanda dagangan, apl memaparkan syarat penggunaan, seperti sijil atau nombor lesen yang diperlukan. Tersedia dalam PDF42, DOC42 dan XLS42 pada macOS.",
+    "qrAlt": "“Insert Symbol or Code” dalam XLS42: kod QR 30 mm yang dibuat daripada pautan produk.",
+    "labelsAlt": "“Create Labels” dalam XLS42: helaian label dengan kod QR yang dibina daripada sepuluh baris produk.",
+    "caption": "Helaian label yang dibuat daripada sepuluh baris hamparan. Produknya adalah rekaan."
+  },
+  "show": {
+    "label": "LIHAT CARA IA BERFUNGSI",
+    "title": "Aplikasi sebenar. Dokumen sebenar.",
+    "text": "Setiap gambar di sini ialah tangkapan skrin OFF42 pada Mac, dengan dokumen contoh syarikat rekaan dibuka dalam aplikasi. Bukan reka bentuk olok-olok."
+  },
+  "labels": {
+    "learn": "Terokai",
+    "allFeatures": "Semua ciri",
+    "useCases": "UNTUK KERJA HARIAN ANDA",
+    "workflow": "Dari dibuka hingga selesai",
+    "details": "Perkara yang boleh anda lakukan",
+    "goodToKnow": "Baik untuk diketahui",
+    "related": "Teruskan meneroka",
+    "faq": "Beberapa jawapan berguna",
+    "step": "Langkah",
+    "illustration": "Ilustrasi aliran kerja",
+    "source": "Kod sumber",
+    "license": "Lesen MIT",
+    "release": "Keluaran GitHub",
+    "available": "Tersedia",
+    "unavailable": "Belum dikeluarkan",
+    "downloadDmg": "Muat turun DMG",
+    "downloadExe": "Muat turun EXE",
+    "checksum": "SHA-256",
+    "version": "Versi",
+    "requirements": "Keperluan sistem",
+    "footer": "Pakej pejabat sumber terbuka untuk kerja harian.",
+    "privacy": "Privasi",
+    "copyright": "Projek sumber terbuka bebas.",
+    "back": "Kembali ke laman utama",
+    "notFound": "Halaman ini tiada di atas meja.",
+    "notFoundText": "Cuba laman utama atau pilih bahasa untuk terus meneroka.",
+    "copy": "Salin",
+    "copied": "Disalin",
+    "screenshot": "Tangkapan skrin pada macOS. Dokumen contoh, syarikat rekaan."
+  },
+  "apps": {
+    "pdf": {
+      "tag": "Lebih banyak kemungkinan dengan PDF.",
+      "text": "Baca, anotasi, susun, mampatkan dan tandatangani PDF anda."
+    },
+    "doc": {
+      "tag": "Dari idea menjadi dokumen.",
+      "text": "Tulis dan susun atur dokumen dalam DOCX, ODT, RTF dan Markdown."
+    },
+    "xls": {
+      "tag": "Biarkan nombor anda bercerita.",
+      "text": "Gunakan hamparan, formula dan carta dalam XLSX, ODS dan CSV."
+    },
+    "ppt": {
+      "tag": "Idea yang wajar dibentangkan.",
+      "text": "Cipta slaid, gunakan jadual dan bentuk, lalu sampaikan cerita anda."
+    },
+    "img": {
+      "tag": "Sedikit suntingan. Imej lebih baik.",
+      "text": "Lihat, pangkas, ubah saiz, anotasi dan laraskan imej anda."
+    },
+    "scn": {
+      "tag": "Kemungkinan baharu untuk kertas.",
+      "text": "Imbas, bersihkan halaman dan kenal pasti teks dengan OCR pada peranti."
+    }
+  },
+  "features": {
+    "documents": {
+      "title": "Ruang untuk idea baik anda yang seterusnya",
+      "seoTitle": "Pemproses Kata Percuma untuk Mac — DOCX, ODT, RTF | OFF42",
+      "seoDescription": "Tulis surat dan laporan dalam DOC42: buka dan simpan DOCX, ODT, RTF dan Markdown, susun halaman dengan jadual dan imej, eksport PDF. Percuma, sumber terbuka.",
+      "short": "Dokumen",
+      "intro": "Tulis surat, laporan dan draf seterusnya dengan DOC42. Gabungkan teks berformat dan susun atur halaman dengan format dokumen yang biasa digunakan.",
+      "points": [
+        "Buka dan simpan DOCX, ODT, RTF, Markdown serta format teks lain.",
+        "Gunakan pemformatan, jadual, imej dan susun atur halaman.",
+        "Eksport ke PDF apabila dokumen sedia untuk dikongsi."
+      ],
+      "steps": [
+        "Cipta dokumen atau buka fail sedia ada.",
+        "Susun teks, imej dan susun atur halaman.",
+        "Simpan salinan yang boleh diedit atau eksport PDF."
+      ],
+      "note": "Dokumen Office yang rumit mungkin dipaparkan secara berbeza. Semak susun atur yang diimport dan fail yang dieksport sebelum bergantung pada padanan yang tepat.",
+      "question": "Bolehkah saya bekerja dengan dokumen Word?",
+      "answer": "DOC42 menyokong DOCX dan membuka fail DOC lama. Sokongan format fail tidak bermakna setiap ciri Microsoft Word dikendalikan dengan cara yang sama."
+    },
+    "spreadsheets": {
+      "title": "Fahami makna di sebalik nombor",
+      "seoTitle": "Aplikasi Hamparan Percuma untuk Mac — XLSX, ODS, CSV | OFF42",
+      "seoDescription": "Buka XLSX dan XLS, guna formula, format dan carta, simpan sebagai XLSX, ODS atau CSV dan eksport PDF dengan XLS42. Hamparan percuma sumber terbuka untuk Mac.",
+      "short": "Hamparan",
+      "intro": "Daripada senarai ringkas hingga laporan pengiraan, XLS42 membawa sel, formula dan carta ke kerja harian anda.",
+      "points": [
+        "Buka XLSX, XLS lama, ODS dan fail teks berpembatas.",
+        "Gunakan formula, pemformatan dan carta untuk menerangkan data anda.",
+        "Simpan XLSX, ODS atau CSV, atau eksport PDF."
+      ],
+      "steps": [
+        "Buka buku kerja atau mulakan dengan helaian kosong.",
+        "Masukkan data, gunakan formula dan tambah carta.",
+        "Semak pengiraan dan simpan dalam format yang betul."
+      ],
+      "note": "Sokongan formula dan pemformatan berbeza mengikut fail. CSV menyimpan satu jadual nilai, bukan buku kerja lengkap dengan pemformatan dan berbilang helaian.",
+      "question": "Bolehkah saya membuka hamparan Excel?",
+      "answer": "Ya, XLS42 membuka fail XLSX dan XLS lama. Periksa formula yang rumit serta pemformatan yang diimport; bukan semua ciri Excel disokong."
+    },
+    "presentations": {
+      "title": "Beri pentas kepada idea anda",
+      "seoTitle": "Aplikasi Pembentangan Percuma untuk Mac — PPTX, ODP | OFF42",
+      "seoDescription": "Bina slaid dengan teks, imej, bentuk dan jadual, bentangkan dengan nota pembentang dan eksport PDF atau imej dengan PPT42. Percuma, sumber terbuka, untuk Mac.",
+      "short": "Pembentangan",
+      "intro": "Bina cerita visual yang jelas dengan PPT42. Susun teks, imej, bentuk dan jadual, kemudian beralih daripada penyuntingan kepada tayangan slaid.",
+      "points": [
+        "Gunakan fail pembentangan PPTX dan OpenDocument.",
+        "Susun objek slaid, jadual dan nota pembentang.",
+        "Eksport slaid ke PDF dan imej untuk perkongsian yang mudah."
+      ],
+      "steps": [
+        "Cipta pembentangan atau buka pembentangan yang disokong.",
+        "Perkemas setiap slaid dan sediakan nota anda.",
+        "Jalankan tayangan slaid atau eksport slaid anda."
+      ],
+      "note": "Fail PPT lama perlu ditukar terlebih dahulu. Susun atur import yang rumit mungkin berbeza; semak keseluruhan pembentangan sebelum membentang.",
+      "question": "Bolehkah saya berkongsi slaid sebagai PDF?",
+      "answer": "Ya. PPT42 menyokong eksport PDF untuk slaid dan halaman nota, serta imej slaid PNG dan JPEG."
+    },
+    "edit-pdf": {
+      "title": "Edit PDF pada Mac anda",
+      "seoTitle": "Editor PDF Percuma untuk Mac — Edit, Anotasi, Borang | OFF42",
+      "seoDescription": "Edit teks PDF, serlahkan, buat anotasi, isi borang dan susun semula halaman pada Mac dengan PDF42. Percuma, sumber terbuka, luar talian — tanpa muat naik.",
+      "short": "Penyuntingan PDF",
+      "intro": "Jadikan PDF dokumen kerja anda. Edit teks halaman, tambah nota, serlahkan bahagian penting, isi borang dan susun halaman dengan PDF42.",
+      "points": [
+        "Edit teks halaman dan tambah anotasi dengan serlahan, kotak teks, bentuk serta lakaran bebas.",
+        "Sisipkan, ekstrak, putar, padam dan susun semula halaman.",
+        "Isi borang PDF yang disokong dan simpan perubahan anda."
+      ],
+      "steps": [
+        "Buka PDF daripada Mac anda.",
+        "Pilih alat anotasi, borang atau halaman mengikut tugas.",
+        "Simpan salinan dan semak dokumen yang telah siap."
+      ],
+      "note": "Perubahan teks halaman digabungkan ke dalam kandungan halaman semasa disimpan. Susun atur dan borang PDF yang rumit mungkin berbeza; semak salinan tersimpan sebelum berkongsi.",
+      "question": "Bolehkah saya mengedit PDF tanpa memuat naiknya?",
+      "answer": "Ya. PDF42 menggunakan fail setempat pada Mac anda. Anotasi dan operasi halaman asas tidak memerlukan penyunting dalam talian."
+    },
+    "scan-ocr": {
+      "title": "Tukar kertas menjadi dokumen yang boleh dicari",
+      "seoTitle": "Aplikasi Pengimbas OCR untuk Mac — PDF Boleh Dicari | OFF42",
+      "seoDescription": "Imbas dari pengimbas atau kamera iPhone, luruskan, bersihkan halaman, kenal pasti teks pada Mac, eksport PDF boleh dicari dengan SCN42. Percuma, luar talian.",
+      "short": "Pengimbasan & OCR",
+      "intro": "Bawa kertas ke pejabat digital anda dengan SCN42. Dapatkan halaman, luruskan dan bersihkannya, kemudian kenal pasti teks pada Mac anda.",
+      "points": [
+        "Dapatkan halaman daripada pengimbas yang disokong atau import imej dan PDF.",
+        "Pangkas, luruskan dan laraskan halaman sebelum pengecaman.",
+        "Eksport PDF yang boleh dicari atau teks yang dikenal pasti."
+      ],
+      "steps": [
+        "Imbas atau import halaman anda.",
+        "Periksa urutan halaman dan bersihkan imej.",
+        "Jalankan OCR dan eksport ke format yang diperlukan."
+      ],
+      "note": "Sokongan pengimbas dan Continuity bergantung pada perkakasan anda. Bahasa dan ketepatan OCR bergantung pada Apple Vision serta imej sumber; 20 bahasa antara muka ialah ciri yang berasingan.",
+      "question": "Bolehkah saya mencari teks dalam imbasan?",
+      "answer": "Eksport PDF yang boleh dicari selepas OCR untuk menambah lapisan teks. Sentiasa semak hasil pengecaman, terutama nama, nombor dan imbasan berkualiti rendah."
+    },
+    "compress-pdf": {
+      "title": "Mampatkan PDF, teruskan kerja",
+      "seoTitle": "Mampatkan PDF pada Mac — Kecilkan Saiz Fail | OFF42",
+      "seoDescription": "Kecilkan PDF yang sarat imej pada Mac dengan PDF42. Pilih 100, 150 atau 220 dpi, pratonton saiz dan kekalkan teks tajam. Percuma, luar talian, tanpa muat naik.",
+      "short": "Pemampatan PDF",
+      "intro": "Mudahkan perkongsian PDF yang penuh imej. PDF42 menyediakan kawalan pemampatan untuk mengimbangkan saiz fail dan perincian imej.",
+      "points": [
+        "Pilih pratetap imej 100, 150 atau 220 dpi.",
+        "Pratonton saiz fail sambil mengekalkan ketajaman teks dan kandungan vektor.",
+        "Simpan fail berasingan dan bandingkan hasilnya dengan yang asal."
+      ],
+      "steps": [
+        "Buka PDF anda dan pilih pemampatan.",
+        "Pilih pratetap imej dan bandingkan anggaran saiz.",
+        "Simpan hasilnya, kemudian periksa saiz dan kebolehbacaannya."
+      ],
+      "note": "Hasil bergantung pada fail sumber dan saiznya mungkin tidak berkurang. Pemampatan mengurangkan kualiti imej dan membuang tandatangan digital yang sedia ada.",
+      "question": "Sejauh mana saiz PDF saya akan berkurang?",
+      "answer": "Tiada pengurangan tetap. PDF hasil imbasan dan yang penuh imej biasanya mempunyai lebih banyak ruang untuk pemampatan berbanding fail yang sudah dioptimumkan."
+    },
+    "labels-codes": {
+      "title": "Kod, simbol dan label dalam milimeter",
+      "seoTitle": "Pembuat Label Kod QR, Kod Bar dan Tanda CE untuk Mac | OFF42",
+      "seoDescription": "Cipta kod QR, Data Matrix, Code 128 dan Aztec, tambah CE, UKCA, EAC, FCC dan tanda produk lain, kemudian cetak helaian label daripada baris hamparan pada Mac anda. Percuma.",
+      "short": "Kod QR dan label",
+      "intro": "Letakkan kod yang boleh diimbas atau tanda pematuhan ke dalam PDF, dokumen atau hamparan, kemudian cetak sehelai penuh label daripada data anda. Saiz ditetapkan dalam milimeter.",
+      "points": [
+        "Sisipkan kod QR, Data Matrix, Code 128 dan Aztec yang kekal boleh disunting selepas disimpan.",
+        "Tambah 97 tanda produk — pematuhan (CE, UKCA, EAC, FCC, UL, CCC), alam sekitar (WEEE, RoHS), piktogram bahaya GHS dan simbol keselamatan IEC — bersama syarat penggunaannya.",
+        "Cetak helaian label daripada baris hamparan, jadual dokumen atau kawasan PDF pada 559 format kertas atau grid anda sendiri."
+      ],
+      "steps": [
+        "Pilih sel, jadual, teks atau kawasan PDF, kemudian pilih “Insert › Symbol or Code” atau “File › Create Labels”.",
+        "Pilih jenis kod atau simbol, lebar dalam milimeter, jenis kertas label dan lajur kod.",
+        "Semak pratonton, kemudian simpan PDF atau cetak dengan penentukuran pencetak anda."
+      ],
+      "note": "Tanda hanyalah grafik: menyisipkannya tidak mensijilkan produk. Gunakan tanda pematuhan dan tanda dagangan hanya apabila produk anda diperakui atau anda memegang lesennya; apl memaparkan syarat setiap tanda. Semak toleransi kertas dan pencetak dengan cetakan ujian. Pada macOS; dialog diterjemahkan ke bahasa Inggeris, Rusia dan Turki, nama tanda ke 11 bahasa.",
+      "question": "Adakah kod kekal boleh disunting selepas saya menyimpan fail?",
+      "answer": "Ya. Fail PDF, DOCX, XLSX dan ODS menyimpan resipi kod, jadi “Edit Symbol or Code” membukanya semula; aplikasi lain melihat imej biasa. Kod dalam hamparan mengambil nilai sel semasa disisipkan dan tidak mengikut suntingan kemudian."
+    },
+    "sign-pdf": {
+      "title": "Letakkan tanda anda pada PDF",
+      "seoTitle": "Tandatangan PDF pada Mac — Tandatangan, Cop, Digital | OFF42",
+      "seoDescription": "Letak tandatangan gaya tulisan tangan atau cop pada PDF, atau tandatangani dengan sijil. PDF42 menyimpannya dalam pustaka guna semula. Percuma, sumber terbuka.",
+      "short": "Tandatangan PDF",
+      "intro": "Pastikan tandatangan dan cop mudah dicapai. Tambah tandatangan visual, guna semula cop atau gunakan tandatangan digital berasaskan sijil dalam PDF42.",
+      "points": [
+        "Simpan tandatangan dan cop yang boleh digunakan semula dalam pustaka bersama.",
+        "Letakkan dan laraskan tanda visual pada halaman.",
+        "Gunakan tandatangan berasaskan sijil apabila aliran kerja memerlukannya."
+      ],
+      "steps": [
+        "Buka dokumen dan pilih alat tandatangan.",
+        "Pilih tanda visual atau aliran tandatangan digital.",
+        "Simpan dan semak hasilnya dalam perisian PDF penerima."
+      ],
+      "note": "Tandatangan visual bukan tandatangan digital yang disokong sijil. Kepercayaan sijil dan keserasian cap masa bergantung pada sijil, perkhidmatan dan perisian penerima.",
+      "question": "Adakah tandatangan visual dan digital sama?",
+      "answer": "Tidak. Tandatangan visual ialah tanda pada halaman. Tandatangan digital menggunakan sijil untuk membantu mengesan perubahan dokumen dan mengenal pasti penandatangan."
+    },
+    "image-editor": {
+      "title": "Sentuhan akhir tanpa kerumitan",
+      "seoTitle": "Editor Imej Percuma untuk Mac — Pangkas, Ubah Saiz | OFF42",
+      "seoDescription": "Buka JPEG, PNG, HEIC, WebP dan TIFF, lalu pangkas, ubah saiz, putar, laras dan anotasikan dengan IMG42. Editor imej percuma, sumber terbuka dan luar talian.",
+      "short": "Penyuntingan imej",
+      "intro": "Buka foto, pangkas bahagian yang mengganggu, laraskan imej atau tambah anotasi yang jelas. IMG42 memudahkan tugas imej harian anda.",
+      "points": [
+        "Lihat format imej biasa, termasuk JPEG, PNG, HEIC dan TIFF.",
+        "Pangkas, ubah saiz, putar dan laraskan imej.",
+        "Tambah anotasi dan eksport ke format imej yang disokong."
+      ],
+      "steps": [
+        "Buka imej pada Mac anda.",
+        "Buat pelarasan dan semak pikselnya.",
+        "Eksport salinan dalam format yang sesuai dengan kegunaannya."
+      ],
+      "note": "Sokongan membaca dan menulis berbeza mengikut format dan ketersediaan codec macOS. Sesetengah format boleh dibuka tetapi tidak boleh disimpan dalam bentuk asalnya.",
+      "question": "Bolehkah saya mengubah saiz imej sebelum berkongsi?",
+      "answer": "Ya. Ubah saiz imej dan eksport salinan. Semak dimensi serta pilih format yang mengekalkan ketelusan atau kualiti imej yang diperlukan."
+    }
+  },
+  "download": {
+    "title": "Pejabat anda yang seterusnya bermula di sini.",
+    "intro": "Pilih platform dan semak status keluaran. Kod sumber tersedia di GitHub.",
+    "mac": "OFF42 untuk macOS",
+    "macText": "Kod sumber menyasarkan macOS 14 atau lebih baharu. Pemasang DMG awam belum dikeluarkan.",
+    "windows": "OFF42 untuk Windows",
+    "windowsText": "Aplikasi natif Windows telah dilaksanakan dan tersedia sebagai kod sumber. Semak ciri dan batasan yang didokumenkan. Pemasang Windows awam belum diterbitkan.",
+    "sourceTitle": "Bina. Baca. Jadikannya milik anda.",
+    "sourceText": "Dapatkan kod sumber berlesen MIT di GitHub. Pembinaan pada macOS memerlukan Xcode Command Line Tools. Binaan setempat menggunakan tandatangan ad-hoc melainkan anda mengkonfigurasi tandatangan pengedaran.",
+    "checkReleases": "Semak keluaran",
+    "buildGuide": "Arahan pembinaan",
+    "releaseNote": "Butang muat turun muncul apabila fail keluaran yang diterbitkan tersedia. Tiada pemasang dinyatakan sebagai ditandatangani atau dinotarisasi tanpa bukti keluaran.",
+    "buildTitle": "Bina OFF42 pada Mac anda",
+    "buildText": "Sementara pemasang bertandatangan belum diterbitkan, anda boleh membina aplikasi sendiri dalam beberapa minit. Jalankan arahan ini dalam Terminal.",
+    "buildStep1": "Pasang Xcode Command Line Tools daripada Apple.",
+    "buildStep2": "Muat turun kod sumber daripada GitHub.",
+    "buildStep3": "Bina keenam-enam aplikasi, atau bina satu aplikasi dan salin ke folder Applications."
+  },
+  "about": {
+    "title": "Pejabat tanpa apa-apa untuk disembunyikan.",
+    "intro": "OFF42 menghimpunkan enam aplikasi natif untuk macOS dan Windows: PDF, dokumen, hamparan, pembentangan, imej dan imbasan. Percuma dan sumber terbuka, dengan pelaksanaan berasingan bagi setiap platform serta batasan yang didokumenkan.",
+    "licenseTitle": "Berlesen MIT. Bebas untuk diterokai.",
+    "licenseText": "Gunakan, kaji, ubah suai dan edarkan semula perisian di bawah lesen MIT. Repositori menyertakan terma lesen dan kod sumber.",
+    "contributeTitle": "Alat yang lebih baik ialah usaha bersama.",
+    "contributeText": "Laporkan pepijat yang boleh dihasilkan semula, cadangkan penambahbaikan, bantu terjemahan atau sumbangkan kod melalui GitHub.",
+    "honestTitle": "Dibangunkan secara terbuka.",
+    "honestText": "Projek ini terus berkembang. Repositori mendokumentasikan binaan yang diuji, batasan dan liputan audit. Ketersediaan kod sumber berasingan daripada keluaran yang dibungkus, ditandatangani dan dinotarisasi.",
+    "status": "Baca status projek",
+    "issues": "Laporkan isu"
+  },
+  "privacy": {
+    "title": "Pastikan kerja anda dekat.",
+    "intro": "Laman web ini memperkenalkan OFF42 serta memautkan kod sumber dan keluaran projek. Ia tidak menerima atau memproses dokumen anda.",
+    "siteTitle": "Laman web ringkas",
+    "siteText": "Laman ini tiada iklan, skrip analitik atau sistem akaun. Penyedia pengehosan mungkin memproses maklumat permintaan untuk menyampaikan dan melindungi laman web.",
+    "appTitle": "Kerja dokumen setempat",
+    "appText": "Penyuntingan asas berjalan secara setempat pada komputer anda tanpa memuat naik fail. Ciri dalam talian pilihan memerlukan sambungan; ketersediaannya berbeza mengikut platform.",
+    "linksTitle": "Pautan luar",
+    "linksText": "GitHub dan perkhidmatan terpaut lain mempunyai dasar privasi tersendiri. Fail anda tidak dimuat naik apabila melawat laman web ini."
+  },
+  "seo": {
+    "homeTitle": "OFF42 — Perisian Pejabat Percuma untuk macOS dan Windows, Tanpa Langganan",
+    "homeDescription": "Aplikasi pejabat natif, percuma dan sumber terbuka untuk macOS dan Windows: PDF, DOCX, XLSX, PPTX, imej dan imbasan. Liputan ciri dan ujian berbeza mengikut platform.",
+    "featuresTitle": "Ciri: PDF, Dokumen, Hamparan, Imbasan | OFF42",
+    "featuresDescription": "Edit dan tandatangani PDF, kecilkan fail besar, imbas dengan OCR, tulis DOCX serta guna XLSX dan PPTX. Lihat semua keupayaan pejabat percuma OFF42 pada Mac.",
+    "downloadTitle": "Muat Turun OFF42 untuk macOS dan Windows — Pakej Pejabat Percuma",
+    "downloadDescription": "OFF42 untuk macOS dan Windows: kod sumber, status keluaran, arahan binaan dan batasan platform. Semak perkara yang telah dilaksanakan dan diuji sebelum memasang.",
+    "aboutTitle": "Pakej Pejabat Sumber Terbuka, Berlesen MIT | OFF42",
+    "aboutDescription": "OFF42 terdiri daripada enam aplikasi natif untuk macOS dan Windows di bawah lesen MIT. Terokai kod sumber, sokongan platform dan batasan di GitHub.",
+    "privacyTitle": "Privasi: Fail Kekal pada Komputer Anda | OFF42",
+    "privacyDescription": "Penyuntingan asas berjalan secara setempat pada komputer anda tanpa memuat naik fail. Ciri dalam talian pilihan memerlukan sambungan; ketersediaannya berbeza mengikut platform."
+  }
+}

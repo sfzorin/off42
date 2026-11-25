@@ -86,7 +86,9 @@ enum AcroFormFixer {
             switch value {
             case .name(let v)?: on = v != "Off"
             case .raw(let v)?: on = !["(Off)", "()"].contains(v)
-            default: on = widget["AS"]?.nameValue.map { $0 != "Off" } ?? false
+            // PDFKit removes /V when an imported checked checkbox is cleared, but leaves its old
+            // /AS name behind. Absence of a field value means Off, not the stale appearance state.
+            default: on = false
             }
             if widget["FT"] != nil, value?.nameValue == nil, value != nil { widget = widget.setting("V", .name(on ? "Yes" : "Off")); changed = true }
             if widget["MK"]?["CA"] == nil { widget = widget.setting("MK", (widget["MK"] ?? .dict([])).setting("CA", .raw("(4)"))); changed = true }

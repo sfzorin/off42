@@ -29,14 +29,28 @@ enum ContinuityImport {
     }
 
     static func image(_ data: Data) -> RawScan? {
-        guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
-        // Phone photos carry an EXIF orientation: apply it.
-        let opts: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true,
-                                     kCGImageSourceThumbnailMaxPixelSize: 6000]
-        guard let image = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else { return nil }
-        let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any]
-        let dpi = (props?[kCGImagePropertyDPIWidth] as? Double).flatMap { $0 > 72.5 ? $0 : nil } ?? estimatedDPI(image)
-        return RawScan(image: image, dpi: dpi)
+        try? imagePages(data).first
+    }
+
+    /// UI import is bounded to 6000 pixels per side; preserve physical size when reducing a large page.
+    static func imagePages(_ data: Data) throws -> [RawScan] {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { throw CocoaError(.fileReadCorruptFile) }
+        let type = CGImageSourceGetType(source) as String?
+        let count = type == UTType.tiff.identifier ? CGImageSourceGetCount(source) : min(1, CGImageSourceGetCount(source))
+        guard (1...2000).contains(count) else { throw CocoaError(.fileReadCorruptFile) }
+        return try (0..<count).map { index in
+            let props = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any]
+            let width = (props?[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue ?? 0
+            let height = (props?[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue ?? 0
+            guard width.isFinite, height.isFinite, width > 0, height > 0 else { throw CocoaError(.fileReadCorruptFile) }
+            let opts: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true, kCGImageSourceThumbnailMaxPixelSize: 6000]
+            guard let image = CGImageSourceCreateThumbnailAtIndex(source, index, opts as CFDictionary) else { throw CocoaError(.fileReadCorruptFile) }
+            let metadataDPI = (props?[kCGImagePropertyDPIWidth] as? NSNumber)?.doubleValue
+            let scale = min(1, Double(max(image.width, image.height)) / max(width, height))
+            let dpi = metadataDPI.flatMap { $0.isFinite && $0 > 72.5 && $0 <= 100_000 ? $0 * scale : nil } ?? estimatedDPI(image)
+            return RawScan(image: image, dpi: dpi)
+        }
     }
 
     /// Photos have no real resolution: assume the long side is an A4 page's height.
@@ -45,25 +59,41 @@ enum ContinuityImport {
     }
 
     static func rasterize(_ doc: PDFDocument, dpi: Double = 250) -> [RawScan] {
-        (0..<doc.pageCount).compactMap { i in
-            guard let page = doc.page(at: i) else { return nil }
+        (try? rasterizeChecked(doc, dpi: dpi)) ?? []
+    }
+
+    static func rasterizeChecked(_ doc: PDFDocument, dpi: Double = 250) throws -> [RawScan] {
+        guard !doc.isLocked, (1...2000).contains(doc.pageCount), dpi.isFinite, dpi > 0, dpi <= 4800 else { throw CocoaError(.fileReadCorruptFile) }
+        return try (0..<doc.pageCount).map { i in
+            guard let page = doc.page(at: i) else { throw CocoaError(.fileReadCorruptFile) }
             let box = page.bounds(for: .mediaBox)
-            let size = CGSize(width: box.width * dpi / 72, height: box.height * dpi / 72)
+            guard box.width.isFinite, box.height.isFinite, box.width > 0, box.height > 0 else { throw CocoaError(.fileReadCorruptFile) }
+            let rotated = abs(page.rotation % 180) == 90
+            let points = rotated ? CGSize(width: box.height, height: box.width) : box.size
+            let requested = CGSize(width: points.width * dpi / 72, height: points.height * dpi / 72)
+            guard requested.width.isFinite, requested.height.isFinite else { throw CocoaError(.fileReadCorruptFile) }
+            let scale = min(1, 6000 / max(requested.width, requested.height))
+            let size = CGSize(width: max(1, requested.width * scale), height: max(1, requested.height * scale))
             let ns = page.thumbnail(of: size, for: .mediaBox)
             var r = CGRect(origin: .zero, size: ns.size)
-            guard let cg = ns.cgImage(forProposedRect: &r, context: nil, hints: nil) else { return nil }
-            return RawScan(image: cg, dpi: Double(cg.width) / (box.width / 72))
+            guard let cg = ns.cgImage(forProposedRect: &r, context: nil, hints: nil) else { throw CocoaError(.fileReadCorruptFile) }
+            return RawScan(image: cg, dpi: Double(cg.width) / (points.width / 72))
         }
     }
 
     /// Images and PDF pages from files (File › Import, drops).
     static func load(_ urls: [URL]) -> [(RawScan, Bool)] {
+        (try? loadChecked(urls)) ?? []
+    }
+
+    static func loadChecked(_ urls: [URL]) throws -> [(RawScan, Bool)] {
         var out: [(RawScan, Bool)] = []
         for url in urls {
-            if UTType(filenameExtension: url.pathExtension)?.conforms(to: .pdf) == true, let doc = PDFDocument(url: url) {
-                out += rasterize(doc).map { ($0, true) }
-            } else if let data = try? Data(contentsOf: url), let raw = image(data) {
-                out.append((raw, false))
+            if UTType(filenameExtension: url.pathExtension)?.conforms(to: .pdf) == true {
+                guard let doc = PDFDocument(url: url) else { throw CocoaError(.fileReadCorruptFile, userInfo: [NSFilePathErrorKey: url.path]) }
+                out += try rasterizeChecked(doc).map { ($0, true) }
+            } else {
+                out += try imagePages(Data(contentsOf: url)).map { ($0, false) }
             }
         }
         return out

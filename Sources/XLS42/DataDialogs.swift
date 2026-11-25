@@ -506,13 +506,15 @@ extension SheetWindowController {
         let range = clampedSelection
         guard guardCellOperation(range) else { return }
         let direction = popup([L("Down"), L("Right"), L("Up"), L("Left")], selected: range.cols.count > range.rows.count ? 1 : 0)
-        let type = popup([L("Linear"), L("Growth"), L("Date"), L("AutoFill")])
+        let type = popup([L("Linear"), L("Growth"), L("Date"), L("AutoFill"), L("Serial Numbers")])
+        type.identifier = NSUserInterfaceItemIdentifier("fill-series-type")
         let unit = popup([L("Day"), L("Weekday"), L("Month"), L("Year")])
         let step = field("1", width: 100)
         let stop = field("", width: 100)
         let rows: [[NSView]] = [[label(L("Direction:")), direction], [label(L("Series type:")), type], [label(L("Time unit:")), unit],
                                 [label(L("Increment:")), step], [label(L("End value:")), stop]]
         guard runDialog(L("Fill Series"), info: L("Range %@", range.a1), ok: L("OK"), rows: rows) == .alertFirstButtonReturn else { return }
+        if type.indexOfSelectedItem == 4 { showSerialSeriesDialog(reverse: direction.indexOfSelectedItem >= 2); return }
         let parse: (String) -> Double? = { s in Double(s.replacingOccurrences(of: ",", with: ".")) ?? DateMath.parse(s) }
         guard let inc = parse(step.stringValue) else { NSSound.beep(); return }
         let t = DataTools.SeriesType(rawValue: type.indexOfSelectedItem) ?? .linear

@@ -136,6 +136,24 @@ struct Mark {
     var isRectBased: Bool { !isLineBased && kind != .pen && kind != .highlighter }
     var isLineBased: Bool { kind == .line }
     var keepsAspect: Bool { kind == .image || kind == .loupe }
+    var supportsStroke: Bool { ![.image, .spotlight, .pixelate].contains(kind) }
+    var supportsFill: Bool { [.rectangle, .roundedRect, .oval, .bubble, .star, .polygon, .text].contains(kind) }
+    var supportsDash: Bool { supportsStroke && kind != .highlighter && kind != .loupe }
+    var supportsShadow: Bool { kind != .spotlight }
+
+    /// Used by editing commands to avoid creating Undo entries for clicks or unchanged styles/text.
+    func hasSameContent(as other: Mark) -> Bool {
+        func close(_ a: CGFloat, _ b: CGFloat) -> Bool { abs(a - b) < 1e-7 }
+        func samePoint(_ a: CGPoint, _ b: CGPoint) -> Bool { close(a.x, b.x) && close(a.y, b.y) }
+        return id == other.id && kind == other.kind && color.isEqual(other.color) && fill == other.fill
+            && width == other.width && dashed == other.dashed && shadow == other.shadow
+            && arrowStart == other.arrowStart && arrowEnd == other.arrowEnd
+            && points.count == other.points.count && zip(points, other.points).allSatisfy({ samePoint($0.0, $0.1) })
+            && samePoint(rect.origin, other.rect.origin) && close(rect.width, other.rect.width) && close(rect.height, other.rect.height) && text == other.text
+            && fontName == other.fontName && fontSize == other.fontSize && bold == other.bold
+            && italic == other.italic && underline == other.underline && alignment == other.alignment
+            && textColor.isEqual(other.textColor) && image === other.image && zoom == other.zoom
+    }
 
     var bounds: CGRect {
         if isRectBased { return rect.standardized }
@@ -203,8 +221,10 @@ struct Mark {
         case .rectangle, .roundedRect, .oval, .star, .polygon, .bubble, .spotlight:
             let r = rect.standardized
             guard r.insetBy(dx: -tolerance - width / 2, dy: -tolerance - width / 2).contains(p) else { return false }
-            if fill != nil || r.width < tolerance * 4 || r.height < tolerance * 4 { return true }
-            return !r.insetBy(dx: tolerance + width / 2, dy: tolerance + width / 2).contains(p) || kind == .bubble
+            guard let path = shapePath() else { return false }
+            if (fill != nil || kind == .spotlight) && path.contains(p) { return true }
+            return path.cgPath.copy(strokingWithWidth: max(0, width) + tolerance * 2,
+                                    lineCap: .round, lineJoin: .round, miterLimit: 10).contains(p)
         case .text, .image, .pixelate, .loupe:
             return rect.standardized.insetBy(dx: -tolerance, dy: -tolerance).contains(p)
         case .pen, .highlighter, .line:
@@ -320,8 +340,7 @@ struct Mark {
             stroke(path)
         case .rectangle, .roundedRect, .oval, .star, .polygon, .bubble:
             guard let path = shapePath() else { return }
-            if let fill { fill.setFill(); path.fill() }
-            NSShadow().set()
+            if let fill { fill.setFill(); path.fill(); NSShadow().set() }
             stroke(path)
         case .spotlight:
             let outside = NSBezierPath(rect: CGRect(origin: .zero, size: canvas))
@@ -347,8 +366,7 @@ struct Mark {
         case .text:
             let r = rect.standardized
             let box = NSBezierPath(rect: r)
-            if let fill { fill.setFill(); box.fill() }
-            NSShadow().set()
+            if let fill { fill.setFill(); box.fill(); NSShadow().set() }
             if color.alphaComponent > 0 { stroke(box) }
             (text as NSString).draw(with: r.insetBy(dx: textPadding, dy: textPadding), options: [.usesLineFragmentOrigin], attributes: textAttributes)
         case .image:
@@ -357,10 +375,13 @@ struct Mark {
             NSImage(cgImage: image, size: .zero).draw(in: rect.standardized, from: .zero, operation: .multiply, fraction: 1,
                                                       respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high])
         case .pixelate:
-            let r = rect.standardized.integral
+            // CGImage clips a crop to its image. Use that same visible rectangle when sampling and
+            // drawing, or a partly off-canvas mark stretches the clipped pixels over its original box.
+            let r = rect.standardized.integral.intersection(CGRect(origin: .zero, size: canvas))
+            guard !r.isNull, !r.isEmpty else { return }
             guard let base, let crop = base.cropping(to: r), r.width >= 2, r.height >= 2 else {
                 NSColor.gray.setFill()
-                rect.standardized.fill()
+                r.fill()
                 return
             }
             let block = max(6, min(r.width, r.height) / 8)
@@ -401,6 +422,11 @@ struct Mark {
 
     /// Flattens marks onto an image of the same pixel size.
     static func flatten(_ marks: [Mark], onto image: CGImage) -> CGImage {
+        flattenChecked(marks, onto: image) ?? image
+    }
+
+    /// Saving/export must fail when rendering cannot allocate its output, instead of dropping the marks.
+    static func flattenChecked(_ marks: [Mark], onto image: CGImage) -> CGImage? {
         guard !marks.isEmpty else { return image }
         let size = CGSize(width: image.width, height: image.height)
         let cs = image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }
@@ -412,7 +438,7 @@ struct Mark {
             NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: true)
             for m in marks { m.draw(base: image, canvas: size) }
             NSGraphicsContext.restoreGraphicsState()
-        } ?? image
+        }
     }
 
     // MARK: Sketch recognition

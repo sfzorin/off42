@@ -13,7 +13,8 @@ struct PixelSelection {
     var size: CGSize { CGSize(width: mask.width, height: mask.height) }
 
     static func grayContext(_ size: CGSize) -> CGContext? {
-        CGContext(data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8, bytesPerRow: 0,
+        guard ImageLoader.validPixelSize(size) else { return nil }
+        return CGContext(data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8, bytesPerRow: 0,
                   space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)
     }
 
@@ -54,6 +55,9 @@ struct PixelSelection {
     /// Instant Alpha: the contiguous region around `seed` whose colour is within `tolerance` (0…1).
     static func similarColors(in image: CGImage, seed: CGPoint, tolerance: CGFloat) -> PixelSelection? {
         let w = image.width, h = image.height
+        guard ImageLoader.validPixelSize(CGSize(width: w, height: h)), seed.x.isFinite, seed.y.isFinite,
+              seed.x >= 0, seed.y >= 0, seed.x < CGFloat(w), seed.y < CGFloat(h), tolerance.isFinite,
+              (0...1).contains(tolerance) else { return nil }
         let x0 = Int(seed.x), y0 = Int(seed.y)
         guard x0 >= 0, y0 >= 0, x0 < w, y0 < h,
               let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
@@ -89,7 +93,8 @@ struct PixelSelection {
 
 enum PixelOps {
     static func rgbContext(_ size: CGSize, like image: CGImage) -> CGContext? {
-        CGContext(data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8, bytesPerRow: 0,
+        guard ImageLoader.validPixelSize(size) else { return nil }
+        return CGContext(data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8, bytesPerRow: 0,
                   space: image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpace(name: CGColorSpace.sRGB)!,
                   bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
     }
@@ -97,7 +102,7 @@ enum PixelOps {
     /// Makes the selected pixels transparent.
     static func delete(_ sel: PixelSelection, from image: CGImage) -> CGImage? {
         let size = CGSize(width: image.width, height: image.height)
-        guard let ctx = rgbContext(size, like: image) else { return nil }
+        guard sel.size == size, let ctx = rgbContext(size, like: image) else { return nil }
         let full = CGRect(origin: .zero, size: size)
         ctx.draw(image, in: full)
         ctx.clip(to: full, mask: sel.mask)
@@ -107,10 +112,15 @@ enum PixelOps {
 
     /// The selected part, cropped to its bounds; outside a non-rectangular selection is transparent.
     static func extract(_ sel: PixelSelection, from image: CGImage) -> CGImage? {
-        let r = sel.bounds.integral
+        let size = CGSize(width: image.width, height: image.height)
+        let bounds = sel.bounds
+        guard sel.size == size, bounds.origin.x.isFinite, bounds.origin.y.isFinite,
+              bounds.width.isFinite, bounds.height.isFinite, bounds.width > 0, bounds.height > 0 else { return nil }
+        let r = bounds.integral.intersection(CGRect(origin: .zero, size: size))
+        guard !r.isNull, r.width >= 1, r.height >= 1 else { return nil }
         guard let crop = image.cropping(to: r) else { return nil }
         if sel.isRectangle { return crop }
-        guard let maskCrop = sel.mask.cropping(to: r), let ctx = rgbContext(r.size, like: image) else { return crop }
+        guard let maskCrop = sel.mask.cropping(to: r), let ctx = rgbContext(r.size, like: image) else { return nil }
         let full = CGRect(origin: .zero, size: r.size)
         ctx.clip(to: full, mask: maskCrop)
         ctx.draw(crop, in: full)

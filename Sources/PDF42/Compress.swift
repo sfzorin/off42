@@ -63,10 +63,13 @@ extension EditorWindowController {
     @objc func reduceSizeAction(_ sender: Any?) {
         guard let pdf, let window else { return }
         prepareForSave()
+        guard let doc = pdfDoc else { return }
+        let snapshotData: Data
+        do { snapshotData = try doc.data(ofType: "com.adobe.pdf") } catch { presentError(error); return }
+        guard let snapshot = PDFDocument(data: snapshotData) else { return }
         let original = currentDocumentSize
-        // Watermarks, page numbers and edited text are drawn into the pages first, as when saving.
-        let baked = PageOverlay.bakedDocument(pdf)
-        let snapshot = baked.dataRepresentation().flatMap(PDFDocument.init(data:)) ?? baked
+        let revision = doc.revision
+        let extras = DocumentExtras.read(snapshotData, pdf: snapshot)
 
         let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 330, height: 26), pullsDown: false)
         popup.addItems(withTitles: PDFCompressor.Level.allCases.map(\.title))
@@ -89,8 +92,9 @@ extension EditorWindowController {
         for level in PDFCompressor.Level.allCases {
             popup.item(at: level.rawValue)?.title = level.title + " — " + L("estimating…")
             queue.async {
-                let data = PDFCompressor.compress(snapshot, level: level, original: original)
-                results[level] = data
+                let compressed = PDFCompressor.compress(snapshot, level: level, original: original)
+                let data = compressed.map { DocumentWriter.apply($0, extras: extras, pdf: snapshot) }
+                results[level] = data.flatMap { $0.count < original ? $0 : nil }
                 DispatchQueue.main.async {
                     let text: String
                     if let data {
@@ -105,7 +109,12 @@ extension EditorWindowController {
         }
 
         alert.beginSheetModal(for: window) { [self] response in
-            guard response != .alertThirdButtonReturn, let level = PDFCompressor.Level(rawValue: popup.indexOfSelectedItem) else { return }
+            guard response == .alertFirstButtonReturn || response == .alertSecondButtonReturn,
+                  let level = PDFCompressor.Level(rawValue: popup.indexOfSelectedItem) else { return }
+            guard pdfDoc === doc, self.pdf === pdf, doc.revision == revision, !pdfView.hasPendingTextEdit else {
+                presentError(NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError))
+                return
+            }
             // Waits for the chosen level if it is still being estimated.
             let ready = queue.sync { results[level] }
             guard let data = ready ?? nil else {
@@ -118,8 +127,7 @@ extension EditorWindowController {
             let summary = L("%@ → %@", PDFCompressor.sizeText(original), PDFCompressor.sizeText(data.count))
             if response == .alertSecondButtonReturn {
                 guard let compressed = PDFDocument(data: data) else { return }
-                replaceDocument(compressed)
-                pdfDoc?.updateChangeCount(.changeDone)
+                applyCompressedDocument(compressed, extras: DocumentExtras.read(data, pdf: compressed))
                 banner.show(.success, L("Compressed: %@. Save to keep the change.", summary))
                 return
             }
@@ -130,10 +138,22 @@ extension EditorWindowController {
             panel.beginSheetModal(for: window) { r in
                 guard r == .OK, let url = panel.url else { return }
                 do {
-                    try data.write(to: url)
+                    try data.write(to: url, options: .atomic)
                     self.banner.show(.success, L("Saved: %@", summary))
                 } catch { self.presentError(error) }
             }
         }
     }
+
+    /// Compression changes the document owned by Save as well as its view, and remains undoable.
+    func applyCompressedDocument(_ replacement: PDFDocument, extras: DocumentExtras) {
+        guard let doc = pdfDoc else { return }
+        let old = doc.pdf, oldExtras = doc.extras
+        doc.pdf = replacement
+        doc.extras = extras
+        replaceDocument(replacement)
+        undo?.registerUndo(withTarget: self) { $0.applyCompressedDocument(old, extras: oldExtras) }
+        undo?.setActionName(L("Reduce File Size"))
+    }
+
 }

@@ -21,7 +21,10 @@ let package = Package(
         .executable(name: "QLThumbnail42", targets: ["QLThumbnail42"]),
     ],
     targets: [
-        .target(name: "Kit42", path: "Sources/Kit42"),
+        .target(name: "Kit42", path: "Sources/Kit42", resources: [.copy("Resources/Translations"), .copy("Resources/Technical"), .copy("Resources/Labels")]),
+        // Works with the Command Line Tools alone, without the XCTest framework in full Xcode.
+        .executableTarget(name: "localization42audit", dependencies: ["Kit42"], path: "Tests/Kit42Tests"),
+        .executableTarget(name: "production42audit", dependencies: ["Kit42"], path: "Tests/ProductionTests"),
         .executableTarget(name: "PDF42", dependencies: ["Kit42"], path: "Sources/PDF42"),
         .executableTarget(name: "XLS42", dependencies: ["Kit42"], path: "Sources/XLS42"),
         .executableTarget(name: "DOC42", dependencies: ["Kit42"], path: "Sources/DOC42"),

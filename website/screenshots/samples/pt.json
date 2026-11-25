@@ -1,0 +1,54 @@
+{
+  "rtl": false,
+  "brand": "ESTÚDIO MAR ABERTO",
+  "brandLine": "Identidade de marca · Web · Motion",
+  "number": "Contrato nº MA-2026-114",
+  "title": "Contrato de prestação de serviços",
+  "intro": "Este contrato é celebrado em 6 de novembro de 2026 entre Estúdio Mar Aberto Design Ltda. (o “Estúdio”) e Ipê Amarelo Mídia Ltda. (o “Cliente”) para a criação da nova identidade de marca e do site do Cliente.",
+  "sections": [
+    ["1. Objeto", "O Estúdio entregará um sistema de logotipo, guias de tipografia e cores, o design de um site de doze páginas e uma biblioteca de modelos para redes sociais."],
+    ["2. Prazos", "Os trabalhos começam em 16 de novembro de 2026. Os primeiros conceitos são apresentados em três semanas; os arquivos finais são entregues até 29 de janeiro de 2027."],
+    ["3. Propriedade intelectual", "Após o pagamento integral, todos os direitos sobre os projetos finais passam ao Cliente. O Estúdio pode exibir o trabalho em seu portfólio."]
+  ],
+  "feeTitle": "4. Valores",
+  "fees": [["Identidade e manual de marca", "R$ 46.000,00"], ["Design do site, 12 páginas", "R$ 69.000,00"], ["Modelos para redes sociais", "R$ 15.000,00"]],
+  "total": ["Total, sem impostos", "R$ 130.000,00"],
+  "signTitle": "Assinaturas das partes",
+  "parties": [
+    {"role": "Pelo Estúdio", "company": "Estúdio Mar Aberto Design Ltda.", "person": "Mariana Costa", "title": "Sócia-diretora",
+     "date": "São Paulo, 6 de novembro de 2026", "signName": "Mariana Costa", "pen": "ballpoint", "design": 2424853,
+     "stamp": {"id": "br.cnpj", "width": 150, "values": {"numbers": "42.000.042/0001-42", "name": "ESTÚDIO MAR ABERTO DESIGN LTDA.", "lines": "Rua Harmonia, 120 – Vila Madalena\nCEP 05435-000 – São Paulo – SP"}}},
+    {"role": "Pelo Cliente", "company": "Ipê Amarelo Mídia Ltda.", "person": "Rafael Almeida", "title": "Diretor-geral",
+     "date": "Belo Horizonte, 6 de novembro de 2026", "signName": "Rafael Almeida", "pen": "gel", "design": 2425117,
+     "stamp": {"id": "br.cnpj", "width": 150, "values": {"numbers": "31.000.042/0001-07", "name": "IPÊ AMARELO MÍDIA LTDA.", "lines": "Av. Afonso Pena, 700 – Centro\nCEP 30130-000 – Belo Horizonte – MG"}}}
+  ],
+  "invoiceTitle": "Fatura",
+  "invoiceNumber": "Fatura nº 2026-0418 · 30 de janeiro de 2027",
+  "billTo": "Faturar para",
+  "billLines": ["Ipê Amarelo Mídia Ltda.", "Av. Afonso Pena, 700, Belo Horizonte – MG", "CNPJ 31.000.042/0001-07"],
+  "items": [["Identidade e manual de marca", "1", "R$ 46.000,00"], ["Design do site, 12 páginas", "1", "R$ 69.000,00"], ["Modelos para redes sociais", "1", "R$ 15.000,00"]],
+  "invoiceTotal": ["Total a pagar", "R$ 130.000,00"],
+  "paid": {"id": "us.paid", "width": 150, "values": {"top": "ESTÚDIO MAR ABERTO LTDA.", "word": "PAGO"}},
+  "note": "Pagamento recebido, obrigado. Transferência via Pix, ref. MA-2026-114.",
+  "generatorName": "Mariana Costa",
+  "letter": {
+    "brand": "ESTÚDIO MAR ABERTO", "addr": "Rua Harmonia, 120, São Paulo – SP · ola@maraberto.example",
+    "date": "São Paulo, 6 de novembro de 2026", "to": ["Sr. Rafael Almeida", "Ipê Amarelo Mídia Ltda.", "Av. Afonso Pena, 700, Belo Horizonte – MG"],
+    "subject": "Proposta: uma nova identidade para a Ipê Amarelo Mídia",
+    "body": ["Prezado Rafael,", "Obrigada pela ótima conversa na semana passada. Como combinado, segue nossa proposta para a nova identidade: um logotipo mais sereno, uma paleta quente e um site que coloca seus documentários em primeiro lugar.", "Sugerimos três etapas, cada uma encerrada com uma revisão em Belo Horizonte:"],
+    "table": [["Etapa", "Semanas", "Valor"], ["Pesquisa e conceitos", "3", "R$ 34.000,00"], ["Identidade e manual", "4", "R$ 46.000,00"], ["Site e modelos", "6", "R$ 50.000,00"]],
+    "close": ["Teremos o prazer de começar em 16 de novembro. O contrato segue anexo, já assinado por nós.", "Atenciosamente,"],
+    "name": "Mariana Costa", "role": "Sócia-diretora, Estúdio Mar Aberto Design Ltda."
+  },
+  "budget": {
+    "sheet": "Orçamento 2027", "head": "Orçamento do estúdio, 1º semestre de 2027 (R$)", "total": "Total", "share": "Parcela",
+    "months": ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"],
+    "rows": [["Design", [34000, 40500, 46000, 28000, 26500, 30500]], ["Desenvolvimento", [17500, 22500, 38000, 50500, 48500, 40000]], ["Marketing", [10000, 11500, 14300, 21500, 25800, 28600]], ["Hospedagem e ferramentas", [2300, 2300, 2500, 2500, 2800, 2800]]]
+  },
+  "deck": {
+    "title": "Ipê Amarelo Mídia", "subtitle": "Renovação da marca 2027 · Revisão de design",
+    "ideasTitle": "Sereno, quente, luminoso", "ideasSubtitle": "Três ideias por trás da nova identidade",
+    "ideas": [["Luz", "Fim de tarde no cerrado: contraste suave e brilhos quentes."], ["História", "Documentários primeiro: o site abre com os filmes."], ["Ofício", "Traços feitos à mão, tipografia com personalidade."]],
+    "timelineTitle": "Cronograma", "steps": [["Nov", "Pesquisa"], ["Dez", "Conceitos"], ["Jan", "Identidade"], ["Fev", "Site"]]
+  }
+}

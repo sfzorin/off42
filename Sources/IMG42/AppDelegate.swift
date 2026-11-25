@@ -48,6 +48,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if let index = CommandLine.arguments.firstIndex(of: "--audit"), CommandLine.arguments.indices.contains(index + 1) {
+            Task { @MainActor in await ImageNativeAudit.run(CommandLine.arguments[index + 1]) }
+            return
+        }
         if CommandLine.arguments.contains("--uitest") {
             Task { @MainActor in await UITest.run() }
             return
@@ -269,10 +273,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // K42_EXPORT_ACCESSORY: the export panel's options view in a plain window (the save panel itself is
             // out-of-process and blank in snapshots).
             if env["K42_EXPORT_ACCESSORY"] != nil {
-                let options = ExportOptions(sourceType: .jpeg, hasAlpha: false, panel: NSSavePanel())
+                let panel = NSSavePanel()
+                let options = ExportOptions(sourceType: .jpeg, hasAlpha: false, panel: panel)
                 let win = NSWindow(contentRect: NSRect(x: 200, y: 200, width: 440, height: 140), styleMask: [.titled], backing: .buffered, defer: false)
                 win.contentView = options.view
                 objc_setAssociatedObject(win, "options", options, .OBJC_ASSOCIATION_RETAIN)
+                objc_setAssociatedObject(win, "exportPanel", panel, .OBJC_ASSOCIATION_RETAIN)
                 win.makeKeyAndOrderFront(nil)
             }
             if env["K42_UNDO"] != nil { w.undo.undo() }

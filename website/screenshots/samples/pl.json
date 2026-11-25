@@ -1,0 +1,54 @@
+{
+  "rtl": false,
+  "brand": "STUDIO JASNY BRZEG",
+  "brandLine": "Identyfikacja marki · Web · Motion",
+  "number": "Umowa nr JB/2026/114",
+  "title": "Umowa o świadczenie usług projektowych",
+  "intro": "Niniejsza umowa zostaje zawarta 6 listopada 2026 r. pomiędzy Studio Jasny Brzeg Sp. z o.o. („Studio”) a Zielona Fala Media Sp. z o.o. („Klient”) w sprawie zaprojektowania nowej identyfikacji marki i strony internetowej Klienta.",
+  "sections": [
+    ["1. Przedmiot umowy", "Studio dostarczy system logo, wytyczne typograficzne i kolorystyczne, projekt dwunastostronicowej witryny oraz bibliotekę szablonów do mediów społecznościowych."],
+    ["2. Terminy", "Prace rozpoczynają się 16 listopada 2026 r. Pierwsze koncepcje zostaną przedstawione w ciągu trzech tygodni; pliki końcowe zostaną przekazane do 29 stycznia 2027 r."],
+    ["3. Prawa autorskie", "Po zapłacie całości wynagrodzenia autorskie prawa majątkowe do projektów przechodzą na Klienta. Studio może pokazywać pracę w portfolio."]
+  ],
+  "feeTitle": "4. Wynagrodzenie",
+  "fees": [["Identyfikacja i księga znaku", "36 000 zł"], ["Projekt witryny, 12 stron", "54 000 zł"], ["Szablony do social mediów", "12 000 zł"]],
+  "total": ["Razem netto", "102 000 zł"],
+  "signTitle": "Podpisy stron",
+  "parties": [
+    {"role": "W imieniu Studia", "company": "Studio Jasny Brzeg Sp. z o.o.", "person": "Agnieszka Wójcik", "title": "Prezes zarządu",
+     "date": "Kraków, 6 listopada 2026 r.", "signName": "Agnieszka Wójcik", "pen": "ballpoint", "design": 2424853,
+     "stamp": {"id": "pl.pieczatka", "width": 150, "values": {"name": "STUDIO JASNY BRZEG Sp. z o.o.", "lines": "ul. Józefińska 12, 30-529 Kraków", "numbers": "NIP 676-000-04-20 · REGON 420000042"}}},
+    {"role": "W imieniu Klienta", "company": "Zielona Fala Media Sp. z o.o.", "person": "Tomasz Kowalczyk", "title": "Członek zarządu",
+     "date": "Warszawa, 6 listopada 2026 r.", "signName": "Tomasz Kowalczyk", "pen": "fountain", "design": 2425381,
+     "stamp": {"id": "pl.pieczatka", "width": 150, "values": {"name": "ZIELONA FALA MEDIA Sp. z o.o.", "lines": "ul. Hoża 7, 00-528 Warszawa", "numbers": "NIP 525-000-04-27 · KRS 0000942042"}}}
+  ],
+  "invoiceTitle": "Faktura VAT",
+  "invoiceNumber": "Faktura nr FV/0418/2027 · 30 stycznia 2027 r.",
+  "billTo": "Nabywca",
+  "billLines": ["Zielona Fala Media Sp. z o.o.", "ul. Hoża 7, 00-528 Warszawa", "NIP 525-000-04-27"],
+  "items": [["Identyfikacja i księga znaku", "1", "36 000 zł"], ["Projekt witryny, 12 stron", "1", "54 000 zł"], ["Szablony do social mediów", "1", "12 000 zł"]],
+  "invoiceTotal": ["Do zapłaty", "102 000 zł"],
+  "paid": {"id": "us.paid", "width": 160, "values": {"top": "STUDIO JASNY BRZEG SP. Z O.O.", "word": "ZAPŁACONO"}},
+  "note": "Dziękujemy, płatność otrzymana. Przelew bankowy, tytuł JB/2026/114.",
+  "generatorName": "Agnieszka Wójcik",
+  "letter": {
+    "brand": "STUDIO JASNY BRZEG", "addr": "ul. Józefińska 12, 30-529 Kraków · czesc@jasnybrzeg.example",
+    "date": "Kraków, 6 listopada 2026 r.", "to": ["Pan Tomasz Kowalczyk", "Zielona Fala Media Sp. z o.o.", "ul. Hoża 7, 00-528 Warszawa"],
+    "subject": "Oferta: nowa identyfikacja marki Zielona Fala Media",
+    "body": ["Szanowny Panie Tomaszu,", "dziękujemy za świetne spotkanie w zeszłym tygodniu. Zgodnie z obietnicą przesyłamy ofertę nowej identyfikacji: spokojniejszy znak, ciepła paleta barw i strona, na której najważniejsze są Państwa filmy dokumentalne.", "Proponujemy trzy etapy, każdy zakończony przeglądem w Warszawie:"],
+    "table": [["Etap", "Tygodnie", "Kwota"], ["Analiza i koncepcje", "3", "26 000 zł"], ["Identyfikacja i księga", "4", "36 000 zł"], ["Strona i szablony", "6", "40 000 zł"]],
+    "close": ["Chętnie rozpoczniemy pracę 16 listopada. Umowę przesyłamy w załączniku, z naszej strony jest już podpisana.", "Z wyrazami szacunku"],
+    "name": "Agnieszka Wójcik", "role": "Prezes zarządu, Studio Jasny Brzeg Sp. z o.o."
+  },
+  "budget": {
+    "sheet": "Budżet 2027", "head": "Budżet studia, I półrocze 2027 (zł)", "total": "Razem", "share": "Udział",
+    "months": ["Sty", "Lut", "Mar", "Kwi", "Maj", "Cze"],
+    "rows": [["Projektowanie", [26500, 31500, 36000, 22000, 20500, 24000]], ["Programowanie", [13700, 17600, 29500, 39500, 37800, 31300]], ["Marketing", [7700, 9000, 11200, 16800, 20200, 22300]], ["Hosting i narzędzia", [1800, 1800, 2000, 2000, 2200, 2200]]]
+  },
+  "deck": {
+    "title": "Zielona Fala Media", "subtitle": "Odświeżenie marki 2027 · Przegląd projektu",
+    "ideasTitle": "Spokojnie, ciepło, naturalnie", "ideasSubtitle": "Trzy idee nowej identyfikacji",
+    "ideas": [["Światło", "Długie letnie wieczory: miękki kontrast i ciepłe akcenty."], ["Opowieść", "Najpierw dokument: strona otwiera się filmami."], ["Rzemiosło", "Znaki rysowane ręcznie, typografia z charakterem."]],
+    "timelineTitle": "Harmonogram", "steps": [["Lis", "Analiza"], ["Gru", "Koncepcje"], ["Sty", "Identyfikacja"], ["Lut", "Strona"]]
+  }
+}

@@ -106,6 +106,21 @@ struct ScanSettings: Codable, Equatable {
 
     var customSize: CGSize { CGSize(width: customWidth, height: customHeight) }
 
+    var normalized: ScanSettings {
+        var s = self
+        s.resolution = min(4800, max(50, resolution))
+        s.bitDepth = bitDepth == 16 ? 16 : 8
+        func finite(_ n: Double, _ fallback: Double, _ range: ClosedRange<Double>) -> Double {
+            n.isFinite ? min(range.upperBound, max(range.lowerBound, n)) : fallback
+        }
+        s.customWidth = finite(customWidth, 8.27, (1 / 2.54)...(60 / 2.54))
+        s.customHeight = finite(customHeight, 11.69, (1 / 2.54)...(60 / 2.54))
+        s.brightness = finite(brightness, 0, -1...1)
+        s.contrast = finite(contrast, 0, -1...1)
+        s.threshold = finite(threshold, 0.5, 0.1...0.9)
+        return s
+    }
+
     var processing: ProcessOptions {
         var o = ProcessOptions()
         o.crop = autoCrop
@@ -181,8 +196,8 @@ enum Store {
     }
 
     static var settings: ScanSettings {
-        get { load(ScanSettings.self, "settings") ?? Preset.builtIn[0].settings }
-        set { save(newValue, "settings") }
+        get { (load(ScanSettings.self, "settings") ?? Preset.builtIn[0].settings).normalized }
+        set { save(newValue.normalized, "settings") }
     }
 
     /// Index into `allPresets` the settings came from (−1 = changed by hand: "Custom").

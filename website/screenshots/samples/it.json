@@ -1,0 +1,54 @@
+{
+  "rtl": false,
+  "brand": "STUDIO FARO CHIARO",
+  "brandLine": "Identità di marca · Web · Motion",
+  "number": "Contratto n. FC-2026-114",
+  "title": "Contratto di servizi di design",
+  "intro": "Il presente contratto è stipulato il 6 novembre 2026 tra Studio Faro Chiaro S.r.l. (lo «Studio») e Collina Verde Media S.p.A. (il «Cliente») per la progettazione della nuova identità di marca e del sito web del Cliente.",
+  "sections": [
+    ["1. Oggetto", "Lo Studio realizza un sistema di logo, linee guida tipografiche e cromatiche, il design di un sito di dodici pagine e una libreria di modelli per i social."],
+    ["2. Tempistiche", "I lavori iniziano il 16 novembre 2026. I primi concept sono presentati entro tre settimane; i file definitivi sono consegnati entro il 29 gennaio 2027."],
+    ["3. Proprietà intellettuale", "A pagamento avvenuto, tutti i diritti sui progetti definitivi passano al Cliente. Lo Studio può mostrare il lavoro nel proprio portfolio."]
+  ],
+  "feeTitle": "4. Compensi",
+  "fees": [["Identità e linee guida", "€ 8.400"], ["Design del sito, 12 pagine", "€ 12.600"], ["Modelli per i social", "€ 2.800"]],
+  "total": ["Totale, IVA esclusa", "€ 23.800"],
+  "signTitle": "Firme delle parti",
+  "parties": [
+    {"role": "Per lo Studio", "company": "Studio Faro Chiaro S.r.l.", "person": "Giulia Ferrari", "title": "Amministratrice unica",
+     "date": "Milano, 6 novembre 2026", "signName": "Giulia Ferrari", "pen": "ballpoint", "design": 2424853,
+     "stamp": {"id": "it.timbro", "width": 145, "values": {"name": "Studio Faro Chiaro S.r.l.", "lines": "Via Tortona 12\n20144 Milano", "numbers": "P.IVA 12000000420"}}},
+    {"role": "Per il Cliente", "company": "Collina Verde Media S.p.A.", "person": "Marco Bianchi", "title": "Amministratore delegato",
+     "date": "Torino, 6 novembre 2026", "signName": "Marco Bianchi", "pen": "fountain", "design": 2425381,
+     "stamp": {"id": "it.round", "width": 104, "values": {"edge": "COLLINA VERDE MEDIA S.P.A.", "bottom": "TORINO", "centre": "P.IVA\n11000000427"}}}
+  ],
+  "invoiceTitle": "Fattura",
+  "invoiceNumber": "Fattura n. 2026-0418 · 30 gennaio 2027",
+  "billTo": "Intestatario",
+  "billLines": ["Collina Verde Media S.p.A.", "Via Po 7, 10124 Torino, Italia", "P.IVA IT11000000427"],
+  "items": [["Identità e linee guida", "1", "€ 8.400"], ["Design del sito, 12 pagine", "1", "€ 12.600"], ["Modelli per i social", "1", "€ 2.800"]],
+  "invoiceTotal": ["Totale da pagare", "€ 23.800"],
+  "paid": {"id": "us.paid", "width": 150, "values": {"top": "STUDIO FARO CHIARO S.R.L.", "word": "PAGATO"}},
+  "note": "Pagamento ricevuto, grazie. Bonifico bancario, rif. FC-2026-114.",
+  "generatorName": "Giulia Ferrari",
+  "letter": {
+    "brand": "STUDIO FARO CHIARO", "addr": "Via Tortona 12, 20144 Milano · ciao@farochiaro.example",
+    "date": "Milano, 6 novembre 2026", "to": ["Dott. Marco Bianchi", "Collina Verde Media S.p.A.", "Via Po 7, 10124 Torino"],
+    "subject": "Proposta: una nuova identità per Collina Verde Media",
+    "body": ["Gentile Marco,", "grazie per l’ottimo incontro della settimana scorsa. Come promesso, ecco la nostra proposta per la nuova identità: un logo più pacato, una palette calda e un sito che mette al centro i vostri documentari.", "Proponiamo tre fasi, ciascuna con una revisione a Torino:"],
+    "table": [["Fase", "Settimane", "Compenso"], ["Ricerca e concept", "3", "€ 6.200"], ["Identità e linee guida", "4", "€ 8.400"], ["Sito e modelli", "6", "€ 9.200"]],
+    "close": ["Saremmo lieti di iniziare il 16 novembre. Il contratto è in allegato, già firmato da parte nostra.", "Cordiali saluti,"],
+    "name": "Giulia Ferrari", "role": "Amministratrice unica, Studio Faro Chiaro S.r.l."
+  },
+  "budget": {
+    "sheet": "Budget 2027", "head": "Budget dello studio, primo semestre 2027 (€)", "total": "Totale", "share": "Quota",
+    "months": ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu"],
+    "rows": [["Design", [6200, 7400, 8400, 5100, 4800, 5600]], ["Sviluppo", [3200, 4100, 6900, 9200, 8800, 7300]], ["Marketing", [1800, 2100, 2600, 3900, 4700, 5200]], ["Hosting e strumenti", [420, 420, 460, 460, 510, 510]]]
+  },
+  "deck": {
+    "title": "Collina Verde Media", "subtitle": "Rinnovo del marchio 2027 · Revisione design",
+    "ideasTitle": "Calmo, caldo, luminoso", "ideasSubtitle": "Tre idee dietro la nuova identità",
+    "ideas": [["Luce", "Sere sulle colline: contrasto morbido e riflessi caldi."], ["Racconto", "Prima i documentari: il sito si apre con i film."], ["Mestiere", "Segni fatti a mano, tipografia con carattere."]],
+    "timelineTitle": "Calendario", "steps": [["Nov", "Ricerca"], ["Dic", "Concept"], ["Gen", "Identità"], ["Feb", "Sito web"]]
+  }
+}

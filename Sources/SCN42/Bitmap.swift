@@ -12,7 +12,20 @@ struct Bitmap {
     static let sRGB = CGColorSpace(name: CGColorSpace.sRGB)!
     static let gray = CGColorSpaceCreateDeviceGray()
 
+    /// Supports the standard paper sizes at 1200 dpi, while bounding decoded scratch buffers.
+    static func validSize(width: Int, height: Int, channels: Int) -> Bool {
+        guard width > 0, height > 0, width <= 32_768, height <= 32_768,
+              channels == 1 || channels == 4 else { return false }
+        return width <= 256_000_000 / height
+    }
+
+    var isValid: Bool { Self.validSize(width: width, height: height, channels: channels) && data.count == width * height * channels }
+
     init(width: Int, height: Int, channels: Int, fill: UInt8 = 0) {
+        guard Self.validSize(width: width, height: height, channels: channels) else {
+            self.width = 0; self.height = 0; self.channels = channels == 1 ? 1 : 4; self.data = []
+            return
+        }
         self.width = width
         self.height = height
         self.channels = channels
@@ -22,12 +35,13 @@ struct Bitmap {
     /// Draws `image` (scaled so its longer side is at most `maxSide`) into gray or RGBX pixels.
     init(_ image: CGImage, maxSide: Int? = nil, gray: Bool) {
         var w = image.width, h = image.height
-        if let maxSide, max(w, h) > maxSide {
+        if let maxSide, maxSide > 0, max(w, h) > maxSide {
             let s = Double(maxSide) / Double(max(w, h))
             w = max(1, Int((Double(w) * s).rounded()))
             h = max(1, Int((Double(h) * s).rounded()))
         }
         self.init(width: w, height: h, channels: gray ? 1 : 4, fill: 255)
+        guard isValid else { return }
         let space = gray ? Bitmap.gray : Bitmap.sRGB
         let info = gray ? CGImageAlphaInfo.none.rawValue : CGImageAlphaInfo.noneSkipLast.rawValue
         data.withUnsafeMutableBytes { raw in
@@ -39,6 +53,7 @@ struct Bitmap {
     }
 
     func cgImage() -> CGImage? {
+        guard isValid else { return nil }
         let space = channels == 1 ? Bitmap.gray : Bitmap.sRGB
         let info = channels == 1 ? CGImageAlphaInfo.none.rawValue : CGImageAlphaInfo.noneSkipLast.rawValue
         guard let provider = CGDataProvider(data: Data(data) as CFData) else { return nil }
@@ -49,7 +64,7 @@ struct Bitmap {
 
     /// 1-bit image (black where the gray value is below `threshold`): small PDFs and TIFFs for B&W pages.
     func oneBitImage(threshold: UInt8) -> CGImage? {
-        precondition(channels == 1)
+        guard isValid, channels == 1 else { return nil }
         let rowBytes = (width + 7) / 8
         var bits = [UInt8](repeating: 0, count: rowBytes * height)
         data.withUnsafeBufferPointer { src in
@@ -57,7 +72,7 @@ struct Bitmap {
                 for y in 0..<height {
                     let s = y * width, d = y * rowBytes
                     for x in 0..<width where src[s + x] >= threshold {
-                        dst[d + x >> 3] |= 0x80 >> UInt8(x & 7)   // 1 = white in DeviceGray
+                        dst[d + (x >> 3)] |= 0x80 >> UInt8(x & 7)   // 1 = white in DeviceGray
                     }
                 }
             }
@@ -70,7 +85,7 @@ struct Bitmap {
 
     /// Luminance of a 4-channel bitmap.
     func grayscale() -> Bitmap {
-        guard channels == 4 else { return self }
+        guard isValid, channels == 4 else { return self }
         var out = Bitmap(width: width, height: height, channels: 1)
         data.withUnsafeBufferPointer { s in
             out.data.withUnsafeMutableBufferPointer { d in
@@ -85,7 +100,8 @@ struct Bitmap {
 
     /// Box blur with an integral image (any radius, O(1) per pixel), per channel.
     func boxBlur(radius r: Int) -> Bitmap {
-        guard r > 0 else { return self }
+        guard isValid, r > 0 else { return self }
+        let r = min(r, max(width, height))
         var out = self
         let w = width, h = height, c = channels
         var integral = [Int](repeating: 0, count: (w + 1) * (h + 1))
@@ -119,7 +135,8 @@ struct Bitmap {
 
     /// Separable max filter (grey dilation): removes dark text strokes from a background estimate.
     func maxFilter(radius r: Int) -> Bitmap {
-        guard r > 0 else { return self }
+        guard isValid, r > 0 else { return self }
+        let r = min(r, max(width, height))
         let w = width, h = height, c = channels
         var tmp = self
         data.withUnsafeBufferPointer { s in
@@ -156,7 +173,9 @@ struct Bitmap {
 
     /// Scales to an exact size (Core Graphics, high quality).
     func resized(width w: Int, height h: Int) -> Bitmap {
-        guard let image = cgImage() else { return self }
+        guard Self.validSize(width: w, height: h, channels: channels), let image = cgImage() else {
+            return Bitmap(width: 0, height: 0, channels: channels)
+        }
         var out = Bitmap(width: w, height: h, channels: channels, fill: 255)
         let space = channels == 1 ? Bitmap.gray : Bitmap.sRGB
         let info = channels == 1 ? CGImageAlphaInfo.none.rawValue : CGImageAlphaInfo.noneSkipLast.rawValue

@@ -7,9 +7,13 @@ import UniformTypeIdentifiers
 final class InlineTextEditor: NSObject, NSTextFieldDelegate {
     let field = NSTextField()
     private var finish: ((String?) -> Void)?
+    private let originalText: String
+    var currentText: String { field.currentEditor()?.string ?? field.stringValue }
+    var hasPendingChanges: Bool { finish != nil && currentText != originalText }
 
     init(frame: NSRect, text: String, font: NSFont, color: NSColor, in view: NSView, finish: @escaping (String?) -> Void) {
         self.finish = finish
+        self.originalText = text
         super.init()
         field.frame = frame
         field.stringValue = text
@@ -44,7 +48,7 @@ final class InlineTextEditor: NSObject, NSTextFieldDelegate {
     func end(commit: Bool) {
         guard let finish else { return }
         self.finish = nil
-        let text = field.stringValue
+        let text = currentText
         field.removeFromSuperview()
         finish(commit ? text : nil)
     }
@@ -189,10 +193,12 @@ extension EditorWindowController {
         alert.window.initialFirstResponder = text
         guard alert.runModal() == .alertFirstButtonReturn, let targets = indices(from: pages) else { _ = chooser; return }
         spec.text = text.stringValue.isEmpty ? L("CONFIDENTIAL") : text.stringValue
-        spec.fontSize = CGFloat(Double(size.stringValue.replacingOccurrences(of: ",", with: ".")) ?? 72).clamped(6, 400)
+        guard let fontSize = Double(size.stringValue.replacingOccurrences(of: ",", with: ".")), fontSize.isFinite, fontSize >= 6, fontSize <= 400,
+              let angle = Double(rotation.stringValue.replacingOccurrences(of: ",", with: ".")), angle.isFinite else { NSSound.beep(); return }
+        spec.fontSize = CGFloat(fontSize)
         spec.color = Self.overlayColors[max(0, color.indexOfSelectedItem)].1
         spec.opacity = CGFloat(opacity.doubleValue / 100)
-        spec.rotation = CGFloat(Double(rotation.stringValue.replacingOccurrences(of: ",", with: ".")) ?? 45)
+        spec.rotation = CGFloat(angle.truncatingRemainder(dividingBy: 360))
         spec.image = image
         Self.lastWatermark = spec
         Self.lastWatermark.image = nil
@@ -223,11 +229,15 @@ extension EditorWindowController {
         guard alert.runModal() == .alertFirstButtonReturn, let targets = indices(from: pages) else { return }
         spec.position = PageNumberSpec.Position(rawValue: position.indexOfSelectedItem) ?? .bottomCenter
         spec.format = PageNumberSpec.Format(rawValue: format.indexOfSelectedItem) ?? .plain
-        spec.start = Int(start.stringValue) ?? 1
-        spec.fontSize = CGFloat(Double(size.stringValue.replacingOccurrences(of: ",", with: ".")) ?? 10).clamped(4, 72)
+        guard let first = Int(start.stringValue), let fontSize = Double(size.stringValue.replacingOccurrences(of: ",", with: ".")),
+              fontSize.isFinite, fontSize >= 4, fontSize <= 72 else { NSSound.beep(); return }
+        spec.start = first
+        spec.fontSize = CGFloat(fontSize)
         spec.skipFirst = skip.state == .on
+        let labels = spec.labels(for: targets)
+        guard !labels.isEmpty else { NSSound.beep(); return }
         Self.lastNumbers = spec
-        for (i, text) in spec.labels(for: targets) {
+        for (i, text) in labels {
             guard let page = pdf.page(at: i) else { continue }
             add(PageNumberOverlay(text: text, spec: spec, page: page), to: page, name: L("Page Numbers"))
         }
@@ -291,11 +301,13 @@ extension EditorWindowController {
             guard response == .OK, let dir = panel.url else { return }
             prepareForSave()
             let base = pdfDoc?.fileURL?.deletingPathExtension().lastPathComponent ?? pdfDoc?.displayName ?? L("Document")
+            let source: PDFDocument
+            do { source = try exportSnapshot() } catch { presentError(error); return }
             var written: [URL] = []
-            for (group, part) in zip(groups, PDFTools.split(PageOverlay.bakedDocument(pdf), groups: groups)) {
+            for (group, part) in zip(groups, PDFTools.split(source, groups: groups)) {
                 let url = dir.appendingPathComponent(PDFTools.partName(base, group))
                 guard let data = part.dataRepresentation().map(AcroFormFixer.ensureFields) else { continue }
-                do { try data.write(to: url); written.append(url) } catch { presentError(error); return }
+                do { try data.write(to: url, options: .atomic); written.append(url) } catch { presentError(error); return }
             }
             banner.show(.success, L("Saved %d files", written.count))
             DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in self?.updateSignatureBanner() }

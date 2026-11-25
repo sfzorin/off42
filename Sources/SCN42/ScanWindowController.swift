@@ -86,14 +86,35 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     var isScanning = false
     var pendingProcessing = 0
     let processQueue = DispatchQueue(label: "scn42.process", qos: .userInitiated)
-    var insertionIndex: Int? { didSet { pageList.insertionIndex = insertionIndex } }
+    var pageWorkGeneration = UUID()
+    var acquisitionGeneration = UUID()
+    var scanGeneration = UUID()
+    var overviewGeneration = UUID()
+    var overviewJobGeneration = UUID()
+    var windowIsClosed = false
+    var preparingSource = false
+    var preparedSource: ScanSource?
+    private var lastSettingsSource = Store.settings.source
+    private var insertionAnchorID: UUID?
+    private var insertsBeforeFirst = false
+    var insertionIndex: Int? {
+        get { insertsBeforeFirst ? -1 : insertionAnchorID.flatMap { id in pages.firstIndex { $0.id == id } } }
+        set {
+            insertsBeforeFirst = newValue == -1
+            insertionAnchorID = newValue.flatMap { pages.indices.contains($0) ? pages[$0].id : nil }
+            pageList.insertionIndex = insertionIndex
+        }
+    }
     var rescanTarget: ScanPage?
     var copierCopies: Int?
     var scannedThisRun: [ScanPage] = []
     var blanksThisRun = 0
+    var scanHadError = false
     var busyText: String?
     var savedURL: URL?
     var saveSheet: SaveSheetController?
+    /// Optional execution seam for native print-to-file checks; ordinary windows use AppKit's print UI.
+    var printOperationRunner: ((NSPrintOperation, Bool) -> Void)?
 
     init() {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1180, height: 780),
@@ -113,6 +134,15 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         window.center()
 
         doc.onChange = { [weak self] in self?.documentChanged() }
+        doc.captureSelection = { [weak self] in
+            guard let self else { return [] }
+            return self.pageList.selection.compactMap { self.pages.indices.contains($0) ? self.pages[$0].id : nil }
+        }
+        doc.restoreSelection = { [weak self] ids in
+            guard let self else { return }
+            let selected = Set(ids)
+            self.pageList.select(self.pages.indices.filter { selected.contains(self.pages[$0].id) })
+        }
         NotificationCenter.default.addObserver(self, selector: #selector(devicesChanged), name: DeviceManager.changed, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(statusChanged(_:)), name: DeviceManager.statusChanged, object: nil)
         devicesChanged()
@@ -218,7 +248,8 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     func documentChanged() {
         pageList.pages = pages
-        if let ins = insertionIndex, ins >= pages.count { insertionIndex = nil }
+        if let id = insertionAnchorID, !pages.contains(where: { $0.id == id }) { insertionAnchorID = nil }
+        pageList.insertionIndex = insertionIndex
         refreshPreview()
         updateStatus()
         window?.isDocumentEdited = doc.isDirty && !pages.isEmpty
@@ -226,6 +257,12 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     }
 
     func settingsChanged() {
+        if lastSettingsSource != settings.source {
+            lastSettingsSource = settings.source
+            overviewGeneration = UUID(); overview = nil; areas = []; areaQuads = []
+            Store.lastAreas = []
+        }
+        prepareScannerSource()
         refreshPreview()
         updateStatus()
     }
@@ -242,6 +279,7 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
                 : L("Press Scan. Every scan adds pages here; save them as one PDF when you are done.")
             preview.show(shownPage?.image)
         }
+        dropStalePlacement()
         viewSwitch.selectedSegment = showingGlass ? 0 : 1
         viewSwitch.isHidden = !(scanner?.sources.contains(.flatbed) ?? false)
     }
@@ -262,18 +300,22 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         if showingGlass, settings.source == .flatbed, !areas.isEmpty { text += " · " + L("%d scan areas", areas.count) }
         statusLabel.stringValue = text
         statusIcon.contentTintColor = color
-        let working = isScanning || pendingProcessing > 0 || busyText != nil
+        let working = hasPendingWork
         spinner.isHidden = !working
         if working { spinner.startAnimation(nil) } else { spinner.stopAnimation(nil) }
         countLabel.stringValue = pages.isEmpty ? "" : pagesText(pages.count)
         settingsPanel.scanButton.isEnabled = canScan
         settingsPanel.overviewButton.isEnabled = canOverview
+        toolbarImpl.share.isEnabled = !pages.isEmpty && !hasPendingWork
+        toolbarImpl.phoneButton.isEnabled = !hasPendingWork
+        toolbarImpl.scanners.isEnabled = !hasPendingWork
         settingsPanel.scanButton.title = isScanning ? L("Scanning…") : (rescanTarget != nil ? L("Rescan Page") : L("Scan"))
         window?.subtitle = pages.isEmpty ? "" : pagesText(pages.count)
         window?.toolbar?.validateVisibleItems()
     }
 
-    var canScan: Bool { scanner?.status.canScan == true && !isScanning }
+    var canScan: Bool { scanner?.status.canScan == true && !isScanning && !preparingSource && pendingProcessing == 0 && busyText == nil && !windowIsClosed && settingsPanel.hasValidInput }
+    var hasPendingWork: Bool { isScanning || preparingSource || pendingProcessing > 0 || busyText != nil }
     var canOverview: Bool { canScan && settings.source == .flatbed && (scanner?.sources.contains(.flatbed) ?? false) }
 
     @objc func viewSwitched() {
@@ -286,22 +328,29 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     @objc func devicesChanged() {
         let list = DeviceManager.shared.scanners
-        if let s = scanner, !list.contains(where: { $0 === s }) { scanner = nil }
+        if let s = scanner, !list.contains(where: { $0 === s }) {
+            scanGeneration = UUID(); overviewGeneration = UUID()
+            isScanning = false; preparingSource = false; preparedSource = nil
+            copierCopies = nil; scanner = nil; overview = nil; areaQuads = []
+        }
         if scanner == nil {
             let preferred = list.first { $0.id == Store.lastScanner } ?? (list.count == 1 ? list.first : nil) ?? list.first
             if let preferred { choose(preferred) }
         }
         toolbarImpl.reloadScanners(list, selected: scanner)
-        settingsPanel.update(scanner: scanner)
+        settingsPanel.update(scanner: scanner, capabilitiesReady: preparedSource == settings.source && !preparingSource)
         refreshPreview()
         updateStatus()
     }
 
     func choose(_ s: ScannerBackend) {
+        guard !isScanning, pendingProcessing == 0, busyText == nil, !preparingSource else { return }
+        overviewGeneration = UUID(); overview = nil; areaQuads = []
+        preparedSource = nil
         scanner = s
         Store.lastScanner = s.id
         s.open()
-        settingsPanel.update(scanner: s)
+        settingsPanel.update(scanner: s, capabilitiesReady: false)
         // A scanner without the chosen source: take what it has.
         if !s.sources.contains(settings.source), let first = s.sources.first {
             var st = settings
@@ -309,12 +358,34 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             settingsPanel.apply(st)
         }
         toolbarImpl.reloadScanners(DeviceManager.shared.scanners, selected: s)
+        lastSettingsSource = settings.source
+        prepareScannerSource()
         updateStatus()
+    }
+
+    /// Selecting a feeder before scanning exposes its actual duplex/resolution capabilities.
+    func prepareScannerSource() {
+        guard let scanner, scanner.status.canScan, !isScanning, !preparingSource,
+              scanner.sources.contains(settings.source), preparedSource != settings.source else { return }
+        let source = settings.source
+        preparingSource = true
+        settingsPanel.update(scanner: scanner, capabilitiesReady: false)
+        scanner.prepare(source: source) { [weak self, weak scanner] error in
+            guard let self, let scanner, self.scanner === scanner, !self.windowIsClosed else { return }
+            self.preparingSource = false
+            if let error { self.banner.show(.warning, error.localizedDescription) }
+            else { self.preparedSource = source }
+            self.settingsPanel.update(scanner: scanner, capabilitiesReady: error == nil && self.settings.source == source)
+            self.updateStatus()
+            if error == nil && self.settings.source != source { self.prepareScannerSource() }
+        }
     }
 
     @objc func statusChanged(_ note: Notification) {
         guard let s = note.object as? ScannerBackend, s === scanner else { return }
-        settingsPanel.update(scanner: s)
+        // Capabilities are refreshed after this window prepares its chosen source, not on every
+        // progress notification (another window may be using a different functional unit).
+        prepareScannerSource()
         updateStatus()
     }
 
@@ -323,7 +394,7 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     func windowWillReturnUndoManager(_ window: NSWindow) -> UndoManager? { doc.undo }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        guard !isScanning, pendingProcessing == 0 else {
+        guard !isScanning, pendingProcessing == 0, busyText == nil, !preparingSource else {
             banner.show(.info, L("Wait for scanning and processing to finish before closing."))
             return false
         }
@@ -347,6 +418,8 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     }
 
     func windowWillClose(_ notification: Notification) {
+        windowIsClosed = true
+        pageWorkGeneration = UUID(); acquisitionGeneration = UUID(); scanGeneration = UUID(); overviewGeneration = UUID()
         if isScanning { scanner?.cancel() }
         AppDelegate.shared?.windowClosed(self)
     }
@@ -393,6 +466,8 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         case #selector(scanAction(_:)): return canScan
         case #selector(overviewAction(_:)), #selector(detectPhotosAction(_:)): return canOverview
         case #selector(cancelScanAction(_:)): return isScanning
+        case #selector(importAction(_:)), #selector(openDocument(_:)), #selector(scanWithPhoneAction(_:)), #selector(selectScannerAction(_:)):
+            return !hasPendingWork
         case #selector(clearAreasAction(_:)): return !areas.isEmpty
         case #selector(scanAndPrintAction(_:)): return canScan
         case #selector(deletePresetAction(_:)): return Store.presetIndex >= Preset.builtIn.count
@@ -405,6 +480,7 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
              #selector(restraightenAction(_:)):
             return hasTarget && busyText == nil
         case #selector(copy(_:)): return hasTarget
+        case #selector(showStampsAction(_:)): return shownPage != nil && busyText == nil
         case #selector(selectAll(_:)): return hasPages
         case #selector(rescanPageAction(_:)): return hasTarget && canScan && pendingProcessing == 0 && targetPages.count == 1
         case #selector(insertHereAction(_:)): return hasTarget || insertionIndex != nil

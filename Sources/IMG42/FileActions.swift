@@ -10,13 +10,25 @@ extension ImageWindowController {
     @objc(saveDocumentAs:) func saveDocumentAs(_ sender: Any?) { runExportPanel(saveAs: true) }
 
     @objc(revertDocumentToSaved:) func revertDocumentToSaved(_ sender: Any?) {
+        do { try revertSavedImage() } catch { showError(error) }
+    }
+
+    func revertSavedImage() throws {
+        guard isDirty, let url else { return }
+        let saved = ImageLoader.load(url, page: page)
+        guard let image = saved.image, saved.error == nil else { throw CocoaError(.fileReadCorruptFile) }
         // Revert owns the undo snapshot, including any field that has not yet committed.
         undo.disableUndoRegistration()
         canvas.markup.endTextEditing()
         undo.enableUndoRegistration()
-        guard isDirty else { return }
         registerUndo(state, L("Revert to Saved"))
-        restore(EditState(base: originalBase, marks: [], adjustments: Adjustments(), imageDescription: originalDescription, dpi: originalDPI))
+        originalBase = image
+        originalDescription = Self.description(of: url)
+        let resolution = ImageLoader.properties(url)[kCGImagePropertyDPIWidth] as? CGFloat ?? 72
+        originalDPI = resolution.isFinite && resolution > 0 ? resolution : 72
+        loaded = saved
+        invalidateCache(url)
+        restore(EditState(base: image, marks: [], adjustments: Adjustments(), imageDescription: originalDescription, dpi: originalDPI))
     }
 
     /// Saves over the original (same format, metadata kept). Formats that cannot be written go to Save As.
@@ -30,13 +42,12 @@ extension ImageWindowController {
             return
         }
         let type = l.typeIdentifier
-        guard ImageWriter.canWrite(type), l.pageCount == 1, !l.isAnimated, let image = finalImage() else {
+        guard ImageWriter.canWrite(type), l.pageCount == 1, !l.isAnimated, !l.wasDownsampled, let image = finalImage() else {
             runExportPanel(saveAs: true, completion: completion)
             return
         }
         // Transparency would turn white in a JPEG: offer a PNG copy instead.
-        let lostAlpha = base !== originalBase && image.alphaInfo != .none && !(loaded?.hasAlpha ?? false)
-            && (UTType(type ?? "")?.conforms(to: .jpeg) ?? false)
+        let lostAlpha = (UTType(type ?? "")?.conforms(to: .jpeg) ?? false) && ImageWriter.hasTransparency(image)
         if lostAlpha { runExportPanel(saveAs: true, preferred: .png, completion: completion); return }
 
         let write = { [weak self] in
@@ -70,9 +81,11 @@ extension ImageWindowController {
     }
 
     func didSave(_ url: URL) {
+        let saved = ImageLoader.load(url, page: page)
+        guard saved.image != nil, saved.error == nil else { showError(CocoaError(.fileReadCorruptFile)); return }
         invalidateCache(url)
         ImageLoader.thumbnailCache.removeObject(forKey: url as NSURL)
-        display(ImageLoader.load(url, page: page))
+        display(saved)
         banner.show(.success, L("Saved"))
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.banner.hide() }
     }
@@ -103,27 +116,33 @@ extension ImageWindowController {
         panel.beginSheetModal(for: window) { [weak self] r in
             guard let self, r == .OK, let dest = panel.url else { completion?(false); return }
             do {
-                let out = options.resized(image)
-                try ImageWriter.write(out, to: dest, type: options.type.identifier, quality: options.quality, metadataFrom: self.url,
-                                      description: .some(self.imageDescription), dpi: self.imageDPI)
-                if dest.deletingLastPathComponent().standardizedFileURL == self.url?.deletingLastPathComponent().standardizedFileURL,
-                   !self.urls.contains(dest) {
-                    if saveAs {
-                        self.resetEditing(base: self.originalBase)
-                        self.insertIntoSet(dest)
-                    } else {
-                        let keep = self.index
-                        self.insertIntoSetKeepingCurrent(dest, current: keep)
-                    }
-                } else if saveAs {
-                    self.resetEditing(base: self.originalBase)
-                    self.refreshDisplay()
-                }
+                try self.writeExport(to: dest, type: options.type.identifier, quality: options.quality, saveAs: saveAs,
+                                     resize: options.resized)
                 completion?(true)
             } catch {
                 self.showError(error)
                 completion?(false)
             }
+        }
+    }
+
+    /// Save As adopts the chosen destination regardless of its folder or whether it is already in the image set.
+    /// Export elsewhere preserves the source editing session; export over the current file establishes a new baseline.
+    func writeExport(to destination: URL, type: String, quality: Double = 0.9, saveAs: Bool,
+                     resize: (CGImage) -> CGImage? = { $0 }) throws {
+        canvas.markup.endTextEditing()
+        guard let rendered = finalImage(), let output = resize(rendered) else { throw CocoaError(.fileWriteUnknown) }
+        try ImageWriter.write(output, to: destination, type: type, quality: quality, metadataFrom: url,
+                              description: .some(imageDescription), dpi: imageDPI)
+        // Export can replace a neighbour that was already decoded or is still being prefetched.
+        invalidateCache(destination)
+        if saveAs || destination.standardizedFileURL == url?.standardizedFileURL {
+            let saved = ImageLoader.load(destination)
+            guard saved.image != nil, saved.error == nil else { throw CocoaError(.fileReadCorruptFile) }
+            adoptSavedURL(destination, loaded: saved)
+        } else if destination.deletingLastPathComponent().standardizedFileURL == url?.deletingLastPathComponent().standardizedFileURL,
+                  !urls.contains(destination) {
+            insertIntoSetKeepingCurrent(destination, current: index)
         }
     }
 
@@ -142,18 +161,22 @@ extension ImageWindowController {
         guard let url else { return }
         confirmLeavingForTrash { [weak self] ok in
             guard ok, let self else { return }
-            var resulting: NSURL?
             do {
-                try FileManager.default.trashItem(at: url, resultingItemURL: &resulting)
+                try self.moveImageToTrash(url)
             } catch {
                 self.showError(error)
-                return
             }
-            self.removeFromSet(url)
-            if let trashed = resulting as URL? {
-                self.undo.registerUndo(withTarget: self.fileUndo) { [weak self] _ in self?.putBack(trashed, to: url) }
-                self.undo.setActionName(L("Move to Trash"))
-            }
+        }
+    }
+
+    /// File Undo/Redo follows the captured file even after navigation changes the current image.
+    func moveImageToTrash(_ original: URL) throws {
+        var resulting: NSURL?
+        try FileManager.default.trashItem(at: original, resultingItemURL: &resulting)
+        removeFromSet(original)
+        if let trashed = resulting as URL? {
+            undo.registerUndo(withTarget: fileUndo) { [weak self] _ in self?.putBack(trashed, to: original) }
+            undo.setActionName(L("Move to Trash"))
         }
     }
 
@@ -171,8 +194,8 @@ extension ImageWindowController {
         }
         insertIntoSet(original)
         undo.registerUndo(withTarget: fileUndo) { [weak self] _ in
-            guard let self, self.url == original else { return }
-            self.trashAction(nil)
+            guard let self else { return }
+            do { try self.moveImageToTrash(original) } catch { self.showError(error) }
         }
         undo.setActionName(L("Move to Trash"))
     }
@@ -186,8 +209,12 @@ extension ImageWindowController {
     @objc func copy(_ sender: Any?) {
         // Text selected with Live Text wins over the image.
         if canvas.liveText.hasSelection { canvas.liveText.copySelection(); return }
+        copyImage(to: .general)
+    }
+
+    func copyImage(to pb: NSPasteboard) {
+        canvas.markup.endTextEditing()
         guard let image = finalImage() else { return }
-        let pb = NSPasteboard.general
         pb.clearContents()
         if let sel = canvas.markup.pixelSelection, let part = PixelOps.extract(sel, from: image) {
             pb.writeObjects([NSImage(cgImage: part, size: .zero)])
@@ -198,13 +225,20 @@ extension ImageWindowController {
     }
 
     func shareItems() -> [Any] {
+        canvas.markup.endTextEditing()
         guard let url else { return [] }
         if isDirty, let image = finalImage() { return [NSImage(cgImage: image, size: .zero)] }
         return [url]
     }
 
     @objc(printDocument:) func printDocument(_ sender: Any?) {
-        guard let image = finalImage(), let window else { return }
+        guard let window, let op = imagePrintOperation() else { return }
+        op.runModal(for: window, delegate: nil, didRun: nil, contextInfo: nil)
+    }
+
+    func imagePrintOperation() -> NSPrintOperation? {
+        canvas.markup.endTextEditing()
+        guard let image = finalImage() else { return nil }
         let info = (NSPrintInfo.shared.copy() as? NSPrintInfo) ?? NSPrintInfo()
         info.orientation = image.width > image.height ? .landscape : .portrait
         info.horizontalPagination = .fit
@@ -218,7 +252,7 @@ extension ImageWindowController {
         view.imageScaling = .scaleProportionallyUpOrDown
         let op = NSPrintOperation(view: view, printInfo: info)
         op.jobTitle = url?.lastPathComponent ?? "IMG42"
-        op.runModal(for: window, delegate: nil, didRun: nil, contextInfo: nil)
+        return op
     }
 
     @objc(runPageLayout:) func runPageLayout(_ sender: Any?) {
@@ -232,17 +266,23 @@ extension ImageWindowController {
     func withRecognizedText(_ done: @escaping ([PixelOps.TextLine]) -> Void) {
         guard let image = displayed ?? base else { done([]); return }
         if let lines = textLines, textLinesFor === image { done(lines); return }
+        let session = imageSession
         window?.subtitle = L("Recognising text…")
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let lines = PixelOps.recognizeText(image)
             DispatchQueue.main.async {
-                guard let self else { return }
-                self.textLines = lines
-                self.textLinesFor = image
+                guard let self, self.acceptRecognizedText(lines, image: image, session: session) else { return }
                 self.updateSubtitle()
                 done(lines)
             }
         }
+    }
+
+    @discardableResult
+    func acceptRecognizedText(_ lines: [PixelOps.TextLine], image: CGImage, session: UUID) -> Bool {
+        guard imageSession == session, (displayed ?? base) === image else { return false }
+        textLines = lines; textLinesFor = image
+        return true
     }
 
     @objc func searchChanged(_ sender: NSSearchField) {
@@ -257,25 +297,31 @@ extension ImageWindowController {
     }
 
     func runSearch(_ query: String) {
+        searchGeneration = UUID()
+        let generation = searchGeneration
         let q = query.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty, let image = base else {
+        guard !q.isEmpty, let image = displayed ?? base else {
             canvas.markup.searchBoxes = []
+            searchIndex = -1; canvas.markup.currentSearchBox = -1
             banner.hide()
             return
         }
         withRecognizedText { [weak self] lines in
-            guard let self else { return }
-            let boxes = PixelOps.find(q, in: lines, size: CGSize(width: image.width, height: image.height))
-            self.canvas.markup.searchBoxes = boxes
-            self.searchIndex = boxes.isEmpty ? -1 : 0
-            self.canvas.markup.currentSearchBox = self.searchIndex
-            if let first = boxes.first { self.reveal(first) }
-            if lines.isEmpty {
-                self.banner.show(.info, L("No text found in this image"))
-            } else {
-                self.banner.show(boxes.isEmpty ? .warning : .info, boxes.isEmpty ? L("“%@” not found", q) : L("Matches for “%@”: %d", q, boxes.count))
-            }
+            self?.applySearch(q, lines: lines, image: image, generation: generation)
         }
+    }
+
+    @discardableResult
+    func applySearch(_ query: String, lines: [PixelOps.TextLine], image: CGImage, generation: UUID) -> Bool {
+        guard searchGeneration == generation, (displayed ?? base) === image else { return false }
+        let boxes = PixelOps.find(query, in: lines, size: CGSize(width: image.width, height: image.height))
+        canvas.markup.searchBoxes = boxes
+        searchIndex = boxes.isEmpty ? -1 : 0
+        canvas.markup.currentSearchBox = searchIndex
+        if let first = boxes.first { reveal(first) }
+        if lines.isEmpty { banner.show(.info, L("No text found in this image")) }
+        else { banner.show(boxes.isEmpty ? .warning : .info, boxes.isEmpty ? L("“%@” not found", query) : L("Matches for “%@”: %d", query, boxes.count)) }
+        return true
     }
 
     private func reveal(_ box: CGRect) {
@@ -376,7 +422,7 @@ final class ExportOptions: NSObject {
         qualityValue.stringValue = "\(Int((quality * 100).rounded())) %"
     }
 
-    func resized(_ image: CGImage) -> CGImage {
+    func resized(_ image: CGImage) -> CGImage? {
         let s = Self.sizes[max(0, sizePopup.indexOfSelectedItem)]
         let w = CGFloat(image.width), h = CGFloat(image.height)
         var k: CGFloat = 1
@@ -387,6 +433,6 @@ final class ExportOptions: NSObject {
         return ImageLoader.render(size: size, colorSpace: image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }) { ctx in
             ctx.interpolationQuality = .high
             ctx.draw(image, in: CGRect(origin: .zero, size: size))
-        } ?? image
+        }
     }
 }

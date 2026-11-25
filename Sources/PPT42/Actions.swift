@@ -269,6 +269,10 @@ extension DeckWindowController {
         let popover = NSPopover()
         let vc = StampLibraryViewController { [weak self] cg in
             let rep = NSBitmapImageRep(cgImage: cg)
+            // Its physical size (written into the PNG), whatever resolution it was drawn at.
+            let aspect = CGFloat(cg.width) / CGFloat(max(1, cg.height))
+            let width = MarkPlacement.standard(aspect: aspect).widthPoints
+            rep.size = NSSize(width: width, height: width / aspect)
             if let png = rep.representation(using: .png, properties: [:]) { self?.insertImages([png], at: nil) }
         }
         vc.popover = popover

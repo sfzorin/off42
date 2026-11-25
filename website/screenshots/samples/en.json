@@ -1,0 +1,54 @@
+{
+  "rtl": false,
+  "brand": "BLUE HARBOR STUDIO",
+  "brandLine": "Brand identity · Web · Motion",
+  "number": "Agreement No. BH-2026-114",
+  "title": "Design Services Agreement",
+  "intro": "This Agreement is made on 6 November 2026 between Blue Harbor Studio Ltd (the “Studio”) and Nordlicht Media GmbH (the “Client”) for the design of the Client’s new brand identity and website.",
+  "sections": [
+    ["1. Scope of work", "The Studio will deliver a logo system, typography and colour guidelines, a twelve-page website design and a library of social media templates."],
+    ["2. Timeline", "Work starts on 16 November 2026. First concepts are presented within three weeks; final files are delivered by 29 January 2027."],
+    ["3. Intellectual property", "On full payment, all rights in the final designs pass to the Client. The Studio may show the work in its portfolio."]
+  ],
+  "feeTitle": "4. Fees",
+  "fees": [["Brand identity and guidelines", "€ 8,400"], ["Website design, 12 pages", "€ 12,600"], ["Social media templates", "€ 2,800"]],
+  "total": ["Total, excluding VAT", "€ 23,800"],
+  "signTitle": "Signed for and on behalf of the parties",
+  "parties": [
+    {"role": "For the Studio", "company": "Blue Harbor Studio Ltd", "person": "Emma Clarke", "title": "Managing Director",
+     "date": "Bristol, 6 November 2026", "signName": "Emma Clarke", "pen": "ballpoint", "design": 2424853,
+     "stamp": {"id": "uk.company", "width": 150, "values": {"name": "Blue Harbor Studio Ltd", "lines": "12 Harbour Street, Bristol BS1 4QA", "numbers": "Registered in England No. 15550042"}}},
+    {"role": "For the Client", "company": "Nordlicht Media GmbH", "person": "Jonas Weber", "title": "Geschäftsführer",
+     "date": "Hamburg, 6 November 2026", "signName": "Jonas Weber", "pen": "fountain", "design": 2424853,
+     "stamp": {"id": "de.firm", "width": 145, "values": {"name": "Nordlicht Media GmbH", "lines": "Speicherstadt 7\n20457 Hamburg", "numbers": "USt-IdNr. DE314000042"}}}
+  ],
+  "invoiceTitle": "Invoice",
+  "invoiceNumber": "Invoice No. 2026-0418 · 30 January 2027",
+  "billTo": "Bill to",
+  "billLines": ["Nordlicht Media GmbH", "Speicherstadt 7, 20457 Hamburg, Germany", "VAT DE314000042"],
+  "items": [["Brand identity and guidelines", "1", "€ 8,400"], ["Website design, 12 pages", "1", "€ 12,600"], ["Social media templates", "1", "€ 2,800"]],
+  "invoiceTotal": ["Total due", "€ 23,800"],
+  "paid": {"id": "uk.paid", "width": 150, "values": {"top": "BLUE HARBOR STUDIO LTD"}},
+  "note": "Payment received with thanks. Bank transfer, ref. BH-2026-114.",
+  "generatorName": "Emma Clarke",
+  "letter": {
+    "brand": "BLUE HARBOR STUDIO", "addr": "12 Harbour Street, Bristol BS1 4QA · hello@blueharbor.example",
+    "date": "Bristol, 6 November 2026", "to": ["Jonas Weber", "Nordlicht Media GmbH", "Speicherstadt 7, 20457 Hamburg"],
+    "subject": "Proposal: a new brand identity for Nordlicht Media",
+    "body": ["Dear Jonas,", "Thank you for a great conversation last week. As promised, here is our proposal for the new Nordlicht identity: a calmer logo system, a warm northern palette and a website that puts your documentaries first.", "We suggest three stages, each ending with a review in Hamburg:"],
+    "table": [["Stage", "Weeks", "Fee"], ["Discovery and concepts", "3", "€ 6,200"], ["Identity and guidelines", "4", "€ 8,400"], ["Website and templates", "6", "€ 9,200"]],
+    "close": ["We would be delighted to start on 16 November. The agreement is attached and already signed on our side.", "Kind regards,"],
+    "name": "Emma Clarke", "role": "Managing Director, Blue Harbor Studio Ltd"
+  },
+  "budget": {
+    "sheet": "Budget 2027", "head": "Studio budget, first half of 2027", "total": "Total", "share": "Share",
+    "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+    "rows": [["Design", [6200, 7400, 8400, 5100, 4800, 5600]], ["Development", [3200, 4100, 6900, 9200, 8800, 7300]], ["Marketing", [1800, 2100, 2600, 3900, 4700, 5200]], ["Hosting and tools", [420, 420, 460, 460, 510, 510]]]
+  },
+  "deck": {
+    "title": "Nordlicht Media", "subtitle": "Brand refresh 2027 · Design review",
+    "ideasTitle": "Calm, warm, northern", "ideasSubtitle": "Three ideas behind the new identity",
+    "ideas": [["Light", "Long northern evenings: soft contrast and warm highlights."], ["Story", "Documentaries first: the website opens with the films."], ["Craft", "Hand-made marks, typography with character."]],
+    "timelineTitle": "Timeline", "steps": [["Nov", "Discovery"], ["Dec", "Concepts"], ["Jan", "Identity"], ["Feb", "Website"]]
+  }
+}

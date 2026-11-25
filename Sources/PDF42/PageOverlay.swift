@@ -23,6 +23,7 @@ class PageOverlay: PDFAnnotation {
 
     /// Page content under this overlay that is removed from the file when it is baked.
     var redactionArea: RedactionArea? { nil }
+    var redactionAreas: [RedactionArea] { redactionArea.map { [$0] } ?? [] }
 
     override func draw(with box: PDFDisplayBox, in context: CGContext) {
         guard let page else { return }
@@ -135,7 +136,9 @@ struct PageNumberSpec {
     /// Number text for each page index of `indices` (pages in document order).
     func labels(for indices: [Int]) -> [(index: Int, text: String)] {
         let numbered = skipFirst ? Array(indices.sorted().dropFirst()) : indices.sorted()
-        let total = start + numbered.count - 1
+        guard !numbered.isEmpty else { return [] }
+        let (total, overflow) = start.addingReportingOverflow(numbered.count - 1)
+        guard !overflow else { return [] }
         return numbered.enumerated().map { ($0.element, text(start + $0.offset, of: total)) }
     }
 }
@@ -180,6 +183,8 @@ final class EditedTextOverlay: PageOverlay {
     let originalText: String
     /// Original cover width; the cover grows when the new text is longer.
     let originalWidth: CGFloat
+    /// The source text stays removed when the replacement is moved on the page.
+    let originalCover: CGRect
     /// Baseline above `bounds.minY`.
     let baseline: CGFloat
 
@@ -188,6 +193,7 @@ final class EditedTextOverlay: PageOverlay {
         self.textFont = font
         self.originalText = originalText
         self.originalWidth = cover.width
+        self.originalCover = cover
         self.baseline = baseline
         super.init(bounds: cover)
         self.color = color
@@ -200,6 +206,9 @@ final class EditedTextOverlay: PageOverlay {
     override var allowsPicking: Bool { true }
 
     override var redactionArea: RedactionArea? { RedactionArea(rect: bounds, fill: (1, 1, 1)) }
+    override var redactionAreas: [RedactionArea] {
+        [RedactionArea(rect: originalCover, fill: (1, 1, 1)), RedactionArea(rect: bounds, fill: (1, 1, 1))]
+    }
 
     static func cover(for text: String, font: NSFont, origin: CGPoint, minWidth: CGFloat, height: CGFloat) -> CGRect {
         let w = width(of: line(text, font: font, color: .black)) + 2
@@ -215,6 +224,7 @@ final class EditedTextOverlay: PageOverlay {
 
     override func render(in ctx: CGContext, box: CGRect, rotation: Int) {
         ctx.setFillColor(NSColor.white.cgColor)
+        ctx.fill(originalCover)
         ctx.fill(bounds)
         ctx.textPosition = CGPoint(x: bounds.minX + 1, y: bounds.minY + baseline)
         CTLineDraw(Self.line(text, font: textFont, color: color), ctx)
@@ -321,29 +331,41 @@ extension PageOverlay {
                      only: ((PageOverlay) -> Bool)? = nil) -> (data: Data, report: RedactionReport)? {
         var overlays: [Int: [PageOverlay]] = [:]
         var areas: [Int: [RedactionArea]] = [:]
+        var finalAreas: [Int: [RedactionArea]] = [:]
         var covers: [Int: [PDFAnnotation]] = [:]   // whiteout boxes: stay as annotations, content under them goes
         var lifted: [(PDFAnnotation, PDFPage)] = []
+        var annotationOrder: [(PDFPage, [PDFAnnotation])] = []
         for i in 0..<pdf.pageCount {
             guard let page = pdf.page(at: i) else { continue }
+            annotationOrder.append((page, page.annotations))
             for a in page.annotations {
                 if let o = a as? PageOverlay {
                     lifted.append((a, page))
                     guard only?(o) ?? true else { continue }
                     overlays[i, default: []].append(o)
-                    if let area = o.redactionArea { areas[i, default: []].append(area) }
+                    areas[i, default: []].append(contentsOf: o.redactionAreas)
+                    if o is RedactOverlay || o is CropRemovalOverlay { finalAreas[i, default: []].append(contentsOf: o.redactionAreas) }
                 } else if a is TemporaryHighlight, !keepTemporary {
                     lifted.append((a, page))
                 } else if a is LinkBorderMarker {
                     lifted.append((a, page))
                 } else if only == nil, a.isWhiteout {
                     covers[i, default: []].append(a)
-                    areas[i, default: []].append(RedactionArea(rect: a.bounds, fill: (1, 1, 1)))
+                    let area = RedactionArea(rect: a.bounds, fill: (1, 1, 1))
+                    areas[i, default: []].append(area)
+                    finalAreas[i, default: []].append(area)
                 }
             }
         }
         guard !lifted.isEmpty || !areas.isEmpty else { return pdf.dataRepresentation().map { ($0, RedactionReport()) } }
         lifted.forEach { $0.1.removeAnnotation($0.0) }
-        defer { lifted.forEach { $0.1.addAnnotation($0.0) } }
+        defer {
+            // Re-appending only lifted overlays would move them above every other annotation after Save.
+            for (page, annotations) in annotationOrder {
+                page.annotations.forEach { page.removeAnnotation($0) }
+                annotations.forEach { page.addAnnotation($0) }
+            }
+        }
         guard var data = pdf.dataRepresentation() else { return nil }
         guard !overlays.isEmpty || !areas.isEmpty else { return (data, RedactionReport()) }
 
@@ -364,7 +386,7 @@ extension PageOverlay {
             guard let page = out.page(at: i) else { continue }
             var list = overlays[i] ?? []
             if let pageAreas = areas[i] {
-                let removed = removeAnnotations(on: page, under: pageAreas, keeping: covers[i]?.map(\.bounds) ?? [])
+                let removed = removeAnnotations(on: page, under: pageAreas, keeping: covers[i]?.map(\.bounds) ?? [], explicit: finalAreas[i] ?? [])
                 if removed > 0 { report.update(i) { $0.annotations += removed } }
             }
             let rotation = page.rotation, box = page.bounds(for: .cropBox)
@@ -373,20 +395,51 @@ extension PageOverlay {
             }
             if let reason = rasterize[i] {
                 // The content could not be rewritten safely: the page becomes a picture (with an OCR text layer).
-                if let raster = RedactionRaster.page(page, areas: areas[i] ?? [], overlay: draw) {
-                    replacements.append((i, raster))
-                    report.update(i) { $0.rasterized = reason }
-                }
+                guard let raster = RedactionRaster.page(page, areas: areas[i] ?? [], overlay: draw) else { return nil }
+                replacements.append((i, raster))
+                report.update(i) { $0.rasterized = reason }
                 continue
             }
             // Redaction boxes are already in the rewritten content: no need to redraw the page for them.
             list.removeAll { $0 is RedactOverlay || $0 is CropRemovalOverlay }
-            if !list.isEmpty, let baked = redraw(page, overlay: { ctx in
-                for o in list { ctx.saveGState(); o.render(in: ctx, box: box, rotation: rotation); ctx.restoreGState() }
-            }) { replacements.append((i, baked)) }
+            if !list.isEmpty {
+                guard let baked = redraw(page, overlay: { ctx in
+                    for o in list { ctx.saveGState(); o.render(in: ctx, box: box, rotation: rotation); ctx.restoreGState() }
+                }) else { return nil }
+                replacements.append((i, baked))
+            }
         }
         replace(replacements, in: out)
         guard var result = out.dataRepresentation() else { return nil }
+        // Redacting only the original page is insufficient: newly drawn edited text or headers can lie
+        // under an explicit redaction/whiteout too. Remove those glyphs after all overlays are rendered.
+        let hasDrawnOverlays = overlays.values.contains { list in list.contains { !($0 is RedactOverlay) && !($0 is CropRemovalOverlay) } }
+        if hasDrawnOverlays, !finalAreas.isEmpty {
+            let final = Redactor.redact(result, areas: finalAreas)
+            let failed = final?.failed ?? Dictionary(uniqueKeysWithValues: finalAreas.keys.map { ($0, "file structure not supported") })
+            if let final {
+                result = final.data
+                for page in final.report.pages {
+                    report.update(page.index) { item in
+                        item.text += page.text; item.glyphs += page.glyphs; item.images += page.images
+                        item.annotations += page.annotations
+                    }
+                }
+            }
+            if !failed.isEmpty {
+                guard let work = PDFDocument(data: result) else { return nil }
+                var replacement: [(Int, PDFPage)] = []
+                for (index, reason) in failed {
+                    guard let page = work.page(at: index),
+                          let raster = RedactionRaster.page(page, areas: finalAreas[index] ?? [], overlay: { _ in }) else { return nil }
+                    replacement.append((index, raster))
+                    report.update(index) { $0.rasterized = reason }
+                }
+                replace(replacement, in: work)
+                guard let rasterized = work.dataRepresentation() else { return nil }
+                result = rasterized
+            }
+        }
         if let dir = ProcessInfo.processInfo.environment["K42_REDACT_DEBUG"] {   // intermediate files, for testing
             try? data.write(to: URL(fileURLWithPath: dir + "/redacted-incremental.pdf"))
             try? result.write(to: URL(fileURLWithPath: dir + "/pdfkit-saved.pdf"))
@@ -399,14 +452,19 @@ extension PageOverlay {
         return (result, report)
     }
 
-    /// Removes annotations lying mostly under the areas (notes, text boxes, markup, links, form fields
-    /// would still carry the hidden text). Whiteout boxes in `keeping` stay. Returns how many went.
-    static func removeAnnotations(on page: PDFPage, under areas: [RedactionArea], keeping: [CGRect]) -> Int {
+    /// An explicit redaction removes every overlapping annotation in full: partially covered text
+    /// boxes/widgets still retain their entire contents/value. Whiteout covers themselves stay.
+    /// Edited-text replacement areas retain the previous majority/centre test for unrelated annotations.
+    static func removeAnnotations(on page: PDFPage, under areas: [RedactionArea], keeping: [CGRect], explicit: [RedactionArea] = []) -> Int {
         var removed = 0
-        for a in page.annotations where !a.isKind(.popup) && !keeping.contains(a.bounds) {
+        for a in page.annotations where !(a.isWhiteout && keeping.contains(a.bounds)) {
             let b = a.bounds
             let area = max(0.01, b.width * b.height)
-            let hit = areas.contains { r in
+            let explicitlyCovered = explicit.contains { redaction in
+                let intersection = b.intersection(redaction.rect)
+                return !intersection.isNull && intersection.width > 0 && intersection.height > 0
+            }
+            let hit = explicitlyCovered || areas.contains { r in
                 let i = b.intersection(r.rect)
                 return !i.isNull && (i.width * i.height / area >= 0.5 || r.rect.contains(CGPoint(x: b.midX, y: b.midY)))
             }
@@ -421,20 +479,22 @@ extension PageOverlay {
     }
 
     /// Bakes overlays into a copy of the document (export, print).
-    static func bakedDocument(_ pdf: PDFDocument) -> PDFDocument {
-        guard pdf.pageCount > 0, (0..<pdf.pageCount).contains(where: { pdf.page(at: $0)?.annotations.contains { $0 is PageOverlay || $0 is TemporaryHighlight || $0 is LinkBorderMarker || $0.isWhiteout } == true }),
-              let data = bakedData(pdf), let copy = PDFDocument(data: data) else { return pdf }
-        return copy
+    static func bakedDocument(_ pdf: PDFDocument) -> PDFDocument? {
+        bakedData(pdf).flatMap(PDFDocument.init(data:))
     }
 
     /// New page: the original content plus `overlay`, drawn in page space. Annotations (form fields,
-    /// links, markup) are moved to the new page, the crop box and rotation are kept.
+    /// links, markup) are copied to the new page, the crop box and rotation are kept.
     static func redraw(_ page: PDFPage, overlay: (CGContext) -> Void) -> PDFPage? {
         let media = page.bounds(for: .mediaBox), crop = page.bounds(for: .cropBox)
         let rotation = page.rotation
         let annotations = page.annotations
         annotations.forEach { page.removeAnnotation($0) }
         page.rotation = 0
+        defer {
+            page.rotation = rotation
+            annotations.forEach { page.addAnnotation($0) }
+        }
         let data = NSMutableData()
         var box = media
         guard let consumer = CGDataConsumer(data: data), let ctx = CGContext(consumer: consumer, mediaBox: &box, nil) else { return nil }
@@ -445,28 +505,33 @@ extension PageOverlay {
         overlay(ctx)
         ctx.endPDFPage()
         ctx.closePDF()
-        page.rotation = rotation
-        guard let newPage = PDFDocument(data: data as Data)?.page(at: 0) else {
-            annotations.forEach { page.addAnnotation($0) }
-            return nil
-        }
+        guard let newPage = PDFDocument(data: data as Data)?.page(at: 0) else { return nil }
         newPage.setBounds(crop, for: .cropBox)
         newPage.rotation = rotation
-        annotations.forEach { newPage.addAnnotation($0) }
+        for annotation in annotations {
+            guard let copied = annotation.duplicateForEditing(on: newPage) else { return nil }
+            newPage.addAnnotation(copied)
+        }
         return newPage
     }
 
     /// Swaps pages in `pdf` and points outline entries and links at the new pages.
     static func replace(_ replacements: [(Int, PDFPage)], in pdf: PDFDocument) {
+        var seen = Set<Int>()
+        let replacements = replacements.filter { index, page in
+            index >= 0 && index < pdf.pageCount && seen.insert(index).inserted && pdf.page(at: index) !== page
+        }
         var map: [ObjectIdentifier: PDFPage] = [:]
-        for (i, page) in replacements where i < pdf.pageCount {
+        for (i, page) in replacements {
             if let old = pdf.page(at: i) { map[ObjectIdentifier(old)] = page }
         }
         // Destinations lose their page when it is removed: collect the new ones first.
         var fixes: [() -> Void] = []
         func remap(_ d: PDFDestination?) -> PDFDestination? {
             guard let d, let p = d.page, let new = map[ObjectIdentifier(p)] else { return nil }
-            return PDFDestination(page: new, at: d.point)
+            let destination = PDFDestination(page: new, at: d.point)
+            destination.zoom = d.zoom
+            return destination
         }
         func walk(_ item: PDFOutline) {
             if let d = remap(item.destination) { fixes.append { item.destination = d } }
@@ -474,13 +539,14 @@ extension PageOverlay {
             for i in 0..<item.numberOfChildren { if let c = item.child(at: i) { walk(c) } }
         }
         if let root = pdf.outlineRoot { walk(root) }
-        for i in 0..<pdf.pageCount {
-            for a in pdf.page(at: i)?.annotations ?? [] {
+        let pages = (0..<pdf.pageCount).compactMap { pdf.page(at: $0) } + replacements.map(\.1)
+        for page in pages {
+            for a in page.annotations {
                 if let d = remap(a.destination) { fixes.append { a.destination = d } }
                 if let g = a.action as? PDFActionGoTo, let d = remap(g.destination) { fixes.append { a.action = PDFActionGoTo(destination: d) } }
             }
         }
-        for (i, page) in replacements where i < pdf.pageCount {
+        for (i, page) in replacements {
             pdf.removePage(at: i)
             pdf.insert(page, at: i)
         }

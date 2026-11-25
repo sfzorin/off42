@@ -41,6 +41,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if let i = CommandLine.arguments.firstIndex(of: "--audit"), CommandLine.arguments.indices.contains(i + 1) {
+            Task { @MainActor in await ScanNativeAudit.run(CommandLine.arguments[i + 1]) }
+            return
+        }
         if CommandLine.arguments.contains("--uitest") {
             Task { @MainActor in await UITest.run() }
             return
@@ -56,7 +60,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let paths = CommandLine.arguments.dropFirst().filter { !$0.hasPrefix("-") && FileManager.default.fileExists(atPath: $0) }
             if !paths.isEmpty { w.importFiles(paths.map { URL(fileURLWithPath: $0) }, at: nil) }
         }
-        DebugSnapshot.scheduleIfRequested { [weak self] in self?.prepareSnapshot() }
+        if env["K42_SNAPSHOT"] != nil {
+            // Demo pages are processed asynchronously; capture the finished document and allow a clean exit.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [weak self] in self?.scheduleReadySnapshot() }
+        }
         // Hooks that need time (scans, OCR) run before the snapshot (use K42_SNAPSHOT_DELAY).
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in self?.earlyHooks(env) }
         // Debug runs never hang: quit after K42_WATCHDOG seconds.
@@ -77,6 +84,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if let active = windows.first(where: { $0.hasPendingWork }) {
+            active.showWindow(nil)
+            active.banner.show(.info, L("Wait for the current operation to finish."))
+            return .terminateCancel
+        }
         let dirty = windows.filter { $0.doc.isDirty && !$0.doc.isEmpty }
         guard !dirty.isEmpty, ProcessInfo.processInfo.environment["K42_SNAPSHOT"] == nil else { return .terminateNow }
         let alert = NSAlert()
@@ -107,7 +119,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func showWelcomeAction(_ sender: Any?) { welcome.showWindow(nil) }
-    @objc func newScanAction(_ sender: Any?) { (frontController ?? newWindow()).showWindow(nil); welcome.close() }
+    @objc func newScanAction(_ sender: Any?) { newWindow(); welcome.close() }
     @objc func phoneScanAction(_ sender: Any?) {
         let w = frontController ?? newWindow()
         w.showWindow(nil)
@@ -261,6 +273,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let z = env["K42_ZOOM"].flatMap(Double.init) { w.preview.scroll.magnification = CGFloat(z) }
         if env["K42_PRINT_TEST"] != nil, let op = w.printOperation(w.pages, copies: 3) {
             print("print: pages=\(op.pageRange.length) copies=\(op.printInfo.dictionary()[NSPrintInfo.AttributeKey.copies] ?? "?") job=\(op.jobTitle ?? "")")
+        }
+    }
+
+    private func scheduleReadySnapshot() {
+        if windows.contains(where: { $0.hasPendingWork }) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in self?.scheduleReadySnapshot() }
+        } else {
+            DebugSnapshot.scheduleIfRequested { [weak self] in self?.prepareSnapshot() }
         }
     }
 

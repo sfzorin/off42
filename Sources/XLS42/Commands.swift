@@ -10,6 +10,7 @@ enum Cmd {
                                    shortcut: Shortcut("e", [.command, .option]), toolTip: L("Export as PDF"), label: L("Export as PDF"))
     static let exportCSV = Command(L("Export Sheet as CSV…"), #selector(W.exportCSVAction(_:)))
     static let importCSV = Command(L("Import CSV as Sheet…"), #selector(W.importCSVAction(_:)))
+    static let createLabels = Command(L("Create Labels…"), #selector(W.createLabelsAction(_:)), symbol: "tag")
 
     // Data & objects
     static let replace = Command(L("Find and Replace…"), #selector(W.findReplaceAction(_:)), symbol: "arrow.left.arrow.right",
@@ -32,6 +33,8 @@ enum Cmd {
     static let clearRules = Command(L("Clear Rules from Selection"), #selector(W.clearRulesAction(_:)))
     static let insertPicture = Command(L("Picture…"), #selector(W.insertImageAction(_:)), symbol: "photo", shortcut: Shortcut("i", [.command, .shift]))
     static let stamps = Command(L("Signature or Stamp…"), #selector(W.showStampsAction(_:)), symbol: "signature", shortcut: Shortcut("k", [.command, .shift]))
+    static let technicalElement = Command(L("Symbol or Code…"), #selector(W.insertTechnicalElementAction(_:)), symbol: "qrcode")
+    static let editTechnicalElement = Command(L("Edit Symbol or Code…"), #selector(W.editTechnicalElementAction(_:)), symbol: "qrcode")
     static let charts: [Command] = [(L("Column Chart"), "chart.bar"), (L("Bar Chart"), "chart.bar.xaxis"), (L("Line Chart"), "chart.xyaxis.line"),
                                     (L("Area Chart"), "chart.line.uptrend.xyaxis"), (L("Pie Chart"), "chart.pie"), (L("Scatter Chart"), "chart.dots.scatter")]
         .enumerated().map { Command($0.element.0, #selector(W.insertChartAction(_:)), symbol: $0.element.1, tag: $0.offset) }
@@ -176,7 +179,7 @@ enum Cmd {
 
     static var menuBar: MenuBarSpec {
         var spec = MenuBarSpec(appName: "XLS42")
-        spec.fileExtras = [.command(exportPDF), .command(exportCSV), .separator, .command(importCSV), .separator,
+        spec.fileExtras = [.command(exportPDF), .command(exportCSV), .command(createLabels), .separator, .command(importCSV), .separator,
                            .command(setPrintArea), .command(clearPrintArea)]
         spec.editExtras = [.command(pasteSpecial), .separator, .command(clear), .command(clearFormats), .separator, .command(arrayFormula), .separator,
                            .submenu(L("Fill"), [.command(fillDown), .command(fillRight), .command(fillUp), .command(fillLeft), .separator, .command(fillSeries)])]
@@ -185,7 +188,7 @@ enum Cmd {
                      .command(formatBar), .command(formulaBar), .command(gridlines), .separator,
                      .command(freeze), .command(freezeTopRow), .command(freezeFirstColumn), .command(split), .separator, .command(statusBar)]
         spec.insert = [.command(insertRows), .command(insertColumns), .command(insertSheet), .separator, .command(autoSum), .command(insertFunction),
-                       .command(defineName), .separator, .command(insertPicture), .command(stamps), .submenu(L("Chart"), charts.menuElements),
+                       .command(defineName), .separator, .command(insertPicture), .command(stamps), .command(technicalElement), .command(editTechnicalElement), .submenu(L("Chart"), charts.menuElements),
                        .separator, .command(hyperlink), .command(removeHyperlink), .separator, .command(comment), .command(deleteComment)]
         spec.format = [.command(formatCells), .submenu(L("Cell Styles"), W.cellStyleCommands.menuElements), .separator,
                        .command(bold), .command(italic), .command(underline), .command(strike), .separator,
@@ -230,6 +233,6 @@ enum Cmd {
     /// In Customize Toolbar only: data tools live in the Data menu, zoom in the status bar slider, print/export in File.
     static var toolbarOptional: [ToolbarElement] {
         [.command(validation), .command(pivot), .command(group), .group(id: "zoom", label: L("Zoom"), [zoomOut, zoomIn]),
-         .command(print), .command(exportPDF)]
+         .command(print), .command(exportPDF), .command(technicalElement), .command(createLabels)]
     }
 }
