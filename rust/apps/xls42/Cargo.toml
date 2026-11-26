@@ -6,6 +6,7 @@ edition = "2021"
 label42 = { path = "../../crates/label42" }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 win42 = { path = "../../crates/win42" }
+suite42-app = { path = "../../crates/suite42-app" }
 xls42-core = { path = "../../crates/xls42-core" }
 [dev-dependencies]
 serde_json = "1"

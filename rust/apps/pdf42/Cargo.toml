@@ -6,6 +6,7 @@ edition = "2021"
 doc42-core = { path = "../../crates/doc42-core" }
 suite42-pdf-raster = { path = "../../crates/suite42-pdf-raster" }
 win42 = { path = "../../crates/win42" }
+suite42-app = { path = "../../crates/suite42-app" }
 suite42-core = { path = "../../crates/suite42-core" }
 pdf42-core = { path = "../../crates/pdf42-core" }
 suite42-pdf-text = { path = "../../crates/suite42-pdf-text" }

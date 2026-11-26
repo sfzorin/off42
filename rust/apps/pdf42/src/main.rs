@@ -1,13 +1,13 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 mod decorations;
-mod label_region;
-mod comparison;
+#[cfg(windows)]
+use suite42_app::pdf::label_region;
+use suite42_app::pdf::{batch_headers, merge, page_export};
+#[cfg(windows)]
+use suite42_app::pdf::comparison;
 mod ocr;
-mod merge;
-mod batch_headers;
-mod page_export;
 mod text_export;
-#[cfg(any(windows, test))]
+#[cfg(windows)]
 mod signatures;
 use pdf42_core::PdfDocument;
 use std::path::Path;
@@ -316,6 +316,7 @@ impl Pdf {
             self.current_epoch,
             self.next_comparison,
             path,
+            &text_export::PDFIUM,
         )?);
         Ok(())
     }
@@ -1038,6 +1039,7 @@ impl win42::App for Pdf {
                     inputs,
                     output,
                     self.decorations.batch_settings(),
+                    win42::logical_file_order,
                 )?);
                 self.operation_error = None;
                 return Ok(());
@@ -2251,6 +2253,7 @@ impl win42::App for Pdf {
                     pages,
                     path.to_owned(),
                     output,
+                    &text_export::PDFIUM,
                 )?);
                 self.operation_error = None;
                 return Ok(());

@@ -1,5 +1,5 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
-mod navigator;
+use suite42_app::document::navigator;
 use doc42_core::rich::{
     Alignment, Block, Cell, Field, FieldKind, Format, Image, ListMarker, Paragraph, ParagraphStyle,
     Position, RichDocument, Run, Selection, State, Table, TextStyle,

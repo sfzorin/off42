@@ -604,6 +604,7 @@ version = "0.1.0"
 dependencies = [
  "doc42-core",
  "image",
+ "suite42-app",
  "suite42-core",
  "win42",
 ]
@@ -1013,6 +1014,7 @@ version = "0.1.0"
 dependencies = [
  "image",
  "img42-core",
+ "suite42-app",
  "suite42-core",
  "suite42-pdf-raster",
  "tempfile",
@@ -1535,6 +1537,7 @@ dependencies = [
  "png 0.18.1",
  "scn42-core",
  "serde_json",
+ "suite42-app",
  "suite42-core",
  "suite42-pdf-raster",
  "suite42-pdf-text",
@@ -1656,6 +1659,7 @@ dependencies = [
  "image",
  "lopdf",
  "ppt42-core",
+ "suite42-app",
  "suite42-core",
  "suite42-pdf-text",
  "unicode-segmentation",
@@ -2039,6 +2043,7 @@ dependencies = [
  "scn42-core",
  "serde",
  "serde_json",
+ "suite42-app",
  "suite42-core",
  "suite42-pdf-raster",
  "tempfile",
@@ -2280,6 +2285,30 @@ dependencies = [
  "unicode-bidi",
  "unicode-normalization",
  "unicode-properties",
+]
+
+[[package]]
+name = "suite42-app"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "doc42-core",
+ "image",
+ "img42-core",
+ "label42",
+ "lopdf",
+ "marks42",
+ "pdf42-core",
+ "ppt42-core",
+ "scn42-core",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "suite42-core",
+ "tempfile",
+ "unicode-segmentation",
+ "xls42-core",
+ "zip 6.0.0",
 ]
 
 [[package]]
@@ -2717,6 +2746,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "suite42-app",
  "suite42-core",
  "tempfile",
  "windows",
@@ -2855,6 +2885,7 @@ dependencies = [
  "image",
  "label42",
  "serde_json",
+ "suite42-app",
  "win42",
  "xls42-core",
 ]

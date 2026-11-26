@@ -11,8 +11,9 @@ off42 has two independent implementations of the same six apps (PDF42, DOC42, XL
 | macOS apps | Swift/AppKit, shared library `Kit42` (`Sources/`) | ~114k lines | Shipping product; preview DMG on the site |
 | Windows apps | Rust workspace (`rust/`) | ~140k lines | Preview 4 ZIP on the site |
 | — format and document cores | `rust/crates/*-core`, `label42`, `marks42`, `suite42-*` | ~89k lines | No Windows dependencies, except `suite42-core` (file locking) and `suite42-pdf-raster` (WinRT PDF rendering) behind `cfg(windows)` |
-| — Windows UI | `rust/crates/win42` | ~19k lines | Win32 shell; also holds portable app logic (recovery, recents, localization, label preferences, generators, sparse table, pagination helpers) |
-| — app crates | `rust/apps/*` | ~30k lines | Win32 wiring plus portable features (PDF comparison/merge/Bates/signatures, Goal Seek/Solver/sorting, export naming, history) |
+| — portable app services | `rust/crates/suite42-app` | ~12k lines | Phase 1: the `App` host contract and its data types, recovery, recents, preferences, localization, labels, generators, grid and page geometry; PDF comparison/text export/merge/Bates/OCR pipeline/signature binding, Goal Seek/Solver/sorting/charts/sheet print pages, scan naming and history, slide outline and show overlays, image batch and background removal. Builds for `wasm32` |
+| — Windows UI | `rust/crates/win42` | ~16k lines | Win32 shell only (windows, dialogs, drawing, clipboard, PDFium loading, OCR engine, spelling, theme); re-exports the `suite42-app` contract under its old names |
+| — app crates | `rust/apps/*` | ~23k lines | Win32 wiring of each app model; PDFium, WinRT, CryptoAPI, WIA and Windows OCR bindings |
 | Website | Node generator (`website/`), Cloudflare | — | 20 languages |
 | Linux | PR #4, paused | — | egui host + `off42` CLI over the Rust cores |
 | Web | groundwork (`web/`, `rust/crates/off42-wasm`) | — | Not deployed; cores build for wasm32 |
@@ -127,19 +128,26 @@ instructions on the download page.
 
 - No new architecture (new crates, new UI toolkits, new platforms) beyond these decisions is merged without
   the owner's agreement.
-- New portable logic for Windows goes into a core crate, not into `win42` or `rust/apps/*`.
+- New portable logic for Windows goes into a core crate or `suite42-app`, not into `win42` or `rust/apps/*`.
 - New Mac features stay in Swift; if the same feature exists in Rust, add a shared fixture (D8).
 - No desktop GUI audits on the owner's Mac unless asked.
 
 ## 5. Plan
 
-| Phase | Work | Depends on |
-| --- | --- | --- |
-| 0 | Finish the current release work on the current architecture: Windows dark mode, signature learning, DOC42 pages; macOS preview 2 DMG | — |
-| 1 | Create `suite42-app`; move portable logic out of `win42` and `rust/apps/*`; Windows keeps working at every step (Windows CI green) | D3 |
-| 2 | `off42` CLI and the Linux preview on top of phase 1 (rebase PR #4 onto it) | D4, D6 |
-| 3 | WebAssembly build of the core and the web UI | D5, D7 |
-| 4 | Move the Mac apps onto the core, one app at a time, behind the existing AppKit UI | phases 1–3, owner's go-ahead |
+| Phase | Work | Depends on | Status |
+| --- | --- | --- | --- |
+| 0 | Finish the current release work on the current architecture: Windows dark mode, signature learning, DOC42 pages; macOS preview 2 DMG | — | — |
+| 1 | Create `suite42-app`; move portable logic out of `win42` and `rust/apps/*`; Windows keeps working at every step (Windows CI green) | D3 | Moved on branch `phase1-suite42-app` (pull request, not merged); see below |
+| 2 | `off42` CLI and the Linux preview on top of phase 1 (rebase PR #4 onto it) | D4, D6 | — |
+| 3 | WebAssembly build of the core and the web UI | D5, D7 | — |
+| 4 | Move the Mac apps onto the core, one app at a time, behind the existing AppKit UI | phases 1–3, owner's go-ahead | — |
+
+Phase 1 result: `suite42-app` holds the `App` contract and every module listed in §1 that has no Win32 call; the
+crate's README lists them. Code that needs the platform is passed in by the shell: `platform::PdfText` (PDFium),
+OCR render/recognize callbacks, the filename order for batches. Still in the shells: app models that implement
+`App` (`impl Pdf`, `impl Xls`, … including decorations, viewports, image recovery), the Win32 host, PDFium and
+WinRT rendering, the Tesseract/Windows OCR engines, CryptoAPI signing, WIA scanning and spelling. The per-user data
+root (`storage::local_data`) is still `%LOCALAPPDATA%/off42`; phase 2 adds the Linux location.
 
 ## 6. Work in flight
 

@@ -1,9 +1,8 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
-mod batch;
+use suite42_app::image::{batch, uniform_background};
 mod pdf_view;
 mod live_text;
 mod recovery;
-mod uniform_background;
 use img42_core::ImageDocument;
 use std::path::Path;
 const EXPORT_SELECTION: u16 = 51;

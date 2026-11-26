@@ -1,8 +1,5 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
-mod charts;
-mod print;
-mod goal_seek;
-mod solver;
+use suite42_app::sheet::{charts, goal_seek, print, solver};
 mod viewport;
 mod sorting;
 use std::path::Path;

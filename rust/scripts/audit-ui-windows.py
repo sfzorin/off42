@@ -4529,7 +4529,7 @@ def audit_language(binary, output, code, index):
     try:
         main = modal(process, native_class="Suite42Native")
         wait_for(lambda: source.name in text(main) and u.IsWindowEnabled(main), "localized file opening", process)
-        catalogs = Path(__file__).resolve().parents[1] / "crates" / "win42" / "resources" / "translations"
+        catalogs = Path(__file__).resolve().parents[1] / "crates" / "suite42-app" / "resources" / "translations"
         catalog = {} if code == "en" else json.loads((catalogs / (code + ".json")).read_text(encoding="utf-8"))
         overrides = json.loads((catalogs.parent / "windows-translations.json").read_text(encoding="utf-8"))
         catalog.update(overrides.get(code, {}))
