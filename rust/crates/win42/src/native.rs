@@ -65,6 +65,7 @@ const TOGGLE_SIDEBAR:u16=65503;
 const TOGGLE_TOOLBAR:u16=65502;
 const TOGGLE_STATUS:u16=65501;
 const TOGGLE_RULERS:u16=65500;
+const TOGGLE_PRINT_LAYOUT: u16 = 65496;
 const LANGUAGE_FIRST: u16 = 64000;
 const RECENT_FIRST: u16 = 62000;
 const CLEAR_RECENTS: u16 = RECENT_FIRST + crate::recents::LIMIT as u16;
@@ -1236,14 +1237,15 @@ unsafe fn layout(hwnd: HWND) {
             );
         }
     }
-    MoveWindow(
-        edit,
-        left + rw,
-        bar_height + rh,
-        (r.right - left - rw).max(0),
-        (r.bottom - sh - bar_height - rh).max(0),
-        1,
-    );
+    let area = RECT {
+        left: left + rw,
+        top: bar_height + rh,
+        right: r.right.max(left + rw),
+        bottom: (r.bottom - sh).max(bar_height + rh),
+    };
+    if !crate::rich_pages::arrange(edit, area) {
+        MoveWindow(edit, area.left, area.top, area.right - area.left, area.bottom - area.top, 1);
+    }
     MoveWindow(
         canvas,
         left,
@@ -1317,6 +1319,10 @@ unsafe fn sync_rulers(_hwnd: HWND) {
     }
     let mut rect: RECT = zeroed();
     GetClientRect(edit, &mut rect);
+    if let Some((width, height)) = crate::rich_pages::view_size() {
+        rect.right = width;
+        rect.bottom = height;
+    }
     let dpi = (GetDpiForWindow(edit) as i32).max(1);
     let px = |v: i32| {
         ((i64::from(v) * i64::from(dpi) * i64::from(data.zoom_percent)) / 144_000)
@@ -1334,8 +1340,7 @@ unsafe fn sync_rulers(_hwnd: HWND) {
             s.ruler_format = Some(key);
             true
         }
-    });
-    crate::rich_pages::set_frame(edit, page_left, page_width);
+    }) | crate::rich_pages::take_reformat();
     if changed {
         crate::rich_pages::invalidate();
         let mut a = u32::from(data.zoom_percent);
@@ -1365,12 +1370,17 @@ unsafe fn sync_rulers(_hwnd: HWND) {
             right,
             bottom,
         };
-        SendMessageW(edit, EM_SETRECT, 0, &format as *const _ as isize);
+        // Print Layout sizes the editor to the sheet body and sets its own format rectangle.
+        if !crate::rich_pages::overlaid() {
+            SendMessageW(edit, EM_SETRECT, 0, &format as *const _ as isize);
+        }
     }
+    crate::rich_pages::set_frame(edit, page_left, page_width, changed);
     let mut scroll: POINT = zeroed();
     SendMessageW(edit, WM_USER + 221, 0, &mut scroll as *mut _ as isize);
-    crate::rich_ruler::update(horizontal, data.clone(), page_left - scroll.x);
-    crate::rich_ruler::update(vertical, data, -scroll.y);
+    let overlaid = crate::rich_pages::overlaid();
+    crate::rich_ruler::update(horizontal, data.clone(), page_left - if overlaid { 0 } else { scroll.x });
+    crate::rich_ruler::update(vertical, data, crate::rich_pages::vertical_origin().unwrap_or(-scroll.y));
 }
 unsafe fn cancel_pending_open() {
     let canceled = STATE.with(|s| {
@@ -2699,6 +2709,21 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
         }
         DrawMenuBar(hwnd);return;
     }
+    if id == TOGGLE_PRINT_LAYOUT {
+        let edit = STATE.with(|slot| {
+            let mut slot = slot.borrow_mut();
+            let s = slot.as_mut().unwrap();
+            s.ruler_format = None;
+            (s.app.uses_rich_edit() && s.app.rich_ruler().is_some()).then_some(s.edit)
+        });
+        if let Some(edit) = edit {
+            crate::rich_pages::set_requested(edit, !crate::rich_pages::requested());
+            layout(hwnd);
+            sync_panel_menu();
+            SetFocus(edit);
+        }
+        return;
+    }
     if id==CHECK_SPELLING{
         let edit=STATE.with(|slot|{let slot=slot.borrow();let state=slot.as_ref().unwrap();(state.app.uses_rich_edit()&&!state.app.text_readonly()&&IsWindowVisible(state.edit)!=0&&state.async_open.is_none()).then_some(state.edit)});
         if let Some(edit)=edit{if let Err(error)=crate::proofing::show(hwnd,edit,|range,value,expected|native_rich_replace(edit,range,value,expected)){msg(hwnd,&crate::localization::text(&error),MB_OK|MB_ICONERROR);}}
@@ -3345,6 +3370,8 @@ unsafe fn sync_panel_menu(){
         EnableMenuItem(menu,id as u32,MF_BYCOMMAND|if available{MF_ENABLED}else{MF_GRAYED});
         CheckMenuItem(menu,id as u32,MF_BYCOMMAND|if available&&shown{MF_CHECKED}else{MF_UNCHECKED});
     }
+    let checked = if crate::rich_pages::requested() { MF_CHECKED } else { MF_UNCHECKED };
+    CheckMenuItem(menu, TOGGLE_PRINT_LAYOUT as u32, MF_BYCOMMAND | checked);
 }
 unsafe fn update_caption() {
     let (h, status, menu, title, info, u, r, actions) = STATE.with(|s| {
@@ -4058,6 +4085,9 @@ pub fn run(app: Box<dyn App>) {
         );
         let view = CreatePopupMenu();
         for (id,title) in [(TOGGLE_SIDEBAR,"Show Sidebar"),(TOGGLE_TOOLBAR,"Show Toolbar"),(TOGGLE_STATUS,"Show Status Bar"),(TOGGLE_RULERS,"Show Rulers")]{item(view,id,title);}
+        if app.uses_rich_edit() && app.rich_ruler().is_some() {
+            item(view, TOGGLE_PRINT_LAYOUT, "Print Layout");
+        }
         AppendMenuW(view,MF_SEPARATOR,0,null());
         for &(id, title) in app.view_actions() {
             item(view, id, title);

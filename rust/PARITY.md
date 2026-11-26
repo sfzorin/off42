@@ -429,7 +429,16 @@ The parity scope excludes grammar checking. Spelling remains in scope.
 
 - The live Rich Edit is paginated with the shared print paginator (notes included) once edits settle. The editor
   draws the desk, page edges and labelled page-break markers; the status bar shows the caret page and page count.
-  Pages are still one continuous Rich Edit surface rather than separate sheets.
+  **View → Print Layout** (off by default) shows separate sheets with gaps and shadows, section margins and
+  header/footer/page-number bands. Approach: the Rich Edit control remains the only editing engine. A desk
+  window renders each sheet with EM_FORMATRANGE from the live editor (as Print Preview does) and the live editor
+  is moved over the body of the caret's sheet, scrolled to that page's first line and clipped to that page's
+  lines; caret moves or typing that cross a page boundary re-paginate and move the editor to the next sheet. No
+  spacing is inserted into the document, so content, Undo/Redo and saving are unchanged. Limits: single-section
+  documents only; other sheets refresh after edits settle; selection highlight only on the current sheet;
+  footnotes are not drawn on sheets and headers/footers are read-only there; the current
+  sheet's wrapping follows the screen layout, which can differ slightly from the printer-DC layout of the others.
+  The continuous view keeps the page-break markers.
 - Track Changes (Review menu, Ctrl+Shift+E) records typed text as insertions and deleted text as struck-through
   deletions by the Windows user, merging consecutive edits. Next/Previous Change, Accept/Reject Change and
   Accept/Reject All are undoable. Insertions are underlined in blue, deletions struck through in red; those
@@ -440,6 +449,11 @@ The parity scope excludes grammar checking. Spelling remains in scope.
 - `rust/scripts/audit-doc42-windows.py` drives the packaged DOC42.exe: status page count, caret page, typing
   that adds pages, Undo/Redo and a reopened project; tracking on, typed insertion, deleted selection kept
   visible, Undo/Redo, DOCX output and reopen, Next/Accept/Reject All/Accept All and an accepted DOCX.
+  Its `layout` scenario turns on Print Layout for a three-plus-page RTF with header and footer: the desk caption
+  reports one sheet per page, a 25% screen capture shows separate sheets divided by desk-coloured gaps and an
+  inked header band, typing at the end of page 1 moves the caret and editor onto sheet 2, Undo/Redo restore the
+  text and sheet count, an RTF saved after editing and Undo is byte-identical to one saved before Print Layout,
+  and a saved DOC42 project reopens with the typed text and the same sheets.
 
 ### Bundled PDF/scan OCR in progress
 
