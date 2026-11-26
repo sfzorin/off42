@@ -162,7 +162,9 @@
     "copy": "Salin",
     "copied": "Tersalin",
     "screenshot": "Tangkapan layar di macOS. Contoh dokumen, perusahaan fiktif.",
-    "downloadZip": "Unduh ZIP"
+    "downloadZip": "Unduh ZIP",
+    "downloadTarGz": "Unduh tar.gz",
+    "experimental": "Eksperimental"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac: jika macOS menyatakan app tidak dapat dibuka, buka Pengaturan Sistem → Privasi & Keamanan lalu klik Tetap Buka. Ini hanya perlu dilakukan sekali untuk setiap app.",
     "installWindows": "Windows: jika SmartScreen menampilkan “Windows melindungi PC Anda”, klik Informasi lebih lanjut, lalu Tetap jalankan.",
     "web": "OFF42 di browser",
-    "webText": "Tanpa instalasi: pratinjau yang membuka, mengonversi, dan membuat file di dalam tab browser Anda. Dokumen belum dapat diekspor ke PDF dan halaman PDF belum ditampilkan."
+    "webText": "Tanpa instalasi: pratinjau yang membuka, mengonversi, dan membuat file di dalam tab browser Anda. Dokumen belum dapat diekspor ke PDF dan halaman PDF belum ditampilkan.",
+    "linux": "OFF42 untuk Linux",
+    "linuxText": "Pratinjau eksperimental untuk x86_64. Keenam aplikasi terbuka di jendela sederhana dan mengonversi file dari baris perintah. Tampilan halaman, pengeditan berformat, pencetakan, pemindaian, dan OCR belum tersedia di Linux.",
+    "linuxPreviewText": "Pratinjau eksperimental x86_64 untuk keenam aplikasi: jendela sederhana dan konversi dari baris perintah. Tampilan halaman, pengeditan berformat, pencetakan, pemindaian, dan OCR belum tersedia di Linux.",
+    "linuxBuild": "Build dan batasan",
+    "installLinux": "Linux: ekstrak arsip lalu jalankan aplikasi, atau jalankan ./install.sh untuk menambahkan entri menu. Memerlukan X11 atau Wayland."
   },
   "about": {
     "title": "Kantor tanpa hal yang disembunyikan.",

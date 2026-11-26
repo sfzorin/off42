@@ -162,7 +162,9 @@
     "copy": "Kopyala",
     "copied": "Kopyalandı",
     "screenshot": "macOS'ta ekran görüntüsü. Örnek belgeler, kurgusal şirketler.",
-    "downloadZip": "ZIP indir"
+    "downloadZip": "ZIP indir",
+    "downloadTarGz": "tar.gz indir",
+    "experimental": "Deneysel"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac: macOS uygulamanın açılamadığını söylerse Sistem Ayarları → Gizlilik ve Güvenlik bölümünü açıp “Yine de Aç” düğmesine tıklayın. Bunu her uygulama için yalnızca bir kez yapmanız gerekir.",
     "installWindows": "Windows: SmartScreen “Windows bilgisayarınızı korudu” uyarısı verirse “Daha fazla bilgi”ye, ardından “Yine de çalıştır”a tıklayın.",
     "web": "Tarayıcıda OFF42",
-    "webText": "Kurulum gerekmez: dosyaları tarayıcı sekmenizin içinde açan, dönüştüren ve oluşturan bir önizleme. Belgeler henüz PDF'ye aktarılamaz ve PDF sayfaları henüz görüntülenmez."
+    "webText": "Kurulum gerekmez: dosyaları tarayıcı sekmenizin içinde açan, dönüştüren ve oluşturan bir önizleme. Belgeler henüz PDF'ye aktarılamaz ve PDF sayfaları henüz görüntülenmez.",
+    "linux": "Linux için OFF42",
+    "linuxText": "x86_64 için deneysel önizleme. Altı uygulamanın tümü basit bir pencerede açılır ve komut satırından dosya dönüştürür. Sayfa görünümü, biçimli düzenleme, yazdırma, tarama ve OCR Linux'ta henüz yok.",
+    "linuxPreviewText": "Altı uygulamanın deneysel x86_64 önizlemesi: basit bir pencere ve komut satırından dönüştürme. Sayfa görünümü, biçimli düzenleme, yazdırma, tarama ve OCR Linux'ta henüz yok.",
+    "linuxBuild": "Derleme ve sınırlar",
+    "installLinux": "Linux: arşivi açıp bir uygulamayı çalıştırın ya da menü girişleri eklemek için ./install.sh komutunu çalıştırın. X11 veya Wayland gerekir."
   },
   "about": {
     "title": "Saklayacak şeyi olmayan bir ofis.",

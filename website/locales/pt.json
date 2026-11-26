@@ -162,7 +162,9 @@
     "copy": "Copiar",
     "copied": "Copiado",
     "screenshot": "Captura de tela no macOS. Documentos de exemplo, empresas fictícias.",
-    "downloadZip": "Baixar ZIP"
+    "downloadZip": "Baixar ZIP",
+    "downloadTarGz": "Baixar tar.gz",
+    "experimental": "Experimental"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac: se o macOS disser que o app não pode ser aberto, abra Ajustes do Sistema → Privacidade e Segurança e clique em “Abrir Mesmo Assim”. Isso só é necessário uma vez por app.",
     "installWindows": "Windows: se o SmartScreen exibir “O Windows protegeu seu computador”, clique em “Mais informações” e depois em “Executar assim mesmo”.",
     "web": "OFF42 no navegador",
-    "webText": "Nada para instalar: uma prévia que abre, converte e cria arquivos dentro da aba do navegador. Ainda não é possível exportar documentos para PDF nem exibir páginas de PDF."
+    "webText": "Nada para instalar: uma prévia que abre, converte e cria arquivos dentro da aba do navegador. Ainda não é possível exportar documentos para PDF nem exibir páginas de PDF.",
+    "linux": "OFF42 para Linux",
+    "linuxText": "Prévia experimental para x86_64. Os seis apps abrem numa janela simples e convertem arquivos pela linha de comando. Visualização de páginas, edição formatada, impressão, digitalização e OCR ainda não estão disponíveis no Linux.",
+    "linuxPreviewText": "Prévia experimental x86_64 dos seis apps: uma janela simples e conversão pela linha de comando. Visualização de páginas, edição formatada, impressão, digitalização e OCR ainda não estão disponíveis no Linux.",
+    "linuxBuild": "Compilação e limites",
+    "installLinux": "Linux: extraia o arquivo e abra um app, ou execute ./install.sh para adicionar itens ao menu. Requer X11 ou Wayland."
   },
   "about": {
     "title": "Um escritório sem nada a esconder.",

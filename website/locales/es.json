@@ -162,7 +162,9 @@
     "copy": "Copiar",
     "copied": "Copiado",
     "screenshot": "Captura de pantalla en macOS. Documentos de ejemplo, empresas ficticias.",
-    "downloadZip": "Descargar ZIP"
+    "downloadZip": "Descargar ZIP",
+    "downloadTarGz": "Descargar tar.gz",
+    "experimental": "Experimental"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac: si macOS dice que no se puede abrir la app, abre Ajustes del Sistema → Privacidad y seguridad y haz clic en «Abrir de todos modos». Solo hace falta una vez por app.",
     "installWindows": "Windows: si SmartScreen muestra «Windows protegió su PC», haz clic en «Más información» y después en «Ejecutar de todas formas».",
     "web": "OFF42 en el navegador",
-    "webText": "Nada que instalar: una vista previa que abre, convierte y crea archivos dentro de la pestaña del navegador. Los documentos aún no se pueden exportar a PDF y las páginas PDF aún no se muestran."
+    "webText": "Nada que instalar: una vista previa que abre, convierte y crea archivos dentro de la pestaña del navegador. Los documentos aún no se pueden exportar a PDF y las páginas PDF aún no se muestran.",
+    "linux": "OFF42 para Linux",
+    "linuxText": "Versión preliminar experimental para x86_64. Las seis apps se abren en una ventana sencilla y convierten archivos desde la línea de comandos. La vista de páginas, la edición con formato, la impresión, el escaneo y el OCR aún no están disponibles en Linux.",
+    "linuxPreviewText": "Versión preliminar experimental de las seis apps para x86_64: una ventana sencilla y conversión desde la línea de comandos. La vista de páginas, la edición con formato, la impresión, el escaneo y el OCR aún no están disponibles en Linux.",
+    "linuxBuild": "Compilación y límites",
+    "installLinux": "Linux: extrae el archivo y abre una app, o ejecuta ./install.sh para añadir entradas al menú. Requiere X11 o Wayland."
   },
   "about": {
     "title": "Una oficina sin nada que ocultar.",

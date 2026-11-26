@@ -162,7 +162,9 @@
     "copy": "Copia",
     "copied": "Copiato",
     "screenshot": "Screenshot su macOS. Documenti di esempio, aziende fittizie.",
-    "downloadZip": "Scarica ZIP"
+    "downloadZip": "Scarica ZIP",
+    "downloadTarGz": "Scarica tar.gz",
+    "experimental": "Sperimentale"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac: se macOS segnala che l’app non può essere aperta, apri Impostazioni di Sistema → Privacy e sicurezza e fai clic su «Apri comunque». Basta farlo una volta per app.",
     "installWindows": "Windows: se SmartScreen mostra «Il PC è stato protetto da Windows», fai clic su «Ulteriori informazioni» e poi su «Esegui comunque».",
     "web": "OFF42 nel browser",
-    "webText": "Niente da installare: un'anteprima che apre, converte e crea file nella scheda del browser. I documenti non possono ancora essere esportati in PDF e le pagine PDF non vengono ancora visualizzate."
+    "webText": "Niente da installare: un'anteprima che apre, converte e crea file nella scheda del browser. I documenti non possono ancora essere esportati in PDF e le pagine PDF non vengono ancora visualizzate.",
+    "linux": "OFF42 per Linux",
+    "linuxText": "Anteprima sperimentale per x86_64. Tutte e sei le app si aprono in una finestra semplice e convertono file dalla riga di comando. Vista pagine, modifica formattata, stampa, scansione e OCR non sono ancora disponibili su Linux.",
+    "linuxPreviewText": "Anteprima sperimentale x86_64 di tutte e sei le app: una finestra semplice e conversione dalla riga di comando. Vista pagine, modifica formattata, stampa, scansione e OCR non sono ancora disponibili su Linux.",
+    "linuxBuild": "Compilazione e limiti",
+    "installLinux": "Linux: estrai l’archivio e avvia un’app, oppure esegui ./install.sh per aggiungere le voci di menu. Richiede X11 o Wayland."
   },
   "about": {
     "title": "Un ufficio che non ha nulla da nascondere.",

@@ -119,6 +119,10 @@ The executables are unsigned. See the [release notes](https://github.com/sfzorin
 for runtime requirements.
 [Download the Windows preview ZIP](https://github.com/sfzorin/off42/releases/download/v1.0.0-windows-preview.5/off42-1.0.0-windows-preview.5-x64.zip).
 
+An experimental Linux x86_64 build of the same Rust apps opens a simple window and converts files from the command
+line; page views, rich editing, printing, scanning, OCR and PDF rendering are Windows/macOS only for now. See
+[Linux preview](rust/README.md#linux-preview) for what works, how to build and the `v*-linux-preview.*` release tarballs.
+
 ## Build and install on macOS
 
 ```bash

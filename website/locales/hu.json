@@ -162,7 +162,9 @@
     "copy": "Másolás",
     "copied": "Másolva",
     "screenshot": "Képernyőkép macOS-en. Mintadokumentumok, kitalált cégek.",
-    "downloadZip": "ZIP letöltése"
+    "downloadZip": "ZIP letöltése",
+    "downloadTarGz": "tar.gz letöltése",
+    "experimental": "Kísérleti"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac: ha a macOS azt jelzi, hogy az alkalmazás nem nyitható meg, nyisd meg a Rendszerbeállítások → Adatvédelem és biztonság részt, és kattints a „Megnyitás mindenképp” gombra. Ezt alkalmazásonként csak egyszer kell megtenni.",
     "installWindows": "Windows: ha a SmartScreen a „A Windows megvédte a számítógépét” üzenetet jeleníti meg, kattints a „További információ”, majd a „Futtatás mindenképpen” lehetőségre.",
     "web": "OFF42 a böngészőben",
-    "webText": "Nincs mit telepíteni: egy előzetes, amely a böngészőlapon belül nyit meg, alakít át és hoz létre fájlokat. A dokumentumok még nem exportálhatók PDF-be, és a PDF-oldalak még nem jelennek meg."
+    "webText": "Nincs mit telepíteni: egy előzetes, amely a böngészőlapon belül nyit meg, alakít át és hoz létre fájlokat. A dokumentumok még nem exportálhatók PDF-be, és a PDF-oldalak még nem jelennek meg.",
+    "linux": "OFF42 Linuxra",
+    "linuxText": "Kísérleti előzetes x86_64-re. Mind a hat alkalmazás egyszerű ablakban nyílik meg, és parancssorból konvertál fájlokat. Az oldalnézet, a formázott szerkesztés, a nyomtatás, a szkennelés és az OCR Linuxon még nem érhető el.",
+    "linuxPreviewText": "Mind a hat alkalmazás kísérleti x86_64-es előzetese: egyszerű ablak és parancssori konvertálás. Az oldalnézet, a formázott szerkesztés, a nyomtatás, a szkennelés és az OCR Linuxon még nem érhető el.",
+    "linuxBuild": "Fordítás és korlátok",
+    "installLinux": "Linux: bontsa ki az archívumot és indítson el egy alkalmazást, vagy futtassa a ./install.sh parancsot a menübejegyzésekhez. X11 vagy Wayland szükséges."
   },
   "about": {
     "title": "Iroda, titkok nélkül.",

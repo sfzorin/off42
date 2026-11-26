@@ -73,7 +73,7 @@ for(const page of manifest.files){
  if(page.route===''){assert(html.includes(`src="/assets/video/off42-demo-${page.lang}.mp4"`)&&html.includes(`poster="/assets/video/off42-demo-${page.lang}.jpg"`),page.path+' localized demo video');assert(html.includes('id="codes"'),page.path+' codes section');}
  if(page.route==='download/')for(const [platform,release] of Object.entries(config.releases)){
   if(release){assert(new URL(release.url).protocol==='https:');assert(release.version&&release.requirements&&release.architecture);assert(!release.sha256||/^[a-f0-9]{64}$/.test(release.sha256));assert(html.includes(release.url));}
-  else assert(!html.includes(platform==='macos'?source.labels.downloadDmg:source.labels.downloadZip));
+  else assert(!html.includes({macos:source.labels.downloadDmg,windows:source.labels.downloadZip,linux:source.labels.downloadTarGz}[platform]));
  }
 }
 const sitemap=await read('dist/sitemap.xml');assert.equal((sitemap.match(/<loc>/g)||[]).length,280);assert(!sitemap.includes('<lastmod>'),'Sitemap must not claim unverified modification dates');

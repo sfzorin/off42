@@ -1,6 +1,6 @@
-# off42 for Windows
+# off42 for Windows (and an experimental Linux preview)
 
-This separate Rust workspace implements six native Windows apps; the macOS Swift apps remain separate. The current
+This separate Rust workspace implements six native Windows apps (see [Linux preview](#linux-preview) for the rough Linux build); the macOS Swift apps remain separate. The current
 implementation is a work in progress, not a feature-parity or Windows release claim. Native interaction and saved output are checked on Windows CI; see [the parity tracker](PARITY.md) for evidence
 and failures. The Microsoft virtual PDF driver has been exercised; physical printing and scanner hardware still need testing.
 
@@ -49,6 +49,43 @@ Windows runtime behavior. The Windows CI workflow also builds with MSVC.
 
 `cargo test -p suite42-app` runs on any host, and `cargo check -p suite42-app --target wasm32-unknown-unknown`
 checks the WebAssembly build. Stored preference, history and recovery formats are pinned by its tests.
+
+## Linux preview
+
+Experimental and rough. The same six Rust apps build for Linux x86_64; the document engines (DOCX/ODT/RTF/HTML/
+Markdown, XLSX/ODS/CSV with formulas, PPTX/ODP, PDF editing through lopdf, PNG/JPEG/TIFF/GIF/WebP, labels, barcodes and
+marks) are the portable crates also used on Windows. The Win32 interface in `crates/win42` is replaced off Windows by
+`crates/win42/src/portable.rs`: a simple egui window (X11 or Wayland) plus a headless command line.
+
+What works:
+- A window per app with the page/sheet/slide/frame list, document text (editable and applied back to the model),
+  the cell table for XLS42, the image for IMG42/SCN42, Undo/Redo, a Commands menu, an Export menu for file actions and
+  Save As where the format follows the file extension.
+- Command line in every app: `--convert IN OUT`, `--text FILE`, `--items FILE`, `--table FILE`,
+  `--export ID IN OUT` (IDs from `--formats`), `--formats`, `--commands`, `--help`, `--version`. Settings prompts take
+  their default values.
+- `cargo test --locked --workspace` and `scripts/smoke-linux.sh` (DOCX/ODT/RTF, XLSX/ODS with a formula, PNG/JPEG, PDF
+  save, page extraction and split) run on `ubuntu-latest` in `.github/workflows/rust-linux.yml`.
+
+What does not work yet: DOC42 page canvas and WYSIWYG rich text, rulers, PPT42 slide canvas and slide shows, printing,
+scanner acquisition, OCR, PDFium-based PDF rendering, text search/extraction and text editing, signing with system
+certificates, clipboard integration, recent documents, recovery copies, most commands that open a Windows settings
+dialog, localization of the Linux window and file pickers (type paths). Commands that need these report
+"requires Windows" or "not available on Linux yet". Nothing here is checked on a real desktop session; CI has no display.
+
+Build and run on Debian/Ubuntu:
+
+```bash
+sudo apt-get install build-essential pkg-config libx11-dev libxcursor-dev libxrandr-dev libxi-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev libfontconfig1-dev
+cd rust
+cargo build --locked --release -p img42 -p doc42 -p xls42 -p ppt42 -p pdf42 -p scn42
+./target/release/doc42 --convert notes.md notes.docx
+./target/release/xls42 book.xlsx
+scripts/smoke-linux.sh target/release
+```
+
+Tags `v*-linux-preview.*` publish `off42-<version>-x86_64.tar.gz` with the six executables, licenses,
+`README-LINUX.txt` and `install.sh` (installs to `~/.local/opt/off42` with menu entries, no root).
 
 ## Implemented scope and limits
 
