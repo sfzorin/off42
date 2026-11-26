@@ -132,9 +132,18 @@ An optional assistant panel in the web editors (documents and spreadsheets first
 - The agent loop runs in the browser; tools execute locally on the open document. Requests go to a same-origin
   Cloudflare Worker (`off42.cc/api/assistant`) that holds the OpenRouter API key as a secret (`OPENROUTER_API_KEY`,
   set by the owner with `wrangler secret put`) and forwards to OpenRouter's chat-completions API with tool calling. The key never reaches the browser; the page still makes no requests to other origins.
-- Open to everyone without an account, with a per-user daily limit, a bot check (Cloudflare Turnstile), a model
-  allowlist and request/response size caps in the Worker; the owner also sets a credit/spend limit on the OpenRouter
-  key. The Worker does not log document content.
+- Open to everyone without an account. Spending is limited in money, not requests (owner's decision 2026-11-26):
+  - per user and day: $0.10 of model cost (about 600 typical actions). The user is an anonymous random id kept in
+    the browser; the Worker also keeps a per-IP-hash ceiling of $0.50/day so clearing the browser or switching
+    browsers doesn't multiply it freely (several people behind one IP share that ceiling). This is approximate by
+    design: there is no registration.
+  - the Worker adds up the actual cost OpenRouter reports for each request (`usage` accounting) in Cloudflare
+    storage keyed by day, id and IP hash; nothing about the document is stored. When a limit is reached it answers
+    with a localized "today's limit is used up, try again tomorrow" and makes no model call.
+  - a site-wide daily ceiling (default $5, a Worker setting) stops all assistant calls for the day if exceeded,
+    plus the owner's credit limit on the OpenRouter key.
+  - also: a bot check (Cloudflare Turnstile), a model allowlist and request/response size caps. The Worker does not
+    log document content.
 - Nothing is sent until the user opens the assistant and agrees; then only the selection, the document outline and the
   text the model asks for through read commands. The privacy policy (all languages) and store notes describe this.
   Without the assistant every app keeps working fully offline.
