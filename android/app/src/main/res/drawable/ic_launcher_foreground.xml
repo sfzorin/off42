@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The "42" of website/public/assets/favicon.svg (64×64), centred in the 108dp adaptive-icon canvas. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.85"
+        android:scaleY="0.85"
+        android:translateX="26.8"
+        android:translateY="26.8">
+        <path
+            android:pathData="M23,16L10,35H29M23,16V48"
+            android:strokeColor="#FFF9EF"
+            android:strokeWidth="6"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M36,23C36,19 40,16 45,16S54,19 54,24C54,33 37,37 36,48H54"
+            android:strokeColor="#FFAB80"
+            android:strokeWidth="6"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
+</vector>

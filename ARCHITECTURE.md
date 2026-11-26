@@ -158,7 +158,7 @@ Swift apps; the downloadable DMG stays. The same Apple Developer account is used
 | 2 | `off42` CLI and the Linux preview on top of phase 1 (rebase PR #4 onto it) | D4, D6 | Done (PR #4); Linux preview 1 released |
 | 3 | WebAssembly build of the core and the web UI | D5, D7 | Done: off42.cc/app (PR #8, #10) |
 | 4 | Move the Mac apps onto the core, one app at a time, behind the existing AppKit UI | phases 1–3, owner's go-ahead | — |
-| 5 | `off42-mobile` UniFFI bindings; Android app (Compose, tablets first) | D10 | Started |
+| 5 | `off42-mobile` UniFFI bindings; Android app (Compose, tablets first) | D10 | Built on branch `phase5-android` (pull request, not merged; not on Google Play); see below |
 | 6 | iPad/iPhone SwiftUI app over `off42-mobile` | D11, phase 5 bindings | — |
 | 7 | Mac App Store build variant (sandbox) and DMG notarization | D12, Apple Developer account | Prepared without an account: `APP_STORE` variant, `scripts/build-app-store.sh`, DMG notarization in `scripts/sign_and_notarize.sh` (appstore/README.md); signing, upload and sandbox runtime checks wait for the account |
 
@@ -177,6 +177,17 @@ Windows path is unchanged. The `off42` CLI calls `suite42_app` for PDF merge, pa
 label sheets, codes, marks, signatures and stamps. Its `PdfText` is `suite42_app::pdf::lopdf_text` (plain text, no
 styles or glyph boxes) on every platform; PDFium for Linux/macOS (D7) and Tesseract outside Windows are not done, so
 OCR and PDF rendering stay Windows-only, and the PDF42 window off Windows still has no text export.
+
+Phase 5 result: `crates/off42-mobile` exports the web API's capability set through UniFFI 0.33 (proc macros) as typed
+records and a typed error (`UnsupportedFormat`, `PackagePartsWouldBeLost`, `InvalidInput`, `Failed`). It calls the
+plain Rust functions of `off42-wasm` rather than copying them; giving that shared layer its own crate is deferred
+because it changes the provenance hash of the published web app. The crate builds as a `cdylib` for Android
+(arm64-v8a, armeabi-v7a, x86_64 via cargo-ndk) and as a `staticlib` plus Swift bindings and an XCFramework for
+`aarch64-apple-ios` and `aarch64-apple-ios-sim` (`rust/scripts/build-mobile-apple.sh`). `android/` is the Compose app
+(`cc.off42.office`); `.github/workflows/android.yml` runs the Rust, JVM, lint and emulator tests (tablet and phone) and
+the iOS build. Phase 6 reuses the crate, the Swift bindings and XCFramework from that script, the fixture set in
+`android/app/src/androidTest/assets/fixtures`, the Play listing texts as a base for the App Store listing, and the
+Android screen structure (sections, list/detail on large screens, save through the system dialog).
 
 ## 6. Work in flight
 

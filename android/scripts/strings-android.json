@@ -1,0 +1,222 @@
+{
+  "en": {
+    "section_documents": "Documents", "section_spreadsheets": "Spreadsheets", "section_presentations": "Presentations",
+    "nav_documents": "Docs", "nav_spreadsheets": "Sheets", "nav_presentations": "Slides", "nav_labels": "Labels", "nav_marks": "Sign",
+    "open_file": "Open file", "formats_hint": "Opens {formats}",
+    "no_files": "No file open. Open one here, or use “Open with” or Share in another app.",
+    "privacy_note": "Files are opened and converted on this device. OFF42 has no network access.",
+    "close_file": "Close file", "back": "Back", "convert_title": "Save as {format}?", "convert": "Convert", "cancel": "Cancel",
+    "file_unreadable": "The file could not be read.", "file_unwritable": "The file could not be written.", "saved": "Saved {name}",
+    "save_png": "Save PNG", "save_svg": "Save SVG", "save_pdf": "Save PDF", "share": "Share",
+    "tab_codes": "Codes", "tab_label_sheet": "Label sheet", "labels_make": "Create label sheet", "pdf_page": "Page {page} of {count}"
+  },
+  "ar": {
+    "section_documents": "المستندات", "section_spreadsheets": "جداول البيانات", "section_presentations": "العروض التقديمية",
+    "nav_documents": "مستندات", "nav_spreadsheets": "جداول", "nav_presentations": "شرائح", "nav_labels": "ملصقات", "nav_marks": "توقيع",
+    "open_file": "فتح ملف", "formats_hint": "يفتح {formats}",
+    "no_files": "لا يوجد ملف مفتوح. افتح ملفًا من هنا، أو استخدم «فتح باستخدام» أو المشاركة في تطبيق آخر.",
+    "privacy_note": "تُفتح الملفات وتُحوَّل على هذا الجهاز. لا يملك OFF42 أي اتصال بالشبكة.",
+    "close_file": "إغلاق الملف", "back": "رجوع", "convert_title": "الحفظ بصيغة {format}؟", "convert": "تحويل", "cancel": "إلغاء",
+    "file_unreadable": "تعذّرت قراءة الملف.", "file_unwritable": "تعذّرت كتابة الملف.", "saved": "تم حفظ {name}",
+    "save_png": "حفظ PNG", "save_svg": "حفظ SVG", "save_pdf": "حفظ PDF", "share": "مشاركة",
+    "tab_codes": "الرموز", "tab_label_sheet": "ورقة ملصقات", "labels_make": "إنشاء ورقة ملصقات", "pdf_page": "الصفحة {page} من {count}"
+  },
+  "de": {
+    "section_documents": "Dokumente", "section_spreadsheets": "Tabellen", "section_presentations": "Präsentationen",
+    "nav_documents": "Dokumente", "nav_spreadsheets": "Tabellen", "nav_presentations": "Folien", "nav_labels": "Etiketten", "nav_marks": "Signieren",
+    "open_file": "Datei öffnen", "formats_hint": "Öffnet {formats}",
+    "no_files": "Keine Datei geöffnet. Öffnen Sie eine hier oder über „Öffnen mit“ bzw. Teilen in einer anderen App.",
+    "privacy_note": "Dateien werden auf diesem Gerät geöffnet und umgewandelt. OFF42 hat keinen Netzwerkzugriff.",
+    "close_file": "Datei schließen", "back": "Zurück", "convert_title": "Als {format} speichern?", "convert": "Umwandeln", "cancel": "Abbrechen",
+    "file_unreadable": "Die Datei konnte nicht gelesen werden.", "file_unwritable": "Die Datei konnte nicht geschrieben werden.", "saved": "{name} gespeichert",
+    "save_png": "PNG speichern", "save_svg": "SVG speichern", "save_pdf": "PDF speichern", "share": "Teilen",
+    "tab_codes": "Codes", "tab_label_sheet": "Etikettenbogen", "labels_make": "Etikettenbogen erstellen", "pdf_page": "Seite {page} von {count}"
+  },
+  "es": {
+    "section_documents": "Documentos", "section_spreadsheets": "Hojas de cálculo", "section_presentations": "Presentaciones",
+    "nav_documents": "Docs", "nav_spreadsheets": "Hojas", "nav_presentations": "Diapositivas", "nav_labels": "Etiquetas", "nav_marks": "Firmar",
+    "open_file": "Abrir archivo", "formats_hint": "Abre {formats}",
+    "no_files": "No hay ningún archivo abierto. Abre uno aquí o usa «Abrir con» o Compartir en otra app.",
+    "privacy_note": "Los archivos se abren y convierten en este dispositivo. OFF42 no tiene acceso a la red.",
+    "close_file": "Cerrar archivo", "back": "Atrás", "convert_title": "¿Guardar como {format}?", "convert": "Convertir", "cancel": "Cancelar",
+    "file_unreadable": "No se pudo leer el archivo.", "file_unwritable": "No se pudo escribir el archivo.", "saved": "{name} guardado",
+    "save_png": "Guardar PNG", "save_svg": "Guardar SVG", "save_pdf": "Guardar PDF", "share": "Compartir",
+    "tab_codes": "Códigos", "tab_label_sheet": "Hoja de etiquetas", "labels_make": "Crear hoja de etiquetas", "pdf_page": "Página {page} de {count}"
+  },
+  "fil": {
+    "section_documents": "Mga dokumento", "section_spreadsheets": "Mga spreadsheet", "section_presentations": "Mga presentasyon",
+    "nav_documents": "Docs", "nav_spreadsheets": "Sheets", "nav_presentations": "Slides", "nav_labels": "Label", "nav_marks": "Pirma",
+    "open_file": "Buksan ang file", "formats_hint": "Nagbubukas ng {formats}",
+    "no_files": "Walang bukas na file. Magbukas dito, o gamitin ang “Buksan gamit ang” o Ibahagi sa ibang app.",
+    "privacy_note": "Binubuksan at kino-convert ang mga file sa device na ito. Walang network access ang OFF42.",
+    "close_file": "Isara ang file", "back": "Bumalik", "convert_title": "I-save bilang {format}?", "convert": "I-convert", "cancel": "Kanselahin",
+    "file_unreadable": "Hindi mabasa ang file.", "file_unwritable": "Hindi maisulat ang file.", "saved": "Na-save ang {name}",
+    "save_png": "I-save ang PNG", "save_svg": "I-save ang SVG", "save_pdf": "I-save ang PDF", "share": "Ibahagi",
+    "tab_codes": "Mga code", "tab_label_sheet": "Sheet ng label", "labels_make": "Gumawa ng sheet ng label", "pdf_page": "Pahina {page} ng {count}"
+  },
+  "fr": {
+    "section_documents": "Documents", "section_spreadsheets": "Feuilles de calcul", "section_presentations": "Présentations",
+    "nav_documents": "Docs", "nav_spreadsheets": "Tableurs", "nav_presentations": "Diapos", "nav_labels": "Étiquettes", "nav_marks": "Signer",
+    "open_file": "Ouvrir un fichier", "formats_hint": "Ouvre {formats}",
+    "no_files": "Aucun fichier ouvert. Ouvrez-en un ici, ou utilisez « Ouvrir avec » ou Partager dans une autre app.",
+    "privacy_note": "Les fichiers sont ouverts et convertis sur cet appareil. OFF42 n’a pas accès au réseau.",
+    "close_file": "Fermer le fichier", "back": "Retour", "convert_title": "Enregistrer en {format} ?", "convert": "Convertir", "cancel": "Annuler",
+    "file_unreadable": "Le fichier n’a pas pu être lu.", "file_unwritable": "Le fichier n’a pas pu être écrit.", "saved": "{name} enregistré",
+    "save_png": "Enregistrer en PNG", "save_svg": "Enregistrer en SVG", "save_pdf": "Enregistrer en PDF", "share": "Partager",
+    "tab_codes": "Codes", "tab_label_sheet": "Planche d’étiquettes", "labels_make": "Créer la planche", "pdf_page": "Page {page} sur {count}"
+  },
+  "hu": {
+    "section_documents": "Dokumentumok", "section_spreadsheets": "Táblázatok", "section_presentations": "Bemutatók",
+    "nav_documents": "Dokumentum", "nav_spreadsheets": "Táblázat", "nav_presentations": "Diák", "nav_labels": "Címkék", "nav_marks": "Aláírás",
+    "open_file": "Fájl megnyitása", "formats_hint": "Megnyitja: {formats}",
+    "no_files": "Nincs megnyitott fájl. Nyisson meg egyet itt, vagy használja a „Megnyitás ezzel” vagy a Megosztás funkciót egy másik alkalmazásban.",
+    "privacy_note": "A fájlok megnyitása és átalakítása ezen az eszközön történik. Az OFF42 nem fér hozzá a hálózathoz.",
+    "close_file": "Fájl bezárása", "back": "Vissza", "convert_title": "Mentés {format} formátumban?", "convert": "Átalakítás", "cancel": "Mégse",
+    "file_unreadable": "A fájl nem olvasható.", "file_unwritable": "A fájl nem írható.", "saved": "{name} mentve",
+    "save_png": "PNG mentése", "save_svg": "SVG mentése", "save_pdf": "PDF mentése", "share": "Megosztás",
+    "tab_codes": "Kódok", "tab_label_sheet": "Címkeív", "labels_make": "Címkeív készítése", "pdf_page": "{page}. oldal / {count}"
+  },
+  "id": {
+    "section_documents": "Dokumen", "section_spreadsheets": "Spreadsheet", "section_presentations": "Presentasi",
+    "nav_documents": "Dokumen", "nav_spreadsheets": "Sheet", "nav_presentations": "Slide", "nav_labels": "Label", "nav_marks": "Tanda tangan",
+    "open_file": "Buka file", "formats_hint": "Membuka {formats}",
+    "no_files": "Tidak ada file yang terbuka. Buka di sini, atau gunakan “Buka dengan” atau Bagikan di aplikasi lain.",
+    "privacy_note": "File dibuka dan dikonversi di perangkat ini. OFF42 tidak memiliki akses jaringan.",
+    "close_file": "Tutup file", "back": "Kembali", "convert_title": "Simpan sebagai {format}?", "convert": "Konversi", "cancel": "Batal",
+    "file_unreadable": "File tidak dapat dibaca.", "file_unwritable": "File tidak dapat ditulis.", "saved": "{name} disimpan",
+    "save_png": "Simpan PNG", "save_svg": "Simpan SVG", "save_pdf": "Simpan PDF", "share": "Bagikan",
+    "tab_codes": "Kode", "tab_label_sheet": "Lembar label", "labels_make": "Buat lembar label", "pdf_page": "Halaman {page} dari {count}"
+  },
+  "it": {
+    "section_documents": "Documenti", "section_spreadsheets": "Fogli di calcolo", "section_presentations": "Presentazioni",
+    "nav_documents": "Documenti", "nav_spreadsheets": "Fogli", "nav_presentations": "Diapositive", "nav_labels": "Etichette", "nav_marks": "Firma",
+    "open_file": "Apri file", "formats_hint": "Apre {formats}",
+    "no_files": "Nessun file aperto. Aprine uno qui, oppure usa «Apri con» o Condividi in un’altra app.",
+    "privacy_note": "I file vengono aperti e convertiti su questo dispositivo. OFF42 non ha accesso alla rete.",
+    "close_file": "Chiudi file", "back": "Indietro", "convert_title": "Salvare come {format}?", "convert": "Converti", "cancel": "Annulla",
+    "file_unreadable": "Impossibile leggere il file.", "file_unwritable": "Impossibile scrivere il file.", "saved": "{name} salvato",
+    "save_png": "Salva PNG", "save_svg": "Salva SVG", "save_pdf": "Salva PDF", "share": "Condividi",
+    "tab_codes": "Codici", "tab_label_sheet": "Foglio di etichette", "labels_make": "Crea foglio di etichette", "pdf_page": "Pagina {page} di {count}"
+  },
+  "ja": {
+    "section_documents": "文書", "section_spreadsheets": "スプレッドシート", "section_presentations": "プレゼンテーション",
+    "nav_documents": "文書", "nav_spreadsheets": "表計算", "nav_presentations": "スライド", "nav_labels": "ラベル", "nav_marks": "署名",
+    "open_file": "ファイルを開く", "formats_hint": "{formats} を開けます",
+    "no_files": "開いているファイルはありません。ここで開くか、他のアプリの「アプリで開く」や共有を使ってください。",
+    "privacy_note": "ファイルはこの端末上で開き、変換されます。OFF42 はネットワークにアクセスしません。",
+    "close_file": "ファイルを閉じる", "back": "戻る", "convert_title": "{format} として保存しますか？", "convert": "変換", "cancel": "キャンセル",
+    "file_unreadable": "ファイルを読み込めませんでした。", "file_unwritable": "ファイルを書き込めませんでした。", "saved": "{name} を保存しました",
+    "save_png": "PNG を保存", "save_svg": "SVG を保存", "save_pdf": "PDF を保存", "share": "共有",
+    "tab_codes": "コード", "tab_label_sheet": "ラベルシート", "labels_make": "ラベルシートを作成", "pdf_page": "{page} / {count} ページ"
+  },
+  "ko": {
+    "section_documents": "문서", "section_spreadsheets": "스프레드시트", "section_presentations": "프레젠테이션",
+    "nav_documents": "문서", "nav_spreadsheets": "시트", "nav_presentations": "슬라이드", "nav_labels": "라벨", "nav_marks": "서명",
+    "open_file": "파일 열기", "formats_hint": "{formats} 열기 지원",
+    "no_files": "열린 파일이 없습니다. 여기서 열거나 다른 앱에서 ‘연결 프로그램’ 또는 공유를 사용하세요.",
+    "privacy_note": "파일은 이 기기에서 열리고 변환됩니다. OFF42는 네트워크에 접근하지 않습니다.",
+    "close_file": "파일 닫기", "back": "뒤로", "convert_title": "{format}(으)로 저장할까요?", "convert": "변환", "cancel": "취소",
+    "file_unreadable": "파일을 읽을 수 없습니다.", "file_unwritable": "파일을 쓸 수 없습니다.", "saved": "{name} 저장됨",
+    "save_png": "PNG 저장", "save_svg": "SVG 저장", "save_pdf": "PDF 저장", "share": "공유",
+    "tab_codes": "코드", "tab_label_sheet": "라벨 시트", "labels_make": "라벨 시트 만들기", "pdf_page": "{count}쪽 중 {page}쪽"
+  },
+  "ms": {
+    "section_documents": "Dokumen", "section_spreadsheets": "Hamparan", "section_presentations": "Persembahan",
+    "nav_documents": "Dokumen", "nav_spreadsheets": "Hamparan", "nav_presentations": "Slaid", "nav_labels": "Label", "nav_marks": "Tandatangan",
+    "open_file": "Buka fail", "formats_hint": "Membuka {formats}",
+    "no_files": "Tiada fail dibuka. Buka di sini, atau gunakan “Buka dengan” atau Kongsi dalam apl lain.",
+    "privacy_note": "Fail dibuka dan ditukar pada peranti ini. OFF42 tiada akses rangkaian.",
+    "close_file": "Tutup fail", "back": "Kembali", "convert_title": "Simpan sebagai {format}?", "convert": "Tukar", "cancel": "Batal",
+    "file_unreadable": "Fail tidak dapat dibaca.", "file_unwritable": "Fail tidak dapat ditulis.", "saved": "{name} disimpan",
+    "save_png": "Simpan PNG", "save_svg": "Simpan SVG", "save_pdf": "Simpan PDF", "share": "Kongsi",
+    "tab_codes": "Kod", "tab_label_sheet": "Helaian label", "labels_make": "Cipta helaian label", "pdf_page": "Halaman {page} daripada {count}"
+  },
+  "pl": {
+    "section_documents": "Dokumenty", "section_spreadsheets": "Arkusze kalkulacyjne", "section_presentations": "Prezentacje",
+    "nav_documents": "Dokumenty", "nav_spreadsheets": "Arkusze", "nav_presentations": "Slajdy", "nav_labels": "Etykiety", "nav_marks": "Podpis",
+    "open_file": "Otwórz plik", "formats_hint": "Otwiera {formats}",
+    "no_files": "Brak otwartego pliku. Otwórz go tutaj lub użyj „Otwórz za pomocą” albo Udostępnij w innej aplikacji.",
+    "privacy_note": "Pliki są otwierane i konwertowane na tym urządzeniu. OFF42 nie ma dostępu do sieci.",
+    "close_file": "Zamknij plik", "back": "Wstecz", "convert_title": "Zapisać jako {format}?", "convert": "Konwertuj", "cancel": "Anuluj",
+    "file_unreadable": "Nie można odczytać pliku.", "file_unwritable": "Nie można zapisać pliku.", "saved": "Zapisano {name}",
+    "save_png": "Zapisz PNG", "save_svg": "Zapisz SVG", "save_pdf": "Zapisz PDF", "share": "Udostępnij",
+    "tab_codes": "Kody", "tab_label_sheet": "Arkusz etykiet", "labels_make": "Utwórz arkusz etykiet", "pdf_page": "Strona {page} z {count}"
+  },
+  "pt": {
+    "section_documents": "Documentos", "section_spreadsheets": "Planilhas", "section_presentations": "Apresentações",
+    "nav_documents": "Docs", "nav_spreadsheets": "Planilhas", "nav_presentations": "Slides", "nav_labels": "Etiquetas", "nav_marks": "Assinar",
+    "open_file": "Abrir arquivo", "formats_hint": "Abre {formats}",
+    "no_files": "Nenhum arquivo aberto. Abra um aqui ou use “Abrir com” ou Compartilhar em outro app.",
+    "privacy_note": "Os arquivos são abertos e convertidos neste dispositivo. O OFF42 não tem acesso à rede.",
+    "close_file": "Fechar arquivo", "back": "Voltar", "convert_title": "Salvar como {format}?", "convert": "Converter", "cancel": "Cancelar",
+    "file_unreadable": "Não foi possível ler o arquivo.", "file_unwritable": "Não foi possível gravar o arquivo.", "saved": "{name} salvo",
+    "save_png": "Salvar PNG", "save_svg": "Salvar SVG", "save_pdf": "Salvar PDF", "share": "Compartilhar",
+    "tab_codes": "Códigos", "tab_label_sheet": "Folha de etiquetas", "labels_make": "Criar folha de etiquetas", "pdf_page": "Página {page} de {count}"
+  },
+  "ru": {
+    "section_documents": "Документы", "section_spreadsheets": "Таблицы", "section_presentations": "Презентации",
+    "nav_documents": "Документы", "nav_spreadsheets": "Таблицы", "nav_presentations": "Слайды", "nav_labels": "Этикетки", "nav_marks": "Подпись",
+    "open_file": "Открыть файл", "formats_hint": "Открывает {formats}",
+    "no_files": "Нет открытых файлов. Откройте файл здесь или через «Открыть с помощью» либо «Поделиться» в другом приложении.",
+    "privacy_note": "Файлы открываются и конвертируются на этом устройстве. У OFF42 нет доступа к сети.",
+    "close_file": "Закрыть файл", "back": "Назад", "convert_title": "Сохранить как {format}?", "convert": "Конвертировать", "cancel": "Отмена",
+    "file_unreadable": "Не удалось прочитать файл.", "file_unwritable": "Не удалось записать файл.", "saved": "Сохранено: {name}",
+    "save_png": "Сохранить PNG", "save_svg": "Сохранить SVG", "save_pdf": "Сохранить PDF", "share": "Поделиться",
+    "tab_codes": "Коды", "tab_label_sheet": "Лист этикеток", "labels_make": "Создать лист этикеток", "pdf_page": "Страница {page} из {count}"
+  },
+  "th": {
+    "section_documents": "เอกสาร", "section_spreadsheets": "สเปรดชีต", "section_presentations": "งานนำเสนอ",
+    "nav_documents": "เอกสาร", "nav_spreadsheets": "ชีต", "nav_presentations": "สไลด์", "nav_labels": "ฉลาก", "nav_marks": "ลายเซ็น",
+    "open_file": "เปิดไฟล์", "formats_hint": "เปิดได้: {formats}",
+    "no_files": "ไม่มีไฟล์ที่เปิดอยู่ เปิดไฟล์ที่นี่ หรือใช้ “เปิดด้วย” หรือแชร์จากแอปอื่น",
+    "privacy_note": "ไฟล์ถูกเปิดและแปลงบนอุปกรณ์นี้ OFF42 ไม่มีการเข้าถึงเครือข่าย",
+    "close_file": "ปิดไฟล์", "back": "กลับ", "convert_title": "บันทึกเป็น {format} ไหม", "convert": "แปลง", "cancel": "ยกเลิก",
+    "file_unreadable": "อ่านไฟล์ไม่ได้", "file_unwritable": "เขียนไฟล์ไม่ได้", "saved": "บันทึก {name} แล้ว",
+    "save_png": "บันทึก PNG", "save_svg": "บันทึก SVG", "save_pdf": "บันทึก PDF", "share": "แชร์",
+    "tab_codes": "รหัส", "tab_label_sheet": "แผ่นฉลาก", "labels_make": "สร้างแผ่นฉลาก", "pdf_page": "หน้า {page} จาก {count}"
+  },
+  "tr": {
+    "section_documents": "Belgeler", "section_spreadsheets": "Elektronik tablolar", "section_presentations": "Sunular",
+    "nav_documents": "Belgeler", "nav_spreadsheets": "Tablolar", "nav_presentations": "Slaytlar", "nav_labels": "Etiketler", "nav_marks": "İmza",
+    "open_file": "Dosya aç", "formats_hint": "Açar: {formats}",
+    "no_files": "Açık dosya yok. Buradan açın ya da başka bir uygulamada “Birlikte aç” veya Paylaş’ı kullanın.",
+    "privacy_note": "Dosyalar bu cihazda açılır ve dönüştürülür. OFF42’nin ağ erişimi yoktur.",
+    "close_file": "Dosyayı kapat", "back": "Geri", "convert_title": "{format} olarak kaydedilsin mi?", "convert": "Dönüştür", "cancel": "İptal",
+    "file_unreadable": "Dosya okunamadı.", "file_unwritable": "Dosya yazılamadı.", "saved": "{name} kaydedildi",
+    "save_png": "PNG kaydet", "save_svg": "SVG kaydet", "save_pdf": "PDF kaydet", "share": "Paylaş",
+    "tab_codes": "Kodlar", "tab_label_sheet": "Etiket sayfası", "labels_make": "Etiket sayfası oluştur", "pdf_page": "Sayfa {page} / {count}"
+  },
+  "vi": {
+    "section_documents": "Tài liệu", "section_spreadsheets": "Bảng tính", "section_presentations": "Bản trình bày",
+    "nav_documents": "Tài liệu", "nav_spreadsheets": "Bảng tính", "nav_presentations": "Trang chiếu", "nav_labels": "Nhãn", "nav_marks": "Ký",
+    "open_file": "Mở tệp", "formats_hint": "Mở được {formats}",
+    "no_files": "Chưa mở tệp nào. Mở tệp tại đây, hoặc dùng “Mở bằng” hay Chia sẻ trong ứng dụng khác.",
+    "privacy_note": "Tệp được mở và chuyển đổi trên thiết bị này. OFF42 không truy cập mạng.",
+    "close_file": "Đóng tệp", "back": "Quay lại", "convert_title": "Lưu dưới dạng {format}?", "convert": "Chuyển đổi", "cancel": "Hủy",
+    "file_unreadable": "Không đọc được tệp.", "file_unwritable": "Không ghi được tệp.", "saved": "Đã lưu {name}",
+    "save_png": "Lưu PNG", "save_svg": "Lưu SVG", "save_pdf": "Lưu PDF", "share": "Chia sẻ",
+    "tab_codes": "Mã", "tab_label_sheet": "Tờ nhãn", "labels_make": "Tạo tờ nhãn", "pdf_page": "Trang {page}/{count}"
+  },
+  "zh-Hans": {
+    "section_documents": "文档", "section_spreadsheets": "电子表格", "section_presentations": "演示文稿",
+    "nav_documents": "文档", "nav_spreadsheets": "表格", "nav_presentations": "幻灯片", "nav_labels": "标签", "nav_marks": "签名",
+    "open_file": "打开文件", "formats_hint": "可打开 {formats}",
+    "no_files": "没有打开的文件。在此打开，或在其他应用中使用“打开方式”或分享。",
+    "privacy_note": "文件在本设备上打开和转换。OFF42 不访问网络。",
+    "close_file": "关闭文件", "back": "返回", "convert_title": "另存为 {format}？", "convert": "转换", "cancel": "取消",
+    "file_unreadable": "无法读取文件。", "file_unwritable": "无法写入文件。", "saved": "已保存 {name}",
+    "save_png": "保存 PNG", "save_svg": "保存 SVG", "save_pdf": "保存 PDF", "share": "分享",
+    "tab_codes": "条码", "tab_label_sheet": "标签纸", "labels_make": "生成标签纸", "pdf_page": "第 {page} 页，共 {count} 页"
+  },
+  "zh-Hant": {
+    "section_documents": "文件", "section_spreadsheets": "試算表", "section_presentations": "簡報",
+    "nav_documents": "文件", "nav_spreadsheets": "試算表", "nav_presentations": "投影片", "nav_labels": "標籤", "nav_marks": "簽名",
+    "open_file": "開啟檔案", "formats_hint": "可開啟 {formats}",
+    "no_files": "沒有開啟的檔案。在此開啟，或在其他 App 中使用「開啟方式」或分享。",
+    "privacy_note": "檔案在本裝置上開啟與轉換。OFF42 不存取網路。",
+    "close_file": "關閉檔案", "back": "返回", "convert_title": "另存為 {format}？", "convert": "轉換", "cancel": "取消",
+    "file_unreadable": "無法讀取檔案。", "file_unwritable": "無法寫入檔案。", "saved": "已儲存 {name}",
+    "save_png": "儲存 PNG", "save_svg": "儲存 SVG", "save_pdf": "儲存 PDF", "share": "分享",
+    "tab_codes": "條碼", "tab_label_sheet": "標籤紙", "labels_make": "產生標籤紙", "pdf_page": "第 {page} 頁，共 {count} 頁"
+  }
+}

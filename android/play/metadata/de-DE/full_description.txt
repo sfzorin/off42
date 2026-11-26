@@ -1,0 +1,12 @@
+OFF42 öffnet und wandelt Office-Dateien auf Smartphone oder Tablet um. Alles geschieht auf dem Gerät: Die App hat keinen Netzwerkzugriff und öffnet oder speichert Dateien nur über die Dateiauswahl des Systems und über Teilen.
+
+• Dokumente: DOCX, ODT, RTF, Markdown, HTML und Text ansehen, Wörter zählen und in jedem dieser Formate speichern.
+• Tabellen: XLSX, ODS, CSV und XLS (nur lesen) in einem Raster mit Blattregistern; Speichern als XLSX, ODS oder CSV.
+• Präsentationen: PPTX und ODP als Textgliederung aller Folien; Umwandlung zwischen beiden Formaten.
+• PDF: Seiten werden auf dem Gerät dargestellt, dazu Metadaten, Lesezeichen, Anhänge und Formularfelder.
+• Etiketten und Codes: QR, Data Matrix, Code 128 und Aztec, A4-Etikettenbögen aus eigenen Zeilen und 97 Produkt- und Konformitätszeichen (nur Grafik: ein Zeichen bescheinigt nichts).
+• Unterschriften und Stempel: handschriftlich wirkende Unterschriften mit verschiedenen Stiften und Tinten sowie Stempelabdrücke aus Vorlagen, gespeichert als transparentes PNG.
+
+Noch nicht verfügbar: Bearbeiten, Export von Dokumenten als PDF, Bilder und Layouts von Folien, PDF-Anmerkungen. Eine gezeichnete Unterschrift ist ein Bild, keine zertifikatsbasierte digitale Signatur.
+
+OFF42 ist kostenlos und quelloffen (MIT-Lizenz). Die Engine ist dieselbe wie in den OFF42-Apps für Mac, Windows und Linux und in der Web-App.

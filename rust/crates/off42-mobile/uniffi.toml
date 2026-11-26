@@ -1,0 +1,5 @@
+[bindings.kotlin]
+package_name = "cc.off42.mobile"
+
+[bindings.swift]
+module_name = "Off42Mobile"
