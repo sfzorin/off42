@@ -122,6 +122,28 @@ Apple client of the shared core, ahead of phase 4.
 The six existing Mac apps are also published on the Mac App Store, as a sandboxed build variant of the current
 Swift apps; the downloadable DMG stays. The same Apple Developer account is used to notarize the DMG.
 
+### D13. AI assistant in the editors — **Agreed** (2026-11-26)
+
+An optional assistant panel in the web editors (documents and spreadsheets first) edits the open file on request.
+
+- It works only through the editor's command layer: the same serializable commands the toolbar and menus use, defined
+  in the Rust core (stage 2 editing), so every assistant change is one Undo step and the same commands can later reach
+  Windows, Linux, Android and iPad.
+- The agent loop runs in the browser; tools execute locally on the open document. Requests go to a same-origin
+  Cloudflare Worker (`off42.cc/api/assistant`) that holds the OpenRouter API key as a secret (`OPENROUTER_API_KEY`,
+  set by the owner with `wrangler secret put`) and forwards to OpenRouter's chat-completions API with tool calling. The key never reaches the browser; the page still makes no requests to other origins.
+- Open to everyone without an account, with a per-user daily limit, a bot check (Cloudflare Turnstile), a model
+  allowlist and request/response size caps in the Worker; the owner also sets a credit/spend limit on the OpenRouter
+  key. The Worker does not log document content.
+- Nothing is sent until the user opens the assistant and agrees; then only the selection, the document outline and the
+  text the model asks for through read commands. The privacy policy (all languages) and store notes describe this.
+  Without the assistant every app keeps working fully offline.
+- Provider: OpenRouter, so the model is one setting in the Worker (an allowlist of OpenRouter model ids, chosen by
+  the owner) and can be switched without changing the app; stable instructions and tool definitions go first so
+  providers that support prompt caching can reuse them.
+- Neui/Doors (server-side Go UI) was considered and rejected: it would move documents to a server and require
+  rewriting the web UI.
+
 ## 3. Target layering (Windows, Linux, CLI, web)
 
 ```
@@ -158,9 +180,10 @@ Swift apps; the downloadable DMG stays. The same Apple Developer account is used
 | 2 | `off42` CLI and the Linux preview on top of phase 1 (rebase PR #4 onto it) | D4, D6 | Done (PR #4); Linux preview 1 released |
 | 3 | WebAssembly build of the core and the web UI | D5, D7 | Done: off42.cc/app (PR #8, #10) |
 | 4 | Move the Mac apps onto the core, one app at a time, behind the existing AppKit UI | phases 1–3, owner's go-ahead | — |
-| 5 | `off42-mobile` UniFFI bindings; Android app (Compose, tablets first) | D10 | Started |
-| 6 | iPad/iPhone SwiftUI app over `off42-mobile` | D11, phase 5 bindings | — |
+| 5 | `off42-mobile` UniFFI bindings; Android app (Compose, tablets first) | D10 | Done (PR #13); not on Google Play yet (needs the owner's developer account and upload key) |
+| 6 | iPad/iPhone SwiftUI app over `off42-mobile` | D11, phase 5 bindings | In progress |
 | 7 | Mac App Store build variant (sandbox) and DMG notarization | D12, Apple Developer account | Prepared without an account: `APP_STORE` variant, `scripts/build-app-store.sh`, DMG notarization in `scripts/sign_and_notarize.sh` (appstore/README.md); signing, upload and sandbox runtime checks wait for the account |
+| 8 | Web editing (stage 2) with the shared command layer, then the AI assistant: Worker proxy, assistant panel, consent and policy updates | D13 | — |
 
 Phase 1 result: `suite42-app` holds the `App` contract and every module listed in §1 that has no Win32 call; the
 crate's README lists them. Code that needs the platform is passed in by the shell: `platform::PdfText` (PDFium),
@@ -177,6 +200,17 @@ Windows path is unchanged. The `off42` CLI calls `suite42_app` for PDF merge, pa
 label sheets, codes, marks, signatures and stamps. Its `PdfText` is `suite42_app::pdf::lopdf_text` (plain text, no
 styles or glyph boxes) on every platform; PDFium for Linux/macOS (D7) and Tesseract outside Windows are not done, so
 OCR and PDF rendering stay Windows-only, and the PDF42 window off Windows still has no text export.
+
+Phase 5 result: `crates/off42-mobile` exports the web API's capability set through UniFFI 0.33 (proc macros) as typed
+records and a typed error (`UnsupportedFormat`, `PackagePartsWouldBeLost`, `InvalidInput`, `Failed`). It calls the
+plain Rust functions of `off42-wasm` rather than copying them; giving that shared layer its own crate is deferred
+because it changes the provenance hash of the published web app. The crate builds as a `cdylib` for Android
+(arm64-v8a, armeabi-v7a, x86_64 via cargo-ndk) and as a `staticlib` plus Swift bindings and an XCFramework for
+`aarch64-apple-ios` and `aarch64-apple-ios-sim` (`rust/scripts/build-mobile-apple.sh`). `android/` is the Compose app
+(`cc.off42.office`); `.github/workflows/android.yml` runs the Rust, JVM, lint and emulator tests (tablet and phone) and
+the iOS build. Phase 6 reuses the crate, the Swift bindings and XCFramework from that script, the fixture set in
+`android/app/src/androidTest/assets/fixtures`, the Play listing texts as a base for the App Store listing, and the
+Android screen structure (sections, list/detail on large screens, save through the system dialog).
 
 ## 6. Work in flight
 

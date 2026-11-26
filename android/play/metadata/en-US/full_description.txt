@@ -1,0 +1,12 @@
+OFF42 opens and converts office files on your phone or tablet. Everything happens on the device: the app has no network access and opens or saves files only through the system file picker and sharing.
+
+• Documents: view DOCX, ODT, RTF, Markdown, HTML and plain text, see word counts, and save in any of these formats.
+• Spreadsheets: XLSX, ODS, CSV and XLS (read-only) in a grid with sheet tabs; save as XLSX, ODS or CSV.
+• Presentations: PPTX and ODP as a text outline of every slide; convert between the two formats.
+• PDF: pages rendered on the device, with metadata, bookmarks, attachments and form fields.
+• Labels and codes: QR, Data Matrix, Code 128 and Aztec codes, A4 label sheets from your own lines, and 97 product and conformity marks (artwork only: a mark certifies nothing).
+• Signatures and stamps: handwritten-style signatures with different pens and inks, and stamp impressions from built-in templates, saved as transparent PNG.
+
+Not available yet: editing, exporting documents to PDF, slide pictures and layouts, PDF annotation. A drawn signature is an image, not a certificate-based digital signature.
+
+OFF42 is free and open source (MIT license). It shares its engine with the OFF42 apps for Mac, Windows and Linux and with the web app.

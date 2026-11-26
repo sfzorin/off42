@@ -1,0 +1,12 @@
+OFF42, telefonunuzda veya tabletinizde ofis dosyalarını açar ve dönüştürür. Her şey cihazda gerçekleşir: Uygulamanın ağ erişimi yoktur ve dosyaları yalnızca sistemin dosya seçicisi ve paylaşım üzerinden açar veya kaydeder.
+
+• Belgeler: DOCX, ODT, RTF, Markdown, HTML ve düz metni kelime sayısıyla görüntüleyin; bu biçimlerden herhangi biriyle kaydedin.
+• Elektronik tablolar: XLSX, ODS, CSV ve XLS (salt okunur) sayfa sekmeli bir ızgarada; XLSX, ODS veya CSV olarak kaydedin.
+• Sunular: PPTX ve ODP, her slaytın metin ana hattı olarak; iki biçim arasında dönüştürme.
+• PDF: sayfalar cihazda işlenir; meta veriler, yer imleri, ekler ve form alanları gösterilir.
+• Etiketler ve kodlar: QR, Data Matrix, Code 128 ve Aztec kodları, kendi satırlarınızdan A4 etiket sayfaları ve 97 ürün ve uygunluk işareti (yalnızca görsel: işaret hiçbir şeyi belgelemez).
+• İmzalar ve mühürler: farklı kalem ve mürekkeplerle el yazısı görünümlü imzalar ve hazır şablonlardan mühür baskıları, saydam PNG olarak kaydedilir.
+
+Henüz yok: düzenleme, belgeleri PDF olarak dışa aktarma, slayt resimleri ve düzenleri, PDF açıklamaları. Çizilmiş imza bir görüntüdür, sertifikaya dayalı dijital imza değildir.
+
+OFF42 ücretsiz ve açık kaynaklıdır (MIT lisansı). Mac, Windows ve Linux için OFF42 uygulamaları ve web uygulamasıyla aynı motoru kullanır.

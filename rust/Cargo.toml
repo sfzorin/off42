@@ -11,3 +11,11 @@ codegen-units = 1
 panic = "abort"
 strip = true
 debug = false
+
+# Android and iOS libraries of crates/off42-mobile (android/scripts/build-rust.sh, scripts/build-mobile-apple.sh).
+# Panics unwind: UniFFI turns them into exceptions instead of aborting the app.
+[profile.mobile-release]
+inherits = "release"
+lto = true
+codegen-units = 1
+strip = "symbols"
