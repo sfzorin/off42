@@ -39,7 +39,7 @@ source, audit output or native app bundles.
 Custom domains `off42.cc` and `www.off42.cc` are attached in the Worker's Domains tab. The canonical
 site origin is `https://off42.cc`, including sitemap, alternate-language tags and
 social previews. `/` redirects to `/en/`; `/404.html` is a noindex error page with error-specific metadata, without canonical or alternate-language links.
-`_headers` sets content security and other response headers, including `no-transform` to prevent edge HTML injection. In the tested location this also resulted in uncompressed responses, a performance tradeoff. No analytics,
+`_headers` sets content security and other response headers, including `no-transform` to prevent edge HTML injection (except under `/app/`, where the web app's hashed assets may be compressed; see `web/README.md`). In the tested location this also resulted in uncompressed responses, a performance tradeoff. No analytics,
 advertising, account system, cookies or file uploads are implemented by the site.
 Cloudflare may process requests to serve and protect it.
 

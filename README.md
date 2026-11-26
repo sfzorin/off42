@@ -1316,8 +1316,8 @@ The snapshots render AppKit views; native material layers may require checking t
 ## Structure
 
 - `rust/` — the separate native Windows workspace; see [its README](rust/README.md) for crates, build instructions and limits.
-- `web/` — groundwork for the web version: a small TypeScript page over the Rust cores compiled to WebAssembly
-  (`rust/crates/off42-wasm`). Files are processed in the browser and never uploaded. Published at
+- `web/` — the web version: a TypeScript app (documents, spreadsheets, presentations, PDF, labels & codes,
+  signatures & stamps) over the Rust cores compiled to WebAssembly (`rust/crates/off42-wasm`), run in a Web Worker. Files are processed in the browser and never uploaded. Published at
   https://off42.cc/app/ in the site's 20 languages; see [web/README.md](web/README.md) for what it does, its limits
   and build steps.
 - `Sources/Kit42` — shared macOS components: commands, menu bar, toolbar, tool strip, banners, welcome window, localisation,

@@ -1,3 +1,4 @@
+import { existsSync, statSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
 
 // Documents never leave the browser. The production page enforces that with a Content Security Policy:
@@ -29,9 +30,16 @@ function contentSecurityPolicy(): Plugin {
   };
 }
 
+// The splash screen shows download progress against the uncompressed size of the engine (a compressed response
+// has no usable Content-Length for the decompressed bytes the worker counts).
+const wasm = new URL('./src/wasm/off42_wasm_bg.wasm', import.meta.url);
+const wasmSize = existsSync(wasm) ? statSync(wasm).size : 0;
+
 export default defineConfig({
   base: './',
   plugins: [contentSecurityPolicy()],
+  define: { __WASM_SIZE__: JSON.stringify(wasmSize) },
+  worker: { format: 'es' },
   build: {
     target: 'es2022',
     // The core is one large wasm module; it is served as its own file next to the bundle.

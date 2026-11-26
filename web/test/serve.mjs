@@ -1,7 +1,7 @@
 // A static server that mimics how off42.cc serves the web app: the build is mounted at /app/ and every response
 // carries the headers that website/public/_headers assigns to its path (Cloudflare semantics: all matching rules
-// apply, a repeated header is joined with ", ", "! Name" removes it). The site's Content-Security-Policy header
-// is therefore enforced together with the policy in the page's own <meta> tag.
+// apply in file order, a repeated header is joined with ", ", "! Name" removes what earlier rules added). The
+// site's Content-Security-Policy header is therefore enforced together with the policy in the page's own <meta>.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { join, normalize, extname } from 'node:path';
@@ -17,25 +17,23 @@ export function parseHeaders(text) {
     if (!line.trim() || line.trim().startsWith('#')) continue;
     if (!/^\s/.test(line)) {
       const pattern = new RegExp('^' + line.trim().replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
-      rules.push({ pattern, set: [], detach: [] });
+      rules.push({ pattern, lines: [] });
     } else if (line.trim().startsWith('!')) {
-      rules.at(-1).detach.push(line.trim().slice(1).trim().toLowerCase());
+      rules.at(-1).lines.push({ detach: line.trim().slice(1).trim().toLowerCase() });
     } else {
       const at = line.indexOf(':');
-      rules.at(-1).set.push([line.slice(0, at).trim(), line.slice(at + 1).trim()]);
+      rules.at(-1).lines.push({ name: line.slice(0, at).trim().toLowerCase(), value: line.slice(at + 1).trim() });
     }
   }
+  // Rules apply in file order; "! Name" removes only what earlier rules (or lines) have added.
   return (path) => {
     const headers = new Map();
-    const detached = new Set();
     for (const rule of rules.filter((r) => r.pattern.test(path))) {
-      for (const [name, value] of rule.set) {
-        const key = name.toLowerCase();
-        headers.set(key, headers.has(key) ? `${headers.get(key)}, ${value}` : value);
+      for (const line of rule.lines) {
+        if (line.detach) headers.delete(line.detach);
+        else headers.set(line.name, headers.has(line.name) ? `${headers.get(line.name)}, ${line.value}` : line.value);
       }
-      rule.detach.forEach((name) => detached.add(name));
     }
-    detached.forEach((name) => headers.delete(name));
     return headers;
   };
 }
