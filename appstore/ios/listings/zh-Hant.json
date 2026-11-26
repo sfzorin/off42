@@ -1,0 +1,11 @@
+{
+  "appStoreLocale": "zh-Hant",
+  "name": "OFF42 – 離線辦公工具",
+  "subtitle": "檢視和轉換辦公檔案",
+  "promotionalText": "檢視和轉換文件、試算表、投影片與 PDF，產生條碼和簽名。",
+  "description": "OFF42 在 iPhone 和 iPad 上開啟並轉換辦公檔案。一切都在裝置上完成：OFF42 不連線網路，只在你選擇的位置，透過「檔案」App 與分享來開啟或儲存檔案。\n\n• 文件：檢視 DOCX、ODT、RTF、Markdown、HTML 與純文字，顯示字數，並可儲存為其中任一格式。\n• 試算表：XLSX、ODS、CSV 與 XLS（唯讀）以含工作表標籤的格線顯示；可儲存為 XLSX、ODS 或 CSV。\n• 簡報：PPTX 與 ODP 以每張投影片的文字大綱顯示；兩種格式可互相轉換。\n• PDF：在裝置上繪製頁面，並顯示中繼資料、書籤、附件與表單欄位。\n• 標籤與條碼：QR、Data Matrix、Code 128 與 Aztec 條碼，用您自己的文字列產生 A4 標籤紙，以及 97 種產品與合格標誌（僅為圖樣：標誌不代表任何認證）。\n• 簽名與印章：以不同的筆和墨水產生手寫風格簽名，以內建範本產生印章印痕，儲存為透明 PNG。\n\n尚不支援：編輯、將文件匯出為 PDF、投影片圖片與版面、PDF 註解。繪製的簽名只是圖片，不是以憑證為基礎的數位簽章。\n\nOFF42 免費且開源（MIT 授權），與 Mac、Windows、Linux 版 OFF42 App 及網頁版使用同一引擎。",
+  "keywords": "docx,xlsx,pptx,pdf,odt,轉換,檢視器,文件,試算表,投影片,QR碼,條碼,標籤,簽名,印章",
+  "supportUrl": "https://off42.cc/en/support/",
+  "marketingUrl": "https://off42.cc/",
+  "privacyPolicyUrl": "https://off42.cc/en/privacy/"
+}

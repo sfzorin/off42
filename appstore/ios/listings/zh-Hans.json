@@ -1,0 +1,11 @@
+{
+  "appStoreLocale": "zh-Hans",
+  "name": "OFF42 – 离线办公工具",
+  "subtitle": "查看和转换办公文件",
+  "promotionalText": "查看和转换文档、表格、幻灯片和 PDF，生成条码和签名。",
+  "description": "OFF42 在 iPhone 和 iPad 上打开和转换办公文件。一切都在设备上完成：OFF42 不连接网络，只在你选择的位置，通过“文件”App 和共享来打开或保存文件。\n\n• 文档：查看 DOCX、ODT、RTF、Markdown、HTML 和纯文本，显示字数，并可保存为其中任一格式。\n• 电子表格：XLSX、ODS、CSV 和 XLS（只读）以带工作表标签的网格显示；可保存为 XLSX、ODS 或 CSV。\n• 演示文稿：PPTX 和 ODP 以每张幻灯片的文本大纲显示；两种格式可互相转换。\n• PDF：在设备上渲染页面，并显示元数据、书签、附件和表单字段。\n• 标签和条码：QR、Data Matrix、Code 128 和 Aztec 条码，用您自己的行生成 A4 标签纸，以及 97 种产品和合格标志（仅为图案：标志不代表任何认证）。\n• 签名和印章：用不同笔和墨水生成手写风格签名，用内置模板生成印章印迹，保存为透明 PNG。\n\n暂不支持：编辑、将文档导出为 PDF、幻灯片图片和版式、PDF 批注。绘制的签名只是图片，不是基于证书的数字签名。\n\nOFF42 免费且开源（MIT 许可证），与 Mac、Windows、Linux 版 OFF42 应用及网页版使用同一引擎。",
+  "keywords": "docx,xlsx,pptx,pdf,odt,转换,查看器,文档,表格,幻灯片,二维码,条码,标签,签名,印章",
+  "supportUrl": "https://off42.cc/en/support/",
+  "marketingUrl": "https://off42.cc/",
+  "privacyPolicyUrl": "https://off42.cc/en/privacy/"
+}

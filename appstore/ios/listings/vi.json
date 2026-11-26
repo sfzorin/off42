@@ -1,0 +1,11 @@
+{
+  "appStoreLocale": "vi",
+  "name": "OFF42 – Văn phòng offline",
+  "subtitle": "Xem, chuyển đổi tệp văn phòng",
+  "promotionalText": "Xem và chuyển đổi tài liệu, bảng tính, trang chiếu và PDF. Tạo mã và chữ ký.",
+  "description": "OFF42 mở và chuyển đổi tệp văn phòng trên iPhone và iPad. Mọi thứ diễn ra trên thiết bị: OFF42 không kết nối mạng và chỉ mở hoặc lưu tệp ở nơi bạn chọn, qua ứng dụng Tệp và tính năng chia sẻ.\n\n• Tài liệu: xem DOCX, ODT, RTF, Markdown, HTML và văn bản thuần kèm số từ; lưu ở bất kỳ định dạng nào trong số này.\n• Bảng tính: XLSX, ODS, CSV và XLS (chỉ đọc) trong lưới có thẻ trang tính; lưu dưới dạng XLSX, ODS hoặc CSV.\n• Bản trình bày: PPTX và ODP dưới dạng dàn ý văn bản của mọi trang chiếu; chuyển đổi giữa hai định dạng.\n• PDF: hiển thị trang ngay trên thiết bị, cùng siêu dữ liệu, dấu trang, tệp đính kèm và trường biểu mẫu.\n• Nhãn và mã: mã QR, Data Matrix, Code 128 và Aztec, tờ nhãn A4 từ các dòng của bạn và 97 dấu sản phẩm và hợp chuẩn (chỉ là hình ảnh: dấu không chứng nhận điều gì).\n• Chữ ký và con dấu: chữ ký kiểu viết tay với nhiều loại bút và mực, cùng dấu đóng từ mẫu có sẵn, lưu dưới dạng PNG trong suốt.\n\nChưa có: chỉnh sửa, xuất tài liệu sang PDF, hình ảnh và bố cục trang chiếu, chú thích PDF. Chữ ký vẽ là hình ảnh, không phải chữ ký số dựa trên chứng thư.\n\nOFF42 miễn phí và mã nguồn mở (giấy phép MIT). Ứng dụng dùng chung bộ máy với các ứng dụng OFF42 cho Mac, Windows, Linux và ứng dụng web.",
+  "keywords": "docx,xlsx,pptx,pdf,odt,chuyển đổi,tài liệu,bảng tính,trang chiếu,mã qr,mã vạch,nhãn,chữ ký",
+  "supportUrl": "https://off42.cc/en/support/",
+  "marketingUrl": "https://off42.cc/",
+  "privacyPolicyUrl": "https://off42.cc/en/privacy/"
+}

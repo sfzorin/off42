@@ -1,0 +1,253 @@
+name: iOS
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'ios/**'
+      - 'appstore/ios/**'
+      - 'rust/**'
+      - 'android/app/src/androidTest/assets/fixtures/**'
+      - 'android/scripts/**'
+      - 'web/src/locales/**'
+      - '.github/workflows/ios.yml'
+  pull_request:
+    paths:
+      - 'ios/**'
+      - 'appstore/ios/**'
+      - 'rust/**'
+      - 'android/app/src/androidTest/assets/fixtures/**'
+      - 'android/scripts/**'
+      - 'web/src/locales/**'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Upload the signed build to App Store Connect (needs the signing and API key secrets)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  # The engine for iPadOS/iOS (rust/crates/off42-mobile): device and simulator static libraries, the UniFFI Swift
+  # bindings and the XCFramework (rust/scripts/build-mobile-apple.sh). Also checks the generated String Catalog
+  # and the App Store listing limits.
+  engine:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            rust/target
+          key: apple-engine-${{ hashFiles('rust/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: apple-engine-${{ hashFiles('rust/Cargo.lock') }}-
+      - name: String Catalog is up to date
+        run: |
+          python3 ios/scripts/generate-strings.py
+          git diff --exit-code ios/OFF42/Localizable.xcstrings
+      - name: App Store listing limits
+        run: python3 appstore/ios/make_listings.py --check
+      - name: Static libraries, Swift bindings and XCFramework
+        run: sh rust/scripts/build-mobile-apple.sh
+      - name: The Swift bindings type-check against the generated module
+        working-directory: rust/build/apple
+        run: |
+          sdk=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          xcrun swiftc -typecheck -sdk "$sdk" -target arm64-apple-ios17.0-simulator \
+            -Xcc -fmodule-map-file=headers/module.modulemap -I headers swift/Off42Mobile.swift
+      - uses: actions/upload-artifact@v4
+        with:
+          name: off42-mobile-apple
+          path: |
+            rust/build/apple/swift
+            rust/build/apple/headers
+            rust/build/apple/Off42MobileFFI.xcframework
+          retention-days: 7
+
+  # Release build for devices: unsigned unless the signing secrets exist (ios/README.md), checked for its privacy
+  # manifest, document types and required-reason APIs; sizes in the job summary.
+  build:
+    needs: engine
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: off42-mobile-apple
+          path: rust/build/apple
+      - name: Xcode and XcodeGen
+        run: |
+          xcodebuild -version
+          brew install xcodegen
+          cd ios && xcodegen generate
+      - name: Signing (only when the repository has the signing secrets)
+        id: signing
+        env:
+          CERTIFICATE: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          PROFILE: ${{ secrets.IOS_APP_STORE_PROFILE_BASE64 }}
+          TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          if [ -z "$CERTIFICATE" ] || [ -z "$PROFILE" ] || [ -z "$TEAM_ID" ]; then
+            echo "No signing secrets: the build stays unsigned."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password=$(uuidgen)
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          echo "$CERTIFICATE" | base64 -d > "$RUNNER_TEMP/distribution.p12"
+          security import "$RUNNER_TEMP/distribution.p12" -k "$keychain" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          echo "$PROFILE" | base64 -d > "$RUNNER_TEMP/profile.mobileprovision"
+          security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          uuid=$(plutil -extract UUID raw "$RUNNER_TEMP/profile.plist")
+          name=$(plutil -extract Name raw "$RUNNER_TEMP/profile.plist")
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$RUNNER_TEMP/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$uuid.mobileprovision"
+          sed -e "s/TEAM_ID/$TEAM_ID/" -e "s/PROFILE_NAME/$name/" ios/ExportOptions.plist > "$RUNNER_TEMP/ExportOptions.plist"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+          echo "profile=$name" >> "$GITHUB_OUTPUT"
+      - name: Archive (Release, devices)
+        env:
+          SIGNED: ${{ steps.signing.outputs.signed }}
+          PROFILE_NAME: ${{ steps.signing.outputs.profile }}
+          TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          args=(CURRENT_PROJECT_VERSION="${{ github.run_number }}")
+          if [ "$SIGNED" = "true" ]; then
+            args+=(CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="$TEAM_ID" "CODE_SIGN_IDENTITY=Apple Distribution"
+                   PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME")
+          else
+            args+=(CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=)
+          fi
+          mkdir -p build
+          xcodebuild -project ios/OFF42.xcodeproj -scheme OFF42 -configuration Release \
+            -destination generic/platform=iOS -archivePath build/OFF42.xcarchive "${args[@]}" archive \
+            > build/archive.log 2>&1 || { grep -E 'error:' build/archive.log | head -60; tail -n 40 build/archive.log; exit 1; }
+          tail -n 5 build/archive.log
+      - name: Check the app bundle
+        run: sh ios/scripts/check-app-bundle.sh build/OFF42.xcarchive/Products/Applications/OFF42.app
+      - name: Package
+        env:
+          SIGNED: ${{ steps.signing.outputs.signed }}
+        run: |
+          mkdir -p build/ipa
+          if [ "$SIGNED" = "true" ]; then
+            xcodebuild -exportArchive -archivePath build/OFF42.xcarchive \
+              -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath build/ipa
+          else
+            # An unsigned IPA (Payload/OFF42.app): for inspection and size only; it cannot be installed or uploaded.
+            mkdir -p build/Payload
+            cp -R build/OFF42.xcarchive/Products/Applications/OFF42.app build/Payload/
+            (cd build && zip -qry ipa/OFF42-unsigned.ipa Payload)
+          fi
+          app=build/OFF42.xcarchive/Products/Applications/OFF42.app
+          {
+            echo "### iOS build ($([ "$SIGNED" = "true" ] && echo signed || echo unsigned))"
+            echo "| Output | Bytes |"
+            echo "| --- | --- |"
+            echo "| OFF42.app (folder) | $(du -sk "$app" | cut -f1)000 (approx.) |"
+            echo "| OFF42 executable (arm64) | $(stat -f %z "$app/OFF42") |"
+            for f in build/ipa/*.ipa; do echo "| $(basename "$f") | $(stat -f %z "$f") |"; done
+          } >> "$GITHUB_STEP_SUMMARY"
+          ls -l build/ipa "$app/OFF42"
+      - name: Upload to App Store Connect
+        if: steps.signing.outputs.signed == 'true' && github.event_name == 'workflow_dispatch' && inputs.upload
+        env:
+          API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_ISSUER: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+        run: |
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          echo "$API_KEY" | base64 -d > "$HOME/.appstoreconnect/private_keys/AuthKey_$API_KEY_ID.p8"
+          xcrun altool --upload-app --type ios --file build/ipa/OFF42.ipa --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: off42-ios-ipa
+          path: build/ipa
+
+  # Unit tests (the engine through the app's Swift layer) and UI tests on the App Store screenshot devices: the
+  # newest 6.9-inch iPhone and 13-inch iPad simulators. Screenshots and the result bundle are artifacts.
+  test:
+    needs: engine
+    runs-on: macos-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: iphone
+            screenshots: ios-screenshots-iphone-6.9
+          - device: ipad
+            screenshots: ios-screenshots-ipad-13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: off42-mobile-apple
+          path: rust/build/apple
+      - name: Xcode and XcodeGen
+        run: |
+          xcodebuild -version
+          brew install xcodegen
+          cd ios && xcodegen generate
+      - name: Simulator
+        id: simulator
+        run: |
+          udid=$(python3 ios/scripts/create-simulator.py ${{ matrix.device }})
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 \
+            --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+      - name: Build for testing
+        run: |
+          mkdir -p build
+          xcodebuild -project ios/OFF42.xcodeproj -scheme OFF42 -configuration Debug \
+            -destination "id=${{ steps.simulator.outputs.udid }}" -derivedDataPath build/dd build-for-testing \
+            > build/build.log 2>&1 || { grep -E 'error:' build/build.log | head -60; tail -n 40 build/build.log; exit 1; }
+          tail -n 5 build/build.log
+      - name: Unit and UI tests (${{ matrix.device }})
+        env:
+          TEST_RUNNER_OFF42_SCREENSHOTS: ${{ runner.temp }}/screenshots
+        run: |
+          xcodebuild -project ios/OFF42.xcodeproj -scheme OFF42 -configuration Debug \
+            -destination "id=${{ steps.simulator.outputs.udid }}" -derivedDataPath build/dd \
+            -resultBundlePath build/OFF42-${{ matrix.device }}.xcresult -parallel-testing-enabled NO \
+            test-without-building 2>&1 | tee build/test.log | grep -E '^(Test Case|Test Suite|.*error:|\*\* )' || true
+          grep -q '\*\* TEST SUCCEEDED \*\*' build/test.log
+      - name: Test summary
+        if: always()
+        run: |
+          {
+            echo "### ${{ matrix.device }} tests"
+            echo '```'
+            grep -E "^Test Case .*(passed|failed)" build/test.log | sed -E 's/^Test Case .-\[([^]]+)\]. /\1 /' || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          ls -l "${{ runner.temp }}/screenshots" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.screenshots }}
+          path: ${{ runner.temp }}/screenshots
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ios-xcresult-${{ matrix.device }}
+          path: |
+            build/OFF42-${{ matrix.device }}.xcresult
+            build/test.log
+          retention-days: 7

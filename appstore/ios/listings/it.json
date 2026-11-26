@@ -1,0 +1,11 @@
+{
+  "appStoreLocale": "it",
+  "name": "OFF42 – Office offline",
+  "subtitle": "Apri e converti file d’ufficio",
+  "promotionalText": "Apri e converti documenti, fogli, diapositive e PDF. Crea codici e firme.",
+  "description": "OFF42 apre e converte file da ufficio su iPhone e iPad. Tutto avviene sul dispositivo: OFF42 non si connette alla rete e apre o salva file solo dove scegli tu, tramite l’app File e la condivisione.\n\n• Documenti: DOCX, ODT, RTF, Markdown, HTML e testo semplice, con conteggio delle parole; salvataggio in ciascuno di questi formati.\n• Fogli di calcolo: XLSX, ODS, CSV e XLS (sola lettura) in una griglia con schede dei fogli; salvataggio come XLSX, ODS o CSV.\n• Presentazioni: PPTX e ODP come struttura testuale di ogni diapositiva; conversione tra i due formati.\n• PDF: pagine visualizzate sul dispositivo, con metadati, segnalibri, allegati e campi modulo.\n• Etichette e codici: QR, Data Matrix, Code 128 e Aztec, fogli di etichette A4 dalle tue righe e 97 marchi di prodotto e conformità (solo grafica: un marchio non certifica nulla).\n• Firme e timbri: firme in stile manoscritto con penne e inchiostri diversi e impronte di timbro da modelli integrati, salvate come PNG trasparente.\n\nNon ancora disponibile: modifica, esportazione dei documenti in PDF, immagini e layout delle diapositive, annotazione dei PDF. Una firma disegnata è un’immagine, non una firma digitale basata su certificato.\n\nOFF42 è gratuito e open source (licenza MIT). Usa lo stesso motore delle app OFF42 per Mac, Windows e Linux e della web app.",
+  "keywords": "docx,xlsx,pptx,pdf,odt,convertitore,documenti,fogli,diapositive,codice qr,etichette,firma,timbro",
+  "supportUrl": "https://off42.cc/en/support/",
+  "marketingUrl": "https://off42.cc/",
+  "privacyPolicyUrl": "https://off42.cc/en/privacy/"
+}

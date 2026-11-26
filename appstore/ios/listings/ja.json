@@ -1,0 +1,11 @@
+{
+  "appStoreLocale": "ja",
+  "name": "OFF42 – オフラインのオフィスツール",
+  "subtitle": "オフィスファイルを表示・変換",
+  "promotionalText": "文書・表計算・スライド・PDF の表示と変換。コードや署名の作成も。",
+  "description": "OFF42 は iPhone と iPad でオフィスファイルを開き、変換します。処理はすべて端末上で行われます。OFF42 はネットワークに接続せず、ファイルの読み書きは「ファイル」App と共有を使い、あなたが選んだ場所だけで行います。\n\n• 文書：DOCX、ODT、RTF、Markdown、HTML、テキストを表示し、単語数を確認。これらのどの形式でも保存できます。\n• 表計算：XLSX、ODS、CSV、XLS（読み取り専用）をシートタブ付きのグリッドで表示。XLSX、ODS、CSV で保存。\n• プレゼンテーション：PPTX と ODP を全スライドのテキストアウトラインで表示。両形式間で変換。\n• PDF：ページを端末上で描画し、メタデータ、しおり、添付ファイル、フォームフィールドを表示。\n• ラベルとコード：QR、Data Matrix、Code 128、Aztec、入力した行からの A4 ラベルシート、97 種類の製品・適合マーク（図案のみ。マークは何も証明しません）。\n• 署名と印影：さまざまなペンとインクによる手書き風の署名と、テンプレートからの印影を透過 PNG で保存。\n\n未対応：編集、文書の PDF 書き出し、スライドの画像とレイアウト、PDF への注釈。描画した署名は画像であり、証明書に基づくデジタル署名ではありません。\n\nOFF42 は無料のオープンソースです（MIT ライセンス）。Mac、Windows、Linux 版の OFF42 アプリや Web アプリと同じエンジンを使っています。",
+  "keywords": "docx,xlsx,pptx,pdf,odt,変換,ビューア,文書,表計算,スライド,QRコード,バーコード,ラベル,署名,印鑑",
+  "supportUrl": "https://off42.cc/en/support/",
+  "marketingUrl": "https://off42.cc/",
+  "privacyPolicyUrl": "https://off42.cc/en/privacy/"
+}

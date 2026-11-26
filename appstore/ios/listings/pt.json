@@ -1,0 +1,11 @@
+{
+  "appStoreLocale": "pt-BR",
+  "name": "OFF42 – Escritório offline",
+  "subtitle": "Veja e converta arquivos",
+  "promotionalText": "Veja e converta documentos, planilhas, slides e PDF. Crie códigos e assinaturas.",
+  "description": "O OFF42 abre e converte arquivos de escritório no seu iPhone e iPad. Tudo acontece no dispositivo: o OFF42 não se conecta à rede e só abre ou salva arquivos onde você escolher, pelo app Arquivos e pelo compartilhamento.\n\n• Documentos: DOCX, ODT, RTF, Markdown, HTML e texto simples, com contagem de palavras; salve em qualquer um desses formatos.\n• Planilhas: XLSX, ODS, CSV e XLS (somente leitura) em uma grade com abas; salve como XLSX, ODS ou CSV.\n• Apresentações: PPTX e ODP como estrutura de tópicos de cada slide; converta entre os dois formatos.\n• PDF: páginas renderizadas no dispositivo, com metadados, marcadores, anexos e campos de formulário.\n• Etiquetas e códigos: QR, Data Matrix, Code 128 e Aztec, folhas de etiquetas A4 a partir das suas linhas e 97 marcas de produto e conformidade (só a arte: uma marca não certifica nada).\n• Assinaturas e carimbos: assinaturas com aparência manuscrita em várias canetas e tintas, e impressões de carimbo a partir de modelos, salvas como PNG transparente.\n\nAinda não disponível: edição, exportação de documentos para PDF, imagens e layouts de slides, anotação de PDF. Uma assinatura desenhada é uma imagem, não uma assinatura digital baseada em certificado.\n\nO OFF42 é gratuito e de código aberto (licença MIT). Usa o mesmo mecanismo dos apps OFF42 para Mac, Windows e Linux e do app web.",
+  "keywords": "docx,xlsx,pptx,pdf,odt,conversor,documentos,planilhas,slides,qr code,etiquetas,assinatura,carimbo",
+  "supportUrl": "https://off42.cc/en/support/",
+  "marketingUrl": "https://off42.cc/",
+  "privacyPolicyUrl": "https://off42.cc/en/privacy/"
+}

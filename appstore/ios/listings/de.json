@@ -1,0 +1,11 @@
+{
+  "appStoreLocale": "de-DE",
+  "name": "OFF42 – Office offline",
+  "subtitle": "Office-Dateien offline öffnen",
+  "promotionalText": "Dokumente, Tabellen, Folien und PDFs öffnen und umwandeln. Codes und Signaturen.",
+  "description": "OFF42 öffnet und wandelt Office-Dateien auf iPhone und iPad um. Alles geschieht auf dem Gerät: OFF42 baut keine Netzwerkverbindungen auf und öffnet oder speichert Dateien nur dort, wo Sie es wählen – über die Dateien-App und Teilen.\n\n• Dokumente: DOCX, ODT, RTF, Markdown, HTML und Text ansehen, Wörter zählen und in jedem dieser Formate speichern.\n• Tabellen: XLSX, ODS, CSV und XLS (nur lesen) in einem Raster mit Blattregistern; Speichern als XLSX, ODS oder CSV.\n• Präsentationen: PPTX und ODP als Textgliederung aller Folien; Umwandlung zwischen beiden Formaten.\n• PDF: Seiten werden auf dem Gerät dargestellt, dazu Metadaten, Lesezeichen, Anhänge und Formularfelder.\n• Etiketten und Codes: QR, Data Matrix, Code 128 und Aztec, A4-Etikettenbögen aus eigenen Zeilen und 97 Produkt- und Konformitätszeichen (nur Grafik: ein Zeichen bescheinigt nichts).\n• Unterschriften und Stempel: handschriftlich wirkende Unterschriften mit verschiedenen Stiften und Tinten sowie Stempelabdrücke aus Vorlagen, gespeichert als transparentes PNG.\n\nNoch nicht verfügbar: Bearbeiten, Export von Dokumenten als PDF, Bilder und Layouts von Folien, PDF-Anmerkungen. Eine gezeichnete Unterschrift ist ein Bild, keine zertifikatsbasierte digitale Signatur.\n\nOFF42 ist kostenlos und quelloffen (MIT-Lizenz). Die Engine ist dieselbe wie in den OFF42-Apps für Mac, Windows und Linux und in der Web-App.",
+  "keywords": "docx,xlsx,pptx,pdf,odt,konverter,dokumente,tabellen,folien,qr-code,barcode,etiketten,stempel",
+  "supportUrl": "https://off42.cc/en/support/",
+  "marketingUrl": "https://off42.cc/",
+  "privacyPolicyUrl": "https://off42.cc/en/privacy/"
+}

@@ -1,0 +1,11 @@
+{
+  "appStoreLocale": null,
+  "name": "OFF42 – Office tools offline",
+  "subtitle": "Tingnan at i-convert ang file",
+  "promotionalText": "Tingnan at i-convert ang dokumento, sheet, slide, PDF. Gumawa ng code at pirma.",
+  "description": "Binubuksan at kino-convert ng OFF42 ang mga office file sa iyong iPhone at iPad. Lahat ay nangyayari sa device: hindi kumokonekta sa network ang OFF42 at nagbubukas o nagse-save lang ito ng file kung saan mo pipiliin, sa Files app at sa pagbabahagi.\n\n• Mga dokumento: DOCX, ODT, RTF, Markdown, HTML at plain text, may bilang ng salita; i-save sa alinman sa mga format na ito.\n• Mga spreadsheet: XLSX, ODS, CSV at XLS (read-only) sa isang grid na may mga tab ng sheet; i-save bilang XLSX, ODS o CSV.\n• Mga presentasyon: PPTX at ODP bilang text outline ng bawat slide; i-convert sa pagitan ng dalawang format.\n• PDF: mga pahinang ipinapakita sa device, kasama ang metadata, bookmark, attachment at form field.\n• Mga label at code: QR, Data Matrix, Code 128 at Aztec, mga A4 label sheet mula sa sarili mong mga linya, at 97 marka ng produkto at conformity (larawan lang: walang pinapatunayan ang marka).\n• Mga pirma at tatak: pirmang parang sulat-kamay gamit ang iba't ibang pen at tinta, at mga tatak mula sa mga template, naka-save bilang transparent na PNG.\n\nWala pa: pag-edit, pag-export ng dokumento sa PDF, mga larawan at layout ng slide, anotasyon ng PDF. Ang iginuhit na pirma ay larawan, hindi digital signature na batay sa certificate.\n\nLibre at open source ang OFF42 (MIT license). Kapareho ang engine nito ng mga OFF42 app para sa Mac, Windows at Linux at ng web app.",
+  "keywords": "docx,xlsx,pptx,pdf,odt,converter,dokumento,spreadsheet,slide,qr code,barcode,label,pirma,selyo",
+  "supportUrl": "https://off42.cc/en/support/",
+  "marketingUrl": "https://off42.cc/",
+  "privacyPolicyUrl": "https://off42.cc/en/privacy/"
+}
