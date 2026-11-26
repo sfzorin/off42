@@ -135,6 +135,7 @@ enum CLI {
         failures += ScannerFileAudit.run()
         failures += ScanProcessingAudit.run()
         failures += ScanDocumentAudit.run()
+        failures += ScanRecoveryAudit.run()
         status = failures == 0 ? 0 : 1
         print("SCN42 selftest: \(failures) failures")
     }

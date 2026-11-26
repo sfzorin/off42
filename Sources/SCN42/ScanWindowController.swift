@@ -58,6 +58,8 @@ final class InspectorController: NSViewController {
 /// One scanning window: pages on the left, the big preview in the middle, settings or history on the right.
 final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuItemValidation, NSToolbarItemValidation {
     let doc = ScanDocument()
+    /// Crash recovery of unsaved pages (see Recovery.swift).
+    lazy var recovery = RecoveryAutosaver(journal: ScanRecovery.journal) { [weak self] in self?.recoveryCapture() }
     let split = NSSplitViewController()
     let pageList = PageListController()
     let preview = PreviewController()
@@ -254,6 +256,7 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         updateStatus()
         window?.isDocumentEdited = doc.isDirty && !pages.isEmpty
         window?.toolbar?.validateVisibleItems()
+        recovery.noteChange()
     }
 
     func settingsChanged() {
@@ -422,6 +425,8 @@ final class ScanWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         windowIsClosed = true
         pageWorkGeneration = UUID(); acquisitionGeneration = UUID(); scanGeneration = UUID(); overviewGeneration = UUID()
         if isScanning { scanner?.cancel() }
+        // Closing means saved or discarded (Don't Save); the record must not come back at the next launch.
+        recovery.discard()
         AppDelegate.shared?.windowClosed(self)
     }
 

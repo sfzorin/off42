@@ -4,7 +4,7 @@ import Foundation
 import Vision
 
 /// What to do with a page after it is scanned.
-struct ProcessOptions: Equatable {
+struct ProcessOptions: Codable, Equatable {
     var crop = true
     var deskew = true
     var autoRotate = true

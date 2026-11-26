@@ -316,4 +316,11 @@ let kit42Strings: [[String]] = [
     ["the signature value does not match", "значение подписи не совпадает", "imza değeri eşleşmiyor"],
     ["unsupported canonicalization", "неподдерживаемая канонизация", "desteklenmeyen kanonikleştirme"],
     ["“%@” was changed after signing", "«%@» изменён после подписания", "“%@” imzadan sonra değiştirilmiş"],
+    // Crash recovery (DocumentRecovery.swift)
+    ["%@ quit while you had unsaved changes. Restore them?", "%@ завершилась, когда были несохранённые изменения. Восстановить их?", "%@ kaydedilmemiş değişiklikler varken kapandı. Geri yüklensin mi?"],
+    ["Recovered work opens as unsaved. If you discard it, it cannot be recovered later.", "Восстановленная работа откроется как несохранённая. Если её отбросить, восстановить её позже будет нельзя.", "Kurtarılan çalışma kaydedilmemiş olarak açılır. Atarsanız daha sonra kurtarılamaz."],
+    ["Restore", "Восстановить", "Geri Yükle"],
+    ["Discard", "Отбросить", "At"],
+    ["Recovered Changes", "Восстановленные изменения", "Kurtarılan Değişiklikler"],
+    ["Recovered", "Восстановлено", "Kurtarıldı"],
 ]

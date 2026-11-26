@@ -741,7 +741,7 @@ The capabilities below describe the current source. The regression scenarios bel
   numbers, missing values and unsupported output extensions return a nonzero exit without replacing the destination.
   CLI `--edit` refuses a reduced-resolution preview rather than silently exporting it as a full-resolution edit.
   `--demo-marks` follow subsequent resize/crop operations; `--description ""` explicitly clears the caption.
-- Regression checks: `.build/debug/IMG42 --selftest` (pixels and file output),
+- Regression checks: `.build/debug/IMG42 --selftest` (pixels, file output and crash-recovery records),
   `python3 scripts/audit-images-cli.py --binary .build/debug/IMG42` (independent file/OCR checks), and
   `python3 scripts/audit-ui.py --app IMG42` (native editing, markup, files and navigation). Record the tested binary
   identity and actual results alongside each run.
@@ -926,7 +926,7 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   `python3 scripts/audit-scans-cli.py --binary .build/debug/SCN42` (Pillow and pypdf required). Record the tested executable and results. A virtual scan, a
   successful model fixture or a generated Print-to-PDF file does not verify physical scanner drivers, duplex hardware,
   Continuity Camera, Share/Mail delivery or a physical printer. PDF/A-style output is not a certified conformance claim.
-  Unsaved scans still have no document recovery autosave.
+  Unsaved scans are kept for crash recovery (see Common); `--selftest` covers the record round trip and its clearing.
 
 ## Common
 
@@ -1009,7 +1009,15 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   Print and Export as PDF, SCN42's Overview, Delete and Enhance). In full screen (⌃⌘F) the
   bars slide in only when the pointer reaches the top edge.
 - PDF42, DOC42, XLS42 and PPT42 use AppKit autosave with a 30-second delay to a backup location. This does not save
-  every keystroke immediately. IMG42 edits and unsaved SCN42 scans remain in memory until saved.
+  every keystroke immediately. IMG42 and SCN42 (which have no NSDocument) keep a crash-recovery record of unsaved work
+  with the same 30-second delay in `~/Library/Autosave Information/IMG42` or `SCN42`: the edited image's working pixels,
+  marks, adjustments, description and resolution, or every unsaved scanned page with its processing settings and
+  recognised text. After an unexpected quit, the next launch offers Restore or Discard; restored work opens unsaved
+  (IMG42: one Undo back to the file; an image whose original file is gone opens from a copy under `Recovered Files`).
+  Saving, Don't Save on close and a confirmed Quit remove the record. Undo history, pixel selections, an uncommitted
+  text field and changes made in the last 30 seconds are not recovered. `K42_RECOVERY_DIR=dir` and
+  `K42_RECOVERY_DELAY=s` redirect/shorten it for checks; UI tests, native audits and `K42_SNAPSHOT` runs do not read or
+  write the user's records (`K42_NO_RECOVERY` turns it off).
 - File › Open Recent refreshes from the app's document history when opened; Clear Menu is disabled for an empty list.
   IMG42 routes opening through its image controller. SCN42 opens recent saved scans in the system's default app;
   File › Open imports pages into a scan document.
@@ -1096,7 +1104,9 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   workbook, instead of silently clipping repeated content. Large empty repeated regions remain sparse.
   CSV export rejects a rectangle larger than 2,000,000 positions from A1 to the last used cell, including intervening
   blanks; a single far-away cell can therefore exceed the export limit even in a sparse workbook.
-- IMG42 and SCN42 have no document recovery autosave. Image codec support depends on the Mac; pixel edits to animated,
+- IMG42/SCN42 crash recovery is verified by `--selftest` record round trips and lifecycle checks, not by a crashed
+  GUI session; it does not keep Undo history, and a restored scan's geometry base is a maximum-quality JPEG
+  re-encode (output pixels are exact). Image codec support depends on the Mac; pixel edits to animated,
   multi-page or read-only inputs export the displayed frame/page through Save As. AVIF export is offered only when supported.
 - PDF/A export has not been checked with a conformance validator in this audit; see each app's format notes above.
 - The audit's scanner tests use a virtual source. Physical scanners, Continuity Camera and the minimum supported macOS

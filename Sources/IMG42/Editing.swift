@@ -52,6 +52,7 @@ extension ImageWindowController {
         // Edits belong to this image; file operations (trash, lossless rotation) stay undoable.
         undo.removeAllActions(withTarget: self)
         if inspectorShows === adjustPanel { adjustPanel.set(adjustments) }
+        recovery.noteChange()
     }
 
     static func description(of url: URL) -> String? {
@@ -98,6 +99,7 @@ extension ImageWindowController {
         }
         undo.setActionName(name)
         updateSubtitle()
+        recovery.noteChange()
     }
 
     func marksCommitted(before: [Mark], name: String) {
