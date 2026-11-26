@@ -111,7 +111,7 @@ visible areas are under native verification on the development branch.
 
 The off42 1.0 preview DMG contains all six apps for Apple Silicon Macs running macOS 14 or later.
 The apps use ad hoc signatures and the preview has no Apple notarization.
-[Download the macOS preview DMG](https://github.com/sfzorin/off42/releases/download/v1.0.0-preview.1/off42-1.0.0-preview.1-arm64.dmg).
+[Download the macOS preview DMG](https://github.com/sfzorin/off42/releases/download/v1.0.0-preview.2/off42-1.0.0-preview.2-arm64.dmg).
 
 The Windows preview ZIP contains all six Windows x64 apps, PDFium and tools for
 [labels and barcodes](rust/README.md#labels-barcodes-and-signatures). Extract the full ZIP and launch the app you want.
