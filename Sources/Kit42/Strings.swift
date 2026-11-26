@@ -215,4 +215,15 @@ let kit42Strings: [[String]] = [
     ["Every insertion is a new impression; draw another one", "Каждая вставка — новый оттиск; нарисовать другой", "Her ekleme yeni bir baskıdır; başka birini çiz"],
     ["%d × %d px, %d mm wide", "%d × %d пикс., ширина %d мм", "%d × %d px, %d mm genişlik"],
     ["A picture of a signature does not prove who signed or that the document is unchanged. For that, sign the PDF digitally.", "Изображение подписи не доказывает, кто подписал и что документ не менялся. Для этого подпишите PDF цифровой подписью.", "İmza görüntüsü kimin imzaladığını veya belgenin değişmediğini kanıtlamaz. Bunun için PDF'i dijital olarak imzalayın."],
+    // Get a Certificate…
+    ["Could not delete the key", "Не удалось удалить ключ", "Anahtar silinemedi"],
+    ["The certificate does not belong to any key created here", "Сертификат не подходит ни к одному созданному здесь ключу", "Sertifika burada oluşturulan hiçbir anahtara ait değil"],
+    ["The certificate does not belong to this key", "Сертификат не подходит к этому ключу", "Sertifika bu anahtara ait değil"],
+    ["The file contains no certificates", "В файле нет сертификатов", "Dosyada sertifika yok"],
+    ["The key is missing", "Ключ не найден", "Anahtar bulunamadı"],
+    ["The key is not in the Keychain", "Ключа нет в Связке ключей", "Anahtar, Anahtar Zinciri'nde yok"],
+    ["The request needs a name", "В запросе должно быть указано имя", "İstekte bir ad olmalı"],
+    ["This Mac has no Secure Enclave", "В этом Mac нет Secure Enclave", "Bu Mac'te Secure Enclave yok"],
+    ["create a certificate", "создать сертификат", "sertifika oluştur"],
+    ["create a certificate request", "создать запрос на сертификат", "sertifika isteği oluştur"],
 ]

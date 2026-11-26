@@ -139,6 +139,7 @@ enum Cmd {
     static let initialPages = Command(L("Initial Every Page…"), #selector(W.initialPagesAction(_:)), symbol: "signature",
                                       toolTip: L("Put a signature or initials on every page"))
     static let importCertificate = Command(L("Import Certificate (.p12)…"), #selector(A.importCertificateAction(_:)))
+    static let getCertificate = Command(L("Get a Certificate…"), #selector(A.getCertificateAction(_:)))
     static let createCertificate = Command(L("Create Self-Signed Certificate…"), #selector(A.createCertificateAction(_:)))
     static let gostSignFile = Command(L("Sign Any File with GOST (.sig)…"), #selector(A.gostSignFileAction(_:)))
     static let gostVerifyFile = Command(L("Verify Detached Signature (.sig)…"), #selector(A.gostVerifyFileAction(_:)))
@@ -180,7 +181,7 @@ enum Cmd {
             (L("Signature"), [.command(sign), .command(verify), .separator,
                          .command(enableLTV), .command(documentTimestamp), .separator,
                          .command(eSignatureMark), .command(initialPages), .command(crossPageSeal), .command(certificationNote), .separator,
-                         .command(importCertificate), .command(createCertificate), .separator,
+                         .command(getCertificate), .command(importCertificate), .command(createCertificate), .separator,
                          .command(gostSignFile), .command(gostVerifyFile), .command(cryptoPro)]),
         ]
         spec.help = [.command(shortcuts), .command(welcome)]

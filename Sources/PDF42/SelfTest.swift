@@ -190,6 +190,7 @@ enum PDFSelfTest {
             ("testPAdESBaselineSignature", testPAdESBaselineSignature),
             ("testIncrementalStreamsRoundTrip", testIncrementalStreamsRoundTrip),
             ("testRevocationCoverageByCRL", testRevocationCoverageByCRL),
+            ("testCertificateRequestAndEnclaveSignature", testCertificateRequestAndEnclaveSignature),
             ("testGOSTReferenceCMSIsParsed", testGOSTReferenceCMSIsParsed),
             ("testGOSTSignatureInPDFWithoutCSPIsNotChecked", testGOSTSignatureInPDFWithoutCSPIsNotChecked),
             ("testCertmgrListIsParsed", testCertmgrListIsParsed),

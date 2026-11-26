@@ -10,6 +10,13 @@ import PDFKit
 //   PDF42 --csc-credentials SERVICE-URL [auth…]          (CSC API v2: list credentials)
 //   PDF42 --csc-sign in.pdf out.pdf SERVICE-URL CREDENTIAL-ID [auth…] [pin=…] [otp=…] [tsa=URL] [level=…]
 //   auth: token=… | user=… password=… | client-id=… [client-secret=…] [port=8765] [no-browser]
+// Keys and certificate requests ("Get a Certificate…"; SUITE42_KEY_DIR overrides the key folder):
+//   PDF42 --key-new enclave|keychain LABEL [p256|rsa2048|rsa3072] [no-presence]   (prints the key id)
+//   PDF42 --key-list
+//   PDF42 --key-csr ID out.csr CN=… [O=… OU=… L=… ST=… C=… email=… serial=… given=… surname=…]
+//   PDF42 --key-import ID|any certificate-file          (.cer/.crt/.pem/.p7b; pairs the certificate with its key)
+//   PDF42 --key-sign in.pdf ID out.pdf [tsa | tsa=URL] [level=…]
+//   PDF42 --key-delete ID
 Localization.register(rows: pdf42Strings)
 
 let args = CommandLine.arguments
@@ -96,6 +103,7 @@ if args.count >= 3, args[1] == "--mark-samples" {
 // GOST signatures and detached-file operations use the dedicated CSP command handler.
 if let code = GOSTCLI.run(args) { exit(code) }
 if let code = PDFMainCLI.run(args) { exit(code) }
+if let code = KeyCLI.run(args) { exit(code) }
 
 if let code = ToolsCLI.run(args) { exit(code) }
 

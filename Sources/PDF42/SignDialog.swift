@@ -3,15 +3,18 @@ import Kit42
 
 /// Dialogs for digital signatures: choose certificate, import/create, show verification results.
 enum SignDialog {
-    /// A certificate offered for signing: from the Keychain, from CryptoPro CSP (GOST) or a remote signing service (CSC).
+    /// A certificate offered for signing: from the Keychain, the Secure Enclave (Get a Certificate…),
+    /// CryptoPro CSP (GOST) or a remote signing service (CSC).
     enum Choice {
         case keychain(SigningIdentity)
+        case secureEnclave(StoredKey)
         case gost(CryptoPro.Certificate)
         case remote(CSCSigner)
 
         var title: String {
             switch self {
             case .keychain(let id): return id.displayName
+            case .secureEnclave(let key): return "\(key.displayName) — \(L("Secure Enclave"))"
             case .gost(let c): return L("GOST: %@", c.displayName)
             case .remote(let r): return "☁︎ " + r.credential.label
             }
@@ -20,7 +23,8 @@ enum SignDialog {
 
     static func choices() -> [Choice] {
         let gost = CryptoPro.isInstalled ? ((try? CryptoPro.certificates()) ?? []) : []
-        return CertificateStore.identities().map(Choice.keychain) + gost.map(Choice.gost)
+        return CertificateStore.identities().map(Choice.keychain) + KeyVault.enclaveIdentities().map(Choice.secureEnclave)
+            + gost.map(Choice.gost)
     }
 
     static func run(stampSelected: Bool) -> (options: PDFSigner.Options, visible: Bool, attachments: [EmbeddedFile])? {
@@ -63,6 +67,11 @@ enum SignDialog {
         actions.add(L("Create…")) {
             if let id = createCertificate() { choices = Self.choices(); fill(select: Choice.keychain(id).title) }
         }
+        actions.add(L("Get a Certificate…")) {
+            // Closes this dialog: the wizard is a normal window and the certificate takes days to arrive.
+            NSApp.stopModal()
+            DispatchQueue.main.async { CertificateWizard.show() }
+        }
         actions.add(L("Remote (CSC)…")) {
             if let signer = connectRemote() { choices.append(.remote(signer)); fill(select: Choice.remote(signer).title) }
         }
@@ -94,7 +103,7 @@ enum SignDialog {
         format.addItems(withTitles: PAdESLevel.allCases.map(\.title))
         format.selectItem(at: d.object(forKey: "sign.level") == nil ? PAdESLevel.baselineLTA.rawValue : d.integer(forKey: "sign.level"))
         let alert = NSAlert.form(L("Sign Document"),
-                                 info: L("The signature is added to a copy of the document. Certificates come from the macOS Keychain, a remote signing service (CSC) or, for GOST signatures, CryptoPro CSP. Long-term levels (B-T and above) need the timestamp server."),
+                                 info: L("The signature is added to a copy of the document. Certificates come from the macOS Keychain, the Secure Enclave (Get a Certificate…), a remote signing service (CSC) or, for GOST signatures, CryptoPro CSP. Long-term levels (B-T and above) need the timestamp server."),
                                  ok: L("Sign…"),
                                  rows: [(L("Certificate:"), popup), ("", actions), (L("PIN:"), pin), (L("Reason:"), reason), (L("Location:"), location),
                                         (L("Power of attorney:"), poaRow), ("", visible), (L("Format:"), format), ("", timestamp), (L("TSA server:"), tsa)])
@@ -127,6 +136,7 @@ enum SignDialog {
             let signer: PDFSigner.Signer
             switch choice {
             case .keychain(let id): signer = .keychain(id)
+            case .secureEnclave(let key): signer = .secureEnclave(key)
             case .gost(let c):
                 signer = .cryptoPro(c, CryptoPro.SignOptions(thumbprint: c.thumbprint, pin: pin.stringValue.isEmpty ? nil : pin.stringValue))
             case .remote(let r): signer = .remote(r)

@@ -50,6 +50,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 editor.showSidebarMode(["outline": .outline, "attachments": .attachments][mode] ?? .thumbnails)
             }
             if env["K42_LINK_BORDERS"] != nil { editor?.pdfView.showsLinkBorders = true }
+            // K42_CERT_WIZARD=0…4 opens Get a Certificate on that tab (keys, Russia, Türkiye, EU, free).
+            if let tab = env["K42_CERT_WIZARD"].flatMap(Int.init) { CertificateWizard.show(tab: tab) }
             for action in (env["K42_DO"] ?? "").split(separator: ",") {
                 let selector = NSSelectorFromString(action + ":")
                 if let editor, editor.responds(to: selector) { editor.perform(selector, with: nil) }
@@ -199,6 +201,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             info(L("Certificate added"), L("“%@” is saved in the Keychain and can be used for signing.", identity.displayName))
         }
     }
+
+    @objc func getCertificateAction(_ sender: Any?) { CertificateWizard.show() }
 
     @objc func createCertificateAction(_ sender: Any?) {
         if let identity = SignDialog.createCertificate() {

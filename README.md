@@ -205,6 +205,10 @@ lets you switch extensions off.
   Invalid ranges, dimensions and unsupported export formats fail explicitly. Missing/unreadable merge inputs do not
   produce a partial merged document. Output files are replaced atomically after successful generation; a set of split
   or batch outputs is not one atomic transaction.
+  Keys and certificate requests (Get a Certificate…): `--key-new enclave|keychain LABEL [p256|rsa2048|rsa3072] [no-presence]`,
+  `--key-list`, `--key-csr ID out.csr CN=… [O=… OU=… L=… ST=… C=… email=… serial=… given=… surname=…]`,
+  `--key-import ID|any certificate-file`, `--key-sign in out ID [tsa | tsa=URL] [level=…]`, `--key-delete ID`
+  (`SUITE42_KEY_DIR` overrides the key folder).
 - Signatures and stamps (⇧⌘K): a library of PNGs/scans, the white background is removed automatically; or create them
   (see Common › Signature and stamp generator). A picture is not a signature: for one that identifies you and
   detects changes, use Digital signature below.
@@ -230,6 +234,22 @@ lets you switch extensions off.
   RFC 3161 document timestamp (ETSI.RFC3161) over the whole file — B-LTA for a signed file (its DSS is extended
   afterwards), or a timestamp-only seal for an unsigned one. Validation data comes from the URLs in the certificates
   (AIA OCSP/caIssuers, CRL distribution points), so these steps need a connection.
+- Signature › Get a Certificate… (also in the Sign dialog): Suite42 cannot issue a trusted certificate — certification
+  authorities check identity first — so it prepares everything around that step. **1. New Key**: a non-exportable
+  P-256 key in the Mac's **Secure Enclave** (Touch ID or the login password before every signature, optional) or a
+  Keychain key (RSA 2048/3072 or P-256) for authorities that need RSA or an exportable key. **2. Create Request**: a
+  PKCS#10 request (.csr, PEM; also copied to the clipboard) with name, given name/surname, e-mail, organisation,
+  department, city, region, country and an ID (`serialNumber`, e.g. eIDAS `PNOTR-…`); it asks for key usage
+  digitalSignature + nonRepudiation and the e-mail as subjectAltName. **3. Import Certificate**: .cer/.crt/.pem/.p7b;
+  the certificate finds its key by the public key and keeps the bundled CA certificates as its chain (missing ones
+  are fetched from caIssuers at signing). Secure Enclave identities appear in the Sign dialog as "… — Secure Enclave"
+  and sign ECDSA P-256 / SHA-256 CAdES at every PAdES level (the Format menu's legacy choice also gets CAdES); Keychain keys become ordinary Keychain identities. Records
+  are in `~/Library/Application Support/Suite42/Signing Keys` (the Secure Enclave key only as its wrapped blob, which
+  works on this Mac alone). Guide tabs: **Russia** (КЭП from ФНС for directors/sole proprietors or accredited CAs,
+  in-person identification, GOST keys on a token — requests made here are not accepted for КЭП), **Türkiye** (NES from
+  BTK-authorised providers: Kamu SM, E-Tuğra, TÜRKTRUST…), **European Union** (QES from QTSPs on the EU Trusted List;
+  the Secure Enclave is not a QSCD, so it gives AdES; remote QES through CSC) and **Free Options** (self-signed, free
+  e-mail S/MIME certificates, an organisation's own CA).
 - Remote signing (Sign dialog › Remote (CSC)…): Cloud Signature Consortium API v2 with a configurable service URL.
   Sign-in by OAuth 2.0 in the browser (authorization code with PKCE and a loopback redirect
   `http://127.0.0.1:PORT/callback` that must be registered with the provider), client credentials, HTTP Basic or a
@@ -973,7 +993,9 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   with cross-reference streams are re-saved before the first signature, which is impossible once they are signed).
   The PAdES level is reported from the file's structure (attributes, timestamps, DSS order, revocation coverage); it is
   not an eIDAS qualification check: PDF42 does not consult the EU trusted lists, and its trust decision is the macOS
-  trust store. CSC remote signing has been tested only against a local mock service, not a real QTSP. RSA-PSS keys,
+  trust store. CSC remote signing has been tested only against a local mock service, not a real QTSP. Get a Certificate…
+  has been tested against a local OpenSSL CA only; a Secure Enclave key cannot be backed up or moved to another Mac,
+  is P-256 only (some authorities accept only RSA), and is not a certified QSCD for eIDAS qualified signatures. RSA-PSS keys,
   OCSP nonces and asynchronous (multi-signature) CSC operations are not supported. Network calls block the window
   while they run (the OAuth wait keeps the run loop alive).
 - GOST signatures need the user's own CryptoPro CSP. The GOST path has been exercised only against stand-in tools
@@ -1049,6 +1071,9 @@ description/DPI, checks GIF/TIFF counts and bounded decoding, verifies invalid i
 OCR on a generated text image. Fixtures, command output, binary SHA-256 and `result.json` are stored in
 `build/img-cli-audit`; `--output-dir` changes the destination and `--binary build/IMG42.app/Contents/MacOS/IMG42` checks
 a packaged binary. These fixtures do not certify every installed codec, camera RAW variant or third-party metadata field.
+`scripts/pades/run.sh WORKDIR` and `scripts/certificates/run.sh WORKDIR` (JDK 17+ for EU DSS) sign with a throw-away
+local PKI and validate offline with EU DSS. The second one creates a Secure Enclave key and a Keychain key (removed
+again at the end), issues certificates for their PDF42 requests with `openssl ca`, and signs at every PAdES level.
 
 These cover malformed PDF/ZIP input, attachment extraction, spreadsheet references and numeric precision,
 text encodings, CSV/ODS previews, scan save state, and preservation of existing files when exports fail.

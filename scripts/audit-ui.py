@@ -257,6 +257,8 @@ if args.mode in ('all', 'tests'):
         ('PDF42', 'page-marks', (out / 'page-marks.pdf',), {'K42_DO': 'auditPageMarks', 'K42_SNAPSHOT_DELAY': '3', 'K42_SIZE': '1180x780',
                                                               'K42_STAMP_LIBRARY': str(out / 'stamps')},
          'PDF page marks UI regressions:', True),
+        ('PDF42', 'cert-wizard-keys', (out / 'sample.pdf',), {'K42_CERT_WIZARD': '0', 'SUITE42_KEY_DIR': str(out / 'keys')}, None, True),
+        ('PDF42', 'cert-wizard-guide', (out / 'sample.pdf',), {'K42_CERT_WIZARD': '3', 'SUITE42_KEY_DIR': str(out / 'keys')}, None, True),
         ('PPT42', 'ppt-notes', (), {'K42_NEW': '1', 'K42_DO': 'auditnotes', 'K42_AUDIT_RECENT': '1'}, 'PPT notes UI regressions: 6/6 passed', True),
         ('PPT42', 'ppt-editing', (), {'K42_NEW': '1', 'K42_DO': 'auditediting', 'K42_PASTEBOARD': '1'}, 'PPT editing UI regressions:', True),
         ('PPT42', 'ppt-text', (), {'K42_NEW': '1', 'K42_DO': 'audittext', 'K42_PASTEBOARD': '1'}, 'PPT text/table/show UI regressions:', True),

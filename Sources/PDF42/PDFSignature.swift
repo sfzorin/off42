@@ -9,9 +9,11 @@ import Security
 /// or legacy adbe.pkcs7.detached, compatible with Adobe Acrobat and other validators. PAdES.swift adds the
 /// long-term levels (DSS, document timestamps).
 enum PDFSigner {
-    /// Where the key lives: the macOS Keychain (RSA/ECDSA), CryptoPro CSP (GOST) or a remote signing service (CSC).
+    /// Where the key lives: the macOS Keychain (RSA/ECDSA), the Secure Enclave (P-256, from Get a Certificate…),
+    /// CryptoPro CSP (GOST) or a remote signing service (CSC).
     enum Signer {
         case keychain(SigningIdentity)
+        case secureEnclave(StoredKey)
         case cryptoPro(CryptoPro.Certificate, CryptoPro.SignOptions)
         case remote(CMSRawSigner)
         /// Not chosen yet (set `Options.remote` before signing).
@@ -20,6 +22,7 @@ enum PDFSigner {
         var name: String {
             switch self {
             case .keychain(let id): return id.name
+            case .secureEnclave(let key): return key.certificate.flatMap { X509(der: [UInt8]($0))?.name } ?? key.label
             case .cryptoPro(let cert, _): return cert.name
             case .remote(let r): return r.chain.first?.name ?? L("Unknown")
             case .none: return L("Unknown")
@@ -93,7 +96,7 @@ enum PDFSigner {
         if !options.location.isEmpty { tail += " /Location \(pdfTextString(options.location))" }
         tail += " /Prop_Build << /App << /Name /PDF42 >> >>"
         let capacity = gost ? gostSignatureCapacity
-            : options.level == .legacy && options.remote == nil ? signatureCapacity : 2 * signatureCapacity
+            : options.level == .legacy && options.identity != nil ? signatureCapacity : 2 * signatureCapacity
         return try appendSignatureField(base, visible: options.visible, head: "/Type /Sig /Filter \(filter) /SubFilter /\(subFilter)",
                                         tail: tail, capacity: capacity) { signed in
             var cms: Data
@@ -104,6 +107,9 @@ enum PDFSigner {
                 return try CryptoPro.signDetached(signed, options: g)
             case .remote(let remote):
                 cms = try CAdES.sign(signed, signer: remote)
+            case .secureEnclave(let key):
+                // CAdES at every level (the legacy subfilter carries the same CMS).
+                cms = try CAdES.sign(signed, signer: try StoredKeySigner(key))
             case .keychain(let identity):
                 cms = options.level == .legacy ? try cmsSign(signed, identity: identity.identity)
                     : try CAdES.sign(signed, signer: try KeychainSigner(identity.identity))

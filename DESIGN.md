@@ -400,6 +400,7 @@ documented by the app: PPT42 uses ⇧⌘P for Play from Current Slide and remove
 | `MarkGeneratorController`, `GeneratedMark`, `InkTexture` | generator window; library items keep a JSON recipe (and imported originals in `Stamps/Sources`) so each insertion renders a new impression |
 | `InkColorPopUp` | ink colour presets with swatches plus Other Colour… |
 | `CertificateStore`, `SigningIdentity` | certificates from the Keychain, .p12 import, self-signed creation |
+| `KeyVault`, `StoredKey`, `CertificateSubject` | signing keys for Get a Certificate…: Secure Enclave P-256 or Keychain keys, PKCS#10 requests, pairing issued certificates with their keys, SHA-256 signing |
 | `Theme42` | sizes, app accent colours, `NSAlert.form` |
 | `DebugSnapshot` | `K42_SNAPSHOT=out.png` renders a window, requests app activation, then exits unless kept open; `K42_APPEARANCE=dark\|light` forces appearance; `K42_AUDIT_RECENT=1` checks recent-menu behavior |
 
