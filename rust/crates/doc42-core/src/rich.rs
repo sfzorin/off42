@@ -12,6 +12,8 @@ mod rtf_lists;
 mod rtf_picture;
 mod projection_pictures;
 mod rtf_read;
+mod revisions;
+pub use revisions::{now_iso8601, Removal};
 mod search;
 mod word_edit;
 pub use word_edit::PreparedWordEdit;
@@ -275,6 +277,8 @@ pub struct Revision {
     pub end: Position,
     pub author: String,
     pub insertion: bool,
+    #[serde(default)]
+    pub date: Option<String>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -344,6 +348,9 @@ pub struct State {
     pub footnotes: Vec<Footnote>,
     pub revisions: Vec<Revision>,
     pub fields: Vec<Field>,
+    /// Typed edits become tracked insertions and deletions (Word w:trackRevisions).
+    #[serde(default)]
+    pub track_changes: bool,
     #[serde(default)]
     pub bookmarks: Vec<Bookmark>,
     #[serde(default)]
@@ -386,6 +393,7 @@ impl Default for State {
             footnotes: vec![],
             revisions: vec![],
             fields: vec![],
+            track_changes: false,
             bookmarks: vec![],
             tables_of_contents: vec![],
             next_id: 2,
@@ -570,6 +578,16 @@ impl RichDocument {
     }
     pub fn encode(&self, format: Format) -> Result<Vec<u8>, Error> {
         validate(self.state())?;
+        if (!self.state().revisions.is_empty() || self.state().track_changes)
+            && !matches!(format, Format::Project | Format::Docx)
+        {
+            // Formats without revision markup receive the text with all changes accepted.
+            let accepted = revisions::accepted(self.state())?;
+            return Self {
+                history: SnapshotHistory::new(accepted, 1),
+            }
+            .encode(format);
+        }
         if !self.state().bookmarks.is_empty()
             && !matches!(format, Format::Project | Format::Odt | Format::Docx)
         {
@@ -1428,6 +1446,8 @@ impl RichDocument {
                 }
             }
         }
+        view.track_changes = false;
+        revisions::markup(&mut view)?;
         rtf::rtf_export(&view)
     }
     /// Apply an entire RichEdit projection as one transaction, retaining non-view metadata.
@@ -1436,10 +1456,23 @@ impl RichDocument {
         bytes: &[u8],
         selection: (usize, usize),
     ) -> Result<bool, Error> {
+        self.apply_rich_edit_projection_tracked(bytes, selection, "DOC42", Removal::Backward)
+            .map(|(changed, _)| changed)
+    }
+    /// Apply a projection; with Track Changes on, the edit is recorded for `author`.
+    pub fn apply_rich_edit_projection_tracked(
+        &mut self,
+        bytes: &[u8],
+        selection: (usize, usize),
+        author: &str,
+        removal: Removal,
+    ) -> Result<(bool, bool), Error> {
         let mut parsed = rtf_read::decode_projection(bytes)?;
         let old = self.state();
+        if !old.revisions.is_empty() {
+            revisions::clean_markup(&mut parsed);
+        }
         if old.sections.len() != 1
-            || !old.revisions.is_empty()
             || old
                 .fields
                 .iter()
@@ -1669,8 +1702,37 @@ impl RichDocument {
                 }
             }
         }
+        for revision in &old.revisions {
+            anchor_source.comments.push(Annotation {
+                id: 0,
+                start: revision.start.clone(),
+                end: revision.end.clone(),
+                author: String::new(),
+                text: String::new(),
+                resolved: false,
+                date: None,
+                initials: None,
+            });
+        }
         annotations::remap_projection(&anchor_source, &mut parsed)?;
-        let mapped = parsed.comments.split_off(old.comments.len());
+        let mut mapped = parsed.comments.split_off(old.comments.len());
+        let revision_anchors = mapped.split_off(mapped.len() - old.revisions.len());
+        parsed.revisions = old
+            .revisions
+            .iter()
+            .zip(revision_anchors)
+            .map(|(revision, anchor)| Revision {
+                start: anchor.start,
+                end: anchor.end,
+                ..revision.clone()
+            })
+            .filter(|revision| revision.start != revision.end)
+            .collect();
+        parsed.track_changes = old.track_changes;
+        revisions::restore_deleted(old, &mut parsed)?;
+        if !old.revisions.is_empty() {
+            revisions::coalesce_all(&mut parsed);
+        }
         let mut mapped = mapped.into_iter();
         parsed.bookmarks = old.bookmarks.clone();
         for bookmark in &mut parsed.bookmarks {
@@ -1823,12 +1885,24 @@ impl RichDocument {
             anchor: temp.position_from_utf16(selection.0).ok(),
             focus: temp.position_from_utf16(selection.1).ok(),
         };
+        let mut reload = false;
+        if old.track_changes {
+            if let Some(recorded) =
+                revisions::record(old, &parsed, author, Some(now_iso8601()), removal)?
+            {
+                validate(&recorded)?;
+                parsed = recorded;
+                // Deleted text stays visible, so the editor must show the recorded state.
+                reload = true;
+            }
+        }
         fn normalized(mut s: State) -> State {
             s.selection = Selection::default();
             fn paragraph(p: &mut Paragraph) {
                 p.runs.retain(|r| {
                     !r.text.is_empty() || r.style != TextStyle::default() || r.link.is_some()
                 });
+                revisions::coalesce(p);
             }
             for block in &mut s.blocks {
                 match block {
@@ -1848,12 +1922,13 @@ impl RichDocument {
             s
         }
         if normalized(parsed.clone()) == normalized(old.clone()) {
-            return Ok(false);
+            return Ok((false, reload));
         }
         self.transact(|s| {
             *s = parsed;
             Ok(())
         })
+        .map(|changed| (changed, reload))
     }
 }
 

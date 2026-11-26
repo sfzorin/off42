@@ -463,6 +463,11 @@ impl Reader {
                     u16::try_from(arg.ok_or_else(|| fail("font size"))?)
                         .map_err(|_| fail("font size"))?;
             }
+            "ulnone" => {
+                // RichEdit closes underlined runs with \ulnone rather than \ul0.
+                self.flush()?;
+                self.groups.last_mut().unwrap().style.underline = false;
+            }
             "b" | "i" | "ul" | "strike" => {
                 self.flush()?;
                 let on = arg.unwrap_or(1) != 0;
@@ -1084,6 +1089,15 @@ mod tests {
         assert!(decode(symbol).is_ok());
         let symbol_byte = br"{\rtf1\ansi{\fonttbl{\f0\fnil\fcharset2 Symbol;}}\f0 \'b7\par}";
         assert!(matches!(decode(symbol_byte), Err(Error::Unsupported(_))));
+    }
+    #[test]
+    fn richedit_ulnone_ends_underline() {
+        let state = decode(br"{\rtf1\ansi Plain \ul under\ulnone  plain\par}").unwrap();
+        let Block::Paragraph(p) = &state.blocks[0] else {
+            panic!()
+        };
+        let parts: Vec<(&str, bool)> = p.runs.iter().map(|r| (r.text.as_str(), r.style.underline)).collect();
+        assert_eq!(parts, [("Plain ", false), ("under", true), (" plain", false)]);
     }
     #[test]
     fn richedit_trailing_nul_is_accepted_but_other_trailing_data_is_not() {

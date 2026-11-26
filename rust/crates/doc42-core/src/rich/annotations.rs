@@ -52,7 +52,7 @@ fn same_topology(old: &State, new: &State) -> bool {
                 _ => false,
             })
 }
-fn changed_range(old: &str, new: &str) -> (usize, usize, usize) {
+pub(super) fn changed_range(old: &str, new: &str) -> (usize, usize, usize) {
     let prefix: usize = old
         .chars()
         .zip(new.chars())
@@ -70,7 +70,7 @@ fn changed_range(old: &str, new: &str) -> (usize, usize, usize) {
         .sum();
     (prefix, old.len() - suffix, new.len() - prefix - suffix)
 }
-fn remap_offset(offset: usize, start: usize, end: usize, inserted: usize, right: bool) -> usize {
+pub(super) fn remap_offset(offset: usize, start: usize, end: usize, inserted: usize, right: bool) -> usize {
     if offset < start {
         offset
     } else if offset > end {
@@ -99,12 +99,12 @@ fn remap_position(
     position.offset = remap_offset(position.offset, start, end, inserted, right);
     Ok(())
 }
-struct LinearBody {
-    text: String,
-    spans: Vec<(u64, usize, usize)>,
+pub(super) struct LinearBody {
+    pub(super) text: String,
+    pub(super) spans: Vec<(u64, usize, usize)>,
     objects: Vec<(u8, u64)>,
 }
-fn linear_body(state: &State) -> Option<LinearBody> {
+pub(super) fn linear_body(state: &State) -> Option<LinearBody> {
     let mut text = String::new();
     let mut spans = Vec::new();
     let mut objects = Vec::new();
@@ -137,7 +137,7 @@ fn linear_body(state: &State) -> Option<LinearBody> {
         objects,
     })
 }
-fn global_position(body: &LinearBody, position: &Position) -> Option<usize> {
+pub(super) fn global_position(body: &LinearBody, position: &Position) -> Option<usize> {
     body.spans
         .iter()
         .find(|(id, _, _)| *id == position.paragraph)
@@ -145,7 +145,7 @@ fn global_position(body: &LinearBody, position: &Position) -> Option<usize> {
             (position.offset <= end - start).then_some(start + position.offset)
         })
 }
-fn local_position(body: &LinearBody, offset: usize) -> Result<Position, Error> {
+pub(super) fn local_position(body: &LinearBody, offset: usize) -> Result<Position, Error> {
     for &(id, start, end) in &body.spans {
         if offset >= start && offset <= end {
             return Ok(Position {

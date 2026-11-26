@@ -11,6 +11,150 @@ mod toc;
 use std::io::{Cursor, Read, Write};
 use zip::{write::SimpleFileOptions, ZipArchive, ZipWriter};
 const W: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+/// Tracked-change marks found while reading paragraphs: (paragraph, byte range or
+/// None for the paragraph mark, insertion, author, date).
+type RevisionMark = (u64, Option<(usize, usize)>, bool, String, Option<String>);
+/// Per-paragraph revision spans used while writing: (range, insertion, author, date).
+#[derive(Clone, Default)]
+struct ParagraphRevisions {
+    spans: Vec<(std::ops::Range<usize>, bool, String, Option<String>)>,
+    mark: Option<(bool, String, Option<String>)>,
+}
+thread_local! {
+    static READ_REVISIONS: std::cell::RefCell<Vec<RevisionMark>> = const { std::cell::RefCell::new(Vec::new()) };
+    static WRITE_REVISIONS: std::cell::RefCell<(std::collections::HashMap<u64, ParagraphRevisions>, u64)> =
+        std::cell::RefCell::new(Default::default());
+}
+fn revision_attributes(author: &str, date: &Option<String>) -> String {
+    let id = WRITE_REVISIONS.with(|w| {
+        let mut w = w.borrow_mut();
+        w.1 += 1;
+        w.1
+    });
+    format!(
+        " w:id=\"{id}\" w:author=\"{}\"{}",
+        esc(if author.is_empty() { "DOC42" } else { author }),
+        date.as_ref()
+            .map(|d| format!(" w:date=\"{}\"", esc(d)))
+            .unwrap_or_default()
+    )
+}
+/// Write one run piece, wrapping the parts inside tracked changes in w:ins / w:del.
+fn write_tracked(
+    body: &mut String,
+    run: &Run,
+    text: &str,
+    offset: usize,
+    revisions: Option<&ParagraphRevisions>,
+) -> Result<(), Error> {
+    let Some(revisions) = revisions.filter(|r| !r.spans.is_empty()) else {
+        return write_run(body, run, text);
+    };
+    let end = offset + text.len();
+    let mut cuts = vec![offset, end];
+    for (range, ..) in &revisions.spans {
+        for cut in [range.start, range.end] {
+            if cut > offset && cut < end && text.is_char_boundary(cut - offset) {
+                cuts.push(cut);
+            }
+        }
+    }
+    cuts.sort_unstable();
+    cuts.dedup();
+    for pair in cuts.windows(2) {
+        let (a, b) = (pair[0], pair[1]);
+        let piece = &text[a - offset..b - offset];
+        let span = revisions
+            .spans
+            .iter()
+            .find(|(range, ..)| range.start <= a && b <= range.end);
+        let Some((_, insertion, author, date)) = span else {
+            write_run(body, run, piece)?;
+            continue;
+        };
+        let mut xml = String::new();
+        write_run(&mut xml, run, piece)?;
+        if xml.is_empty() {
+            continue;
+        }
+        if !insertion {
+            xml = xml
+                .replace("<w:t xml:space=\"preserve\">", "<w:delText xml:space=\"preserve\">")
+                .replace("</w:t>", "</w:delText>");
+        }
+        let tag = if *insertion { "ins" } else { "del" };
+        let open = xml.find("<w:r>").ok_or_else(|| bad("DOCX tracked run"))?;
+        let close = xml.rfind("</w:r>").ok_or_else(|| bad("DOCX tracked run"))? + "</w:r>".len();
+        xml.insert_str(close, &format!("</w:{tag}>"));
+        xml.insert_str(open, &format!("<w:{tag}{}>", revision_attributes(author, date)));
+        body.push_str(&xml);
+    }
+    Ok(())
+}
+/// Keep word/settings.xml w:trackRevisions in step with the document.
+fn track_setting(parts: &mut std::collections::BTreeMap<String, Vec<u8>>, on: bool) -> Result<(), Error> {
+    const PATH: &str = "word/settings.xml";
+    let Some(bytes) = parts.get(PATH) else {
+        if !on {
+            return Ok(());
+        }
+        parts.insert(PATH.into(), format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><w:settings xmlns:w=\"{W}\"><w:trackRevisions/></w:settings>").into_bytes());
+        let rels = "word/_rels/document.xml.rels";
+        let mut xml = String::from_utf8(parts.get(rels).cloned().unwrap_or_else(|| b"<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"></Relationships>".to_vec())).map_err(bad)?;
+        let close = xml.rfind("</").ok_or_else(|| bad("DOCX relationships"))?;
+        xml.insert_str(close, "<Relationship Id=\"rIdDoc42Settings\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings\" Target=\"settings.xml\"/>");
+        parts.insert(rels.into(), xml.into_bytes());
+        if let Some(types) = parts.get("[Content_Types].xml") {
+            let mut types = String::from_utf8(types.clone()).map_err(bad)?;
+            if !types.contains("/word/settings.xml") {
+                let close = types.rfind("</").ok_or_else(|| bad("DOCX content types"))?;
+                types.insert_str(close, "<Override PartName=\"/word/settings.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml\"/>");
+                parts.insert("[Content_Types].xml".into(), types.into_bytes());
+            }
+        }
+        return Ok(());
+    };
+    let xml = String::from_utf8(bytes.clone()).map_err(bad)?;
+    let doc = roxmltree::Document::parse(&xml).map_err(bad)?;
+    let root = doc.root_element();
+    let existing = root.children().find(|n| n.has_tag_name((W, "trackRevisions")));
+    let edited = match (existing, on) {
+        (Some(node), false) => {
+            let range = node.range();
+            format!("{}{}", &xml[..range.start], &xml[range.end..])
+        }
+        (None, true) => {
+            const BEFORE: &[&str] = &[
+                "writeProtection", "view", "zoom", "removePersonalInformation", "removeDateAndTime",
+                "doNotDisplayPageBoundaries", "displayBackgroundShape", "printPostScriptOverText",
+                "printFractionalCharacterWidth", "printFormsData", "embedTrueTypeFonts",
+                "embedSystemFonts", "saveSubsetFonts", "saveFormsData", "mirrorMargins",
+                "alignBordersAndEdges", "bordersDoNotSurroundHeader", "bordersDoNotSurroundFooter",
+                "gutterAtTop", "hideSpellingErrors", "hideGrammaticalErrors", "activeWritingStyle",
+                "proofState", "formsDesign", "attachedTemplate", "linkStyles",
+                "stylePaneFormatFilter", "stylePaneSortMethod", "documentType", "mailMerge",
+                "revisionView",
+            ];
+            let at = root
+                .children()
+                .filter(|n| n.is_element() && BEFORE.iter().any(|name| n.has_tag_name((W, *name))))
+                .last()
+                .map(|n| n.range().end)
+                .or_else(|| {
+                    let start = root.range().start;
+                    xml[start..].find('>').map(|i| start + i + 1)
+                })
+                .ok_or_else(|| bad("DOCX settings"))?;
+            if xml[..at].ends_with("/>") && at == root.range().end {
+                return Err(bad("DOCX settings"));
+            }
+            format!("{}<w:trackRevisions/>{}", &xml[..at], &xml[at..])
+        }
+        _ => return Ok(()),
+    };
+    parts.insert(PATH.into(), edited.into_bytes());
+    Ok(())
+}
 fn bad(e: impl std::fmt::Display) -> Error {
     Error::Invalid(e.to_string())
 }
@@ -35,7 +179,6 @@ fn package(files: &std::collections::BTreeMap<String, Vec<u8>>) -> Result<Vec<u8
 }
 pub(super) fn encode(s: &State) -> Result<Vec<u8>, Error> {
     if s.sections.len() != 1
-        || !s.revisions.is_empty()
         || s.blocks
             .iter()
             .any(|b| !matches!(b, Block::Paragraph(_) | Block::Table(_) | Block::Image(_)))
@@ -115,6 +258,31 @@ pub(super) fn encode(s: &State) -> Result<Vec<u8>, Error> {
     {
         return Err(Error::Unsupported("DOCX links in headers or notes".into()));
     }
+    let mut tracked: std::collections::HashMap<u64, ParagraphRevisions> = Default::default();
+    for revision in &s.revisions {
+        let parts = super::revisions::segments(s, &revision.start, &revision.end)?;
+        let last = parts.len() - 1;
+        for (index, (id, range)) in parts.into_iter().enumerate() {
+            if !body_ids.contains(&id) {
+                return Err(Error::Unsupported("DOCX tracked changes outside body text".into()));
+            }
+            let entry = tracked.entry(id).or_default();
+            if !range.is_empty() {
+                entry.spans.push((range, revision.insertion, revision.author.clone(), revision.date.clone()));
+            }
+            if index < last {
+                entry.mark = Some((revision.insertion, revision.author.clone(), revision.date.clone()));
+            }
+        }
+    }
+    WRITE_REVISIONS.with(|w| *w.borrow_mut() = (tracked, 0));
+    struct ClearRevisions;
+    impl Drop for ClearRevisions {
+        fn drop(&mut self) {
+            WRITE_REVISIONS.with(|w| *w.borrow_mut() = Default::default());
+        }
+    }
+    let _clear = ClearRevisions;
     let mut body = String::new();
     for b in &s.blocks {
         match b {
@@ -333,6 +501,7 @@ pub(super) fn encode(s: &State) -> Result<Vec<u8>, Error> {
     links::write_rels(&mut parts, s)?;
     comments::write(&mut parts, &s.comments)?;
     notes::write(&mut parts, &s.footnotes)?;
+    track_setting(&mut parts, s.track_changes)?;
     parts.insert("word/document.xml".into(), doc.into_bytes());
     package(&parts)
 }
@@ -402,7 +571,16 @@ fn write_paragraph(
     } else {
         format!("w:firstLine=\"{}\"", p.style.first_line_twips)
     };
-    body.push_str(&format!("<w:p><w:pPr>{style_ref}{list_ref}{extras}{tabs}<w:jc w:val=\"{a}\"/><w:ind w:left=\"{}\" w:right=\"{}\" {first}/><w:spacing w:before=\"{}\" w:after=\"{}\" w:line=\"{}\"/></w:pPr>",p.style.left_twips,p.style.right_twips,p.style.before_twips,p.style.after_twips,p.style.line_twips));
+    let revisions = WRITE_REVISIONS.with(|w| w.borrow().0.get(&p.id).cloned());
+    let mark = revisions
+        .as_ref()
+        .and_then(|r| r.mark.as_ref())
+        .map(|(insertion, author, date)| {
+            let tag = if *insertion { "ins" } else { "del" };
+            format!("<w:rPr><w:{tag}{}/></w:rPr>", revision_attributes(author, date))
+        })
+        .unwrap_or_default();
+    body.push_str(&format!("<w:p><w:pPr>{style_ref}{list_ref}{extras}{tabs}<w:jc w:val=\"{a}\"/><w:ind w:left=\"{}\" w:right=\"{}\" {first}/><w:spacing w:before=\"{}\" w:after=\"{}\" w:line=\"{}\"/>{mark}</w:pPr>",p.style.left_twips,p.style.right_twips,p.style.before_twips,p.style.after_twips,p.style.line_twips));
     enum Marker<'a> {
         Field(&'a Field),
         Start(u64),
@@ -473,17 +651,19 @@ fn write_paragraph(
                 .text
                 .get(cursor - base..at - base)
                 .ok_or_else(|| bad("DOCX anchor boundary"))?;
-            write_run(body, run, piece)?;
+            write_tracked(body, run, piece, cursor, revisions.as_ref())?;
             emit(body, &markers[index].2)?;
             cursor = at;
             index += 1;
         }
-        write_run(
+        write_tracked(
             body,
             run,
             run.text
                 .get(cursor - base..)
                 .ok_or_else(|| bad("DOCX anchor boundary"))?,
+            cursor,
+            revisions.as_ref(),
         )?;
         base = end;
     }
@@ -709,7 +889,8 @@ pub(super) fn decode(bytes: &[u8]) -> Result<State, Error> {
             "rFonts" => &["ascii", "hAnsi", "asciiTheme", "hAnsiTheme"],
             "pgSz" => &["w", "h"],
             "pgMar" => &["left", "right", "top", "bottom", "header", "footer"],
-            "t" => &["space"],
+            "t" | "delText" => &["space"],
+            "ins" | "del" => &["id", "author", "date"],
             _ => {
                 return Err(Error::Unsupported(format!(
                     "DOCX element {}",
@@ -721,7 +902,7 @@ pub(super) fn decode(bytes: &[u8]) -> Result<State, Error> {
             let word_revision = a.namespace() == Some(W)
                 && matches!(
                     a.name(),
-                    "rsidR" | "rsidRDefault" | "rsidP" | "rsidRPr" | "rsidSect"
+                    "rsidR" | "rsidRDefault" | "rsidP" | "rsidRPr" | "rsidSect" | "rsidDel"
                 );
             let compat = a.namespace()
                 == Some("http://schemas.openxmlformats.org/markup-compatibility/2006")
@@ -738,7 +919,7 @@ pub(super) fn decode(bytes: &[u8]) -> Result<State, Error> {
                     && a.name() == "id"
                 {
                     Some("http://schemas.openxmlformats.org/officeDocument/2006/relationships")
-                } else if matches!(n.tag_name().name(), "t" | "instrText") && a.name() == "space" {
+                } else if matches!(n.tag_name().name(), "t" | "delText" | "instrText") && a.name() == "space" {
                     Some("http://www.w3.org/XML/1998/namespace")
                 } else {
                     Some(W)
@@ -768,6 +949,7 @@ pub(super) fn decode(bytes: &[u8]) -> Result<State, Error> {
         .find(|n| n.is_element())
         .ok_or_else(|| bad("missing body"))?;
     allowed(body, &["p", "tbl", "sectPr"])?;
+    READ_REVISIONS.with(|r| r.borrow_mut().clear());
     let mut s = State {
         docx_parts: parts,
         ..State::default()
@@ -1202,7 +1384,76 @@ pub(super) fn decode(bytes: &[u8]) -> Result<State, Error> {
             });
         }
     }
+    read_revisions(&mut s)?;
     Ok(s)
+}
+/// Turn collected w:ins / w:del marks into merged revision ranges.
+fn read_revisions(s: &mut State) -> Result<(), Error> {
+    let marks = READ_REVISIONS.with(|r| std::mem::take(&mut *r.borrow_mut()));
+    s.track_changes = s
+        .docx_parts
+        .get("word/settings.xml")
+        .and_then(|bytes| std::str::from_utf8(bytes).ok())
+        .and_then(|xml| roxmltree::Document::parse(xml).ok())
+        .is_some_and(|doc| {
+            doc.root_element()
+                .children()
+                .find(|n| n.has_tag_name((W, "trackRevisions")))
+                .is_some_and(|n| !matches!(val(n, "val"), Some("0" | "false" | "off")))
+        });
+    if marks.is_empty() {
+        return Ok(());
+    }
+    // Document order of body paragraphs: (paragraph, top-level block index, length).
+    let mut order = Vec::new();
+    for (index, block) in s.blocks.iter().enumerate() {
+        match block {
+            Block::Paragraph(p) => order.push((p.id, Some(index), p.runs.iter().map(|r| r.text.len()).sum::<usize>())),
+            Block::Table(t) => {
+                for p in t.rows.iter().flatten().flat_map(|c| &c.paragraphs) {
+                    order.push((p.id, None, p.runs.iter().map(|r| r.text.len()).sum()));
+                }
+            }
+            _ => {}
+        }
+    }
+    let rank = |id: u64| order.iter().position(|(p, ..)| *p == id);
+    let mut ranges: Vec<(usize, Revision)> = Vec::new();
+    for (paragraph, range, insertion, author, date) in marks {
+        let index = rank(paragraph)
+            .ok_or_else(|| Error::Unsupported("DOCX tracked changes in headers or notes".into()))?;
+        let (start, end) = match range {
+            Some((a, b)) => (Position { paragraph, offset: a }, Position { paragraph, offset: b }),
+            None => {
+                // A paragraph-mark change covers the break before the next body paragraph.
+                let (_, Some(block), length) = order[index] else { continue };
+                let Some(Block::Paragraph(next)) = s.blocks.get(block + 1) else { continue };
+                (Position { paragraph, offset: length }, Position { paragraph: next.id, offset: 0 })
+            }
+        };
+        ranges.push((index, Revision { id: 0, start, end, author, insertion, date }));
+    }
+    ranges.sort_by_key(|(index, r)| (*index, r.start.offset));
+    let mut merged: Vec<Revision> = Vec::new();
+    for (_, revision) in ranges {
+        if let Some(last) = merged.last_mut() {
+            if last.insertion == revision.insertion
+                && last.author == revision.author
+                && last.date == revision.date
+                && last.end == revision.start
+            {
+                last.end = revision.end;
+                continue;
+            }
+        }
+        merged.push(revision);
+    }
+    for mut revision in merged {
+        revision.id = s.next_id;
+        s.next_id = s.next_id.checked_add(1).ok_or(Error::Limit)?;
+        s.revisions.push(revision);
+    }
+    Ok(())
 }
 
 fn page_field(instruction: &str) -> Result<FieldKind, Error> {
@@ -1241,9 +1492,26 @@ fn read_paragraph(
             "fldSimple",
             "commentRangeStart",
             "commentRangeEnd",
+            "ins",
+            "del",
         ],
     )?;
     let props = p.children().find(|n| n.has_tag_name((W, "pPr")));
+    let revision_of = |n: roxmltree::Node<'_, '_>| {
+        (
+            n.has_tag_name((W, "ins")),
+            val(n, "author").unwrap_or("").to_owned(),
+            val(n, "date").map(str::to_owned),
+        )
+    };
+    if let Some(mark) = props.and_then(|n| n.children().find(|c| c.has_tag_name((W, "rPr")))) {
+        allowed(mark, &["ins", "del"])?;
+        for change in mark.children().filter(|c| c.is_element()) {
+            allowed(change, &[])?;
+            let (insertion, author, date) = revision_of(change);
+            READ_REVISIONS.with(|r| r.borrow_mut().push((id, None, insertion, author, date)));
+        }
+    }
     if let Some(n) = props {
         allowed(
             n,
@@ -1258,6 +1526,7 @@ fn read_paragraph(
                 "pageBreakBefore",
                 "outlineLvl",
                 "tabs",
+                "rPr",
             ],
         )?;
     }
@@ -1285,10 +1554,23 @@ fn read_paragraph(
     // Word commonly stores fields as begin/instruction/separate/result/end runs.
     // Keep the field itself, not its cached result, as the authoritative content.
     let mut field: Option<(String, bool)> = None;
-    for r in p
+    let mut items = Vec::new();
+    for n in p
         .children()
         .filter(|n| n.is_element() && !n.has_tag_name((W, "pPr")))
     {
+        if n.has_tag_name((W, "ins")) || n.has_tag_name((W, "del")) {
+            allowed(n, &["r"])?;
+            let change = revision_of(n);
+            for r in n.children().filter(|c| c.is_element()) {
+                items.push((r, Some(change.clone())));
+            }
+        } else {
+            items.push((n, None));
+        }
+    }
+    for (r, change) in items {
+        let change_start: usize = runs.iter().map(|r: &Run| r.text.len()).sum();
         if r.has_tag_name((W, "commentRangeStart")) || r.has_tag_name((W, "commentRangeEnd")) {
             allowed(r, &[])?;
             let external = val(r, "id")
@@ -1332,6 +1614,7 @@ fn read_paragraph(
             &[
                 "rPr",
                 "t",
+                "delText",
                 "tab",
                 "fldChar",
                 "instrText",
@@ -1439,7 +1722,7 @@ fn read_paragraph(
                         });
                     }
                 }
-                "t" => {
+                "t" | "delText" => {
                     if field.as_ref().is_some_and(|(_, separated)| !separated) {
                         return Err(bad("DOCX field result before separator"));
                     }
@@ -1452,6 +1735,15 @@ fn read_paragraph(
                     }
                 }
                 _ => unreachable!(),
+            }
+        }
+        if let Some((insertion, author, date)) = change {
+            let end: usize = runs.iter().map(|r: &Run| r.text.len()).sum();
+            if end > change_start {
+                READ_REVISIONS.with(|r| {
+                    r.borrow_mut()
+                        .push((id, Some((change_start, end)), insertion, author, date))
+                });
             }
         }
     }
@@ -1658,6 +1950,46 @@ mod tests {
         };
         assert_eq!(p.runs[0].text, "Hello external");
         assert!(state.docx_parts.contains_key("docProps/core.xml"));
+    }
+    #[test]
+    fn word_tracked_changes_and_paragraph_marks_round_trip() {
+        let xml = format!(r#"<w:document xmlns:w="{W}"><w:body><w:p><w:pPr><w:rPr><w:del w:id="3" w:author="Bob"/></w:rPr></w:pPr><w:r><w:t xml:space="preserve">Keep </w:t></w:r><w:ins w:id="1" w:author="Ada" w:date="2026-01-02T03:04:05Z"><w:r><w:t>new </w:t></w:r></w:ins><w:del w:id="2" w:author="Bob"><w:r><w:delText>old</w:delText></w:r></w:del></w:p><w:p><w:del w:id="4" w:author="Bob"><w:r><w:delText>gone</w:delText></w:r></w:del></w:p><w:p><w:r><w:t>Tail</w:t></w:r></w:p><w:sectPr/></w:body></w:document>"#);
+        let mut parts = std::collections::BTreeMap::new();
+        parts.insert("[Content_Types].xml".into(), br#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>"#.to_vec());
+        parts.insert("_rels/.rels".into(), br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#.to_vec());
+        parts.insert("word/document.xml".into(), xml.into_bytes());
+        parts.insert("word/settings.xml".into(), format!(r#"<w:settings xmlns:w="{W}"><w:zoom w:percent="100"/><w:trackRevisions/><w:defaultTabStop w:val="720"/></w:settings>"#).into_bytes());
+        let state = decode(&package(&parts).unwrap()).unwrap();
+        assert!(state.track_changes);
+        let summary = |s: &State| {
+            s.revisions
+                .iter()
+                .map(|r| (r.insertion, r.author.clone(), r.start.offset, r.end.offset, r.start.paragraph == r.end.paragraph))
+                .collect::<Vec<_>>()
+        };
+        // "old", the paragraph mark and "gone" are one deletion by Bob.
+        assert_eq!(
+            summary(&state),
+            [(true, "Ada".to_string(), 5, 9, true), (false, "Bob".to_string(), 9, 4, false)]
+        );
+        assert_eq!(state.revisions[0].date.as_deref(), Some("2026-01-02T03:04:05Z"));
+        let bytes = encode(&state).unwrap();
+        let written = String::from_utf8(
+            ZipArchive::new(Cursor::new(bytes.clone())).unwrap().by_name("word/document.xml").unwrap().bytes().map(|b| b.unwrap()).collect(),
+        )
+        .unwrap();
+        assert!(written.contains("<w:delText xml:space=\"preserve\">old</w:delText>"));
+        assert!(written.contains("<w:rPr><w:del "));
+        let reopened = decode(&bytes).unwrap();
+        assert!(reopened.track_changes);
+        assert_eq!(summary(&reopened), summary(&state));
+        let mut accepted = RichDocument::decode(&bytes, Format::Docx).unwrap();
+        accepted.resolve_all_revisions(true).unwrap();
+        accepted.set_track_changes(false).unwrap();
+        let plain = decode(&accepted.encode(Format::Docx).unwrap()).unwrap();
+        assert!(plain.revisions.is_empty() && !plain.track_changes);
+        let text: Vec<String> = plain.blocks.iter().filter_map(|b| match b { Block::Paragraph(p) => Some(p.runs.iter().map(|r| r.text.as_str()).collect()), _ => None }).collect();
+        assert_eq!(text, ["Keep new ", "Tail"]);
     }
     #[test]
     fn inline_png_round_trip() {
