@@ -1,0 +1,16 @@
+{
+  "_note": "provider.order lists OpenRouter provider slugs; allow_fallbacks:false keeps requests on those providers. Free endpoints are probed with data_collection deny, then evaluated with allow on synthetic fixtures only.",
+  "models": [
+    { "id": "deepseek/deepseek-v4.1-flash", "provider": { "order": ["alibaba", "google-vertex", "together"], "allow_fallbacks": false } },
+    { "id": "deepseek/deepseek-v4-flash-0731", "provider": { "order": ["alibaba", "nebius", "deepinfra"], "allow_fallbacks": false } },
+    { "id": "qwen/qwen3.7-flash", "provider": { "order": ["alibaba"], "allow_fallbacks": false }, "cacheControl": true },
+    { "id": "qwen/qwen3.8-flash", "provider": { "order": ["alibaba"], "allow_fallbacks": false }, "cacheControl": true },
+    { "id": "minimax/minimax-m3.1-flash", "provider": { "order": ["fireworks", "together", "sambanova"], "allow_fallbacks": false } },
+    { "id": "z-ai/glm-5.3-flash", "provider": { "order": ["z-ai", "fireworks", "together"], "allow_fallbacks": false } },
+    { "id": "qwen/qwen3.7-plus", "provider": { "order": ["alibaba"], "allow_fallbacks": false }, "cacheControl": true },
+    { "id": "google/gemma-4-31b-it:free", "free": true, "provider": { "order": ["google-ai-studio"], "allow_fallbacks": false } },
+    { "id": "nvidia/nemotron-3-ultra-550b-a55b:free", "free": true, "provider": { "order": ["nvidia"], "allow_fallbacks": false } },
+    { "id": "nvidia/nemotron-3.5-super-vl:free", "free": true, "provider": { "order": ["nvidia"], "allow_fallbacks": false } },
+    { "id": "openrouter/free", "free": true, "provider": {} }
+  ]
+}

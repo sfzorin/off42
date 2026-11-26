@@ -1,0 +1,147 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "get_outline",
+      "description": "List the document's paragraphs in order: id, style, length in characters and the first 100 characters of text. Call again after inserting or deleting paragraphs.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "read_range",
+      "description": "Return the full text, style and character formatting (bold/italic/underline spans) of the given paragraphs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "description": "Paragraph ids from get_outline or find, at most 50.",
+            "items": { "type": "integer" },
+            "minItems": 1,
+            "maxItems": 50
+          }
+        },
+        "required": ["ids"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "find",
+      "description": "Find literal text in the document. Returns up to 50 matches with paragraph id, start offset and surrounding context.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string", "description": "Text to search for.", "minLength": 1 },
+          "match_case": { "type": "boolean", "description": "Default false." }
+        },
+        "required": ["text"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "replace_text",
+      "description": "Replace text. With id and find: replace every exact, case-sensitive occurrence of find in that paragraph. With find only: replace it in the whole document. With id only: replace the paragraph's entire text (use for rewriting or translating a paragraph). Formatting of the replaced text is kept where possible.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "description": "Paragraph id. Omit to replace in the whole document." },
+          "find": { "type": "string", "description": "Exact text to replace. Omit to replace the whole paragraph.", "minLength": 1 },
+          "replace": { "type": "string", "description": "New text. May be empty to remove the found text." }
+        },
+        "required": ["replace"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "insert_paragraphs",
+      "description": "Insert new paragraphs after the paragraph with id after_id (0 inserts at the beginning of the document). Returns the new ids.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "after_id": { "type": "integer", "description": "Existing paragraph id, or 0 for the start." },
+          "paragraphs": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": { "type": "string", "description": "Plain text without line breaks." },
+                "style": { "type": "string", "enum": ["normal", "heading1", "heading2", "heading3", "bullet_list", "numbered_list"] }
+              },
+              "required": ["text", "style"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["after_id", "paragraphs"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "set_paragraph_style",
+      "description": "Set the style of whole paragraphs. Consecutive paragraphs set to the same list style form one list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ids": { "type": "array", "items": { "type": "integer" }, "minItems": 1, "maxItems": 200 },
+          "style": { "type": "string", "enum": ["normal", "heading1", "heading2", "heading3", "bullet_list", "numbered_list"] }
+        },
+        "required": ["ids", "style"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "apply_text_style",
+      "description": "Turn bold, italic or underline on (true) or off (false). With find: applies to every occurrence of that text, in the given paragraphs or, if ids is omitted, in the whole document. Without find: applies to the whole text of the given paragraphs. Returns the number of spans changed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ids": { "type": "array", "items": { "type": "integer" }, "minItems": 1, "maxItems": 200 },
+          "find": { "type": "string", "minLength": 1 },
+          "match_case": { "type": "boolean", "description": "For find. Default false." },
+          "bold": { "type": "boolean" },
+          "italic": { "type": "boolean" },
+          "underline": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "delete_paragraphs",
+      "description": "Delete whole paragraphs.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ids": { "type": "array", "items": { "type": "integer" }, "minItems": 1, "maxItems": 200 }
+        },
+        "required": ["ids"],
+        "additionalProperties": false
+      }
+    }
+  }
+]

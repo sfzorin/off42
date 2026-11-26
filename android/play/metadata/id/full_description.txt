@@ -1,0 +1,12 @@
+OFF42 membuka dan mengonversi file kantor di ponsel atau tablet Anda. Semuanya terjadi di perangkat: aplikasi tidak memiliki akses jaringan dan hanya membuka atau menyimpan file melalui pemilih file sistem dan fitur berbagi.
+
+• Dokumen: lihat DOCX, ODT, RTF, Markdown, HTML, dan teks biasa beserta jumlah kata; simpan dalam format mana pun di antaranya.
+• Spreadsheet: XLSX, ODS, CSV, dan XLS (hanya baca) dalam kisi dengan tab sheet; simpan sebagai XLSX, ODS, atau CSV.
+• Presentasi: PPTX dan ODP sebagai kerangka teks setiap slide; konversi antara kedua format.
+• PDF: halaman ditampilkan di perangkat, beserta metadata, bookmark, lampiran, dan kolom formulir.
+• Label dan kode: kode QR, Data Matrix, Code 128, dan Aztec, lembar label A4 dari baris Anda sendiri, serta 97 tanda produk dan kesesuaian (hanya gambar: tanda tidak menyertifikasi apa pun).
+• Tanda tangan dan stempel: tanda tangan bergaya tulisan tangan dengan berbagai pena dan tinta, serta cap stempel dari templat bawaan, disimpan sebagai PNG transparan.
+
+Belum tersedia: pengeditan, ekspor dokumen ke PDF, gambar dan tata letak slide, anotasi PDF. Tanda tangan gambar adalah gambar, bukan tanda tangan digital berbasis sertifikat.
+
+OFF42 gratis dan sumber terbuka (lisensi MIT). Mesinnya sama dengan aplikasi OFF42 untuk Mac, Windows, dan Linux serta aplikasi web.

@@ -118,6 +118,49 @@ paints them.
 - Dark mode follows the system app mode (`theme.rs`): chrome, menu bar (drawn through `WM_UAHDRAWMENU*`), strip and
   panels turn dark; pages, slides and the DOC42 editor stay white.
 
+## Linux window (`crates/egui42`)
+
+The egui host follows the web app's approved layout so the web, Windows and Linux apps look alike. One host draws all
+six apps from the `App` contract; app models are unchanged.
+
+- **Home** (no file argument): top bar with the app-drawer button, app mark and name, a search field that filters the
+  recent list, language and About buttons and the `off42*` wordmark; a grey band with the Blank document tile (apps
+  with `supports_new`) and the Open tile; the Recent list (name, modified, size) from `suite42_app::recents`. The
+  drawer lists the six Linux apps and starts the sibling executable; the language popover saves
+  `localization::save` and applies after restart.
+- **Document window**, top to bottom: title row (app mark = Home, file name, format badge, save state and
+  `App::status`, primary **Save** pill in the app's light accent tint), an egui menu bar (File, Edit, View, one menu
+  per `CommandSpec::group`, Help), one rounded toolbar strip, then the canvas. File has New, Open…, Open recent ▸,
+  Save, Save as ▸ (save formats, then export file actions), Import ▸ and Close; View has the app's view actions, zoom,
+  Appearance ▸ (System/Light/Dark) and Language ▸.
+- **Toolbar strip** (`#edf1f7`, radius 20, 40 pt): Undo, Redo, the zoom combo, then the app's
+  `toolbar_command_visible` commands that have a suite icon (all of them when an app curates twelve or fewer), with
+  group separators; commands that do not fit go to a More menu. Checked commands use the toggled tint
+  (`#d3e2fd`/`#0b2f6b`).
+- **Canvases**: neutral background `#f8f9fb`; paper (pages, slides, pictures) is white with a soft shadow in both
+  themes. Text documents: a 816×1056 pt page with 96/84 pt margins; typed text reaches the model after a pause, on
+  focus loss and before any command. Spreadsheets: formula bar (name box, `fx`, editor), full-width grid with letter
+  and number headers, 2 pt selection outline, sheet tabs and Add sheet at the bottom and a Sum chip for numeric
+  ranges. Presentations: slide strip (scene thumbnails from `presenter_preview`, accent ring on the current slide),
+  the `canvas_scene` slide in the centre and the slide's title/body text below it. PDF: page strip and a placeholder
+  page until PDFium exists on Linux. Images and scans: the picture centred and fitted.
+- **Side panels** are flat with a 1 px separator; there are no bordered cards or frames.
+- **One snackbar** at the bottom left reports results and errors (6 s, errors 10 s, Dismiss).
+- **Icons** are 24×24 thin-stroke SVG paths (the web set) rasterised once with resvg and tinted; there are no text or
+  emoji glyph icons. App marks are drawn as shapes in the app accent.
+- **Accents**: documents `#2f6fde`, spreadsheets `#1e8e4f`, presentations `#e0891b`, PDF `#d23f31`, images
+  `#7b4fc4`, scans `#0b8a8a`. Selection is blue `#1a73e8` in every app.
+- **Type**: Inter Regular and SemiBold are bundled (`crates/egui42/fonts`, SIL OFL); installed Noto CJK, Arabic, Thai
+  and DejaVu fonts are added as fallbacks when present.
+- **Dark mode** follows the system or View ▸ Appearance; it swaps the chrome palette (`theme::DARK`) and keeps paper
+  white.
+- Print commands are left out. Commands needing Windows-only dialogs or clipboard reads are disabled in menus ("Not
+  available on Linux yet") and left out of the toolbar. A model that refuses a plain-text edit (rich DOC42 documents)
+  keeps its text; the page reverts and the snackbar shows the reason. Confirmation, information, list-choice and colour dialogs and input forms are
+  egui modals; file choice uses an in-window file browser.
+- `egui42::testing` (feature `kittest`) drives these states headlessly and asserts the named regions; CI renders them
+  to PNG (`linux-ui-shots` artifact).
+
 ## Window layout (macOS)
 
 Typical PDF42 layout; other apps add their own formula bar, notes, inspectors or scan settings:

@@ -1,0 +1,12 @@
+OFF42 otwiera i konwertuje pliki biurowe na telefonie lub tablecie. Wszystko dzieje się na urządzeniu: aplikacja nie ma dostępu do sieci i otwiera lub zapisuje pliki wyłącznie przez systemowy selektor plików i udostępnianie.
+
+• Dokumenty: DOCX, ODT, RTF, Markdown, HTML i zwykły tekst z liczbą słów; zapis w każdym z tych formatów.
+• Arkusze kalkulacyjne: XLSX, ODS, CSV i XLS (tylko do odczytu) w siatce z kartami arkuszy; zapis jako XLSX, ODS lub CSV.
+• Prezentacje: PPTX i ODP jako tekstowy konspekt wszystkich slajdów; konwersja między oboma formatami.
+• PDF: strony renderowane na urządzeniu wraz z metadanymi, zakładkami, załącznikami i polami formularzy.
+• Etykiety i kody: QR, Data Matrix, Code 128 i Aztec, arkusze etykiet A4 z własnych wierszy oraz 97 oznaczeń produktów i zgodności (tylko grafika: oznaczenie niczego nie poświadcza).
+• Podpisy i pieczątki: podpisy w stylu odręcznym różnymi długopisami i tuszami oraz odciski pieczątek z wbudowanych szablonów, zapisywane jako przezroczysty PNG.
+
+Jeszcze niedostępne: edycja, eksport dokumentów do PDF, obrazy i układy slajdów, adnotacje PDF. Narysowany podpis to obraz, a nie podpis cyfrowy oparty na certyfikacie.
+
+OFF42 jest bezpłatny i open source (licencja MIT). Korzysta z tego samego silnika co aplikacje OFF42 na Mac, Windows i Linux oraz aplikacja webowa.

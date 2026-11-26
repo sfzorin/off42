@@ -1,0 +1,29 @@
+[package]
+name = "off42-mobile"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "UniFFI bindings (Kotlin for Android, Swift for iPadOS/iOS) over the off42 cores"
+
+# Workspace builds compile only the Rust library (tested by `cargo test`). The app libraries are requested per
+# build, as for off42-wasm: `cargo rustc --lib --crate-type cdylib` for Android (loaded through JNA) and
+# `--crate-type staticlib` for iOS (linked into an XCFramework); see README.md.
+[lib]
+crate-type = ["lib"]
+name = "off42_mobile"
+
+[[bin]]
+# Generates the Kotlin and Swift sources from a built library (see README.md).
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["cli"]
+
+[features]
+cli = ["uniffi/cli"]
+
+[dependencies]
+# The capability set is the web API's: off42-wasm's plain Rust functions (its JavaScript exports are wasm32-only).
+off42-wasm = { path = "../off42-wasm" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uniffi = "=0.33.0"

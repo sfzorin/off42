@@ -1,0 +1,12 @@
+OFF42 membuka dan menukar fail pejabat pada telefon atau tablet anda. Semuanya berlaku pada peranti: apl tiada akses rangkaian dan hanya membuka atau menyimpan fail melalui pemilih fail sistem dan perkongsian.
+
+• Dokumen: lihat DOCX, ODT, RTF, Markdown, HTML dan teks biasa dengan kiraan perkataan; simpan dalam mana-mana format ini.
+• Hamparan: XLSX, ODS, CSV dan XLS (baca sahaja) dalam grid dengan tab helaian; simpan sebagai XLSX, ODS atau CSV.
+• Persembahan: PPTX dan ODP sebagai rangka teks setiap slaid; tukar antara kedua-dua format.
+• PDF: halaman dipaparkan pada peranti, bersama metadata, penanda buku, lampiran dan medan borang.
+• Label dan kod: kod QR, Data Matrix, Code 128 dan Aztec, helaian label A4 daripada baris anda sendiri, dan 97 tanda produk dan pematuhan (grafik sahaja: tanda tidak memperakui apa-apa).
+• Tandatangan dan cop: tandatangan gaya tulisan tangan dengan pelbagai pen dan dakwat, serta kesan cop daripada templat terbina dalam, disimpan sebagai PNG lutsinar.
+
+Belum tersedia: penyuntingan, eksport dokumen ke PDF, gambar dan susun atur slaid, anotasi PDF. Tandatangan yang dilukis ialah imej, bukan tandatangan digital berasaskan sijil.
+
+OFF42 percuma dan sumber terbuka (lesen MIT). Enjinnya sama dengan apl OFF42 untuk Mac, Windows dan Linux serta apl web.

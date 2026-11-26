@@ -1,0 +1,217 @@
+name: Android
+on:
+  push:
+    branches: ['main']
+    paths: ['android/**', 'rust/**', 'web/test/fixtures/**', '.github/workflows/android.yml']
+  pull_request:
+    paths: ['android/**', 'rust/**', 'web/test/fixtures/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  # The Rust engine (rust/crates/off42-mobile) for the three app ABIs, the Kotlin bindings and a host library for
+  # the JVM unit tests (android/scripts/build-rust.sh).
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/bin/cargo-ndk
+            rust/target
+          key: android-engine-${{ hashFiles('rust/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: android-engine-${{ hashFiles('rust/Cargo.lock') }}-
+      - name: Install cargo-ndk
+        run: command -v cargo-ndk > /dev/null || cargo install cargo-ndk --locked
+      - name: Native tests of the bindings
+        working-directory: rust
+        run: cargo test --locked -p off42-mobile
+      - name: Build the Android libraries and Kotlin bindings
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          echo "NDK: $ANDROID_NDK_HOME"
+          sh android/scripts/build-rust.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-out
+          path: android/app/rust-out
+          retention-days: 3
+
+  build:
+    needs: engine
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rust-out
+          path: android/app/rust-out
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Release keystore (only when the repository has the signing secrets)
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE" ]; then
+            echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "Release bundle will be signed."
+          else
+            echo "No signing secrets: the release bundle stays unsigned."
+          fi
+      - name: Build, unit tests and lint
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew --no-configuration-cache assembleDebug bundleRelease testDebugUnitTest lint
+      - name: Check the app requests no permissions
+        run: |
+          manifest=app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
+          grep -o 'uses-permission[^>]*' "$manifest" || true
+          if grep 'uses-permission' "$manifest" | grep -v 'DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'; then
+            echo "The release manifest requests permissions"; exit 1
+          fi
+      - name: Sizes
+        run: |
+          ls -l app/build/outputs/apk/debug/*.apk app/build/outputs/bundle/release/*.aab
+          unzip -l app/build/outputs/bundle/release/*.aab | grep 'lib/.*\.so'
+          {
+            echo "### Android build"
+            echo "| Output | Bytes |"
+            echo "| --- | --- |"
+            for f in app/build/outputs/apk/debug/*.apk app/build/outputs/bundle/release/*.aab; do
+              echo "| $(basename "$f") | $(stat -c %s "$f") |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: off42-android-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: off42-android-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-reports
+          path: |
+            android/app/build/reports
+            android/app/build/test-results
+          retention-days: 7
+
+  # Instrumented UI tests on a tablet and a phone emulator: every fixture format, conversions through the save
+  # dialog, generators, rotation and dark mode. Screenshots for the Play listing come from these runs.
+  emulator:
+    needs: engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: tablet
+            profile: pixel_tablet
+          - name: phone
+            profile: pixel_6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rust-out
+          path: android/app/rust-out
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Build the app and test APKs
+        working-directory: android
+        run: ./gradlew --no-configuration-cache assembleDebug assembleDebugAndroidTest
+      - name: Instrumented tests (${{ matrix.name }})
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: ${{ matrix.profile }}
+          ram-size: 4096M
+          disk-size: 6000M
+          force-avd-creation: true
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          working-directory: android
+          # The runner executes each script line separately; keep this one line.
+          script: adb shell settings put global hide_error_dialogs 1 && adb shell input keyevent KEYCODE_HOME && ./gradlew --no-configuration-cache connectedDebugAndroidTest
+      - name: Collect screenshots
+        if: always()
+        run: |
+          mkdir -p screenshots
+          find android/app/build/outputs -name '*.png' -exec cp {} screenshots/ \; || true
+          ls -l screenshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-screenshots-${{ matrix.name }}
+          path: screenshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-emulator-reports-${{ matrix.name }}
+          path: |
+            android/app/build/reports/androidTests
+            android/app/build/outputs/androidTest-results
+          retention-days: 7
+
+  # The same bindings for iPadOS/iOS (phase 6): device and simulator libraries, Swift bindings, XCFramework.
+  apple:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            rust/target
+          key: apple-engine-${{ hashFiles('rust/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: apple-engine-${{ hashFiles('rust/Cargo.lock') }}-
+      - name: cargo build for the iOS simulator
+        working-directory: rust
+        run: cargo build --locked --target aarch64-apple-ios-sim -p off42-mobile
+      - name: Static libraries, Swift bindings and XCFramework
+        run: sh rust/scripts/build-mobile-apple.sh
+      - name: The Swift bindings type-check against the generated module
+        working-directory: rust/build/apple
+        run: |
+          sdk=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          xcrun swiftc -typecheck -sdk "$sdk" -target arm64-apple-ios16.0-simulator \
+            -Xcc -fmodule-map-file=headers/module.modulemap -I headers swift/Off42Mobile.swift
+      - uses: actions/upload-artifact@v4
+        with:
+          name: off42-mobile-apple
+          path: |
+            rust/build/apple/swift
+            rust/build/apple/Off42MobileFFI.xcframework
