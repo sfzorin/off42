@@ -3208,6 +3208,12 @@ impl suite42_app::App for Pdf {
         self.native_window = window;
     }
     fn toolbar_command_visible(&self,id:u16)->bool{!matches!(id,117|118|VERIFY_VIEW_SIGNATURES)}
+    fn toolbar_actions(&self)->&'static [u16]{&[15,16,10,40,41,18]}
+    fn canvas_pages(&self)->Vec<suite42_app::CanvasRect>{
+        #[cfg(windows)]
+        if let Some((width,height,_))=self.rendered.as_ref(){return vec![suite42_app::CanvasRect{x:0.,y:0.,width:f64::from(*width),height:f64::from(*height)}];}
+        Vec::new()
+    }
     fn action(&mut self, id: u16) -> Result<(), String> {
         if id >= 10 && !self.enabled(id) {
             return Err("Command unavailable".into());

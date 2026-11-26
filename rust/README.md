@@ -364,8 +364,27 @@ mode the title bar, popup menus, toolbar buttons, sidebar list, status bar, inpu
 dark colours; print/label preview windows get a dark title bar. Switching the app mode while a window is open takes
 effect immediately. Document content (pages, the rich-text editor, sheets, slides, images and scans) keeps its own
 colours, so paper stays white. High contrast, older Windows builds, or a missing system entry point keep the light
-appearance. Limits: the menu bar, rulers, the spreadsheet grid and the report table stay light, and there is no
-in-app light/dark override.
+appearance. The menu bar, title row and toolbar strip follow dark mode as well. Limits: rulers, the spreadsheet
+grid, the DOC42 page desk and the report table stay light, and there is no in-app light/dark override.
+
+### Window layout (development branch)
+
+The six apps share the layout of the web apps (see [DESIGN.md](../DESIGN.md#windows-window-layout)):
+
+- Under the menu bar, a title row shows the file name, its format and whether it has unsaved edits, with a **Save**
+  button on the right.
+- One toolbar strip starts with **Undo**, **Redo** and **Print**, followed by each app's frequent commands: zoom,
+  rotate, select text, highlight and rectangle in PDF42; add slide, text box, shape, table and slide show in PPT42;
+  previous/next image, rotate and zoom in IMG42; scan, rotate and crop in SCN42; formatting in DOC42 and XLS42.
+  Icon buttons show their name as a tooltip. Commands that do not fit go to **More…**. **View → Show Toolbar** hides
+  the strip; the title row stays.
+- XLS42 has a formula bar (cell or range name, `fx`, cell text) above the grid and sheet tabs with **+** (Add sheet)
+  below it. PPT42 shows slide thumbnails in the side strip. PDF pages and slides sit on a grey canvas with a margin.
+- **File → Save As** opens a submenu: **Save As…** (all formats, `Ctrl+Shift+S`) and one entry per format.
+- After saving, a message at the bottom left confirms the file name for a few seconds.
+
+There is no start screen with recent files as in the web app; use **File → Open Recent**. PPT42 speaker notes stay
+in **Edit Speaker Notes…** rather than a panel under the slide, and XLS42 has no selection-sum indicator.
 
 
 ### Independent barcode QA

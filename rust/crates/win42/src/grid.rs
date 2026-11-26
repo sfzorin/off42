@@ -81,7 +81,7 @@ fn color(v: [u8; 3]) -> u32 {
 fn selected(range: Option<GridRange>, r: usize, c: usize) -> bool {
     range.is_some_and(|v| r >= v.top && r <= v.bottom && c >= v.left && c <= v.right)
 }
-fn col_label(mut c: usize) -> String {
+pub(super) fn col_label(mut c: usize) -> String {
     c += 1;
     let mut s = Vec::new();
     while c > 0 {
@@ -327,7 +327,7 @@ unsafe fn paint(hwnd: HWND) {
                 rect.bottom - 1,
                 rect.right,
                 rect.bottom - 1,
-                [218; 3],
+                [225, 227, 230],
             );
             line(
                 dc,
@@ -335,7 +335,7 @@ unsafe fn paint(hwnd: HWND) {
                 rect.top,
                 rect.right - 1,
                 rect.bottom,
-                [218; 3],
+                [225, 227, 230],
             );
             for (bit, a, b) in [
                 (1, (rect.left, rect.top), (rect.right, rect.top)),
@@ -458,14 +458,14 @@ unsafe fn paint(hwnd: HWND) {
         right: rc.right,
         bottom: HEADER,
     };
-    fill(dc, &header, [239, 242, 247]);
+    fill(dc, &header, [248, 249, 250]);
     let left = RECT {
         left: 0,
         top: HEADER,
         right: ROW_HEADER,
         bottom: rc.bottom,
     };
-    fill(dc, &left, [239, 242, 247]);
+    fill(dc, &left, [248, 249, 250]);
     for &c in &visible_columns {
         if snap.widths[c] <= 0 {
             continue;
@@ -503,7 +503,7 @@ unsafe fn paint(hwnd: HWND) {
             false,
             true,
         );
-        line(dc, b - 1, 0, b - 1, HEADER, [195; 3]);
+        line(dc, b - 1, 0, b - 1, HEADER, [218, 220, 224]);
         RestoreDC(dc, pane);
     }
     for &r in &visible_rows {
@@ -543,11 +543,11 @@ unsafe fn paint(hwnd: HWND) {
             false,
             true,
         );
-        line(dc, 0, b - 1, ROW_HEADER, b - 1, [195; 3]);
+        line(dc, 0, b - 1, ROW_HEADER, b - 1, [218, 220, 224]);
         RestoreDC(dc, pane);
     }
-    line(dc, ROW_HEADER - 1, 0, ROW_HEADER - 1, rc.bottom, [175; 3]);
-    line(dc, 0, HEADER - 1, rc.right, HEADER - 1, [175; 3]);
+    line(dc, ROW_HEADER - 1, 0, ROW_HEADER - 1, rc.bottom, [200, 204, 210]);
+    line(dc, 0, HEADER - 1, rc.right, HEADER - 1, [200, 204, 210]);
     if let Some(d) = st.drag {
         if d.row {
             line(dc, 0, d.last, rc.right, d.last, [35, 100, 210])

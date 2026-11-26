@@ -1888,6 +1888,18 @@ impl suite42_app::App for Ppt {
     fn toolbar_command_visible(&self, id: u16) -> bool {
         !matches!(id, 74 | 75 | PRINT_LAYOUT)
     }
+    fn toolbar_actions(&self) -> &'static [u16] {
+        &[10, 23, 68, 33, 41]
+    }
+    fn list_thumbnail_size(&self) -> Option<(f64, f64)> {
+        Some((720.0, 405.0))
+    }
+    fn canvas_pages(&self) -> Vec<suite42_app::CanvasRect> {
+        if self.presenting || self.show.is_some() {
+            return Vec::new();
+        }
+        vec![suite42_app::CanvasRect { x: 0.0, y: 0.0, width: 720.0, height: 405.0 }]
+    }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
         match id {
             PRINT_LAYOUT => {

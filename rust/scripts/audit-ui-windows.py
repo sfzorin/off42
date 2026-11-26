@@ -866,12 +866,15 @@ def audit_rectangle_command(process, main, binary, output, results):
         output_ready(process, main, path, b"%PDF-")
         return path, pdf_annotation_counts(binary.parent / "pdfium.dll", path)
     _, baseline = save("baseline")
+    snackbar = wait_for(lambda: next((h for h in windows(process.pid) if classname(h) == "Off42Snackbar" and u.IsWindowVisible(h)), None), "save snackbar", process)
+    assert text(snackbar) == "Saved: rectangle-baseline.pdf", text(snackbar)
+    assert len([h for h in windows(process.pid) if classname(h) == "Off42Snackbar"]) == 1, "more than one snackbar"
     command(main, 18)
     wait_for(lambda: any("Tool: Rectangle" in text(h) for h in windows(process.pid, main)), "rectangle tool command", process)
     canvas = wait_for(lambda: next((h for h in windows(process.pid, main) if classname(h) == "Suite42Canvas"), None), "rendered PDF canvas", process)
-    u.SendMessageW(canvas, 0x201, 1, (80 << 16) | 80)
-    u.SendMessageW(canvas, 0x200, 1, (160 << 16) | 180)
-    u.SendMessageW(canvas, 0x202, 0, (160 << 16) | 180)
+    u.SendMessageW(canvas, 0x201, 1, page_point(canvas, 80, 80))
+    u.SendMessageW(canvas, 0x200, 1, page_point(canvas, 180, 160))
+    u.SendMessageW(canvas, 0x202, 0, page_point(canvas, 180, 160))
     marked_path, marked = save("applied")
     assert sum(marked) == sum(baseline) + 1
     import re
@@ -2788,14 +2791,15 @@ def audit_preset_shapes(process,main,output,results):
     gdi.GetPixel.restype=w.DWORD
     u.GetDC.argtypes,u.GetDC.restype=[w.HWND],w.HDC
     u.ReleaseDC.argtypes=[w.HWND,w.HDC]
+    margin=page_offset(canvas)
     def pixel(x,y):
         dc=u.GetDC(canvas)
-        try:return gdi.GetPixel(dc,x,y)
+        try:return gdi.GetPixel(dc,x+margin,y+margin)
         finally:u.ReleaseDC(canvas,dc)
     fill=220|(230<<8)|(245<<16)
     wait_for(lambda:pixel(390,195)==fill and pixel(303,153)==0xFFFFFF,"rounded shape filled curves",process)
     assert pixel(320,153)==fill,hex(pixel(320,153))
-    def point(x,y):return (y<<16)|x
+    def point(x,y):return page_point(canvas,x,y)
     u.SendMessageW(canvas,0x201,1,point(315,150))
     u.SendMessageW(canvas,0x200,1,point(330,150))
     u.SendMessageW(canvas,0x202,0,point(330,150))
@@ -3981,7 +3985,7 @@ def audit_pdf_label_artwork(process,main,binary,output,results):
     fill_prompt(process,main,21,'Crop page (PDF points)',['20','20','575','820'])
     command(main,18);wait_for(lambda:any('Tool: Rectangle'in text(h)for h in windows(process.pid,main)),'artwork rectangle tool',process)
     canvas=wait_for(lambda:next((h for h in windows(process.pid,main)if classname(h)=='Suite42Canvas'),None),'cropped artwork canvas rendered',process)
-    u.SendMessageW(canvas,0x201,1,(90<<16)|90);u.SendMessageW(canvas,0x200,1,(170<<16)|170);u.SendMessageW(canvas,0x202,0,(170<<16)|170)
+    u.SendMessageW(canvas,0x201,1,page_point(canvas,90,90));u.SendMessageW(canvas,0x200,1,page_point(canvas,170,170));u.SendMessageW(canvas,0x202,0,page_point(canvas,170,170))
     fill_prompt(process,main,90,'Text Watermark',['UNSAVED-ART','60','100','0','#0000FF','1'])
     caption=text(main);assert' * - 'in caption
     def sheet(name,area='',copies='2, 24'):
@@ -4008,17 +4012,17 @@ def audit_pdf_label_artwork(process,main,binary,output,results):
     capture_window(main,output/'PDF42-label-area-ready.bmp')
     command(main,117)
     wait_for(lambda:any('Drag an area for labels'in text(h)for h in windows(process.pid,main)),'PDF area tool active',process)
-    u.SendMessageW(canvas,0x201,1,(280<<16)|430);u.SendMessageW(canvas,0x200,1,(5<<16)|380)
+    u.SendMessageW(canvas,0x201,1,page_point(canvas,430,280));u.SendMessageW(canvas,0x200,1,page_point(canvas,380,5))
     u.SendMessageW(canvas,0x100,27,0)
     wait_for(lambda:not any('Drag an area for labels'in text(h)for h in windows(process.pid,main)),'Escape cancels PDF label region',process)
     assert not any(classname(h)=='Suite42InputDialog'for h in windows(process.pid))
     command(main,117)
     wait_for(lambda:any('Drag an area for labels'in text(h)for h in windows(process.pid,main)),'PDF area tool active',process)
-    u.SendMessageW(canvas,0x201,1,(280<<16)|430);u.SendMessageW(canvas,0x200,1,(5<<16)|380)
+    u.SendMessageW(canvas,0x201,1,page_point(canvas,430,280));u.SendMessageW(canvas,0x200,1,page_point(canvas,380,5))
     u.RedrawWindow.argtypes=[w.HWND,c.c_void_p,w.HANDLE,w.UINT]
     assert u.RedrawWindow(canvas,None,None,0x185)
     capture_window(main,output/'PDF42-label-area-drag.bmp')
-    u.SendMessageW(canvas,0x202,0,(5<<16)|380)
+    u.SendMessageW(canvas,0x202,0,page_point(canvas,380,5))
     finish_prompt(process,'Create Artwork Label Sheet',['','70, 37, 0, 0','1, 1'])
     mouse=output/'artwork-labels-mouse.pdf';choose_file(process,mouse);output_ready(process,main,mouse,b'%PDF-')
     assert text(main)==caption and'ARTWORK-TARGET'in pdf_text(dll,mouse)
@@ -4214,7 +4218,7 @@ def audit_pdf_vector_print(process,main,binary,output,results):
     wait_for(lambda:not(u.GetMenuState(u.GetMenu(main),117,0)&3),'rotated/cropped print page rendered',process)
     command(main,18);wait_for(lambda:any('Tool: Rectangle'in text(h)for h in windows(process.pid,main)),'print annotation tool',process)
     canvas=next(h for h in windows(process.pid,main)if classname(h)=='Suite42Canvas')
-    u.SendMessageW(canvas,0x201,1,(180<<16)|90);u.SendMessageW(canvas,0x200,1,(260<<16)|190);u.SendMessageW(canvas,0x202,0,(260<<16)|190)
+    u.SendMessageW(canvas,0x201,1,page_point(canvas,90,180));u.SendMessageW(canvas,0x200,1,page_point(canvas,190,260));u.SendMessageW(canvas,0x202,0,page_point(canvas,190,260))
     fill_prompt(process,main,90,'Text Watermark',['UNSAVED-PRINT','30','100','0','#0000FF','2'])
     caption=text(main);assert' * - 'in caption
     def reference(name):
@@ -4257,7 +4261,7 @@ def audit_common_print_command(process,main,app,results):
     assert u.GetMenuState(file_menu,identifier,0)!=0xffffffff,'Print is absent from File menu'
     if app=='DOC42':
         client=w.RECT();u.GetClientRect(main,c.byref(client))
-        buttons=[h for h in windows_for_dialog(main)if classname(h)=='Button'and u.GetDlgCtrlID(h)!=65520]
+        buttons=[h for h in windows_for_dialog(main)if classname(h)=='Button'and u.GetDlgCtrlID(h) not in(65520,2)]
         if client.right>=900:
             tops=[]
             for button in buttons:
@@ -4482,6 +4486,21 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
                 process.terminate()
                 process.wait(timeout=5)
 
+
+
+CANVAS_MARGIN = 24
+
+
+def page_offset(canvas):
+    """Pixels between the canvas edge and the PDF page or PPT slide (win42 CANVAS_MARGIN at the canvas DPI)."""
+    u.GetDpiForWindow.argtypes, u.GetDpiForWindow.restype = [w.HWND], w.UINT
+    return CANVAS_MARGIN * max(96, u.GetDpiForWindow(canvas)) // 96
+
+
+def page_point(canvas, x, y):
+    """Mouse lParam for page/slide pixel (x, y): the same document position as before the margin existed."""
+    m = page_offset(canvas)
+    return ((y + m) << 16) | (x + m)
 
 
 def capture_window(hwnd, path):
@@ -4781,7 +4800,9 @@ def audit_window_layout(bin_dir,output):
                 value=w.RECT();assert u.GetWindowRect(body,c.byref(value));return(value.left,value.top,value.right-value.left,value.bottom-value.top)
             def hidden_panels():
                 children=windows(process.pid,main)
-                return not any(u.IsWindowVisible(h)for h in children if classname(h).lower()in{'button','static'})
+                # The title row's Save pill (command 2) is not a panel; it is checked separately below.
+                return not any(u.IsWindowVisible(h)for h in children if classname(h).lower()in{'button','static'}and u.GetDlgCtrlID(h)!=2)
+            audit_chrome_structure(process,main,app,result)
             caption=text(main);history=[u.GetMenuState(u.GetMenu(main),i,0)for i in(4,5)];before=body_rect()
             toggles=[i for i in(65503,65502,65501,65500)if u.GetMenuState(u.GetMenu(main),i,0)&3==0]
             assert 65501 in toggles
@@ -4792,6 +4813,10 @@ def audit_window_layout(bin_dir,output):
                 assert u.GetMenuState(u.GetMenu(main),identifier,0)&8
                 command(main,identifier);wait_for(lambda:u.GetMenuState(u.GetMenu(main),identifier,0)&8==0,'panel hidden '+str(identifier)+' '+app,process)
             wait_for(hidden_panels,'toolbar/status hidden '+app,process)
+            save_pill=u.GetDlgItem(main,2)
+            assert save_pill and u.IsWindowVisible(save_pill),app+' title row Save pill hidden with the panels'
+            pill=w.RECT();u.GetWindowRect(save_pill,c.byref(pill));body=body_rect()
+            assert pill.bottom<=body[1],(app,'Save pill overlaps the document area',pill.bottom,body)
             after=body_rect();assert after[0]<=before[0]and after[1]<=before[1]and after[2]>=before[2]and after[3]>=before[3],(app,before,after)
             assert text(main)==caption and[u.GetMenuState(u.GetMenu(main),i,0)for i in(4,5)]==history
             stored=json.loads(preferences.read_text(encoding='utf-8'));assert all(stored['panels'][names[i]]is False for i in toggles)
@@ -4828,6 +4853,71 @@ def audit_window_layout(bin_dir,output):
         finally:
             if process and process.poll() is None:process.terminate();process.wait(timeout=5)
     return result
+
+
+def audit_chrome_structure(process, main, app, result):
+    """Title row, one toolbar strip, flat panels and app-specific structure of the shared OFF42 chrome."""
+    GWL_STYLE, GWL_EXSTYLE, WS_EX_CLIENTEDGE = -16, -20, 0x200
+    LBS_OWNERDRAWFIXED, LBS_HASSTRINGS, LBS_MULTICOLUMN = 0x10, 0x40, 0x200
+    u.GetWindowLongW.argtypes, u.GetWindowLongW.restype = [w.HWND, c.c_int], c.c_long
+    u.GetMenuItemCount.argtypes = [w.HMENU]
+    u.GetSubMenu.argtypes, u.GetSubMenu.restype = [w.HMENU, c.c_int], w.HMENU
+    def rect(h):
+        value = w.RECT()
+        assert u.GetWindowRect(h, c.byref(value))
+        return value
+    frame = rect(main)
+    client = w.RECT()
+    assert u.GetClientRect(main, c.byref(client))
+    origin = w.POINT(0, 0)
+    u.ClientToScreen.argtypes = [w.HWND, c.POINTER(w.POINT)]
+    assert u.ClientToScreen(main, c.byref(origin))
+    # Title row: the primary Save pill is a native button for the Save command at the top right.
+    pill = u.GetDlgItem(main, 2)
+    assert pill and classname(pill) == "Button" and text(pill) == "Save" and u.IsWindowVisible(pill), (app, "Save pill")
+    box = rect(pill)
+    assert box.top - origin.y < 60 and origin.x + client.right - box.right < 40, (app, "Save pill is not in the title row", box.top - origin.y)
+    menu_save = u.GetMenuState(u.GetMenu(main), 2, 0)
+    assert bool(u.IsWindowEnabled(pill)) == (menu_save & 3 == 0), (app, "Save pill and File > Save disagree")
+    # One toolbar strip in a single row below the title row: Undo and Redo first.
+    undo, redo = u.GetDlgItem(main, 4), u.GetDlgItem(main, 5)
+    assert undo and redo and classname(undo) == "Button" and classname(redo) == "Button", (app, "Undo/Redo toolbar buttons")
+    assert text(undo) == "Undo" and text(redo) == "Redo"
+    strip_buttons = [h for h in windows(process.pid, main) if classname(h) == "Button" and u.GetDlgCtrlID(h) not in (2, 20 if app == "XLS42" else -1)]
+    tops = {rect(h).top for h in strip_buttons}
+    assert len(tops) == 1 and min(tops) > box.top, (app, "toolbar is not one strip below the title row", sorted(tops))
+    assert rect(undo).left < rect(redo).left and all(rect(undo).left <= rect(h).left for h in strip_buttons), (app, "Undo does not lead the strip")
+    assert bool(u.IsWindowEnabled(undo)) == (u.GetMenuState(u.GetMenu(main), 4, 0) & 3 == 0), (app, "Undo button and menu disagree")
+    # Flat panels: no sunken client edges on the side list, the editor or the table.
+    for identifier in (100, 101, 102):
+        control = u.GetDlgItem(main, identifier)
+        if control and classname(control).lower() in {"listbox", "edit", "richedit50w", "syslistview32"}:
+            assert not u.GetWindowLongW(control, GWL_EXSTYLE) & WS_EX_CLIENTEDGE, (app, identifier, "sunken border")
+    listing = u.GetDlgItem(main, 100)
+    style = u.GetWindowLongW(listing, GWL_STYLE)
+    assert style & LBS_OWNERDRAWFIXED and style & LBS_HASSTRINGS, (app, "side list is not drawn by the shared chrome")
+    checks = ["title row Save pill", "single toolbar strip led by Undo/Redo", "flat owner-drawn side list"]
+    if app == "XLS42":
+        grid, editor, add = rect(u.GetDlgItem(main, 102)), rect(u.GetDlgItem(main, 101)), u.GetDlgItem(main, 20)
+        tabs = rect(listing)
+        assert style & LBS_MULTICOLUMN and u.IsWindowVisible(listing), "sheet list is not a tab strip"
+        assert tabs.top >= grid.bottom and tabs.bottom <= origin.y + client.bottom, ("sheet tabs are not below the grid", tabs.top, grid.bottom)
+        assert add and text(add) == "Add sheet" and u.IsWindowVisible(add) and rect(add).right <= tabs.left and abs(rect(add).top - tabs.top) < 12, "sheet + button"
+        assert editor.bottom <= grid.top and editor.top > box.bottom and editor.right - editor.left > (client.right - client.left) // 2, ("formula bar is not above the grid", editor.top, editor.bottom, grid.top)
+        assert grid.left - origin.x <= 1 and origin.x + client.right - grid.right <= 1, "grid is not full width"
+        checks.append("formula bar above a full-width grid, sheet tabs with + below it")
+    if app == "PPT42":
+        u.SendMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
+        height = u.SendMessageW(listing, 0x1A1, 0, 0)  # LB_GETITEMHEIGHT
+        assert height > 60 and rect(listing).right - rect(listing).left > 150, ("slide strip has no thumbnails", height)
+        checks.append("slide strip with thumbnail rows")
+    file_menu = u.GetSubMenu(u.GetMenu(main), 0)
+    formats = [u.GetMenuState(u.GetMenu(main), 63800 + i, 0) for i in range(3)]
+    if formats[0] != 0xFFFFFFFF:
+        assert u.GetMenuState(u.GetMenu(main), 65507, 0) != 0xFFFFFFFF, (app, "Save As dialog entry missing from the format submenu")
+        checks.append("File > Save As submenu lists the save formats")
+    assert u.GetMenuItemCount(file_menu) > 0
+    result["checks"].append(app + ": " + ", ".join(checks))
 
 
 def audit_dark_mode(bin_dir, output):
@@ -4878,6 +4968,31 @@ def audit_dark_mode(bin_dir, output):
             gdi.DeleteDC(target)
             u.ReleaseDC(None, screen)
 
+    def luminance_at(main, x, y):
+        """Average a 3x3 patch at client point (x, y), rendered through PrintWindow."""
+        frame = rect(main)
+        point = w.POINT(x, y)
+        u.ClientToScreen.argtypes = [w.HWND, c.POINTER(w.POINT)]
+        assert u.ClientToScreen(main, c.byref(point))
+        width, height = frame.right - frame.left, frame.bottom - frame.top
+        screen = u.GetDC(None)
+        target = gdi.CreateCompatibleDC(screen)
+        bitmap = gdi.CreateCompatibleBitmap(screen, width, height)
+        previous = gdi.SelectObject(target, bitmap)
+        try:
+            assert u.PrintWindow(main, target, 2), "PrintWindow failed"
+            values = []
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    colour = gdi.GetPixel(target, point.x - frame.left + dx, point.y - frame.top + dy)
+                    values.append(((colour & 0xFF) + (colour >> 8 & 0xFF) + (colour >> 16 & 0xFF)) / 3)
+            return sum(values) / len(values)
+        finally:
+            gdi.SelectObject(target, previous)
+            gdi.DeleteObject(bitmap)
+            gdi.DeleteDC(target)
+            u.ReleaseDC(None, screen)
+
     def caption_dark(main):
         value = c.c_int(-1)
         result = dwm.DwmGetWindowAttribute(main, 20, c.byref(value), 4)
@@ -4913,12 +5028,23 @@ def audit_dark_mode(bin_dir, output):
                                               key=lambda h: rect(h).bottom, default=None), "status bar " + app, process)
                 content = next((h for h in windows(process.pid, main) if u.GetDlgCtrlID(h) == 101), None) if app == "DOC42" else None
 
+                undo = u.GetDlgItem(main, 4)
+
                 def state(dark):
                     caption = caption_dark(main)
                     chrome = luminance(main, status)
                     paper = luminance(main, content) if content else None
-                    ok = (caption is None or caption == dark) and (chrome < 80 if dark else chrome > 170)
-                    return ok and (paper is None or paper > 160), (caption, round(chrome), paper and round(paper))
+                    # Title row left margin (left of the app mark) and the strip's empty right end.
+                    title = luminance_at(main, 6, 26)
+                    strip_box = rect(undo)
+                    origin = w.POINT(0, 0)
+                    u.ClientToScreen(main, c.byref(origin))
+                    client = w.RECT()
+                    u.GetClientRect(main, c.byref(client))
+                    strip = luminance_at(main, client.right - 34, (strip_box.top + strip_box.bottom) // 2 - origin.y)
+                    surfaces = [chrome, title, strip]
+                    ok = (caption is None or caption == dark) and all(v < 80 if dark else v > 170 for v in surfaces)
+                    return ok and (paper is None or paper > 160), (caption, [round(v) for v in surfaces], paper and round(paper))
 
                 last = {}
                 def reached(dark):
@@ -4935,7 +5061,7 @@ def audit_dark_mode(bin_dir, output):
                 set_mode(False)
                 broadcast(main)
                 wait_for(lambda: reached(True), app + " dark chrome restored live", process, timeout=10)
-                result["checks"].append(app + ": dark caption/status bar at launch, live switch to light and back via "
+                result["checks"].append(app + ": dark caption/status bar/title row/toolbar strip at launch, live switch to light and back via "
                                         "WM_SETTINGCHANGE ImmersiveColorSet" + ("; document editor stays white" if content else "")
                                         + f"; last observed {last['observed']}")
                 u.PostMessageW(main, WM_CLOSE, 0, 0)

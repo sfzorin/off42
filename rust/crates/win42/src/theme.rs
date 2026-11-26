@@ -8,7 +8,7 @@
 #![cfg_attr(not(windows), allow(dead_code))]
 
 /// Window background for frames, panels, toolbars and status bars.
-pub(crate) const BACKGROUND: [u8; 3] = [32, 32, 32];
+pub(crate) const BACKGROUND: [u8; 3] = [0x1f, 0x20, 0x23];
 /// Background for list and edit fields inside dark chrome.
 pub(crate) const FIELD: [u8; 3] = [43, 43, 43];
 /// Text drawn on dark chrome.
@@ -215,6 +215,11 @@ mod sys {
         let api = t.api.filter(|_| t.dark)?;
         t.touched = true;
         Some(api)
+    }
+
+    /// Whether chrome is currently drawn dark (system dark app mode, no high contrast).
+    pub(crate) fn is_dark() -> bool {
+        with(|t| t.dark && t.api.is_some())
     }
 
     /// Loads the APIs and reads the system preference; call before creating the first window.

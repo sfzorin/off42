@@ -67,6 +67,8 @@ const TOGGLE_STATUS:u16=65501;
 const TOGGLE_RULERS:u16=65500;
 const TOGGLE_PRINT_LAYOUT: u16 = 65496;
 const LANGUAGE_FIRST: u16 = 64000;
+/// File > Save As > one entry per save format.
+const SAVE_AS_FORMAT_FIRST: u16 = 63800;
 const RECENT_FIRST: u16 = 62000;
 const CLEAR_RECENTS: u16 = RECENT_FIRST + crate::recents::LIMIT as u16;
 struct AsyncOpen {
@@ -107,11 +109,30 @@ struct State {
     sparse_grid:Option<crate::SparseTable>,
     toolbar: Vec<(u16, HWND)>,
     toolbar_more: HWND,
+    /// Per toolbar button: English source title, icon and group (host, app actions, app commands).
+    toolbar_info: Vec<(&'static str, Option<crate::chrome::Icon>, u8)>,
+    /// Primary Save pill in the title row.
+    save_button: HWND,
+    /// "+" beside the sheet tabs (XLS42).
+    sheet_add: HWND,
+    tooltip: HWND,
+    frame: ChromeFrame,
     ruler_horizontal: HWND,
     ruler_vertical: HWND,
     ruler_format: Option<(crate::PrintGeometry, u16, i32, i32, i32)>,
     presentation_placement: Option<(isize, WINDOWPLACEMENT)>,
     presenter: Option<presenter::Controls>,
+}
+/// Areas of the main window painted by the host rather than by child controls.
+#[derive(Clone, Default)]
+struct ChromeFrame {
+    title: RECT,
+    strip: Option<RECT>,
+    dividers: Vec<i32>,
+    sidebar_line: Option<RECT>,
+    formula: Option<RECT>,
+    name_box: Option<RECT>,
+    footer_line: Option<RECT>,
 }
 impl State {
     fn dirty(&self) -> bool {
@@ -437,6 +458,15 @@ unsafe fn format_dialog(
     formats: &[crate::FileFormat],
     save: bool,
 ) -> Option<(PathBuf, usize)> {
+    format_dialog_from(hwnd, formats, save, 0)
+}
+/// File dialog over `formats` with the filter at `preferred` selected first.
+unsafe fn format_dialog_from(
+    hwnd: HWND,
+    formats: &[crate::FileFormat],
+    save: bool,
+    preferred: usize,
+) -> Option<(PathBuf, usize)> {
     let mut buf = vec![0u16; 32768];
     let mut filter = Vec::new();
     for format in formats {
@@ -456,7 +486,7 @@ unsafe fn format_dialog(
     f.lStructSize = size_of::<OPENFILENAMEW>() as u32;
     f.hwndOwner = hwnd;
     f.lpstrFilter = filter.as_ptr();
-    f.nFilterIndex = 1;
+    f.nFilterIndex = preferred.min(formats.len().saturating_sub(1)) as u32 + 1;
     f.lpstrFile = buf.as_mut_ptr();
     f.nMaxFile = buf.len() as u32;
     f.Flags = OFN_EXPLORER
@@ -487,13 +517,22 @@ unsafe fn save(hwnd: HWND) -> bool {
     save_mode(hwnd, false)
 }
 unsafe fn save_mode(hwnd: HWND, save_as: bool) -> bool {
-    let opt_in = STATE.with(|s| !s.borrow().as_ref().unwrap().app.save_formats().is_empty());
-    if opt_in {
-        return save_snapshot(hwnd, save_as);
-    }
-    legacy_save(hwnd)
+    save_in_format(hwnd, save_as, None)
 }
-unsafe fn save_snapshot(hwnd: HWND, save_as: bool) -> bool {
+/// Save, or Save As with the dialog opened on the format `preferred` (an id from `save_formats`).
+unsafe fn save_in_format(hwnd: HWND, save_as: bool, preferred: Option<&'static str>) -> bool {
+    let opt_in = STATE.with(|s| !s.borrow().as_ref().unwrap().app.save_formats().is_empty());
+    let saved = if opt_in {
+        save_snapshot(hwnd, save_as, preferred)
+    } else {
+        legacy_save(hwnd)
+    };
+    if saved {
+        notify_saved(hwnd);
+    }
+    saved
+}
+unsafe fn save_snapshot(hwnd: HWND, save_as: bool, preferred: Option<&'static str>) -> bool {
     use suite42_core::session::{publish_bundle, FileIdentity};
     let (mut formats, existing, recovery_extension) = STATE.with(|s| {
         let s = s.borrow();
@@ -517,7 +556,8 @@ unsafe fn save_snapshot(hwnd: HWND, save_as: bool) -> bool {
     let (path, index) = if let (Some(location), Some(index)) = (&existing, selected) {
         (location.path.clone(), index)
     } else {
-        match format_dialog(hwnd, &formats, true) {
+        let first = preferred.and_then(|id| formats.iter().position(|f| f.id == id)).unwrap_or(0);
+        match format_dialog_from(hwnd, &formats, true, first) {
             Some(v) => v,
             None => return false,
         }
@@ -938,6 +978,8 @@ unsafe fn refresh() {
         REDO as u32,
         MF_BYCOMMAND | if redo { MF_ENABLED } else { MF_GRAYED },
     );
+    sync_host_buttons(undo, redo);
+    invalidate_chrome(hwnd);
     REFRESHING.with(|x| x.set(false));
     sync_presentation(hwnd);
     sync_panel_menu();
@@ -1033,8 +1075,18 @@ unsafe fn scene_for_canvas(
                 };
             }
         }
+    } else if canvas_has_pages() {
+        // Pages and slides sit on the grey canvas with a margin; pointer mapping uses the same viewport.
+        let margin = f64::from(crate::chrome::scale(GetDpiForWindow(hwnd).max(96) as i32, CANVAS_MARGIN));
+        scene.viewport.pan.x += margin;
+        scene.viewport.pan.y += margin;
     }
     scene
+}
+/// Space between the canvas edge and the first page or the slide, in logical pixels.
+const CANVAS_MARGIN: i32 = 24;
+fn canvas_has_pages() -> bool {
+    STATE.with(|s| s.try_borrow().ok().and_then(|s| s.as_ref().map(|s| !s.app.canvas_pages().is_empty())).unwrap_or(false))
 }
 unsafe fn layout(hwnd: HWND) {
     let (
@@ -1083,9 +1135,17 @@ unsafe fn layout(hwnd: HWND) {
             .is_some()
     });
     if presenting {
-        for control in [list, table, edit, status] {
-            ShowWindow(control, SW_HIDE);
+        let (save_button, sheet_add) = STATE.with(|s| {
+            let s = s.borrow();
+            let s = s.as_ref().unwrap();
+            (s.save_button, s.sheet_add)
+        });
+        for control in [list, table, edit, status, save_button, sheet_add] {
+            if !control.is_null() {
+                ShowWindow(control, SW_HIDE);
+            }
         }
+        crate::chrome::snackbar::hide();
         for (_, button) in &toolbar {
             ShowWindow(*button, SW_HIDE);
         }
@@ -1103,108 +1163,130 @@ unsafe fn layout(hwnd: HWND) {
         return;
     }
     presenter::hide();
-    ShowWindow(status, if panels.status{SW_SHOW}else{SW_HIDE});
     let dpi = GetDpiForWindow(hwnd) as i32;
-    let sh = if panels.status{24 * dpi / 96}else{0};
-    let row_height = (32 * dpi / 96).max(1);
-    let button_width = (105 * dpi / 96).max(1);
-    let columns = (r.right.max(1) / button_width).max(1) as usize;
-    let max_rows =
-        ((r.bottom - sh - (80 * dpi / 96)).max(row_height) / row_height).clamp(1, 3) as usize;
-    let capacity = columns.saturating_mul(max_rows);
-    let toolbar_len=if panels.toolbar{toolbar.len()}else{0};
-    let overflow = toolbar_len > capacity;
-    let visible_count = if overflow {
-        capacity.saturating_sub(1)
-    } else {
-        toolbar_len
-    };
-    let occupied = visible_count + usize::from(overflow);
-    let rows = if occupied == 0 {
-        0
-    } else {
-        occupied.div_ceil(columns)
-    };
-    let bar_height = rows as i32 * row_height;
-    for (index, (_, button)) in toolbar.iter().enumerate() {
-        if index < visible_count {
-            let row = index / columns;
-            let col = index % columns;
-            MoveWindow(
-                *button,
-                col as i32 * button_width,
-                row as i32 * row_height,
-                button_width.min((r.right - col as i32 * button_width).max(1)),
-                row_height,
-                1,
-            );
-            ShowWindow(*button, SW_SHOW);
-        } else {
+    let px = |v: i32| crate::chrome::scale(dpi, v);
+    let (save_button, sheet_add, has_sheets, thumbnails, info) = STATE.with(|s| {
+        let s = s.borrow();
+        let s = s.as_ref().unwrap();
+        (
+            s.save_button,
+            s.sheet_add,
+            s.app.grid_sheets().is_some(),
+            s.app.list_thumbnail_size().is_some(),
+            s.toolbar_info.clone(),
+        )
+    });
+    let mut frame = ChromeFrame::default();
+    // Title row: app mark, file name, format badge and the primary Save pill.
+    let title_height = px(52);
+    frame.title = RECT { left: 0, top: 0, right: r.right, bottom: title_height };
+    if !save_button.is_null() {
+        let width = save_pill_width(hwnd, save_button);
+        MoveWindow(save_button, (r.right - px(16) - width).max(0), px(8), width, px(36), 1);
+        ShowWindow(save_button, SW_SHOW);
+    }
+    let mut top = title_height;
+    ShowWindow(status, if panels.status { SW_SHOW } else { SW_HIDE });
+    let sh = if panels.status { px(26) } else { 0 };
+    // One rounded toolbar strip; buttons that do not fit go to "More…".
+    let toolbar_len = if panels.toolbar { toolbar.len() } else { 0 };
+    if toolbar_len > 0 {
+        let strip = RECT { left: px(16), top: top + px(2), right: (r.right - px(16)).max(px(16)), bottom: top + px(42) };
+        let font = crate::chrome::font(px(crate::chrome::BODY), 400);
+        let widths: Vec<i32> = toolbar
+            .iter()
+            .zip(&info)
+            .map(|((_, button), (_, icon, _))| {
+                if icon.is_some() {
+                    px(32)
+                } else {
+                    crate::chrome::measure(*button, font, &window_text(*button)).cx + px(20)
+                }
+            })
+            .collect();
+        let gap = |i: usize| if i > 0 && info[i].2 != info[i - 1].2 { px(13) } else { 0 };
+        let total: i32 = (0..toolbar_len).map(|i| gap(i) + widths[i] + px(2)).sum();
+        let limit = strip.right - px(10);
+        let reserve = if strip.left + px(10) + total > limit { px(36) } else { 0 };
+        let mut x = strip.left + px(10);
+        let mut placed = 0;
+        for i in 0..toolbar_len {
+            if x + gap(i) + widths[i] > limit - reserve {
+                break;
+            }
+            if gap(i) > 0 {
+                frame.dividers.push(x + gap(i) / 2 - 1);
+            }
+            x += gap(i);
+            MoveWindow(toolbar[i].1, x, strip.top + px(4), widths[i], px(32), 1);
+            ShowWindow(toolbar[i].1, SW_SHOW);
+            x += widths[i] + px(2);
+            placed += 1;
+        }
+        for (_, button) in toolbar.iter().skip(placed) {
             ShowWindow(*button, SW_HIDE);
         }
-    }
-    if overflow {
-        let index = visible_count;
-        MoveWindow(
-            toolbar_more,
-            (index % columns) as i32 * button_width,
-            (index / columns) as i32 * row_height,
-            button_width.min((r.right - (index % columns) as i32 * button_width).max(1)),
-            row_height,
-            1,
-        );
-        ShowWindow(toolbar_more, SW_SHOW);
+        if placed < toolbar_len {
+            MoveWindow(toolbar_more, x, strip.top + px(4), px(32), px(32), 1);
+            ShowWindow(toolbar_more, SW_SHOW);
+        } else {
+            ShowWindow(toolbar_more, SW_HIDE);
+        }
+        frame.strip = Some(strip);
+        top = strip.bottom + px(8);
     } else {
+        for (_, button) in &toolbar {
+            ShowWindow(*button, SW_HIDE);
+        }
         ShowWindow(toolbar_more, SW_HIDE);
+        top += px(4);
     }
+    let bottom = (r.bottom - sh).max(top);
+    MoveWindow(status, px(12), (r.bottom - sh).max(0), (r.right - px(12)).max(0), sh, 1);
     if grid {
-        ShowWindow(list,if visible&&STATE.with(|s|s.borrow().as_ref().unwrap().app.grid_sheets().is_some()){SW_SHOW}else{SW_HIDE});
         if !ruler_horizontal.is_null() {
             ShowWindow(ruler_horizontal, SW_HIDE);
             ShowWindow(ruler_vertical, SW_HIDE);
         }
-        let height = (r.bottom - sh - bar_height).max(0);
-        let top = height * 3 / 4;
-        let sheet_width =
-            if visible && STATE.with(|s| s.borrow().as_ref().unwrap().app.grid_sheets().is_some()) {
-                (180 * dpi / 96).min(r.right / 3)
-            } else {
-                0
-            };
-        MoveWindow(list, 0, bar_height, sheet_width, height, 1);
-        MoveWindow(
-            table,
-            sheet_width,
-            bar_height,
-            r.right - sheet_width,
-            top,
-            1,
-        );
-        MoveWindow(
-            edit,
-            sheet_width,
-            bar_height + top,
-            r.right - sheet_width,
-            height - top,
-            1,
-        );
-        MoveWindow(status, 0, r.bottom - sh, r.right, sh, 1);
+        // Formula bar: name box, fx and the cell editor on one line above the full-width grid.
+        let formula = RECT { left: 0, top, right: r.right, bottom: top + px(32) };
+        frame.formula = Some(formula);
+        frame.name_box = Some(RECT { left: 0, top, right: px(84), bottom: formula.bottom });
+        let editor_left = px(128) + px(8);
+        MoveWindow(edit, editor_left, top + px(5), (r.right - editor_left - px(8)).max(1), px(22), 1);
+        let tabs = visible && has_sheets;
+        let footer = if tabs { px(38) } else { 0 };
+        let footer_top = (bottom - footer).max(formula.bottom);
+        MoveWindow(table, 0, formula.bottom, r.right, (footer_top - formula.bottom).max(0), 1);
+        ShowWindow(list, if tabs { SW_SHOW } else { SW_HIDE });
+        if !sheet_add.is_null() {
+            ShowWindow(sheet_add, if tabs { SW_SHOW } else { SW_HIDE });
+        }
+        if tabs {
+            frame.footer_line = Some(RECT { left: 0, top: footer_top, right: r.right, bottom: footer_top + 1 });
+            let mut x = px(8);
+            if !sheet_add.is_null() {
+                MoveWindow(sheet_add, x, footer_top + px(4), px(32), px(32), 1);
+                x += px(40);
+            }
+            SendMessageW(list, LB_SETCOLUMNWIDTH, px(132) as usize, 0);
+            MoveWindow(list, x, footer_top + 1, (r.right - x - px(8)).max(0), footer - 1, 1);
+        }
+        STATE.with(|s| s.borrow_mut().as_mut().unwrap().frame = frame);
+        InvalidateRect(hwnd, null(), 0);
         return;
     }
-    ShowWindow(list,if visible{SW_SHOW}else{SW_HIDE});
-    let left = if visible {
-        (240 * dpi / 96).min(r.right / 2)
-    } else {
-        0
-    };
-    MoveWindow(
-        list,
-        0,
-        bar_height,
-        left,
-        (r.bottom - sh - bar_height).max(0),
-        1,
-    );
+    if !sheet_add.is_null() {
+        ShowWindow(sheet_add, SW_HIDE);
+    }
+    ShowWindow(list, if visible { SW_SHOW } else { SW_HIDE });
+    let left = if visible { px(if thumbnails { 212 } else { 240 }).min(r.right / 2) } else { 0 };
+    MoveWindow(list, 0, top, left, (bottom - top).max(0), 1);
+    if visible {
+        frame.sidebar_line = Some(RECT { left, top, right: left + 1, bottom });
+    }
+    let left = if visible { left + 1 } else { 0 };
+    let bar_height = top;
     let rw = if has_ruler {
         (26 * dpi / 96).max(16)
     } else {
@@ -1232,7 +1314,7 @@ unsafe fn layout(hwnd: HWND) {
                 left,
                 bar_height + rh,
                 rw,
-                (r.bottom - sh - bar_height - rh).max(0),
+                (bottom - bar_height - rh).max(0),
                 1,
             );
         }
@@ -1241,7 +1323,7 @@ unsafe fn layout(hwnd: HWND) {
         left: left + rw,
         top: bar_height + rh,
         right: r.right.max(left + rw),
-        bottom: (r.bottom - sh).max(bar_height + rh),
+        bottom: bottom.max(bar_height + rh),
     };
     if !crate::rich_pages::arrange(edit, area) {
         MoveWindow(edit, area.left, area.top, area.right - area.left, area.bottom - area.top, 1);
@@ -1251,9 +1333,11 @@ unsafe fn layout(hwnd: HWND) {
         left,
         bar_height,
         (r.right - left).max(0),
-        (r.bottom - sh - bar_height).max(0),
+        (bottom - bar_height).max(0),
         1,
     );
+    STATE.with(|s| s.borrow_mut().as_mut().unwrap().frame = frame);
+    InvalidateRect(hwnd, null(), 0);
     let inline = STATE.with(|s| {
         let s = s.borrow();
         let a = &s.as_ref().unwrap().app;
@@ -1291,7 +1375,6 @@ unsafe fn layout(hwnd: HWND) {
             SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
         );
     }
-    MoveWindow(status, 0, (r.bottom - sh).max(0), r.right, sh, 1);
     if has_ruler {
         sync_rulers(hwnd);
     }
@@ -2641,16 +2724,18 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
         let (button, items) = STATE.with(|s| {
             let s = s.borrow();
             let s = s.as_ref().unwrap();
-            let specs = s.app.command_specs();
             let items = s
                 .toolbar
                 .iter()
-                .filter(|(_, h)| IsWindowVisible(*h) == 0)
-                .filter_map(|(id, _)| {
-                    specs
-                        .iter()
-                        .find(|spec| spec.id == *id)
-                        .map(|spec| (*id, spec.title, s.app.command_state(*id)))
+                .zip(&s.toolbar_info)
+                .filter(|((_, h), _)| IsWindowVisible(*h) == 0)
+                .map(|(&(id, _), &(title, _, _))| {
+                    let state = match id {
+                        UNDO => crate::CommandState { enabled: s.app.can_undo(), checked: false },
+                        REDO => crate::CommandState { enabled: s.app.can_redo(), checked: false },
+                        _ => s.app.command_state(id),
+                    };
+                    (id, title, state)
                 })
                 .collect::<Vec<_>>();
             (s.toolbar_more, items)
@@ -2909,6 +2994,14 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
         }
         SAVE_AS => {
             save_mode(hwnd, true);
+        }
+        id if (SAVE_AS_FORMAT_FIRST..SAVE_AS_FORMAT_FIRST + 64).contains(&id) => {
+            let format = STATE.with(|s| {
+                s.borrow().as_ref().unwrap().app.save_formats().get(usize::from(id - SAVE_AS_FORMAT_FIRST)).map(|f| f.id)
+            });
+            if let Some(format) = format {
+                save_in_format(hwnd, true, Some(format));
+            }
         }
         EXIT => {
             SendMessageW(hwnd, WM_CLOSE, 0, 0);
@@ -3445,6 +3538,8 @@ unsafe fn update_caption() {
         REDO as u32,
         MF_BYCOMMAND | if r { MF_ENABLED } else { MF_GRAYED },
     );
+    sync_host_buttons(u, r);
+    invalidate_chrome(h);
     let opening = STATE.with(|s| s.borrow().as_ref().is_some_and(|s| s.async_open.is_some()));
     EnableMenuItem(
         menu,
@@ -3478,6 +3573,41 @@ unsafe fn select_grid_cell(row: usize, col: Option<usize>) {
     }
 }
 unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT {
+    if let Some(result) = crate::chrome::menubar::handle(h, m, w, l) {
+        return result;
+    }
+    match m {
+        WM_NCPAINT | WM_NCACTIVATE => {
+            let result = DefWindowProcW(h, m, w, l);
+            crate::chrome::menubar::bottom_line(h);
+            return result;
+        }
+        WM_ERASEBKGND => return 1,
+        WM_PAINT => {
+            paint_main(h);
+            return 0;
+        }
+        WM_CTLCOLORLISTBOX | WM_CTLCOLORSTATIC | WM_CTLCOLOREDIT => {
+            if let Some(result) = chrome_ctlcolor(m, w, l) {
+                return result;
+            }
+        }
+        WM_MEASUREITEM if l != 0 && (*(l as *const MEASUREITEMSTRUCT)).CtlID as usize == LIST => {
+            (*(l as *mut MEASUREITEMSTRUCT)).itemHeight = list_item_height(h).max(1) as u32;
+            return 1;
+        }
+        WM_DRAWITEM if l != 0 && (*(l as *const DRAWITEMSTRUCT)).CtlID as usize == LIST => {
+            draw_list_item(&*(l as *const DRAWITEMSTRUCT));
+            return 1;
+        }
+        WM_NOTIFY if l != 0 && (*(l as *const NMHDR)).code == NM_CUSTOMDRAW => {
+            if let Some(result) = custom_draw_button(&*(l as *const NMCUSTOMDRAW)) {
+                return result;
+            }
+        }
+        WM_MOVE | WM_ENTERSIZEMOVE => crate::chrome::snackbar::hide(),
+        _ => {}
+    }
     if let Some(result) = crate::theme::handle(h, m, w, l) {
         return result;
     }
@@ -3871,6 +4001,7 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
             0
         }
         WM_SIZE => {
+            crate::chrome::snackbar::hide();
             if STATE.with(|s| s.borrow().as_ref().is_some_and(|s| !s.edit.is_null())) {
                 layout(h)
             }
@@ -3898,6 +4029,7 @@ unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT
         }
         WM_DPICHANGED => {
             let r = &*(l as *const RECT);
+            apply_fonts(h);
             SetWindowPos(
                 h,
                 null_mut(),
@@ -3994,7 +4126,7 @@ pub fn run(app: Box<dyn App>) {
             lpfnWndProc: Some(proc),
             hInstance: instance,
             hCursor: LoadCursorW(null_mut(), IDC_ARROW),
-            hbrBackground: (COLOR_WINDOW + 1) as HBRUSH,
+            hbrBackground: null_mut(),
             lpszClassName: class.as_ptr(),
             ..zeroed()
         };
@@ -4028,7 +4160,21 @@ pub fn run(app: Box<dyn App>) {
         );
         item(file, CANCEL_OPEN, "Cancel opening\tEsc");
         item(file, SAVE, "&Save\tCtrl+S");
-        item(file, SAVE_AS, "Save &As...\tCtrl+Shift+S");
+        let save_formats = app.save_formats();
+        if save_formats.is_empty() {
+            item(file, SAVE_AS, "Save &As...\tCtrl+Shift+S");
+        } else {
+            // Mirrors the web app's "Download as" submenu: the full dialog first, then each format.
+            let save_as = CreatePopupMenu();
+            item(save_as, SAVE_AS, "Save As…\tCtrl+Shift+S");
+            AppendMenuW(save_as, MF_SEPARATOR, 0, null());
+            for (index, format) in save_formats.iter().take(64).enumerate() {
+                let extensions = format.extensions.iter().map(|e| format!(".{e}")).collect::<Vec<_>>().join(", ");
+                let label = format!("{} ({extensions})", crate::localization::text(format.title)).replace('&', "&&");
+                AppendMenuW(save_as, MF_STRING, usize::from(SAVE_AS_FORMAT_FIRST) + index, wide(&label).as_ptr());
+            }
+            AppendMenuW(file, MF_POPUP, save_as as usize, wide(&crate::localization::menu("Save &As")).as_ptr());
+        }
         if app.supports_recovery(){item(file,RECOVER_DOCUMENT,"Recover Unsaved Document…");}
         if let Some(id)=print_command{item(file,id,"&Print…\tCtrl+P");}
         for a in app.file_actions() {
@@ -4216,6 +4362,11 @@ pub fn run(app: Box<dyn App>) {
                 sparse_grid:None,
                 toolbar: Vec::new(),
                 toolbar_more: null_mut(),
+                toolbar_info: Vec::new(),
+                save_button: null_mut(),
+                sheet_add: null_mut(),
+                tooltip: null_mut(),
+                frame: ChromeFrame::default(),
                 ruler_horizontal: null_mut(),
                 ruler_vertical: null_mut(),
                 ruler_format: None,
@@ -4227,7 +4378,7 @@ pub fn run(app: Box<dyn App>) {
             0,
             class.as_ptr(),
             wide("off42").as_ptr(),
-            WS_OVERLAPPEDWINDOW,
+            WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
             1000,
@@ -4241,30 +4392,50 @@ pub fn run(app: Box<dyn App>) {
             return;
         }
         crate::theme::frame(h);
+        let mut entries: Vec<(u16, &'static str, u8, bool)> = vec![(UNDO, "Undo", 0, false), (REDO, "Redo", 0, false)];
+        if let Some(id) = print_command {
+            entries.push((id, "Print…", 0, false));
+        }
+        STATE.with(|s| {
+            let s = s.borrow();
+            let app = &s.as_ref().unwrap().app;
+            for &id in app.toolbar_actions() {
+                let title = app.actions().iter().chain(app.view_actions()).find(|(action, _)| *action == id).map(|(_, title)| *title);
+                if let Some(title) = title.filter(|_| !entries.iter().any(|e| e.0 == id)) {
+                    entries.push((id, title, 1, false));
+                }
+            }
+            for spec in &specs {
+                if app.toolbar_command_visible(spec.id) && !entries.iter().any(|e| e.0 == spec.id) {
+                    entries.push((spec.id, spec.title, 2, app.toolbar_command_toggle(spec.id)));
+                }
+            }
+        });
         let mut toolbar = Vec::new();
-        for spec in &specs {
-            if !STATE.with(|s|s.borrow().as_ref().unwrap().app.toolbar_command_visible(spec.id)) {continue;}
-            let toggle=STATE.with(|s|s.borrow().as_ref().unwrap().app.toolbar_command_toggle(spec.id));
+        let mut toolbar_info = Vec::new();
+        for &(id, title, group, toggle) in &entries {
+            let label = crate::localization::text(title).replace('&', "");
             let button = CreateWindowExW(
                 0,
                 wide("BUTTON").as_ptr(),
-                wide(&crate::localization::text(spec.title)).as_ptr(),
+                wide(&label).as_ptr(),
                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | if toggle{(BS_CHECKBOX|BS_PUSHLIKE)as u32}else{0},
                 0,
                 0,
                 0,
                 0,
                 h,
-                spec.id as HMENU,
+                id as HMENU,
                 instance,
                 null(),
             );
-            toolbar.push((spec.id, button));
+            toolbar.push((id, button));
+            toolbar_info.push((title, crate::chrome::icon_for(title), group));
         }
         let toolbar_more = CreateWindowExW(
             0,
             wide("BUTTON").as_ptr(),
-            wide("More…").as_ptr(),
+            wide(&crate::localization::text("More…")).as_ptr(),
             WS_CHILD | WS_TABSTOP,
             0,
             0,
@@ -4285,7 +4456,7 @@ pub fn run(app: Box<dyn App>) {
             crate::grid::create(h, TABLE)
         } else {
             CreateWindowExW(
-                WS_EX_CLIENTEDGE,
+                0,
                 wide("SysListView32").as_ptr(),
                 null(),
                 WS_CHILD | WS_TABSTOP | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL,
@@ -4299,11 +4470,18 @@ pub fn run(app: Box<dyn App>) {
                 null(),
             )
         };
+        let sheet_tabs = STATE.with(|s| {
+            let s = s.borrow();
+            let app = &s.as_ref().unwrap().app;
+            app.uses_custom_grid() && app.grid_sheets().is_some()
+        });
         let list = CreateWindowExW(
-            WS_EX_CLIENTEDGE,
+            0,
             wide("LISTBOX").as_ptr(),
             null(),
-            WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_TABSTOP | LBS_NOTIFY as u32,
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP
+                | (LBS_NOTIFY | LBS_OWNERDRAWFIXED | LBS_HASSTRINGS | LBS_NOINTEGRALHEIGHT) as u32
+                | if sheet_tabs { LBS_MULTICOLUMN as u32 } else { WS_VSCROLL },
             0,
             0,
             0,
@@ -4318,13 +4496,14 @@ pub fn run(app: Box<dyn App>) {
             LoadLibraryW(wide("Msftedit.dll").as_ptr());
         }
         let edit = CreateWindowExW(
-            WS_EX_CLIENTEDGE,
+            0,
             wide(if rich { "RICHEDIT50W" } else { "EDIT" }).as_ptr(),
             null(),
             WS_CHILD
                 | WS_VISIBLE
                 | WS_TABSTOP
-                | WS_VSCROLL
+                // The formula bar is one line tall; longer cell text scrolls with the caret.
+                | if sheet_tabs && !rich { 0 } else { WS_VSCROLL }
                 | ES_MULTILINE as u32
                 | ES_AUTOVSCROLL as u32
                 | ES_WANTRETURN as u32,
@@ -4379,6 +4558,38 @@ pub fn run(app: Box<dyn App>) {
             instance,
             null(),
         );
+        let save_button = CreateWindowExW(
+            0,
+            wide("BUTTON").as_ptr(),
+            wide(&crate::localization::text("Save")).as_ptr(),
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+            0,
+            0,
+            0,
+            0,
+            h,
+            SAVE as HMENU,
+            instance,
+            null(),
+        );
+        let add_sheet = STATE.with(|s| s.borrow().as_ref().unwrap().app.add_sheet_command());
+        let sheet_add = match add_sheet {
+            Some((id, title)) if sheet_tabs => CreateWindowExW(
+                0,
+                wide("BUTTON").as_ptr(),
+                wide(&crate::localization::text(title)).as_ptr(),
+                WS_CHILD | WS_TABSTOP,
+                0,
+                0,
+                0,
+                0,
+                h,
+                id as HMENU,
+                instance,
+                null(),
+            ),
+            _ => null_mut(),
+        };
         let font = GetStockObject(DEFAULT_GUI_FONT) as usize;
         // Buttons otherwise draw in the bitmap System font, which lacks "…".
         let buttons = toolbar.iter().map(|&(_, b)| b).chain([toolbar_more]);
@@ -4386,8 +4597,40 @@ pub fn run(app: Box<dyn App>) {
             SendMessageW(control, WM_SETFONT, font, 1);
         }
         // Sidebar, status bar and toolbar follow the system appearance; the document editor, table and canvas do not.
-        crate::theme::chrome(&[list, status, toolbar_more]);
+        crate::theme::chrome(&[list, status, toolbar_more, save_button, sheet_add]);
         crate::theme::chrome(&toolbar.iter().map(|&(_, b)| b).collect::<Vec<_>>());
+        if sheet_tabs && !rich {
+            // The formula bar's editor is part of the chrome strip.
+            crate::theme::chrome(&[edit]);
+        }
+        let tooltip = CreateWindowExW(
+            WS_EX_TOPMOST,
+            wide("tooltips_class32").as_ptr(),
+            null(),
+            WS_POPUP | TTS_ALWAYSTIP as u32 | TTS_NOPREFIX as u32,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            h,
+            null_mut(),
+            instance,
+            null(),
+        );
+        for ((_, button), (title, icon, _)) in toolbar.iter().zip(&toolbar_info).chain([(&(TOOLBAR_MORE, toolbar_more), &("More…", Some(crate::chrome::Icon::More), 0u8)), (&(0, sheet_add), &("", Some(crate::chrome::Icon::Plus), 0u8))]) {
+            if tooltip.is_null() || button.is_null() || icon.is_none() {
+                continue;
+            }
+            let label = if title.is_empty() { window_text(*button) } else { crate::localization::text(title).replace('&', "") };
+            let mut text = wide(&label);
+            let mut info: TTTOOLINFOW = zeroed();
+            info.cbSize = size_of::<TTTOOLINFOW>() as u32;
+            info.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
+            info.hwnd = h;
+            info.uId = *button as usize;
+            info.lpszText = text.as_mut_ptr();
+            SendMessageW(tooltip, TTM_ADDTOOLW, 0, &info as *const _ as isize);
+        }
         let ruler_horizontal = if rich {
             crate::rich_ruler::create(h, false)
         } else {
@@ -4410,9 +4653,14 @@ pub fn run(app: Box<dyn App>) {
             s.status = status;
             s.toolbar = toolbar;
             s.toolbar_more = toolbar_more;
+            s.toolbar_info = toolbar_info;
+            s.save_button = save_button;
+            s.sheet_add = sheet_add;
+            s.tooltip = tooltip;
             s.ruler_horizontal = ruler_horizontal;
             s.ruler_vertical = ruler_vertical;
         });
+        apply_fonts(h);
         let mut acc = vec![
             ACCEL {
                 fVirt: FVIRTKEY | FCONTROL,
@@ -4828,10 +5076,21 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
         let brush = if white_background { WHITE_BRUSH } else { BLACK_BRUSH };
         FillRect(dc, &rect, GetStockObject(brush) as HBRUSH);
     } else {
-        FillRect(dc, &rect, (COLOR_WINDOW + 1) as HBRUSH);
+        crate::chrome::fill(dc, &rect, crate::chrome::palette().canvas);
     }
+    let dpi = GetDpiForWindow(h).max(96) as i32;
     if let Some(scene) = scene {
-        draw_scene(dc, &scene_for_canvas(h, scene, presentation));
+        let scene = scene_for_canvas(h, scene, presentation);
+        if presentation.is_none() {
+            let pages = STATE.with(|s| s.borrow().as_ref().unwrap().app.canvas_pages());
+            for page in pages {
+                let a = scene.viewport.document_to_view(crate::Point { x: page.x, y: page.y });
+                let b = scene.viewport.document_to_view(crate::Point { x: page.x + page.width, y: page.y + page.height });
+                let sheet = RECT { left: a.x.round() as i32, top: a.y.round() as i32, right: b.x.round() as i32, bottom: b.y.round() as i32 };
+                crate::chrome::page(dc, sheet, dpi, crate::chrome::palette().canvas);
+            }
+        }
+        draw_scene(dc, &scene);
     }
     if let Some((width, height, pixels)) = image {
         if width > 0 && height > 0 {
@@ -4861,6 +5120,11 @@ unsafe extern "system" fn canvas_proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> 
             bmi.bmiHeader.biPlanes = 1;
             bmi.bmiHeader.biBitCount = 32;
             bmi.bmiHeader.biCompression = BI_RGB;
+            if presentation.is_none() {
+                let left = (rect.right - dw) / 2;
+                let top = (rect.bottom - dh) / 2;
+                crate::chrome::page(dc, RECT { left, top, right: left + dw, bottom: top + dh }, dpi, crate::chrome::palette().canvas);
+            }
             SetStretchBltMode(dc, HALFTONE);
             StretchDIBits(
                 dc,
@@ -6423,5 +6687,511 @@ pub(super) unsafe fn report_event(owner: HWND, id: u16, event: crate::ReportEven
             msg(owner, &error, MB_OK | MB_ICONERROR);
             false
         }
+    }
+}
+
+// OFF42 window chrome: title row, toolbar strip, panels, formula bar, sheet tabs and slide strip.
+// Child controls stay native (menu bar, buttons, list box, edit); the host paints them in the shared style.
+
+unsafe fn window_text(h: HWND) -> String {
+    let n = GetWindowTextLengthW(h).max(0) as usize;
+    let mut b = vec![0u16; n + 1];
+    let copied = GetWindowTextW(h, b.as_mut_ptr(), b.len() as i32).max(0) as usize;
+    String::from_utf16_lossy(&b[..copied.min(n)])
+}
+
+unsafe fn save_pill_width(hwnd: HWND, button: HWND) -> i32 {
+    let dpi = GetDpiForWindow(hwnd) as i32;
+    let font = crate::chrome::font(crate::chrome::scale(dpi, crate::chrome::BODY), 600);
+    crate::chrome::measure(button, font, &window_text(button)).cx + crate::chrome::scale(dpi, 16 + 18 + 8 + 20)
+}
+
+/// Height of one side-list row: slide thumbnails, sheet tabs or text rows.
+unsafe fn list_item_height(hwnd: HWND) -> i32 {
+    let dpi = GetDpiForWindow(hwnd).max(96) as i32;
+    let px = |v: i32| crate::chrome::scale(dpi, v);
+    let mode = STATE.with(|s| {
+        s.try_borrow().ok().and_then(|s| {
+            s.as_ref().map(|s| (s.app.list_thumbnail_size(), s.app.uses_custom_grid() && s.app.grid_sheets().is_some()))
+        })
+    });
+    match mode {
+        Some((Some((width, height)), _)) if width > 0.0 && height > 0.0 => {
+            let thumb = f64::from(px(212 - 30 - 14));
+            (thumb * height / width).round() as i32 + px(16)
+        }
+        Some((_, true)) => px(36),
+        _ => px(28),
+    }
+}
+
+/// Interface fonts for chrome controls at the window's DPI. Rich text and the sheet grid keep theirs.
+unsafe fn apply_fonts(h: HWND) {
+    let dpi = GetDpiForWindow(h).max(96) as i32;
+    let px = |v: i32| crate::chrome::scale(dpi, v);
+    let body = crate::chrome::font(px(crate::chrome::BODY), 400) as usize;
+    let small = crate::chrome::font(px(crate::chrome::SMALL), 400) as usize;
+    let Some((list, table, edit, status, buttons, rich, custom_grid)) = STATE.with(|s| {
+        s.borrow().as_ref().map(|s| {
+            let mut buttons: Vec<HWND> = s.toolbar.iter().map(|&(_, b)| b).collect();
+            buttons.extend([s.toolbar_more, s.save_button, s.sheet_add]);
+            (s.list, s.table, s.edit, s.status, buttons, s.app.uses_rich_edit(), s.app.uses_custom_grid())
+        })
+    }) else {
+        return;
+    };
+    SendMessageW(list, WM_SETFONT, small, 1);
+    SendMessageW(status, WM_SETFONT, small, 1);
+    for button in buttons.into_iter().filter(|b| !b.is_null()) {
+        SendMessageW(button, WM_SETFONT, body, 1);
+    }
+    if !custom_grid {
+        SendMessageW(table, WM_SETFONT, small, 1);
+    }
+    if !rich {
+        SendMessageW(edit, WM_SETFONT, body, 1);
+    }
+    SendMessageW(list, LB_SETITEMHEIGHT, 0, list_item_height(h) as isize);
+}
+
+fn app_accent(s: &State) -> crate::chrome::Rgb {
+    crate::chrome::accent(s.app.name())
+}
+
+/// Background, title row, toolbar strip, separators and formula bar of the main window.
+unsafe fn paint_main(hwnd: HWND) {
+    let mut ps: PAINTSTRUCT = zeroed();
+    let dc = BeginPaint(hwnd, &mut ps);
+    let mut client: RECT = zeroed();
+    GetClientRect(hwnd, &mut client);
+    let (width, height) = (client.right.max(1), client.bottom.max(1));
+    let memory = CreateCompatibleDC(dc);
+    let bitmap = CreateCompatibleBitmap(dc, width, height);
+    if memory.is_null() || bitmap.is_null() {
+        crate::chrome::fill(dc, &client, crate::chrome::palette().background);
+    } else {
+        let previous = SelectObject(memory, bitmap);
+        paint_chrome(hwnd, memory, client);
+        BitBlt(dc, 0, 0, width, height, memory, 0, 0, SRCCOPY);
+        SelectObject(memory, previous);
+    }
+    if !bitmap.is_null() {
+        DeleteObject(bitmap);
+    }
+    if !memory.is_null() {
+        DeleteDC(memory);
+    }
+    EndPaint(hwnd, &ps);
+}
+
+struct TitleView {
+    frame: ChromeFrame,
+    presenting: bool,
+    app: &'static str,
+    name: String,
+    badge: String,
+    note: Option<String>,
+    cell: Option<String>,
+    save_left: Option<i32>,
+}
+
+unsafe fn title_view(hwnd: HWND) -> Option<TitleView> {
+    let view = STATE.with(|s| {
+        let s = s.try_borrow().ok()?;
+        let s = s.as_ref()?;
+        let (name, badge) = match &s.path {
+            Some(path) => (
+                path.file_stem().map(|v| v.to_string_lossy().into_owned()).unwrap_or_default(),
+                path.extension().map(|v| format!(".{}", v.to_string_lossy().to_lowercase())),
+            ),
+            None => (crate::localization::text("Untitled"), None),
+        };
+        let note = if s.async_open.is_some() {
+            Some(crate::localization::text("Opening…"))
+        } else if s.dirty() {
+            Some(crate::localization::text("Edited"))
+        } else {
+            None
+        };
+        let cell = s.app.uses_custom_grid().then(|| {
+            let label = |row: usize, col: usize| format!("{}{}", crate::grid::col_label(col), s.app.grid_row_label(row));
+            match s.app.grid_selection() {
+                Some(r) if r.top != r.bottom || r.left != r.right => {
+                    format!("{}:{}", label(r.top, r.left), label(r.bottom, r.right))
+                }
+                _ => s.app.selected_cell().map(|(row, col)| label(row, col)).unwrap_or_default(),
+            }
+        });
+        Some(TitleView {
+            frame: s.frame.clone(),
+            presenting: s.app.presentation_size().is_some(),
+            app: s.app.name(),
+            name,
+            badge: badge.unwrap_or_else(|| format!(".{}", s.app.extension())),
+            note,
+            cell,
+            save_left: (!s.save_button.is_null() && IsWindowVisible(s.save_button) != 0).then_some(s.save_button).map(|b| {
+                let mut r: RECT = zeroed();
+                GetWindowRect(b, &mut r);
+                let mut p = POINT { x: r.left, y: r.top };
+                ScreenToClient(hwnd, &mut p);
+                p.x
+            }),
+        })
+    })?;
+    Some(view)
+}
+
+unsafe fn paint_chrome(hwnd: HWND, dc: HDC, client: RECT) {
+    use crate::chrome::{self as ui, scale};
+    let p = ui::palette();
+    ui::fill(dc, &client, p.background);
+    let Some(view) = title_view(hwnd) else { return };
+    if view.presenting {
+        return;
+    }
+    let dpi = GetDpiForWindow(hwnd).max(96) as i32;
+    let px = |v: i32| scale(dpi, v);
+    let accent = ui::accent(view.app);
+    let title = view.frame.title;
+    draw_app_mark(dc, RECT { left: px(15), top: px(11), right: px(15) + px(26), bottom: px(11) + px(30) }, accent, view.app);
+    let x = px(52);
+    let right = view.save_left.unwrap_or(title.right) - px(12);
+    let title_font = ui::font(px(ui::TITLE), 400);
+    let small = ui::font(px(12), 400);
+    let badge_width = ui::text_size(dc, small, &view.badge).cx + px(12);
+    let name_width = ui::text_size(dc, title_font, &view.name).cx.min((right - x - badge_width - px(140)).max(px(60)));
+    ui::text(dc, RECT { left: x, top: title.top, right: x + name_width, bottom: title.bottom }, &view.name, p.text, title_font, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+    let badge = RECT { left: x + name_width + px(10), top: (title.bottom - px(20)) / 2, right: x + name_width + px(10) + badge_width, bottom: (title.bottom - px(20)) / 2 + px(20) };
+    if badge.right < right {
+        let (w, h) = (f64::from(badge.right - badge.left), f64::from(badge.bottom - badge.top));
+        let one = f64::from(dpi) / 96.0;
+        ui::paint(dc, badge, p.divider, 255, |s| s.round_outline(0.5 * one, 0.5 * one, w - one, h - one, 4.0 * one, one));
+        ui::text(dc, badge, &view.badge, p.secondary, small, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        if let Some(note) = &view.note {
+            ui::text(dc, RECT { left: badge.right + px(12), top: title.top, right, bottom: title.bottom }, note, p.secondary, ui::font(px(ui::SMALL), 400), DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        }
+    }
+    if let Some(strip) = view.frame.strip {
+        let (w, h) = (f64::from(strip.right - strip.left), f64::from(strip.bottom - strip.top));
+        ui::paint(dc, strip, p.strip, 255, |s| s.round_rect(0.0, 0.0, w, h, h / 2.0));
+        for x in &view.frame.dividers {
+            ui::fill(dc, &RECT { left: *x, top: strip.top + px(10), right: *x + 1, bottom: strip.bottom - px(10) }, p.divider);
+        }
+    }
+    if let Some(line) = view.frame.sidebar_line {
+        ui::fill(dc, &line, p.separator);
+    }
+    if let Some(formula) = view.frame.formula {
+        let field = if crate::theme::is_dark() { crate::theme::FIELD } else { [255; 3] };
+        ui::fill(dc, &formula, field);
+        ui::fill(dc, &RECT { bottom: formula.top + 1, ..formula }, p.separator);
+        ui::fill(dc, &RECT { top: formula.bottom - 1, ..formula }, p.separator);
+        if let Some(name) = view.frame.name_box {
+            ui::fill(dc, &RECT { left: name.right, top: name.top, right: name.right + 1, bottom: name.bottom }, p.separator);
+            ui::fill(dc, &RECT { left: px(128), top: name.top, right: px(128) + 1, bottom: name.bottom }, p.separator);
+            let body = ui::font(px(ui::SMALL), 400);
+            ui::text(dc, RECT { left: px(12), right: name.right - px(4), ..name }, view.cell.as_deref().unwrap_or(""), p.text, body, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+            ui::text(dc, RECT { left: name.right, right: px(128), ..name }, "fx", p.secondary, body, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        }
+    }
+    if let Some(line) = view.frame.footer_line {
+        ui::fill(dc, &line, p.separator);
+    }
+}
+
+/// App mark in the title row: the accent sheet with a folded corner and the app's sign, as in the web app.
+unsafe fn draw_app_mark(dc: HDC, area: RECT, accent: crate::chrome::Rgb, app: &str) {
+    use crate::chrome as ui;
+    let s = f64::from(area.right - area.left) / 28.0;
+    let at = |x: f64, y: f64| (x * s, y * s - 2.0 * s);
+    ui::paint(dc, area, accent, 255, |c| c.polygon(&[at(3.0, 2.0), at(18.0, 2.0), at(25.0, 9.0), at(25.0, 32.0), at(3.0, 32.0)]));
+    ui::paint(dc, area, ui::mix(accent, [255; 3], 0.55), 255, |c| c.polygon(&[at(18.0, 2.0), at(18.0, 9.0), at(25.0, 9.0)]));
+    let width = 1.9 * s;
+    ui::paint(dc, area, [255; 3], 255, |c| match app {
+        "XLS42" => {
+            c.stroke(&[at(7.5, 15.0), at(20.5, 15.0), at(20.5, 26.0), at(7.5, 26.0)], width, true);
+            c.stroke(&[at(7.5, 20.5), at(20.5, 20.5)], width, false);
+            c.stroke(&[at(14.0, 15.0), at(14.0, 26.0)], width, false);
+        }
+        "PPT42" => {
+            c.stroke(&[at(7.5, 15.0), at(20.5, 15.0), at(20.5, 24.0), at(7.5, 24.0)], width, true);
+            c.stroke(&[at(10.0, 28.0), at(18.0, 28.0)], width, false);
+        }
+        "IMG42" => {
+            c.circle(at(17.5, 15.5).0, at(17.5, 15.5).1, 2.0 * s);
+            c.stroke(&[at(6.5, 27.0), at(11.5, 20.0), at(15.0, 24.0), at(17.0, 22.0), at(21.5, 27.0)], width, false);
+        }
+        "SCN42" => {
+            c.stroke(&[at(8.0, 16.0), at(20.0, 16.0)], width, false);
+            c.stroke(&[at(5.5, 21.0), at(22.5, 21.0)], width, false);
+            c.stroke(&[at(8.0, 26.0), at(16.0, 26.0)], width, false);
+        }
+        _ => {
+            for (y, end) in [(16.0, 20.0), (20.5, 20.0), (25.0, 16.0)] {
+                c.stroke(&[at(8.0, y), at(end, y)], width, false);
+            }
+        }
+    });
+}
+
+/// Chrome colours for the side list, status line and the formula-bar editor.
+unsafe fn chrome_ctlcolor(m: u32, w: WPARAM, l: LPARAM) -> Option<LRESULT> {
+    let control = l as HWND;
+    let (list, status, edit, formula) = STATE.with(|s| {
+        let s = s.try_borrow().ok()?;
+        let s = s.as_ref()?;
+        Some((s.list, s.status, s.edit, s.frame.formula.is_some()))
+    })?;
+    let p = crate::chrome::palette();
+    let dc = w as HDC;
+    let (background, text) = if control == list && m == WM_CTLCOLORLISTBOX {
+        (p.background, p.text)
+    } else if control == status && m == WM_CTLCOLORSTATIC {
+        (p.background, p.secondary)
+    } else if control == edit && formula && matches!(m, WM_CTLCOLOREDIT | WM_CTLCOLORSTATIC) {
+        (if crate::theme::is_dark() { crate::theme::FIELD } else { [255; 3] }, p.text)
+    } else {
+        return None;
+    };
+    SetBkColor(dc, crate::chrome::colorref(background));
+    SetTextColor(dc, crate::chrome::colorref(text));
+    Some(crate::chrome::brush(background) as LRESULT)
+}
+
+enum ButtonKind {
+    Strip(Option<crate::chrome::Icon>),
+    Save,
+    Plain(crate::chrome::Icon),
+}
+
+/// Paints the toolbar buttons, the Save pill and the sheet "+" through `NM_CUSTOMDRAW`, keeping the
+/// native button for focus, keyboard, check state and accessibility.
+unsafe fn custom_draw_button(draw: &NMCUSTOMDRAW) -> Option<LRESULT> {
+    use crate::chrome::{self as ui, scale};
+    let h = draw.hdr.hwndFrom;
+    let (kind, accent) = STATE.with(|s| {
+        let s = s.try_borrow().ok()?;
+        let s = s.as_ref()?;
+        let kind = if h == s.save_button {
+            ButtonKind::Save
+        } else if h == s.sheet_add {
+            ButtonKind::Plain(ui::Icon::Plus)
+        } else if h == s.toolbar_more {
+            ButtonKind::Strip(Some(ui::Icon::More))
+        } else {
+            let index = s.toolbar.iter().position(|&(_, b)| b == h)?;
+            ButtonKind::Strip(s.toolbar_info.get(index).and_then(|info| info.1))
+        };
+        Some((kind, app_accent(s)))
+    })?;
+    if draw.dwDrawStage != CDDS_PREPAINT {
+        return Some(CDRF_DODEFAULT as LRESULT);
+    }
+    let dc = draw.hdc;
+    let rc = draw.rc;
+    let dpi = GetDpiForWindow(h).max(96) as i32;
+    let one = f64::from(dpi) / 96.0;
+    let p = ui::palette();
+    let dark = crate::theme::is_dark();
+    let state = SendMessageW(h, BM_GETSTATE, 0, 0) as u32;
+    let enabled = IsWindowEnabled(h) != 0;
+    let (checked, hot, pushed, focus) = (state & BST_CHECKED != 0, state & 0x200 != 0, state & BST_PUSHED != 0, state & BST_FOCUS != 0);
+    let cues = SendMessageW(h, WM_QUERYUISTATE, 0, 0) as u32 & UISF_HIDEFOCUS == 0;
+    let (w, hgt) = (f64::from(rc.right - rc.left), f64::from(rc.bottom - rc.top));
+    let label = window_text(h);
+    match kind {
+        ButtonKind::Save => {
+            ui::fill(dc, &rc, p.background);
+            let base = ui::accent_fill(accent, dark);
+            let ink = ui::accent_ink(accent, dark);
+            let fill = if pushed { ui::mix(base, ink, 0.16) } else if hot { ui::mix(base, ink, 0.08) } else { base };
+            let (fill, ink) = if enabled { (fill, ink) } else { (p.strip, ui::mix(p.secondary, p.background, 0.3)) };
+            ui::paint(dc, rc, fill, 255, |s| s.round_rect(0.0, 0.0, w, hgt, hgt / 2.0));
+            let icon = f64::from(scale(dpi, 18));
+            ui::paint(dc, rc, ink, 255, |s| s.icon(ui::Icon::Save, f64::from(scale(dpi, 16)), (hgt - icon) / 2.0, icon));
+            ui::text(dc, RECT { left: rc.left + scale(dpi, 16 + 18 + 8), right: rc.right - scale(dpi, 12), ..rc }, &label, ink, ui::font(scale(dpi, ui::BODY), 600), DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+            if focus && cues {
+                ui::paint(dc, rc, ink, 255, |s| s.round_outline(one, one, w - 2.0 * one, hgt - 2.0 * one, hgt / 2.0 - one, 1.5 * one));
+            }
+        }
+        ButtonKind::Strip(_) | ButtonKind::Plain(_) => {
+            let (icon, plain) = match kind {
+                ButtonKind::Plain(icon) => (Some(icon), true),
+                ButtonKind::Strip(icon) => (icon, false),
+                ButtonKind::Save => (None, false),
+            };
+            let behind = if plain { p.background } else { p.strip };
+            ui::fill(dc, &rc, behind);
+            let radius = 4.0 * one;
+            let fill = if checked {
+                Some(ui::accent_fill(accent, dark))
+            } else if pushed {
+                Some(p.pressed)
+            } else if hot && enabled {
+                Some(p.hover)
+            } else {
+                None
+            };
+            if let Some(fill) = fill {
+                ui::paint(dc, rc, fill, 255, |s| s.round_rect(0.0, 0.0, w, hgt, radius));
+            }
+            let ink = if checked { ui::accent_ink(accent, dark) } else if icon.is_some() { p.icon } else { p.text };
+            let ink = if enabled { ink } else { ui::mix(ink, behind, 0.6) };
+            match icon {
+                Some(icon) => {
+                    let size = f64::from(scale(dpi, 18));
+                    ui::paint(dc, rc, ink, 255, |s| s.icon(icon, (w - size) / 2.0, (hgt - size) / 2.0, size));
+                }
+                None => ui::text(dc, rc, &label, ink, ui::font(scale(dpi, ui::BODY), 400), DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS),
+            }
+            if focus && cues {
+                ui::paint(dc, rc, accent, 255, |s| s.round_outline(one, one, w - 2.0 * one, hgt - 2.0 * one, radius, 1.5 * one));
+            }
+        }
+    }
+    Some(CDRF_SKIPDEFAULT as LRESULT)
+}
+
+/// Draws one side-list row: a sheet tab, a slide thumbnail with its number, or a text row.
+unsafe fn draw_list_item(item: &DRAWITEMSTRUCT) {
+    use crate::chrome::{self as ui, scale};
+    let p = ui::palette();
+    let dc = item.hDC;
+    let rc = item.rcItem;
+    ui::fill(dc, &rc, p.background);
+    if item.itemID == u32::MAX {
+        return;
+    }
+    let index = item.itemID as usize;
+    let dpi = GetDpiForWindow(item.hwndItem).max(96) as i32;
+    let px = |v: i32| scale(dpi, v);
+    let one = f64::from(dpi) / 96.0;
+    let selected = item.itemState & ODS_SELECTED != 0;
+    let dark = crate::theme::is_dark();
+    let length = SendMessageW(item.hwndItem, LB_GETTEXTLEN, index, 0);
+    let label = if length > 0 {
+        let mut buffer = vec![0u16; length as usize + 1];
+        let copied = SendMessageW(item.hwndItem, LB_GETTEXT, index, buffer.as_mut_ptr() as isize).max(0) as usize;
+        String::from_utf16_lossy(&buffer[..copied.min(length as usize)])
+    } else {
+        String::new()
+    };
+    let Some((accent, tabs, thumbnail)) = STATE.with(|s| {
+        let s = s.try_borrow().ok()?;
+        let s = s.as_ref()?;
+        let tabs = s.app.uses_custom_grid() && s.app.grid_sheets().is_some();
+        let thumbnail = s.app.list_thumbnail_size().and_then(|size| Some((size, s.app.presenter_preview(index)?)));
+        Some((app_accent(s), tabs, thumbnail))
+    }) else {
+        return;
+    };
+    if tabs {
+        let area = RECT { left: rc.left + px(2), top: rc.top, right: rc.right - px(2), bottom: rc.bottom - px(2) };
+        if selected {
+            let (w, h) = (f64::from(area.right - area.left), f64::from(area.bottom - area.top));
+            ui::paint(dc, area, ui::accent_fill(accent, dark), 255, |s| s.round_rect(0.0, -6.0 * one, w, h + 6.0 * one, 6.0 * one));
+        }
+        let font = ui::font(px(ui::BODY), if selected { 600 } else { 400 });
+        let ink = if selected { ui::accent_ink(accent, dark) } else { p.icon };
+        ui::text(dc, RECT { left: area.left + px(12), right: area.right - px(12), ..area }, &label, ink, font, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        return;
+    }
+    if let Some(((width, height), mut scene)) = thumbnail {
+        let number = (index + 1).to_string();
+        ui::text(dc, RECT { left: rc.left, top: rc.top + px(8), right: rc.left + px(26), bottom: rc.top + px(26) }, &number, p.secondary, ui::font(px(12), 400), DT_RIGHT | DT_TOP | DT_SINGLELINE);
+        let left = rc.left + px(34);
+        let thumb_width = (rc.right - left - px(12)).max(px(40));
+        let thumb_height = ((f64::from(thumb_width) * height / width).round() as i32).min((rc.bottom - rc.top - px(14)).max(1));
+        let slide = RECT { left, top: rc.top + px(8), right: left + thumb_width, bottom: rc.top + px(8) + thumb_height };
+        ui::fill(dc, &slide, [255; 3]);
+        let saved = SaveDC(dc);
+        IntersectClipRect(dc, slide.left, slide.top, slide.right, slide.bottom);
+        scene.viewport = crate::Viewport {
+            zoom: f64::from(thumb_width) / width,
+            pan: crate::Point { x: f64::from(slide.left), y: f64::from(slide.top) },
+        };
+        draw_scene(dc, &scene);
+        RestoreDC(dc, saved);
+        let ring = RECT { left: slide.left - px(3), top: slide.top - px(3), right: slide.right + px(3), bottom: slide.bottom + px(3) };
+        let (w, h) = (f64::from(ring.right - ring.left), f64::from(ring.bottom - ring.top));
+        if selected {
+            ui::paint(dc, ring, accent, 255, |s| s.round_outline(2.0 * one, 2.0 * one, w - 4.0 * one, h - 4.0 * one, 5.0 * one, 2.0 * one));
+        } else {
+            ui::paint(dc, ring, p.divider, 255, |s| s.round_outline(2.5 * one, 2.5 * one, w - 5.0 * one, h - 5.0 * one, 4.0 * one, one));
+        }
+        return;
+    }
+    let area = RECT { left: rc.left + px(6), top: rc.top + px(1), right: rc.right - px(6), bottom: rc.bottom - px(1) };
+    if selected {
+        let (w, h) = (f64::from(area.right - area.left), f64::from(area.bottom - area.top));
+        ui::paint(dc, area, ui::accent_fill(accent, dark), 255, |s| s.round_rect(0.0, 0.0, w, h, h / 2.0));
+    }
+    let ink = if selected { ui::accent_ink(accent, dark) } else { p.text };
+    ui::text(dc, RECT { left: area.left + px(10), right: area.right - px(8), ..area }, &label, ink, ui::font(px(ui::SMALL), if selected { 600 } else { 400 }), DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+}
+
+/// One transient "Saved: name" message after a successful save.
+unsafe fn notify_saved(hwnd: HWND) {
+    let Some((name, status)) = STATE.with(|s| {
+        let s = s.try_borrow().ok()?;
+        let s = s.as_ref()?;
+        let name = s.path.as_ref()?.file_name()?.to_string_lossy().into_owned();
+        Some((name, s.panels.status))
+    }) else {
+        return;
+    };
+    let dpi = GetDpiForWindow(hwnd).max(96) as i32;
+    let bottom = if status { crate::chrome::scale(dpi, 26) } else { 0 };
+    crate::chrome::snackbar::show(hwnd, &format!("{}: {name}", crate::localization::text("Saved")), bottom);
+}
+
+/// Repaint the host-drawn title row and formula bar after the document, its state or the selection changed.
+unsafe fn invalidate_chrome(hwnd: HWND) {
+    let areas = STATE.with(|s| {
+        s.try_borrow().ok().and_then(|s| s.as_ref().map(|s| (s.frame.title, s.frame.name_box, s.save_button, s.sheet_add)))
+    });
+    if let Some((title, name_box, save, add)) = areas {
+        InvalidateRect(hwnd, &title, 0);
+        if let Some(name_box) = name_box {
+            InvalidateRect(hwnd, &name_box, 0);
+        }
+        for button in [save, add] {
+            if !button.is_null() {
+                InvalidateRect(button, null(), 0);
+            }
+        }
+    }
+}
+
+/// Undo/Redo toolbar buttons, the Save pill and the sheet "+" follow the same state as their menu items.
+unsafe fn sync_host_buttons(undo: bool, redo: bool) {
+    let Some((buttons, save, can_save, add, add_enabled)) = STATE.with(|s| {
+        let s = s.try_borrow().ok()?;
+        let s = s.as_ref()?;
+        let buttons: Vec<(HWND, bool)> = s
+            .toolbar
+            .iter()
+            .filter_map(|&(id, b)| match id {
+                UNDO => Some((b, undo)),
+                REDO => Some((b, redo)),
+                _ => None,
+            })
+            .collect();
+        let add = s.app.add_sheet_command().map(|(id, _)| s.app.command_state(id).enabled);
+        Some((buttons, s.save_button, s.app.can_save(), s.sheet_add, add.unwrap_or(false)))
+    }) else {
+        return;
+    };
+    for (button, enabled) in buttons {
+        if (IsWindowEnabled(button) != 0) != enabled {
+            EnableWindow(button, enabled as i32);
+        }
+    }
+    if !save.is_null() && (IsWindowEnabled(save) != 0) != can_save {
+        EnableWindow(save, can_save as i32);
+    }
+    if !add.is_null() && (IsWindowEnabled(add) != 0) != add_enabled {
+        EnableWindow(add, add_enabled as i32);
     }
 }

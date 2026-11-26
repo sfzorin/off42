@@ -68,6 +68,56 @@ and groups; where a printer lacks `SB_PIXEL_ALPHA`, scene printing uses a bounde
 These are implementation contracts, not evidence of native event dispatch, rendering, printing or lifecycle behavior.
 See [rust/README.md](rust/README.md) for formats, dependencies and verification limits.
 
+### Windows window layout
+
+The Win32 shell (`win42`, `chrome.rs` and `native.rs`) follows the same structure as the web apps so that the web,
+Windows and Linux versions look alike. Every element stays a native control or the native menu bar; the host only
+paints them.
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ File  Edit  View  …                       (native menu bar, drawn flat)       │
+│ [▤] Name  .docx  Edited                                            ( ⤓ Save ) │  title row
+│ ( ↶ ↷ 🖶 │ app actions │ app commands …                                   ⋯ ) │  one toolbar strip
+├──────────┬───────────────────────────────────────────────────────────────────┤
+│ side list│ grey canvas · white page / slide with a soft shadow                │
+│ (1 px    │                                                                    │
+│  line)   │                                                                    │
+├──────────┴───────────────────────────────────────────────────────────────────┤
+│ status line                                    [Saved: Name.docx] (snackbar)  │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+- Title row: app mark in the app accent, file name, a format badge (the file's extension, or the app's native one
+  for an untitled document), "Edited"/"Opening…" while that applies, and the primary Save pill (a `BUTTON` with the
+  Save command, enabled with File > Save). It is not a panel and stays visible when panels are hidden.
+- Toolbar strip: one rounded row (`#edf1f7`). Undo, Redo and Print come first, then the app's `toolbar_actions`
+  (existing menu commands), then its visible `command_specs`. Groups are separated by 1 px dividers. Buttons are native
+  `BUTTON`s painted through `NM_CUSTOMDRAW` (hover, pressed, accent-tinted check state, focus ring); commands with an
+  icon in `chrome::icon_for` are icon-only with a tooltip and keep their title as window text. Buttons that do not
+  fit move to "More…". Only real commands appear; there are no placeholder buttons.
+- Side list: flat owner-drawn `LISTBOX` (`LBS_HASSTRINGS`, so `LB_GETTEXT` and accessibility keep the item text)
+  separated from the document by a 1 px line. Selection is an accent-tinted pill. Apps with `list_thumbnail_size`
+  (PPT42) get a slide strip: number, thumbnail of `presenter_preview(index)` and an accent ring on the selection.
+- Spreadsheets: a formula bar above a full-width grid (name box with the cell or range, `fx`, the one-line cell
+  editor) and sheet tabs at the bottom (`LBS_MULTICOLUMN` list) with the app's `add_sheet_command` as "+".
+- Canvas: `#f8f9fb` (dark: `#17181b`). Pages from `canvas_pages` (PDF42 page, PPT42 slide) are white sheets with a
+  shadow, offset from the canvas edge by `CANVAS_MARGIN` (24 logical px); pointer mapping uses the same viewport.
+  Images (IMG42, SCN42) keep their fit-to-window geometry and get the same shadow. The DOC42 Rich Edit desk is
+  document paper and stays light in both appearances.
+- Snackbar: one non-activating popup (`Off42Snackbar`) at the bottom left, "Saved: name" for four seconds after a
+  successful save; it hides when the window moves or resizes.
+- File > Save As is a submenu when the app declares save formats: "Save As…" (the full dialog, Ctrl+Shift+S) and
+  one entry per format, which opens the same dialog with that format selected.
+- Colours (`chrome::LIGHT`/`DARK`): background `#f8f9fb`, strip `#edf1f7`, separators `#e1e3e6`, text `#1f1f1f`,
+  secondary `#5b5f66`; app accents DOC `#2f6fde`, XLS `#1e8e4f`, PPT `#e0891b`, PDF `#d23f31`, IMG `#7b4fc4`,
+  SCN `#0b8a8a`. Accent fills and their text keep a WCAG contrast of at least 4.5 in both appearances (unit test).
+- Icons are thin strokes on a 24-unit grid (the web app's inline SVG set), anti-aliased by 4× supersampling.
+- Interface font: Segoe UI Variable Text where installed, otherwise Segoe UI, sized per monitor DPI (14 px body,
+  13 px panels, 18 px file name). Rich text and the sheet grid keep their document fonts.
+- Dark mode follows the system app mode (`theme.rs`): chrome, menu bar (drawn through `WM_UAHDRAWMENU*`), strip and
+  panels turn dark; pages, slides and the DOC42 editor stay white.
+
 ## Window layout (macOS)
 
 Typical PDF42 layout; other apps add their own formula bar, notes, inspectors or scan settings:

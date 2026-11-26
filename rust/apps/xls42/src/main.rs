@@ -85,6 +85,7 @@ impl suite42_app::App for Xls {
     fn poll_background(&mut self)->bool{let goal=self.goal_seek.poll();let solver=self.solver.poll(&mut self.book);goal||solver}
     fn take_pending_command(&mut self)->Option<u16>{self.goal_seek.take_command().or_else(||self.solver.take_command())}
     fn toolbar_command_visible(&self,id:u16)->bool{matches!(id,25|31|34|38|39|40|50)}
+    fn add_sheet_command(&self)->Option<(u16,&'static str)>{Some((20,"Add sheet"))}
     fn supports_technical_elements(&self) -> bool {
         true
     }
