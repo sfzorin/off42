@@ -72,19 +72,9 @@ export function translatePage(root: ParentNode = document) {
   document.title = t('app.title');
 }
 
-/** A language picker that reloads the page with `?lang=` (state lives in the tab, so a reload is cheap). */
-export function languagePicker(select: HTMLSelectElement) {
-  select.replaceChildren(...LANGUAGES.map(([code, name]) => {
-    const option = document.createElement('option');
-    option.value = code;
-    option.lang = code;
-    option.textContent = name;
-    return option;
-  }));
-  select.value = language;
-  select.addEventListener('change', () => {
-    const url = new URL(location.href);
-    url.searchParams.set('lang', select.value);
-    location.assign(url.toString());
-  });
+/** Reloads the page in another language (`?lang=`); the app and its hash survive, open files do not. */
+export function switchLanguage(code: string) {
+  const url = new URL(location.href);
+  url.searchParams.set('lang', code);
+  location.assign(url.toString());
 }
