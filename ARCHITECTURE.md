@@ -138,9 +138,15 @@ An optional assistant panel in the web editors (documents and spreadsheets first
 - Nothing is sent until the user opens the assistant and agrees; then only the selection, the document outline and the
   text the model asks for through read commands. The privacy policy (all languages) and store notes describe this.
   Without the assistant every app keeps working fully offline.
-- Provider: OpenRouter, so the model is one setting in the Worker (an allowlist of OpenRouter model ids, chosen by
-  the owner) and can be switched without changing the app; stable instructions and tool definitions go first so
-  providers that support prompt caching can reuse them.
+- Provider: OpenRouter; models are settings in the Worker. Measured in `assistant/eval/RESULTS.md` (PR #18).
+  - Free first: `openrouter/free` with `data_collection: "deny"` (97% of the eval tasks; served by free models whose
+    providers do not keep data). OpenRouter caps free models per account at 20 requests/minute and 1000/day once
+    $10 of credit has been bought (50/day before), shared by all users of the site.
+  - Paid fallback when the free router returns 429/5xx, exceeds the time limit or the daily free quota is used:
+    `deepseek/deepseek-v4.1-flash` pinned to Alibaba/Together/Google Vertex, no fallbacks to other providers,
+    `data_collection: "deny"`; then `z-ai/glm-5.3-flash` on Z.AI/Fireworks. About $0.00015 per action.
+  - No free model that may train on prompts is used; users' documents are never sent to such providers.
+  - Stable instructions and tool definitions go first so provider-side prompt caching applies (`assistant/CACHING.md`).
 - Neui/Doors (server-side Go UI) was considered and rejected: it would move documents to a server and require
   rewriting the web UI.
 
