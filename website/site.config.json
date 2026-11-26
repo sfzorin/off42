@@ -19,6 +19,14 @@
       "requirements": "Windows 10 or 11 · 64-bit",
       "sha256": "e56bf42f5a1b37dabd5ece3ac2fbb1ff44deddebee4b5e1ec5506440de7b2845",
       "size": 116507092
+    },
+    "linux": {
+      "url": "https://github.com/sfzorin/off42/releases/download/v1.0.0-linux-preview.1/off42-1.0.0-linux-preview.1-x86_64.tar.gz",
+      "version": "v1.0.0-linux-preview.1",
+      "architecture": "x86_64",
+      "requirements": "Linux",
+      "sha256": "7ff2679122ed00bdacaf91b26490c3e82578bb8d63653eb25635201c9c50a2f1",
+      "size": 78360479
     }
   }
 }

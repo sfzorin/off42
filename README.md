@@ -124,6 +124,7 @@ spreadsheets and presentations, exports plain-layout PDF, merges, extracts and c
 sheets, product marks, signatures and stamps. An experimental Linux x86_64 tarball adds rough windows for the six
 apps; page views, rich editing, printing, scanning and OCR are not on Linux yet. See
 [the command line and Linux preview](rust/README.md#off42-command-line-and-the-linux-preview).
+[Download the Linux preview tar.gz](https://github.com/sfzorin/off42/releases/download/v1.0.0-linux-preview.1/off42-1.0.0-linux-preview.1-x86_64.tar.gz).
 
 ## Build and install on macOS
 
