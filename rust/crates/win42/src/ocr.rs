@@ -1,11 +1,6 @@
 //! Offline recognition shared by PDF42 and SCN42. Native code is statically linked.
 use suite42_core::ocr::Word as OcrWord;
-#[derive(Clone, Copy)]
-pub struct Image<'a> {
-    pub width: u32,
-    pub height: u32,
-    pub pixels: &'a [u8],
-}
+pub use suite42_app::platform::OcrImage as Image;
 #[cfg(not(windows))]
 use std::sync::atomic::AtomicBool;
 /// Fit a page into the engine's limit while retaining aspect ratio.

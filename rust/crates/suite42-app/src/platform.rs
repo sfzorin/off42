@@ -21,3 +21,11 @@ pub trait PdfText: Sync {
         cancel: &AtomicBool,
     ) -> Result<Vec<crate::pdf::comparison::PageText>, String>;
 }
+
+/// RGBA page image handed to an OCR engine.
+#[derive(Clone, Copy)]
+pub struct OcrImage<'a> {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: &'a [u8],
+}
