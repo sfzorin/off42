@@ -252,6 +252,12 @@ README and the audit artifacts; passing model tests do not replace native action
 - Output commits visible edits and checks adjustment/markup rendering. Failed rendering cannot save original pixels
   without the requested effects. Per-file destination replacement is atomic after successful encoding; a batch is not
   one atomic transaction. Do not mark the document clean or switch its file identity before a write succeeds.
+- Crash recovery (Kit42 `RecoveryJournal`) records the dirty editing state of the shown image/page: lossless TIFF
+  working pixels (bit depth, alpha and colour space kept), marks with archived colours and stamp images, adjustments,
+  description and resolution. Every Undo registration, load, Save/Revert and showing another image re-evaluates the
+  record; a clean state removes it, closing a window or a confirmed Quit discards it. A restored state is applied only
+  after its own file/page has loaded, as one Undo step, and the window then owns the record. The original path is
+  never a recovery destination; a missing original is materialized under the journal's `Recovered Files`.
 
 These are source contracts; each audit records the exact tested binary, exercised scenarios and remaining limits.
 
@@ -297,6 +303,11 @@ These are source contracts; each audit records the exact tested binary, exercise
   page geometry is unchanged; pending results from the previous pixel revision are discarded. The mutation is one
   complete Undo step. Preserve grayscale/1-bit page
   kinds. Saved output contains the resulting page pixels, including PDF; no independent PDF annotation is created.
+- Crash recovery (Kit42 `RecoveryJournal`) records all pages of a dirty, non-empty document: output pixels as lossless
+  TIFF (1-bit pages repacked to 1 bit), the JPEG-held geometry base as a maximum-quality JPEG, DPI, processing options,
+  report and OCR text. Every document change, including OCR and Save completion, re-evaluates the record; a clean
+  document removes it, closing with Don't Save or a confirmed Quit discards it. Restored pages get fresh identities,
+  open dirty without Undo history, and the window then owns the record.
 - Native regression scenarios must exercise actions, mouse/key controls, complete Undo/Redo and rendered/saved data.
   Keep deterministic pixel/document checks separate from real Vision recognition/detection and virtual-scanner jobs.
   None of these substitutes for physical scanner, Continuity Camera, external sharing or printer testing. Each audit records
@@ -402,6 +413,7 @@ documented by the app: PPT42 uses ⇧⌘P for Play from Current Slide and remove
 | `CertificateStore`, `SigningIdentity` | certificates from the Keychain, .p12 import, self-signed creation |
 | `KeyVault`, `StoredKey`, `CertificateSubject` | signing keys for Get a Certificate…: Secure Enclave P-256 or Keychain keys, PKCS#10 requests, pairing issued certificates with their keys, SHA-256 signing |
 | `Theme42` | sizes, app accent colours, `NSAlert.form` |
+| `RecoveryJournal`, `RecoveryAutosaver` | crash recovery for windows without NSDocument (IMG42, SCN42): one hashed, atomically written record per editing session in `~/Library/Autosave Information/<app>`; the autosaver writes 30 s after a change and clears at once when the session is clean; launch prompt `askToRestore` |
 | `DebugSnapshot` | `K42_SNAPSHOT=out.png` renders a window, requests app activation, then exits unless kept open; `K42_APPEARANCE=dark\|light` forces appearance; `K42_AUDIT_RECENT=1` checks recent-menu behavior |
 
 ## Visual parameters

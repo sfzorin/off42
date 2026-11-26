@@ -74,6 +74,10 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
     var textLinesFor: CGImage?
     var searchIndex = -1
 
+    // Crash recovery (see Recovery.swift)
+    lazy var recovery = RecoveryAutosaver(journal: ImageRecovery.journal) { [weak self] in self?.recoveryCapture() }
+    var pendingRecovery: (restored: ImageRecovery.Restored, recordID: UUID)?
+
     var url: URL? { urls.indices.contains(index) ? urls[index] : nil }
 
     init(urls: [URL], start: URL?) {
@@ -278,6 +282,7 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
         window?.title = "IMG42"
         window?.subtitle = ""
         window?.isDocumentEdited = false
+        recovery.noteChange()
         updateControlAvailability()
         showMessage(L("No images"))
     }
@@ -303,7 +308,13 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
             if result.isAnimated, result.pages.count > 1 { startAnimation() }
             if result.wasDownsampled { banner.show(.info, L("This image is displayed at reduced resolution. Save creates a copy.")) }
         }
+        if let pending = pendingRecovery, result.image != nil, page == pending.restored.page,
+           result.url.standardizedFileURL == pending.restored.url.standardizedFileURL {
+            pendingRecovery = nil
+            applyRecovered(pending.restored, recordID: pending.recordID)
+        }
         if !inspectorItem.isCollapsed, inspectorContainer.children.first === infoPanel { infoPanel.show(url: result.url, loaded: result) }
+        recovery.noteChange()
         updateSubtitle()
         preloadNeighbours()
         updateControlAvailability()
@@ -604,6 +615,8 @@ final class ImageWindowController: NSWindowController, NSWindowDelegate, NSMenuI
         rememberPanels()
         stopAnimation()
         slideshowTimer?.invalidate()
+        // Closing means saved or discarded (Don't Save); the record must not come back at the next launch.
+        recovery.discard()
         AppDelegate.shared?.windowClosed(self)
     }
 

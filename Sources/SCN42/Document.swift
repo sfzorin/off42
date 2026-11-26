@@ -16,8 +16,18 @@ final class ScanPage {
     private var cachedThumbnail: NSImage?
     private(set) var contentRevision = UUID()
 
-    init(base: CGImage, image: CGImage, dpi: Double, options: ProcessOptions, report: ProcessReport) {
-        self.base = ScanPage.compact(base)
+    convenience init(base: CGImage, image: CGImage, dpi: Double, options: ProcessOptions, report: ProcessReport) {
+        self.init(base: base, image: image, dpi: dpi, options: options, report: report, compacting: true)
+    }
+
+    /// A page from a recovery record: the base is already compacted, so it is used as is.
+    convenience init(restoring state: Snapshot) {
+        self.init(base: state.base, image: state.image, dpi: state.dpi, options: state.options, report: state.report, compacting: false)
+        text = state.text
+    }
+
+    private init(base: CGImage, image: CGImage, dpi: Double, options: ProcessOptions, report: ProcessReport, compacting: Bool) {
+        self.base = compacting ? ScanPage.compact(base) : base
         self.image = image
         self.dpi = dpi
         self.options = options

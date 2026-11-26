@@ -54,8 +54,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let env = ProcessInfo.processInfo.environment
         if env["K42_WELCOME"] != nil {
             welcome.showWindow(nil)
+            offerRecovery(into: nil)
         } else {
             let w = newWindow()
+            offerRecovery(into: w)
             // Files given on the command line or dropped on the icon are imported.
             let paths = CommandLine.arguments.dropFirst().filter { !$0.hasPrefix("-") && FileManager.default.fileExists(atPath: $0) }
             if !paths.isEmpty { w.importFiles(paths.map { URL(fileURLWithPath: $0) }, at: nil) }
@@ -101,6 +103,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         DeviceManager.shared.stop()
+        // Quitting was confirmed (or nothing was unsaved): this is not a crash, so no record survives.
+        windows.forEach { $0.recovery.discard() }
+        ScanRecovery.journal?.waitUntilIdle()
     }
 
     @discardableResult

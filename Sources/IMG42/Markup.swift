@@ -109,7 +109,7 @@ struct MarkStyle {
 
 /// One mark on the image, in image pixel coordinates (origin top left).
 struct Mark {
-    enum Kind { case pen, highlighter, line, rectangle, roundedRect, oval, bubble, star, polygon, loupe, spotlight, pixelate, text, image }
+    enum Kind: String { case pen, highlighter, line, rectangle, roundedRect, oval, bubble, star, polygon, loupe, spotlight, pixelate, text, image }
 
     var id = UUID()
     var kind: Kind

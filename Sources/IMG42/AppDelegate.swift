@@ -58,6 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         NSApp.activate()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [self] in
+            offerRecovery()
             if windows.isEmpty {
                 // Started from the command line with paths (`IMG42 photo.jpg`).
                 let paths = CommandLine.arguments.dropFirst().filter { !$0.hasPrefix("-") && FileManager.default.fileExists(atPath: $0) }
@@ -92,6 +93,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.addButton(withTitle: L("Quit"))
         alert.addButton(withTitle: L("Cancel"))
         return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // Quitting was confirmed (or nothing was unsaved): this is not a crash, so no record survives.
+        windows.forEach { $0.recovery.discard() }
+        ImageRecovery.journal?.waitUntilIdle()
     }
 
     // MARK: - Opening
@@ -148,6 +155,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller.showWindow(nil)
         welcome.close()
         for item in items where !isDir(item) { NSDocumentController.shared.noteNewRecentDocumentURL(item) }
+    }
+
+    /// A window for a recovered image (never merged with an existing window): the edits apply once it has loaded.
+    func openRecovered(_ restored: ImageRecovery.Restored, recordID: UUID) {
+        var set = ImageFormats.images(in: restored.url.deletingLastPathComponent())
+        if !set.contains(where: { $0.standardizedFileURL == restored.url.standardizedFileURL }) { set.append(restored.url) }
+        let controller = ImageWindowController(urls: set, start: restored.url)
+        controller.pendingRecovery = (restored, recordID)
+        if restored.page > 0, controller.url?.standardizedFileURL == restored.url.standardizedFileURL {
+            controller.show(index: controller.index, page: restored.page)
+        }
+        windows.append(controller)
+        controller.showWindow(nil)
+        welcome.close()
     }
 
     func windowClosed(_ controller: ImageWindowController) {
