@@ -638,6 +638,7 @@ mod rich_notes;
 mod rich_preview;
 #[cfg(windows)]
 mod rich_artwork;
+#[cfg(windows)]
 mod rich_pages;
 #[cfg(windows)]
 mod rich_print;
@@ -1247,25 +1248,7 @@ pub struct FontChoice {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RichFormatCommand { Bold, Italic, Underline, Font, Color, AlignLeft, AlignCenter, AlignRight, Justify }
-#[derive(Clone, Debug)]
-pub struct ReportRequest {
-    pub title: String,
-    pub summary: String,
-    pub columns: Vec<&'static str>,
-    pub column_colors: Vec<Option<[u8; 3]>>,
-    pub rows: Vec<Vec<String>>,
-    pub highlight_controls: bool,
-    pub compact_first_column: bool,
-    pub allow_keep: bool,
-    pub keeping: bool,
-}
-#[derive(Clone, Copy, Debug)]
-pub enum ReportEvent {
-    Select(usize),
-    Keep(bool),
-    Clear,
-    Closed { keep: bool },
-}
+pub use suite42_app::report::{ReportEvent, ReportRequest};
 #[derive(Clone, Debug)]
 pub enum DialogRequest {
     Confirmation { title: &'static str, text: String },

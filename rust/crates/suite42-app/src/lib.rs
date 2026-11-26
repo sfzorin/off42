@@ -15,6 +15,8 @@ pub mod pdf_print_layout;
 pub mod print_calibration;
 pub mod production;
 pub mod recents;
+pub mod report;
+pub mod rich_pages;
 pub mod recovery;
 pub mod storage;
 pub mod window_layout;
