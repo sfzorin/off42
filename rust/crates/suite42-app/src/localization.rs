@@ -385,6 +385,15 @@ pub fn choice_value(originals: &[String], value: &str) -> String {
 mod tests {
     use super::*;
     #[test]
+    fn stored_language_preference_format_is_pinned() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("language.json");
+        save_at(&path, matching("ru").unwrap()).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), br#"{"version":1,"language":"ru"}"#);
+        std::fs::write(&path, br#"{"version":1,"language":"zh-Hant"}"#).unwrap();
+        assert_eq!(read_settings_at(&path).unwrap().code, "zh-Hant");
+    }
+    #[test]
     fn windows_specific_labels_cover_every_language_without_changing_payloads() {
         for language in LANGUAGES.into_iter().skip(1) {
             for key in [

@@ -67,7 +67,7 @@ fn valid(profile: &Profile) -> bool {
             .as_ref()
             .is_none_or(|values| values.iter().all(|value| value.len() <= 512))
 }
-pub(crate) fn restore(
+pub fn restore(
     directory: &Path,
     app: &str,
     source: &LabelSource,
@@ -104,7 +104,7 @@ pub(crate) fn restore(
     }
     Ok(())
 }
-pub(crate) fn save(
+pub fn save(
     directory: &Path,
     app: &str,
     source: &LabelSource,
@@ -151,14 +151,29 @@ pub(crate) fn save(
     .map(|_| ())
     .map_err(|error| error.to_string())
 }
-pub(crate) fn directory() -> Option<PathBuf> {
-    std::env::var_os("LOCALAPPDATA")
-        .map(|path| PathBuf::from(path).join("off42").join("Label Preferences"))
+pub fn directory() -> Option<PathBuf> {
+    crate::storage::local_data().map(|path| path.join("Label Preferences"))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn stored_label_profile_format_is_pinned() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = LabelSource::Text("selected".into());
+        let fields = ["name", "code", "QR", "70, 37, 0, 0", "2, 3"].map(String::from);
+        save(dir.path(), "DOC42", &source, &fields).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(dir.path().join("DOC42-text.json")).unwrap(),
+            r#"{"version":1,"format":"QR","stock":"70, 37, 0, 0","copies_and_start":"2, 3","header_signature":null,"mapping":null}"#
+        );
+        let rows = LabelSource::Rows(vec![(1, vec!["Name".into(), "Code".into()])]);
+        save(dir.path(), "XLS42", &rows, &fields).unwrap();
+        let raw = std::fs::read_to_string(dir.path().join("XLS42-rows.json")).unwrap();
+        assert!(raw.ends_with(r#","mapping":["name","code"]}"#), "{raw}");
+        assert!(raw.contains(&format!(r#""header_signature":"{}""#, signature(&rows).unwrap())));
+    }
     #[test]
     fn preserves_layout_and_matching_mappings_but_never_text_payloads() {
         let dir = tempfile::tempdir().unwrap();

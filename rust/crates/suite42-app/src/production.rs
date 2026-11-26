@@ -1,7 +1,19 @@
-use crate::{InputRequest, LabelSource};
+use crate::InputRequest;
 use label42::{Format, Label, Stock, MAX_LABELS};
+/// Content offered to the label sheet generator.
+pub enum LabelSource {
+    Text(String),
+    /// Keep other source choices usable if an individual artwork capture fails.
+    Unavailable(String),
+    /// Independent single-page PDF; optional region is in its unrotated PDF coordinates.
+    PdfArtwork { bytes:Vec<u8>, region:Option<[f64;4]> },
+    /// Encoded PNG/JPEG; decode only the source actually selected for label generation.
+    PictureArtwork { bytes:Vec<u8>, width_points:f64, height_points:f64 },
+    /// Original one-based row number and rendered values from the selected columns.
+    Rows(Vec<(usize, Vec<String>)>),
+}
 
-pub(crate) fn sheet_request(source: &LabelSource) -> Result<InputRequest,String> {
+pub fn sheet_request(source: &LabelSource) -> Result<InputRequest,String> {
     if let LabelSource::Unavailable(error)=source {return Err(error.clone());}
     if let LabelSource::PictureArtwork{..}=source {return sheet_request(&LabelSource::PdfArtwork{bytes:Vec::new(),region:None});}
     if let LabelSource::PdfArtwork{region,..}=source {
@@ -48,7 +60,7 @@ pub(crate) fn sheet_request(source: &LabelSource) -> Result<InputRequest,String>
     })
 }
 
-pub(crate) fn barcode_choices() -> Vec<(usize, Vec<String>)> {
+pub fn barcode_choices() -> Vec<(usize, Vec<String>)> {
     vec![(
         1,
         ["QR", "Data Matrix", "Code 128", "Aztec"]
@@ -58,7 +70,7 @@ pub(crate) fn barcode_choices() -> Vec<(usize, Vec<String>)> {
     )]
 }
 
-pub(crate) fn sheet_choices() -> Result<Vec<(usize, Vec<String>)>, String> {
+pub fn sheet_choices() -> Result<Vec<(usize, Vec<String>)>, String> {
     Ok(vec![
         (
             2,
@@ -77,7 +89,7 @@ pub(crate) fn sheet_choices() -> Result<Vec<(usize, Vec<String>)>, String> {
     ])
 }
 
-pub(crate) fn barcode_request(value: String) -> InputRequest {
+pub fn barcode_request(value: String) -> InputRequest {
     InputRequest {
         title: "Create Barcode",
         fields: vec![
@@ -88,7 +100,7 @@ pub(crate) fn barcode_request(value: String) -> InputRequest {
     }
 }
 
-pub(crate) fn barcode_output(fields: &[String]) -> Result<Vec<u8>, String> {
+pub fn barcode_output(fields: &[String]) -> Result<Vec<u8>, String> {
     let [value, format, width] = fields else {
         return Err("Invalid barcode settings.".into());
     };
@@ -124,12 +136,11 @@ fn stock_from_text(size:&str)->Result<Stock,String> {
     };
     Ok(stock)
 }
-#[cfg(windows)]
-pub(crate) fn artwork_choices()->Result<Vec<(usize,Vec<String>)>,String>{
+pub fn artwork_choices()->Result<Vec<(usize,Vec<String>)>,String>{
     Ok(vec![(1,Stock::catalog()?.iter().map(|stock|stock.name.clone()).collect())])
 }
 
-pub(crate) fn sheet_output(source: &LabelSource, fields: &[String]) -> Result<Vec<u8>, String> {
+pub fn sheet_output(source: &LabelSource, fields: &[String]) -> Result<Vec<u8>, String> {
     if let LabelSource::Unavailable(error)=source {return Err(error.clone());}
     if let LabelSource::PictureArtwork{bytes,width_points,height_points}=source {
         if bytes.len()>16*1024*1024{return Err("Picture artwork exceeds 16 MB".into());}
@@ -220,7 +231,7 @@ pub(crate) fn sheet_output(source: &LabelSource, fields: &[String]) -> Result<Ve
     label42::sheet_pdf_stock(&stock, first_slot, format, &labels)
 }
 
-pub(crate) fn technical_request() -> InputRequest {
+pub fn technical_request() -> InputRequest {
     InputRequest {
         title: "Symbol or Code",
         fields: vec![
@@ -231,7 +242,7 @@ pub(crate) fn technical_request() -> InputRequest {
         ],
     }
 }
-pub(crate) fn edit_technical_request(element: &label42::TechnicalElement) -> InputRequest {
+pub fn edit_technical_request(element: &label42::TechnicalElement) -> InputRequest {
     let kind = element
         .symbol_id
         .as_ref()
@@ -256,12 +267,12 @@ fn language() -> &'static str {
 }
 
 /// A mark as shown in the format list: its name in the interface language and its region, e.g. "CE — EU".
-pub(crate) fn mark_label(symbol: &label42::TechnicalSymbol) -> String {
+pub fn mark_label(symbol: &label42::TechnicalSymbol) -> String {
     symbol.name_in(language())
 }
 
 /// The mark chosen in the format field (by displayed name, English name or file id).
-pub(crate) fn find_mark(kind: &str) -> Option<&'static label42::TechnicalSymbol> {
+pub fn find_mark(kind: &str) -> Option<&'static label42::TechnicalSymbol> {
     let kind = kind.trim();
     label42::symbols().iter().find(|symbol| {
         symbol.id.eq_ignore_ascii_case(kind) || symbol.title.eq_ignore_ascii_case(kind) || mark_label(symbol) == kind
@@ -270,7 +281,7 @@ pub(crate) fn find_mark(kind: &str) -> Option<&'static label42::TechnicalSymbol>
 
 /// What the mark is for and its conditions of use, shown before inserting it (as under the macOS preview).
 /// Informs only: every mark can be inserted. `None` for barcodes.
-pub(crate) fn mark_notice(element: &label42::TechnicalElement) -> Option<String> {
+pub fn mark_notice(element: &label42::TechnicalElement) -> Option<String> {
     let symbol = element.symbol_id.as_deref().and_then(|id| label42::symbols().iter().find(|s| s.id == id))?;
     let t = crate::localization::text;
     let mut conditions = Vec::new();
@@ -293,7 +304,7 @@ pub(crate) fn mark_notice(element: &label42::TechnicalElement) -> Option<String>
     Some(format!("{}\n\n{}\n\n{}", mark_label(symbol), purpose, conditions.join("\n")).replace("\n\n\n\n", "\n\n"))
 }
 
-pub(crate) fn technical_choices() -> Vec<(usize, Vec<String>)> {
+pub fn technical_choices() -> Vec<(usize, Vec<String>)> {
     let mut types = vec![
         "QR".into(),
         "Data Matrix".into(),
@@ -307,7 +318,7 @@ pub(crate) fn technical_choices() -> Vec<(usize, Vec<String>)> {
     vec![(0, types), (3, vec!["yes".into(), "no".into()])]
 }
 
-pub(crate) fn technical_element(fields: &[String]) -> Result<label42::TechnicalElement, String> {
+pub fn technical_element(fields: &[String]) -> Result<label42::TechnicalElement, String> {
     let [kind, value, width, caption] = fields else {
         return Err("Invalid technical element settings.".into());
     };

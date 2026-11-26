@@ -112,6 +112,18 @@ pub fn clear(app: &str) -> Result<(), String> {
 mod tests {
     use super::*;
     #[test]
+    fn stored_recent_documents_format_is_pinned() {
+        let directory = tempfile::tempdir().unwrap();
+        let preferences = directory.path().join("DOC42.json");
+        let document = directory.path().join("report.docx");
+        write_at(&preferences, vec![document.clone()]).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&preferences).unwrap(),
+            format!(r#"{{"version":1,"paths":[{}]}}"#, serde_json::to_string(&document).unwrap())
+        );
+        assert_eq!(read_at(&preferences), [document]);
+    }
+    #[test]
     fn paths_round_trip_deduplicate_and_keep_only_the_latest_ten() {
         let directory = tempfile::tempdir().unwrap();
         let preferences = directory.path().join("prefs/recent.json");

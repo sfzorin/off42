@@ -81,11 +81,7 @@ pub fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(Some(0)).collect()
 }
 
-#[derive(Clone)]
-pub struct InputRequest {
-    pub title: &'static str,
-    pub fields: Vec<(&'static str, String)>,
-}
+pub use suite42_app::{InputRequest, LabelSource};
 #[derive(Clone, Copy, Debug)]
 pub struct FileAction {
     pub id: u16,
@@ -99,17 +95,6 @@ pub struct FileAction {
 /// Shared host action requested after a document gesture has released mouse capture.
 pub const CREATE_LABEL_SHEET_COMMAND: u16 = 65518;
 
-pub enum LabelSource {
-    Text(String),
-    /// Keep other source choices usable if an individual artwork capture fails.
-    Unavailable(String),
-    /// Independent single-page PDF; optional region is in its unrotated PDF coordinates.
-    PdfArtwork { bytes:Vec<u8>, region:Option<[f64;4]> },
-    /// Encoded PNG/JPEG; decode only the source actually selected for label generation.
-    PictureArtwork { bytes:Vec<u8>, width_points:f64, height_points:f64 },
-    /// Original one-based row number and rendered values from the selected columns.
-    Rows(Vec<(usize, Vec<String>)>),
-}
 
 /// Portable contract between a document model and the native Windows host.
 /// True while the Delete key is held, so editors can tell forward from backward deletion.
@@ -620,8 +605,8 @@ mod clipboard_envelope;
 mod dialogs;
 #[cfg(windows)]
 mod grid;
-#[cfg(any(windows, test))]
-mod label_preferences;
+#[cfg(windows)]
+use suite42_app::label_preferences;
 #[cfg(any(windows, test))]
 mod marks;
 pub mod generator;
@@ -639,8 +624,8 @@ mod report;
 mod note_pagination;
 #[cfg(any(windows, test))]
 mod print_calibration;
-#[cfg(any(windows, test))]
-mod production;
+#[cfg(windows)]
+use suite42_app::production;
 #[cfg(windows)]
 mod prompt;
 #[cfg(windows)]

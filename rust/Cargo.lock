@@ -2286,6 +2286,8 @@ dependencies = [
 name = "suite42-app"
 version = "0.1.0"
 dependencies = [
+ "image",
+ "label42",
  "serde",
  "serde_json",
  "sha2 0.10.9",
