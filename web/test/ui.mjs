@@ -662,7 +662,13 @@ try {
     const item = await phone.locator('.menu .menu-item >> nth=0').boundingBox();
     assert.ok(item.height >= 44);
     await shoot(phone, '19-phone-menu');
+    // Hovering opens the submenu; with no room beside the item it opens below it and the item stays tappable.
+    await phone.hover('.menu .menu-item:has-text("Download as")');
     await phone.click('.menu .menu-item:has-text("Download as")');
+    const parent = await phone.locator('.menu .menu-item:has-text("Download as")').boundingBox();
+    const submenu = await phone.locator('.menu').nth(1).boundingBox();
+    assert.ok(submenu.y >= parent.y + parent.height - 1 || submenu.x >= parent.x + parent.width - 4,
+      `the submenu does not cover its item ${JSON.stringify({ parent, submenu })}`);
     const [download] = await Promise.all([phone.waitForEvent('download'), phone.click('.menu .menu-item:has-text("Rich Text")')]);
     assert.equal(download.suggestedFilename(), 'sample.rtf');
     assert.match(readFileSync(await download.path()).toString(), /^\{\\rtf/);

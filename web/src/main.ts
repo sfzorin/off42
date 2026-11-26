@@ -260,9 +260,17 @@ function placeMenu(menu: HTMLElement, anchor: HTMLElement, side: boolean, alignE
   let left: number;
   let top: number;
   if (side) {
-    left = rtl() ? r.left - w + 2 : r.right - 2;
-    if (left + w > vw - 8 || left < 8) left = rtl() ? r.right - 2 : r.left - w + 2;
+    const after = rtl() ? r.left - w + 2 : r.right - 2;
+    const before = rtl() ? r.right - 2 : r.left - w + 2;
+    const fits = (x: number) => x >= 8 && x + w <= vw - 8;
     top = r.top - 6;
+    if (fits(after)) left = after;
+    else if (fits(before)) left = before;
+    else {
+      // No room beside the item (phones): open below it, so the item itself stays visible and tappable.
+      left = rtl() ? r.right - w - 16 : r.left + 16;
+      top = r.bottom + 2;
+    }
   } else {
     left = alignEnd !== rtl() ? r.right - w : r.left;
     top = r.bottom + 4;
