@@ -10,7 +10,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "node test/smoke.mjs && node test/offline.mjs",
-    "test:ui": "node test/ui.mjs"
+    "test:ui": "node test/ui.mjs",
+    "publish:site": "sh scripts/publish-to-site.sh",
+    "check:site": "node scripts/site-build.mjs check ../website/public/app"
   },
   "devDependencies": {
     "playwright": "1.65.1",

@@ -15,6 +15,12 @@ if [ "$expected" != "$actual" ]; then
   exit 1
 fi
 
+# Panic locations embed source paths; map the local checkout and Cargo home to neutral prefixes so the published
+# wasm carries no paths of the machine that built it.
+cargo_home=${CARGO_HOME:-$HOME/.cargo}
+rust_root=$(cd "$rust" && pwd)
+export RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=$cargo_home=/cargo --remap-path-prefix=$rust_root=/off42/rust"
+
 # The cdylib crate type is requested here only, so native workspace builds never link a cdylib.
 cargo rustc --manifest-path "$rust/Cargo.toml" --locked -p off42-wasm --lib \
   --profile "$profile" --target wasm32-unknown-unknown --crate-type cdylib

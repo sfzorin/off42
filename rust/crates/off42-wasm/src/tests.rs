@@ -83,7 +83,11 @@ fn signatures_and_stamps_render_deterministically() {
     let b = signature_png("Anna Smith", &designs[0], "7", "blue", 0, 130.0).unwrap();
     assert!(a.starts_with(b"\x89PNG"));
     assert_eq!(a, b);
-    let templates: Value = serde_json::from_str(&stamp_templates()).unwrap();
+    let templates: Value = serde_json::from_str(&stamp_templates("en")).unwrap();
+    let russian: Value = serde_json::from_str(&stamp_templates("ru")).unwrap();
+    assert_ne!(templates[0]["title"], russian[0]["title"], "template titles follow the language");
+    let fallback: Value = serde_json::from_str(&stamp_templates("ja")).unwrap();
+    assert_eq!(templates[0]["title"], fallback[0]["title"], "English for languages marks42 has no titles in");
     let template = &templates[0];
     let mut values = serde_json::Map::new();
     for field in template["fields"].as_array().unwrap() {

@@ -7,7 +7,8 @@
     "language": "Ngôn ngữ",
     "menu": "Menu",
     "skip": "Chuyển đến nội dung",
-    "home": "Trang chủ"
+    "home": "Trang chủ",
+    "webApp": "Ứng dụng web"
   },
   "home": {
     "eyebrow": "Miễn phí · Mã nguồn mở · macOS và Windows",
@@ -106,6 +107,20 @@
     "qrAlt": "“Insert Symbol or Code” trong XLS42: mã QR rộng 30 mm tạo từ đường dẫn sản phẩm.",
     "labelsAlt": "“Create Labels” trong XLS42: tờ nhãn có mã QR tạo từ mười hàng sản phẩm.",
     "caption": "Tờ nhãn tạo từ mười hàng bảng tính. Các sản phẩm là hư cấu."
+  },
+  "web": {
+    "label": "OFF42 TRÊN TRÌNH DUYỆT",
+    "title": "Mở, chuyển đổi và tạo tệp ngay trong trình duyệt.",
+    "text": "Ứng dụng web chạy lõi OFF42 được biên dịch sang WebAssembly. Tệp được xử lý ngay trong thẻ trình duyệt và trả lại cho bạn dưới dạng tệp tải xuống: không tải gì lên mạng và không cần cài đặt gì.",
+    "points": [
+      "Xem trước tệp DOCX, ODT, RTF, Markdown, HTML và văn bản thuần, rồi lưu sang một định dạng khác trong số này",
+      "Xem trang tính XLSX, ODS, XLS và CSV với giá trị đã tính, rồi lưu thành XLSX, ODS hoặc CSV",
+      "Hiển thị trang chiếu PPTX và ODP dưới dạng dàn ý văn bản và chuyển đổi qua lại giữa hai định dạng",
+      "Đọc số trang, siêu dữ liệu, dấu trang, tệp đính kèm và trường biểu mẫu của PDF",
+      "Tạo mã QR, Data Matrix, Code 128 và Aztec, tờ nhãn A4 dạng PDF, dấu sản phẩm, chữ ký và con dấu"
+    ],
+    "limits": "Đây là bản xem trước với giới hạn rõ ràng: không thể xuất tài liệu, bảng tính và bản trình chiếu sang PDF, không hiển thị trang PDF, trang chiếu chỉ hiện dưới dạng văn bản, và con dấu chỉ hỗ trợ chữ Latinh, Kirin và Hy Lạp. Lõi OFF42 chỉ cần tải về một lần, dung lượng tối đa 16 MB. Ứng dụng máy tính cho Mac và Windows có đầy đủ tính năng.",
+    "open": "Mở ứng dụng web"
   },
   "show": {
     "label": "XEM THỰC TẾ",
@@ -377,7 +392,9 @@
     "windowsPreviewText": "Bản xem trước có đủ sáu ứng dụng. Giải nén toàn bộ tệp ZIP rồi mở ứng dụng bạn muốn. Có công cụ tạo nhãn và mã vạch.",
     "installTitle": "Lần mở đầu tiên",
     "installMac": "Mac: nếu macOS báo không thể mở ứng dụng, hãy mở Cài đặt hệ thống → Quyền riêng tư & Bảo mật rồi nhấp Vẫn mở. Bạn chỉ cần làm một lần cho mỗi ứng dụng.",
-    "installWindows": "Windows: nếu SmartScreen hiện “Windows đã bảo vệ PC của bạn”, hãy nhấp Thông tin thêm, rồi nhấp Vẫn chạy."
+    "installWindows": "Windows: nếu SmartScreen hiện “Windows đã bảo vệ PC của bạn”, hãy nhấp Thông tin thêm, rồi nhấp Vẫn chạy.",
+    "web": "OFF42 trên trình duyệt",
+    "webText": "Không cần cài đặt: bản xem trước mở, chuyển đổi và tạo tệp ngay trong thẻ trình duyệt. Hiện chưa thể xuất tài liệu sang PDF và chưa hiển thị trang PDF."
   },
   "about": {
     "title": "Một bộ văn phòng không giấu điều gì.",

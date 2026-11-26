@@ -7,7 +7,8 @@
     "language": "语言",
     "menu": "菜单",
     "skip": "跳转到正文",
-    "home": "首页"
+    "home": "首页",
+    "webApp": "网页版"
   },
   "home": {
     "eyebrow": "免费 · 开源 · macOS 和 Windows",
@@ -106,6 +107,20 @@
     "qrAlt": "XLS42 中的“Insert Symbol or Code”：由产品链接生成的 30 毫米 QR 码。",
     "labelsAlt": "XLS42 中的“Create Labels”：根据十行产品数据生成的 QR 码标签纸。",
     "caption": "由十行电子表格数据生成的标签纸。产品均为虚构。"
+  },
+  "web": {
+    "label": "浏览器中的 OFF42",
+    "title": "直接在浏览器中打开、转换和创建文件。",
+    "text": "网页版运行编译为 WebAssembly 的 OFF42 引擎。文件在浏览器标签页内处理，结果以下载形式提供：不上传任何内容，也无需安装。",
+    "points": [
+      "预览 DOCX、ODT、RTF、Markdown、HTML 和文本文件，并另存为其中的另一种格式",
+      "查看带计算值的 XLSX、ODS、XLS 和 CSV 表格，并另存为 XLSX、ODS 或 CSV",
+      "以文本大纲形式显示 PPTX 和 ODP 幻灯片，并在两种格式之间转换",
+      "读取 PDF 的页数、元数据、书签、附件和表单字段",
+      "制作 QR、Data Matrix、Code 128 和 Aztec 码、A4 标签纸 PDF、产品标志、签名和印章"
+    ],
+    "limits": "这是一个有明确限制的预览版：文档、电子表格和演示文稿无法导出为 PDF，PDF 页面不会显示，幻灯片仅显示文本，印章仅支持拉丁文、西里尔文和希腊文文字。引擎需一次性下载，最大 16 MB。Mac 和 Windows 桌面应用提供完整功能。",
+    "open": "打开网页版"
   },
   "show": {
     "label": "实际效果",
@@ -377,7 +392,9 @@
     "windowsPreviewText": "预览版包含全部六款应用。请完整解压 ZIP 文件，再启动所需的应用。 包含标签和条码制作工具。",
     "installTitle": "首次启动",
     "installMac": "Mac：如果 macOS 提示无法打开该 App，请打开“系统设置 → 隐私与安全性”，然后点按“仍要打开”。每个 App 只需操作一次。",
-    "installWindows": "Windows：如果 SmartScreen 显示“Windows 已保护你的电脑”，请点击“更多信息”，然后点击“仍要运行”。"
+    "installWindows": "Windows：如果 SmartScreen 显示“Windows 已保护你的电脑”，请点击“更多信息”，然后点击“仍要运行”。",
+    "web": "浏览器中的 OFF42",
+    "webText": "无需安装：在浏览器标签页内打开、转换和创建文件的预览版。目前文档无法导出为 PDF，也不会显示 PDF 页面。"
   },
   "about": {
     "title": "一个坦诚开放的办公套件。",

@@ -7,7 +7,8 @@
     "language": "언어",
     "menu": "메뉴",
     "skip": "본문으로 건너뛰기",
-    "home": "홈"
+    "home": "홈",
+    "webApp": "웹 앱"
   },
   "home": {
     "eyebrow": "무료 · 오픈 소스 · macOS 및 Windows",
@@ -106,6 +107,20 @@
     "qrAlt": "XLS42의 “Insert Symbol or Code”: 제품 링크로 만든 30mm QR 코드.",
     "labelsAlt": "XLS42의 “Create Labels”: 제품 10개 행으로 만든 QR 코드 라벨 시트.",
     "caption": "스프레드시트 10개 행으로 만든 라벨 시트. 제품은 가상입니다."
+  },
+  "web": {
+    "label": "브라우저 속 OFF42",
+    "title": "브라우저에서 바로 파일을 열고, 변환하고, 만드세요.",
+    "text": "웹 앱은 WebAssembly로 컴파일된 OFF42 엔진으로 실행됩니다. 파일은 브라우저 탭 안에서 처리되어 다운로드로 제공됩니다. 아무것도 업로드되지 않고, 설치할 것도 없습니다.",
+    "points": [
+      "DOCX, ODT, RTF, Markdown, HTML, 텍스트 파일을 미리 보고 이 중 다른 형식으로 저장",
+      "XLSX, ODS, XLS, CSV 시트를 계산된 값과 함께 보고 XLSX, ODS, CSV로 저장",
+      "PPTX와 ODP 슬라이드를 텍스트 개요로 보여 주고 두 형식 간에 변환",
+      "PDF의 페이지 수, 메타데이터, 책갈피, 첨부 파일, 양식 필드 읽기",
+      "QR, Data Matrix, Code 128, Aztec 코드, PDF로 된 A4 라벨 시트, 제품 마크, 서명, 도장 만들기"
+    ],
+    "limits": "제한이 분명한 미리 보기 버전입니다. 문서, 스프레드시트, 프레젠테이션은 PDF로 내보낼 수 없고, PDF 페이지는 표시되지 않으며, 슬라이드는 텍스트로만 표시되고, 도장은 라틴 문자, 키릴 문자, 그리스 문자만 지원합니다. 엔진은 최대 16MB로 한 번만 다운로드됩니다. Mac 및 Windows용 데스크톱 앱에서는 모든 기능을 사용할 수 있습니다.",
+    "open": "웹 앱 열기"
   },
   "show": {
     "label": "실제 작동 모습",
@@ -377,7 +392,9 @@
     "windowsPreviewText": "앱 6개가 모두 포함된 미리 보기 버전입니다. ZIP 전체를 압축 해제한 뒤 원하는 앱을 실행하세요. 라벨 및 바코드 제작 도구가 포함되어 있습니다.",
     "installTitle": "처음 실행",
     "installMac": "Mac: 앱을 열 수 없다는 메시지가 macOS에 표시되면 시스템 설정 → 개인정보 보호 및 보안을 열고 ‘그래도 열기’를 클릭하세요. 앱마다 한 번만 하면 됩니다.",
-    "installWindows": "Windows: SmartScreen에 ‘Windows의 PC 보호’가 표시되면 ‘추가 정보’를 클릭한 다음 ‘실행’을 클릭하세요."
+    "installWindows": "Windows: SmartScreen에 ‘Windows의 PC 보호’가 표시되면 ‘추가 정보’를 클릭한 다음 ‘실행’을 클릭하세요.",
+    "web": "브라우저 속 OFF42",
+    "webText": "설치할 필요가 없습니다. 브라우저 탭 안에서 파일을 열고, 변환하고, 만드는 미리 보기 버전입니다. 아직 문서를 PDF로 내보내거나 PDF 페이지를 표시할 수는 없습니다."
   },
   "about": {
     "title": "속까지 열린 오피스.",

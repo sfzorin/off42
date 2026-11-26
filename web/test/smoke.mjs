@@ -126,6 +126,9 @@ check('label sheet PDF from a catalogue stock', () => {
 check('product marks', () => {
   const marks = JSON.parse(off42.productMarks('en'));
   assert.ok(marks.find((m) => m.id === 'ce'));
+  // label42 has mark copy in 11 languages, keyed by the site's codes (zh-Hans, zh-Hant).
+  const chinese = JSON.parse(off42.productMarks('zh-Hans'));
+  assert.notEqual(chinese.find((m) => m.id === 'kc').name, marks.find((m) => m.id === 'kc').name);
   assert.ok(off42.productMarkSvg('ce', 20).startsWith('<svg'));
   assert.ok(starts(off42.productMarkPng('ce', 20), '\x89PNG'));
 });
@@ -140,7 +143,8 @@ check('signature designs and PNG', () => {
   assert.ok(starts(png, '\x89PNG'));
 });
 check('stamp templates and PNG (date supplied by the host)', () => {
-  const templates = JSON.parse(off42.stampTemplates());
+  const templates = JSON.parse(off42.stampTemplates('en'));
+  assert.notEqual(JSON.parse(off42.stampTemplates('ru'))[0].title, templates[0].title);
   assert.ok(templates.length > 10);
   let drawn = 0;
   for (const t of templates) {

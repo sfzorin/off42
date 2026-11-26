@@ -449,13 +449,20 @@ pub fn signature_png(name: &str, design: &str, impression: &str, ink: &str, pen:
 }
 
 /// Stamp templates as JSON: `[{id, title, category, round, ink, fields: [{key, label, example, multiline, date}]}]`.
-pub fn stamp_templates() -> String {
+/// marks42 has template titles in English, Russian and Turkish; other languages get English. Categories and field
+/// labels are English (the desktop apps translate them in their own string tables).
+pub fn stamp_templates(language: &str) -> String {
+    let index = match language.split(['-', '_']).next().unwrap_or("") {
+        "ru" => 1,
+        "tr" => 2,
+        _ => 0,
+    };
     let templates: Vec<Value> = seal::templates()
         .iter()
         .map(|t| {
             json!({
                 "id": t.id,
-                "title": t.title(),
+                "title": t.titles[index],
                 "category": t.category.title(),
                 "round": t.is_round(),
                 "ink": format!("{:?}", t.ink).to_lowercase(),

@@ -19,6 +19,11 @@ one of 20 website languages, also available in the macOS interface. Each languag
 14 fully rendered pages: home, feature index, nine features, downloads, open
 source and privacy. Arabic uses RTL. Language links preserve the current route.
 
+`public/app/` is the OFF42 web app (built from `web/`, see `web/README.md`), served at `/app/`. It is committed
+as built output because the Cloudflare build cannot compile Rust; do not edit it by hand: run
+`sh web/scripts/publish-to-site.sh`. The navigation, a home page section and the downloads page link to it with
+`/app/?lang=<page language>`. It is a tool page, not one of the 280 localized pages, and is not in the sitemap.
+
 The generator fails on missing locale files. `--partial` is exclusively for local
 translation work and must never be deployed; `npm run check` requires all 280
 localized pages. Edit `locales/en.json` and every other locale together.
@@ -95,7 +100,11 @@ No placeholder URL is offered as a real download.
 
 `npm run check` verifies the full locale schema, 280 unique page titles and
 canonicals, 20-language alternates and x-default, local links and fragment targets,
-assets, valid JSON-LD, sitemap, 404 noindex and configured release states.
+assets, valid JSON-LD, sitemap, 404 noindex and configured release states. For the web app it checks that every
+page links `/app/?lang=<lang>`, that `dist/app/index.html` and every asset it references exist, that there is one
+hashed wasm file loaded by the script and under 25 MiB, that every language has a catalog, that `BUILD.txt` is
+present, and that both the page's and the site's Content-Security-Policy allow `'wasm-unsafe-eval'`. Whether the
+committed app matches its sources is checked in CI (`web/scripts/site-build.mjs check`).
 Browser checks exercise menus, language switching, links and layout; see `QA.md`.
 They do not verify native applications, certificate trust, OCR accuracy or Office
 format fidelity. Translations have structural and editorial checks, not a review

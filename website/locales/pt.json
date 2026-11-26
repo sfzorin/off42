@@ -7,7 +7,8 @@
     "language": "Idioma",
     "menu": "Menu",
     "skip": "Ir para o conteúdo",
-    "home": "Início"
+    "home": "Início",
+    "webApp": "Aplicativo web"
   },
   "home": {
     "eyebrow": "Grátis · Código aberto · macOS e Windows",
@@ -106,6 +107,20 @@
     "qrAlt": "“Insert Symbol or Code” no XLS42: um QR code de 30 mm gerado a partir do link de um produto.",
     "labelsAlt": "“Create Labels” no XLS42: uma folha de etiquetas com QR codes gerados a partir de dez linhas de produtos.",
     "caption": "Uma folha de etiquetas feita a partir de dez linhas de planilha. Os produtos são fictícios."
+  },
+  "web": {
+    "label": "OFF42 NO NAVEGADOR",
+    "title": "Abra, converta e crie arquivos direto no navegador.",
+    "text": "O aplicativo web executa o mecanismo do OFF42 compilado para WebAssembly. Os arquivos são processados dentro da aba do navegador e devolvidos como downloads: nada é enviado e nada é instalado.",
+    "points": [
+      "Visualize arquivos DOCX, ODT, RTF, Markdown, HTML e de texto e salve-os em outro desses formatos",
+      "Veja planilhas XLSX, ODS, XLS e CSV com valores calculados e salve-as como XLSX, ODS ou CSV",
+      "Mostre slides PPTX e ODP como esquema de texto e converta entre os dois formatos",
+      "Leia o número de páginas, os metadados, os marcadores, os anexos e os campos de formulário de um PDF",
+      "Crie QR codes, códigos Data Matrix, Code 128 e Aztec, folhas de etiquetas A4 em PDF, marcas de produto, assinaturas e carimbos"
+    ],
+    "limits": "É uma prévia com limitações claras: documentos, planilhas e apresentações não podem ser exportados para PDF, as páginas de PDF não são exibidas, os slides aparecem apenas como texto e os carimbos aceitam apenas as escritas latina, cirílica e grega. O mecanismo é baixado uma única vez e tem até 16 MB. Os aplicativos para desktop para Mac e Windows têm todos os recursos.",
+    "open": "Abrir o aplicativo web"
   },
   "show": {
     "label": "VEJA FUNCIONANDO",
@@ -377,7 +392,9 @@
     "windowsPreviewText": "Versão de prévia com os seis aplicativos. Extraia todo o conteúdo do ZIP e abra o aplicativo desejado. Inclui ferramentas para criar etiquetas e códigos de barras.",
     "installTitle": "Primeira abertura",
     "installMac": "Mac: se o macOS disser que o app não pode ser aberto, abra Ajustes do Sistema → Privacidade e Segurança e clique em “Abrir Mesmo Assim”. Isso só é necessário uma vez por app.",
-    "installWindows": "Windows: se o SmartScreen exibir “O Windows protegeu seu computador”, clique em “Mais informações” e depois em “Executar assim mesmo”."
+    "installWindows": "Windows: se o SmartScreen exibir “O Windows protegeu seu computador”, clique em “Mais informações” e depois em “Executar assim mesmo”.",
+    "web": "OFF42 no navegador",
+    "webText": "Nada para instalar: uma prévia que abre, converte e cria arquivos dentro da aba do navegador. Ainda não é possível exportar documentos para PDF nem exibir páginas de PDF."
   },
   "about": {
     "title": "Um escritório sem nada a esconder.",

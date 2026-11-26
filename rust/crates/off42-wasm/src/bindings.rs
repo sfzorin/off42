@@ -109,8 +109,8 @@ pub fn signature_png(name: &str, design: &str, impression: &str, ink: &str, pen:
 }
 
 #[wasm_bindgen(js_name = stampTemplates)]
-pub fn stamp_templates() -> String {
-    crate::stamp_templates()
+pub fn stamp_templates(language: &str) -> String {
+    crate::stamp_templates(language)
 }
 
 #[wasm_bindgen(js_name = stampPng)]
