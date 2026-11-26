@@ -25,7 +25,7 @@ fn clean(title: &str) -> String {
 }
 
 struct Snack {
-    text: String,
+    pub(crate) text: String,
     error: bool,
     at: Instant,
 }
@@ -61,8 +61,8 @@ pub struct Host {
     pub(crate) info: AppInfo,
     pub(crate) path: Option<PathBuf>,
     pub(crate) home: bool,
-    text: String,
-    text_edited: bool,
+    pub(crate) text: String,
+    pub(crate) text_edited: bool,
     edited_at: Option<Instant>,
     snack: Option<Snack>,
     texture: Option<egui::TextureHandle>,
@@ -158,8 +158,13 @@ impl Host {
         self.texture = None;
     }
 
-    /// Hand typed text to the model before any command, save or selection change.
-    fn commit_text(&mut self) {
+    pub(crate) fn snack_text(&self) -> Option<String> {
+        self.snack.as_ref().map(|s| s.text.clone())
+    }
+
+    /// Hand typed text to the model before any command, save or selection change. A model
+    /// that refuses the edit (for example a rich document) keeps its text and the page reverts.
+    pub(crate) fn commit_text(&mut self) {
         if !self.text_edited {
             return;
         }
@@ -167,6 +172,7 @@ impl Host {
         self.edited_at = None;
         if let Err(e) = self.app.edit(suite42_app::to_native_text(&self.text)) {
             self.snack = Some(Snack { text: e, error: true, at: Instant::now() });
+            self.text = suite42_app::from_native_text(&self.app.text());
         }
     }
 
@@ -193,8 +199,8 @@ impl Host {
             self.home = false;
             if !import {
                 self.path = Some(path.to_path_buf());
-                self.zoom = self.default_zoom();
             }
+            self.zoom = self.default_zoom();
             self.remember(path);
         }
     }
@@ -702,11 +708,13 @@ impl Host {
             });
         egui::CentralPanel::default().frame(Frame::new().fill(surface)).show(root, |ui| {
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                let width = ui.available_width().min(984.0);
-                let margin = ((ui.available_width() - width) / 2.0).max(16.0);
-                // Create / open strip.
-                let strip = Frame::new().fill(band).inner_margin(Margin { left: margin as i8, right: margin as i8, top: 20, bottom: 28 }).show(ui, |ui| {
-                    ui.set_width(width);
+                let full = ui.available_width();
+                let width = (full - 32.0).min(984.0);
+                let margin = ((full - width) / 2.0).max(16.0);
+                // Create / open strip: a full-width band with the content centred in it.
+                let band_rect = Rect::from_min_size(ui.cursor().min, Vec2::new(full, 292.0));
+                ui.painter().rect_filled(band_rect, 0.0, band);
+                let strip = ui.scope_builder(egui::UiBuilder::new().max_rect(Rect::from_min_size(band_rect.min + Vec2::new(margin, 20.0), Vec2::new(width, 252.0))), |ui| {
                     ui.horizontal(|ui| {
                         ui.set_height(44.0);
                         let heading = if self.app.supports_new() { tr("Create a document") } else { tr("Open a file") };
@@ -725,14 +733,13 @@ impl Host {
                         }
                     });
                 });
-                Self::landmark(ui, strip.response.rect, Role::Region, "Create and open");
+                let _ = strip;
+                ui.allocate_rect(band_rect, Sense::hover());
+                Self::landmark(ui, band_rect, Role::Region, "Create and open");
                 ui.add_space(22.0);
-                ui.horizontal(|ui| {
-                    ui.add_space(margin);
-                    ui.vertical(|ui| {
-                        ui.set_width(width);
-                        self.recent_list(ui, p);
-                    });
+                let top = ui.cursor().min.y;
+                ui.scope_builder(egui::UiBuilder::new().max_rect(Rect::from_min_size(Pos2::new(band_rect.left() + margin, top), Vec2::new(width, f32::INFINITY))), |ui| {
+                    self.recent_list(ui, p);
                 });
             });
         });
@@ -744,7 +751,7 @@ impl Host {
     fn format_summary(&self) -> String {
         let mut names: Vec<String> = Vec::new();
         for f in self.app.open_formats().iter().chain(self.app.save_formats().iter()) {
-            for e in f.extensions {
+            for e in f.extensions.iter().take(1) {
                 let e = e.to_ascii_uppercase();
                 if !names.contains(&e) && names.len() < 8 {
                     names.push(e);
@@ -779,19 +786,14 @@ impl Host {
 
     fn recent_list(&mut self, ui: &mut Ui, p: &Palette) {
         let start = ui.cursor().min;
-        ui.horizontal(|ui| {
-            ui.set_height(40.0);
-            let w = ui.available_width();
-            ui.allocate_ui_with_layout(Vec2::new(w - 360.0, 40.0), Layout::left_to_right(Align::Center), |ui| {
-                ui.label(RichText::new(tr("Recent")).font(theme::semibold(16.0)).color(p.text));
-            });
-            ui.allocate_ui_with_layout(Vec2::new(200.0, 40.0), Layout::left_to_right(Align::Center), |ui| {
-                ui.label(RichText::new(tr("Modified")).color(p.icon));
-            });
-            ui.allocate_ui_with_layout(Vec2::new(120.0, 40.0), Layout::left_to_right(Align::Center), |ui| {
-                ui.label(RichText::new(tr("Size")).color(p.icon));
-            });
-        });
+        {
+            let (head, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 40.0), Sense::hover());
+            let y = head.center().y;
+            let painter = ui.painter();
+            painter.text(Pos2::new(head.left() + 4.0, y), Align2::LEFT_CENTER, tr("Recent"), theme::semibold(16.0), p.text);
+            painter.text(Pos2::new(head.right() - 360.0, y), Align2::LEFT_CENTER, tr("Modified"), FontId::proportional(14.0), p.icon);
+            painter.text(Pos2::new(head.right() - 160.0, y), Align2::LEFT_CENTER, tr("Size"), FontId::proportional(14.0), p.icon);
+        }
         let query = self.search.trim().to_lowercase();
         let items: Vec<PathBuf> = self
             .recent
@@ -906,7 +908,7 @@ impl Host {
                         let mark = ui.label(RichText::new("off42").font(theme::semibold(22.0)).color(p.text));
                         ui.painter().text(mark.rect.right_top() + Vec2::new(1.0, 2.0), Align2::LEFT_TOP, "*", FontId::proportional(18.0), Color32::from_rgb(0xc2, 0x46, 0x2f));
                     });
-                    ui.painter().hline(header.response.rect.x_range(), header.response.rect.bottom(), Stroke::new(1.0, p.line));
+                    ui.painter().hline(0.0..=300.0, header.response.rect.bottom(), Stroke::new(1.0, p.line));
                     ui.add_space(8.0);
                     let start = ui.cursor().min;
                     for app in theme::APPS {
@@ -1412,7 +1414,6 @@ impl Host {
         if let Some(z) = chosen {
             self.zoom = z;
         }
-        Self::separator(ui, p, true);
     }
 
     // ----- canvases -------------------------------------------------------------------
@@ -1448,8 +1449,9 @@ impl Host {
                         if pdf_pages {
                             let (rect, _) = ui.allocate_exact_size(Vec2::new(page_w - 2.0 * mx, page_h - 2.0 * my), Sense::hover());
                             let page = self.app.items().get(self.app.selected()).cloned().unwrap_or_default();
-                            ui.painter().text(rect.center() - Vec2::new(0.0, 12.0), Align2::CENTER_CENTER, page, theme::semibold(16.0), p.paper_text);
-                            scene::centered_text(ui.painter(), rect.translate(Vec2::new(0.0, 14.0)), &tr("Page images need PDFium, which the Linux preview does not include yet"), Color32::from_rgb(0x5b, 0x5f, 0x66));
+                            let anchor = Rect::from_center_size(Pos2::new(rect.center().x, rect.top() + 220.0 * zoom), Vec2::new(rect.width(), 40.0));
+                            ui.painter().text(anchor.center() - Vec2::new(0.0, 12.0), Align2::CENTER_CENTER, page, theme::semibold(16.0), p.paper_text);
+                            scene::centered_text(ui.painter(), anchor.translate(Vec2::new(0.0, 14.0)),&tr("Page images need PDFium, which the Linux preview does not include yet"), Color32::from_rgb(0x5b, 0x5f, 0x66));
                         } else if readonly {
                             ui.add(egui::Label::new(RichText::new(&self.text).size(15.0 * zoom).color(p.paper_text)).wrap());
                         } else {
@@ -1630,7 +1632,7 @@ impl Host {
             .exact_size(180.0)
             .resizable(false)
             .show_separator_line(false)
-            .frame(Frame::new().fill(p.bg).inner_margin(Margin::symmetric(12, 12)))
+            .frame(Frame::new().fill(p.bg).inner_margin(Margin { left: 12, right: 12, top: 16, bottom: 12 }))
             .show(root, |ui| {
                 egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                     ui.spacing_mut().item_spacing.y = 12.0;
@@ -2077,7 +2079,7 @@ impl Host {
             ui.label(RichText::new(&form.title).font(theme::semibold(18.0)));
             ui.add_space(12.0);
             for (i, (label, value)) in form.fields.iter_mut().enumerate() {
-                ui.label(RichText::new(label.as_str()).color(p.muted));
+                let caption = ui.label(RichText::new(label.as_str()).color(p.muted));
                 if let Some((_, choices)) = form.choices.iter().find(|(f, _)| *f == i) {
                     egui::ComboBox::from_id_salt(("choice", i))
                         .selected_text(tr(value))
@@ -2088,9 +2090,9 @@ impl Host {
                             }
                         });
                 } else if form.multiline.contains(&i) {
-                    ui.add(egui::TextEdit::multiline(value).desired_width(f32::INFINITY).desired_rows(5));
+                    ui.add(egui::TextEdit::multiline(value).desired_width(f32::INFINITY).desired_rows(5)).labelled_by(caption.id);
                 } else {
-                    ui.add(egui::TextEdit::singleline(value).password(form.password && i == 0).desired_width(f32::INFINITY));
+                    ui.add(egui::TextEdit::singleline(value).password(form.password && i == 0).desired_width(f32::INFINITY)).labelled_by(caption.id);
                 }
                 ui.add_space(6.0);
             }

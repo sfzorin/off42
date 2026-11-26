@@ -247,7 +247,9 @@ pub fn paint_logo(painter: &egui::Painter, rect: Rect, logo: Logo, accent: Color
 pub fn for_command(title: &str) -> Option<Icon> {
     let t = title.trim_end_matches(['…', '.']).trim().to_ascii_lowercase();
     Some(match t.as_str() {
-        "bold" | "toggle bold" => Icon::Bold,
+        "bold" | "toggle bold" | "b" => Icon::Bold,
+        "i" => Icon::Italic,
+        "u" => Icon::Underline,
         "italic" => Icon::Italic,
         "underline" => Icon::Underline,
         "text color" | "text colour" => Icon::TextColor,
@@ -272,7 +274,7 @@ pub fn for_command(title: &str) -> Option<Icon> {
         "merge selection" => Icon::Merge,
         "insert or edit link" => Icon::Link,
         _ if t.starts_with("rotate") => Icon::Rotate,
-        _ if t.starts_with("delete") => Icon::Trash,
+        "delete page" | "delete slide" | "delete pages" | "delete" => Icon::Trash,
         _ => return None,
     })
 }

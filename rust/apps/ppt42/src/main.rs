@@ -4014,7 +4014,7 @@ mod linux_window {
         #[allow(unused_variables)]
         let sample: Option<std::path::PathBuf> = {
             use suite42_app::App as _;
-            let p = dir.join("Quarterly results.pptx");
+            let p = dir.join("Quarterly results.json");
             let mut app = super::Ppt::new(super::Presentation::new());
             app.edit("Quarterly results\r\nRevenue +12%\r\nCosts flat\r\n148 new customers".into()).unwrap();
             app.action(10).unwrap();

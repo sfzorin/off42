@@ -97,11 +97,86 @@ pub fn capture_states(prefix: &str, make: impl Fn() -> Box<dyn App>, sample: Opt
     for label in parts {
         expect(&h, label, "document");
     }
+    for label in ["Document text", "Slide text"] {
+        if let Some(node) = h.query_all_by_label(label).next() {
+            let value = node.value().unwrap_or_default();
+            assert!(!value.trim().is_empty(), "{label} shows the document's text");
+        }
+    }
     let ext = h.state().path.as_deref().and_then(|p| p.extension()).map(|e| e.to_string_lossy().to_lowercase());
     if let Some(ext) = ext {
         expect_text(&h, &format!(".{ext}"), "format badge");
     }
     shot(&mut h, &format!("{prefix}-04-document"));
+
+    // Functional checks on a separate window so the screenshots above stay deterministic.
+    let mut b = harness(make(), None, false);
+    if b.query_all_by_label("Blank document").next().is_some() {
+        b.get_all_by_label("Blank document").next().unwrap().click();
+        b.run_steps(3);
+        assert!(!b.state().home, "Blank document opens the document window");
+        if b.query_all_by_label("Document text").next().is_some() {
+            // Typed text on a blank page reaches the model as one undoable edit.
+            b.get_by_label("Document text").focus();
+            b.run_steps(2);
+            b.get_by_label("Document text").type_text("typed on Linux");
+            b.run_steps(2);
+            assert!(b.state().text_edited, "typing marks the page as edited");
+            b.state_mut().commit_text();
+            assert!(b.state().app.text().contains("typed on Linux"), "typed text is committed: {:?}", b.state().snack_text());
+            assert!(b.state().app.can_undo(), "a committed edit can be undone");
+            b.get_by_label("Undo").click();
+            b.run_steps(3);
+            assert!(!b.state().app.text().contains("typed on Linux"), "the toolbar Undo reverts the edit");
+            assert!(!b.state().text.contains("typed on Linux"), "the page shows the undone text");
+        }
+    }
+    let mut f = harness(make(), sample, false);
+    if f.query_all_by_label("Document text").next().is_some() {
+        // Rich documents refuse plain-text edits; the page then reverts to the document's text.
+        f.get_by_label("Document text").focus();
+        f.run_steps(2);
+        f.get_by_label("Document text").type_text(" typed");
+        f.run_steps(2);
+        f.state_mut().commit_text();
+        let shown = f.state().text.clone();
+        let model = suite42_app::from_native_text(&f.state().app.text());
+        assert_eq!(shown, model, "after a commit the page shows exactly the document's text");
+    }
+    if f.query_all_by_label("Slide 2").next().is_some() {
+        f.get_by_label("Slide 2").click();
+        f.run_steps(3);
+        assert_eq!(f.state().app.selected(), 1, "clicking a slide thumbnail selects it");
+    }
+    if f.query_all_by_label("Page 2").next().is_some() {
+        f.get_all_by_label("Page 2").next().unwrap().click();
+        f.run_steps(3);
+        assert_eq!(f.state().app.selected(), 1, "clicking a page in the strip selects it");
+    }
+    if let Some((names, _)) = f.state().app.grid_sheets() {
+        assert!(f.query_all_by_label(&names[0]).next().is_some(), "sheet tab {:?} is shown", names[0]);
+        let before = names.len();
+        if f.query_all_by_label("Add sheet").next().is_some() {
+            f.get_by_label("Add sheet").click();
+            f.run_steps(3);
+            // A naming form may ask first: type a name into its labelled field and confirm.
+            let has_form = f.query_all_by_label("OK").next().is_some();
+            if has_form {
+                if f.query_all_by_label("Name").next().is_some() {
+                    f.get_all_by_label("Name").last().unwrap().focus();
+                    f.run_steps(2);
+                    f.get_all_by_label("Name").last().unwrap().type_text("Totals");
+                    f.run_steps(2);
+                }
+                f.get_all_by_label("OK").next().unwrap().click();
+                f.run_steps(3);
+            }
+            let after = f.state().app.grid_sheets().map_or(0, |(n, _)| n.len());
+            assert_eq!(after, before + 1, "the + tab button adds a sheet ({:?}, form {has_form})", f.state().snack_text());
+            f.run_steps(2);
+            assert!(f.query_all_by_label("Totals").next().is_some(), "the new sheet appears as a tab");
+        }
+    }
     h.get_by_label("File").click();
     h.run_steps(3);
     if h.query_all_by_label_contains("Open…").next().is_none() {
