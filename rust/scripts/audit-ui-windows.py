@@ -4802,7 +4802,7 @@ def audit_window_layout(bin_dir,output):
                 children=windows(process.pid,main)
                 # The title row's Save pill (command 2) is not a panel; it is checked separately below.
                 return not any(u.IsWindowVisible(h)for h in children if classname(h).lower()in{'button','static'}and u.GetDlgCtrlID(h)!=2)
-            audit_chrome_structure(process,main,app,result)
+            audit_chrome_structure(process,main,app,result,output)
             caption=text(main);history=[u.GetMenuState(u.GetMenu(main),i,0)for i in(4,5)];before=body_rect()
             toggles=[i for i in(65503,65502,65501,65500)if u.GetMenuState(u.GetMenu(main),i,0)&3==0]
             assert 65501 in toggles
@@ -4855,7 +4855,7 @@ def audit_window_layout(bin_dir,output):
     return result
 
 
-def audit_chrome_structure(process, main, app, result):
+def audit_chrome_structure(process, main, app, result, output=None):
     """Title row, one toolbar strip, flat panels and app-specific structure of the shared OFF42 chrome."""
     GWL_STYLE, GWL_EXSTYLE, WS_EX_CLIENTEDGE = -16, -20, 0x200
     LBS_OWNERDRAWFIXED, LBS_HASSTRINGS, LBS_MULTICOLUMN = 0x10, 0x40, 0x200
@@ -4918,6 +4918,9 @@ def audit_chrome_structure(process, main, app, result):
         checks.append("File > Save As submenu lists the save formats")
     assert u.GetMenuItemCount(file_menu) > 0
     result["checks"].append(app + ": " + ", ".join(checks))
+    if output:
+        time.sleep(0.3)
+        capture_window(main, output / (app + "-chrome.bmp"))
 
 
 def audit_dark_mode(bin_dir, output):
