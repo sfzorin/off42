@@ -250,7 +250,7 @@ jobs:
             if (-not $bundle) { throw 'No Windows application bundle found in this run' }
             gh run download $env:AUDIT_RUN_ID --repo $env:GITHUB_REPOSITORY --name $bundle.name --dir build
           } else {
-            gh release download v1.0.0-windows-preview.4 --repo $env:GITHUB_REPOSITORY --pattern '*-x64.zip' --dir build
+            gh release download v1.0.0-windows-preview.5 --repo $env:GITHUB_REPOSITORY --pattern '*-x64.zip' --dir build
           }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Expand-Archive build/*.zip -DestinationPath build/preview
