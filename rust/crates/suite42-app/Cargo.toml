@@ -5,5 +5,9 @@ edition = "2021"
 description = "Portable application services shared by the off42 Windows, Linux, command-line and web shells"
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+suite42-core = { path = "../suite42-core" }
 
 [dev-dependencies]
+tempfile = "3"

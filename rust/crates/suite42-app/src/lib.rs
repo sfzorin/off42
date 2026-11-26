@@ -4,6 +4,7 @@
 //! platform storage locations; this crate owns the logic and data formats they share.
 pub mod grid_axis;
 pub mod grid_geometry;
+pub mod localization;
 pub mod sparse_table;
 pub use grid_axis::GridAxis;
 pub use grid_geometry::GridRange;

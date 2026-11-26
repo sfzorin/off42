@@ -13,7 +13,7 @@ mod pdf_print_layout;
 pub mod pdfium;
 #[cfg(windows)]
 mod pdf_preview;
-pub mod localization;
+pub use suite42_app::localization;
 mod theme;
 pub use label42::{Format as BarcodeFormat, TechnicalElement};
 use std::path::{Path, PathBuf};

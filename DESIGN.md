@@ -613,8 +613,8 @@ flushed after smaller guarded control updates and normal command dispatch.
 ## Windows language host
 
 The Rust host bundles exported macOS catalogs (reproduce with `rust/scripts/export-localizations.py`).
-Windows-specific labels are supplemented by `win42/resources/windows-translations.json`; these override imported
-keys without changing their source catalogs. `win42::localization` owns the twenty-language set, matching, process overrides and bounded atomic preferences
+Windows-specific labels are supplemented by `suite42-app/resources/windows-translations.json`; these override imported
+keys without changing their source catalogs. `suite42_app::localization` (re-exported as `win42::localization`) owns the twenty-language set, matching, process overrides and bounded atomic preferences
 in `%LOCALAPPDATA%/off42/Preferences/language.json`. View → Language confirms unsaved changes and restarts
 with the current saved path. Only UI keys pass through lookup; field data and document strings stay untouched.
 Choice prompts retain original values/indices independently from translated display labels. Prompt label heights
