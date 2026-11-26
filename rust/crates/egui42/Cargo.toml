@@ -6,7 +6,7 @@ description = "Experimental egui host for the off42 apps on Linux and macOS; Win
 
 [features]
 # Headless harness (egui_kittest) for structure tests of the host window.
-kittest = ["dep:egui_kittest"]
+kittest = ["dep:egui_kittest", "egui_kittest/eframe"]
 # Also render harness states to PNG through wgpu (CI screenshots; needs a Vulkan/GL software device).
 shots = ["kittest", "egui_kittest/wgpu", "dep:image"]
 
@@ -14,5 +14,7 @@ shots = ["kittest", "egui_kittest/wgpu", "dep:image"]
 suite42-app = { path = "../suite42-app" }
 suite42-core = { path = "../suite42-core" }
 eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
+# Rasterises the interface icons and concave slide shapes (already used by img42-core and label42).
+resvg = "=0.45.1"
 egui_kittest = { version = "0.37", optional = true }
 image = { version = "0.25", optional = true, default-features = false, features = ["png"] }

@@ -4017,7 +4017,7 @@ mod linux_window {
         std::fs::create_dir_all(&dir).unwrap();
         #[allow(unused_variables)]
         let sample: Option<std::path::PathBuf> = { Some(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/page-export.pdf")) };
-        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::Pdf::default()), sample.as_deref());
+        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::Pdf::default()), sample.as_deref(), &["Pages", "Page"]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

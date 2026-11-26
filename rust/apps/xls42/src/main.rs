@@ -2651,7 +2651,7 @@ mod linux_window {
         let sample: Option<std::path::PathBuf> = { let p = dir.join("November sales.csv");
             std::fs::write(&p, "Item,Qty,Price,Total\nTea,20,350,=B2*C2\nPie,10,400,=B3*C3\nJam,30,250,=B4*C4\nCoffee,25,520,=B5*C5\nTotal,=SUM(B2:B5),,=SUM(D2:D5)\n").unwrap();
             Some(p) };
-        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::new_xls()), sample.as_deref());
+        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::new_xls()), sample.as_deref(), &["Sheets", "Formula bar", "Cells"]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

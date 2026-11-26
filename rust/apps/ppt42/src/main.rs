@@ -4012,8 +4012,20 @@ mod linux_window {
         let dir = std::env::temp_dir().join(format!("off42-ui-{}-{}", env!("CARGO_PKG_NAME"), std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         #[allow(unused_variables)]
-        let sample: Option<std::path::PathBuf> = { None };
-        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::Ppt::new(super::Presentation::new())), sample.as_deref());
+        let sample: Option<std::path::PathBuf> = {
+            use suite42_app::App as _;
+            let p = dir.join("Quarterly results.pptx");
+            let mut app = super::Ppt::new(super::Presentation::new());
+            app.edit("Quarterly results\r\nRevenue +12%\r\nCosts flat\r\n148 new customers".into()).unwrap();
+            app.action(10).unwrap();
+            app.edit("Where growth came from\r\nSmall business\r\nNew regions".into()).unwrap();
+            app.action(10).unwrap();
+            app.edit("Next quarter\r\nBrowser version\r\nTablets".into()).unwrap();
+            app.select(0);
+            egui42::save_as(&mut app, &p).unwrap();
+            Some(p)
+        };
+        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::Ppt::new(super::Presentation::new())), sample.as_deref(), &["Slides", "Slide", "Slide text"]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

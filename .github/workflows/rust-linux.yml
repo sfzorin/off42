@@ -50,6 +50,7 @@ jobs:
           python3 scripts/collect-licenses.py build/metadata.json "$out/licenses"
           cp ../LICENSE "$out/licenses/off42-LICENSE"
           cp crates/doc42-layout-probe/fixtures/OFL.txt "$out/licenses/NotoSans-OFL.txt"
+          cp crates/egui42/fonts/Inter-OFL.txt "$out/licenses/Inter-OFL.txt"
           cp scripts/linux/README-LINUX.txt "$out/README-LINUX.txt"
           cp scripts/linux/install.sh "$out/install.sh"
           chmod 755 "$out/install.sh"

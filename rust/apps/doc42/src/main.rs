@@ -3943,7 +3943,7 @@ mod linux_window {
         let sample: Option<std::path::PathBuf> = { let p = dir.join("Quarterly report.md");
             std::fs::write(&p, "# Quarterly report\n\nRevenue grew by **12%** while costs stayed flat.\n\n## Next steps\n\n- Hire two engineers\n- Ship the browser version\n").unwrap();
             Some(p) };
-        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::Doc::new()), sample.as_deref());
+        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::Doc::new()), sample.as_deref(), &["Page", "Document text"]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
