@@ -281,6 +281,17 @@ that app restores the saved placement; Windows relocates a completely offscreen 
 Settings live under `%LOCALAPPDATA%/off42/Window Layout`. Corrupt/unsupported preferences use the normal default
 window. This covers outer placement only; panel visibility, split positions and cross-display DPI still need work.
 
+### Dark mode (development branch)
+
+On Windows 10 1809 (build 17763) and later the six apps follow **Settings → Personalization → Colors → Choose your
+app mode** (`AppsUseLightTheme` under `HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize`). In dark
+mode the title bar, popup menus, toolbar buttons, sidebar list, status bar, input prompts and the report dialog use
+dark colours; print/label preview windows get a dark title bar. Switching the app mode while a window is open takes
+effect immediately. Document content (pages, the rich-text editor, sheets, slides, images and scans) keeps its own
+colours, so paper stays white. High contrast, older Windows builds, or a missing system entry point keep the light
+appearance. Limits: the menu bar, rulers, the spreadsheet grid and the report table stay light, and there is no
+in-app light/dark override.
+
 
 ### Independent barcode QA
 

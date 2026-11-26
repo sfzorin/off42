@@ -15,6 +15,7 @@ pub mod pdfium;
 #[cfg(windows)]
 mod pdf_preview;
 pub mod localization;
+mod theme;
 pub use label42::{Format as BarcodeFormat, TechnicalElement};
 use std::path::{Path, PathBuf};
 pub struct TechnicalTarget {

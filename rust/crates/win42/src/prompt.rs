@@ -21,6 +21,9 @@ struct Prompt {
 }
 thread_local! { static PROMPT: RefCell<Option<Prompt>> = const { RefCell::new(None) }; }
 unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT {
+    if let Some(result) = crate::theme::handle(h, m, w, l) {
+        return result;
+    }
     match m {
         WM_COMMAND if (w & 0xffff) as i32 == IDOK => {
             let (fields, choices) = PROMPT.with(|p| {
@@ -336,6 +339,7 @@ unsafe fn show_fields(owner:HWND,req:&InputRequest,multiline:&[usize],password:b
             done: false,
         })
     });
+    crate::theme::dialog(h);
     EnableWindow(owner, 0);
     ShowWindow(h, SW_SHOW);
     if let Some(&field) = fields.first() {

@@ -621,6 +621,7 @@ where
     if h.is_null() {
         return Err("Cannot create the label preview window".into());
     }
+    crate::theme::frame(h);
     let mut buttons = Vec::new();
     for (id, title) in [
         (1, "Save PDF…"),

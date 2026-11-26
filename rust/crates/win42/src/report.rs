@@ -97,6 +97,9 @@ unsafe fn layout(h: HWND) {
     });
 }
 unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT {
+    if let Some(result) = crate::theme::handle(h, m, w, l) {
+        return result;
+    }
     match m {
         WM_SIZE => {
             if is_open() {
@@ -327,6 +330,8 @@ pub unsafe fn show(owner: HWND, id: u16, request: ReportRequest) {
     for control in [summary, table, details, keep, clear, close] {
         SendMessageW(control, WM_SETFONT, font, 1);
     }
+    crate::theme::frame(h);
+    crate::theme::chrome(&[summary, details, keep, clear, close]);
     SendMessageW(
         table,
         LVM_SETEXTENDEDLISTVIEWSTYLE,
