@@ -48,7 +48,7 @@
       },
       {
         "q": "Kann OFF42 Microsoft-Office-Dateien öffnen?",
-        "a": "Ja. DOC42 öffnet DOCX und DOC, XLS42 öffnet XLSX und XLS, PPT42 öffnet PPTX. Auch OpenDocument-Dateien (ODT, ODS, ODP) werden unterstützt. Nicht jede Office-Funktion wird unterstützt, prüfe komplexe Dateien also nach dem Import."
+        "a": "Ja. DOCX, XLSX und PPTX lassen sich auf Mac und Windows öffnen, ebenso ODT, ODS und ODP. Auf dem Mac öffnen DOC42 und XLS42 außerdem ältere DOC- und XLS-Dateien. Nicht jede Office-Funktion wird unterstützt, prüfe komplexe Dateien also nach dem Import."
       },
       {
         "q": "Welche Macs unterstützt OFF42?",
@@ -102,7 +102,7 @@
       "Etikettenbögen aus Tabellenzeilen, Dokumenttabellen oder einer PDF-Seite bzw. einem PDF-Bereich",
       "559 Etikettenformate oder ein eigenes Raster, gespeicherte Vorlagen und Druckerkalibrierung"
     ],
-    "note": "Ein Zeichen ist eine Grafik für dein Etikett: Es zertifiziert das Produkt nicht. Für Konformitätszeichen und Marken zeigt die App die Nutzungsbedingungen, etwa ein erforderliches Zertifikat oder eine Lizenznummer. Verfügbar in PDF42, DOC42 und XLS42 auf macOS.",
+    "note": "Ein Zeichen ist eine Grafik für dein Etikett: Es zertifiziert das Produkt nicht. Für Konformitätszeichen und Marken zeigt die App die Nutzungsbedingungen, etwa ein erforderliches Zertifikat oder eine Lizenznummer. Verfügbar in PDF42, DOC42 und XLS42 auf Mac und Windows.",
     "qrAlt": "„Insert Symbol or Code“ in XLS42: ein 30 mm großer QR-Code aus einem Produktlink.",
     "labelsAlt": "„Create Labels“ in XLS42: ein Etikettenbogen mit QR-Codes aus zehn Produktzeilen.",
     "caption": "Ein Etikettenbogen aus zehn Tabellenzeilen. Die Produkte sind frei erfunden."
@@ -374,7 +374,10 @@
     "buildStep1": "Installiere die Xcode Command Line Tools von Apple.",
     "buildStep2": "Lade den Quellcode von GitHub herunter.",
     "buildStep3": "Baue alle sechs Apps oder eine einzelne App und kopiere sie in den Ordner „Programme“.",
-    "windowsPreviewText": "Vorschau mit allen sechs Apps. Entpacke die ZIP-Datei vollständig und starte die gewünschte App. Mit Werkzeugen für Etiketten und Barcodes."
+    "windowsPreviewText": "Vorschau mit allen sechs Apps. Entpacke die ZIP-Datei vollständig und starte die gewünschte App. Mit Werkzeugen für Etiketten und Barcodes.",
+    "installTitle": "Erster Start",
+    "installMac": "Mac: Wenn macOS meldet, dass die App nicht geöffnet werden kann, öffne Systemeinstellungen → Datenschutz & Sicherheit und klicke auf „Trotzdem öffnen“. Das ist nur einmal pro App nötig.",
+    "installWindows": "Windows: Wenn SmartScreen „Der Computer wurde durch Windows geschützt“ anzeigt, klicke auf „Weitere Informationen“ und dann auf „Trotzdem ausführen“."
   },
   "about": {
     "title": "Ein Büro, das nichts zu verbergen hat.",

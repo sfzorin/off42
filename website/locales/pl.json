@@ -48,7 +48,7 @@
       },
       {
         "q": "Czy OFF42 otwiera pliki Microsoft Office?",
-        "a": "Tak. DOC42 otwiera DOCX i DOC, XLS42 otwiera XLSX i XLS, a PPT42 otwiera PPTX. Obsługiwane są też pliki OpenDocument (ODT, ODS, ODP). Nie wszystkie funkcje Office są obsługiwane, więc sprawdzaj złożone pliki po imporcie."
+        "a": "Tak. DOCX, XLSX i PPTX otwierają się na Macu i w systemie Windows, podobnie jak ODT, ODS i ODP. Na Macu DOC42 i XLS42 otwierają też starsze pliki DOC i XLS. Nie wszystkie funkcje pakietu Office są obsługiwane, dlatego po imporcie sprawdź bardziej złożone pliki."
       },
       {
         "q": "Na jakich Macach działa OFF42?",
@@ -102,7 +102,7 @@
       "Arkusze etykiet z wierszy arkusza kalkulacyjnego, tabel w dokumentach albo strony lub obszaru PDF",
       "559 formatów etykiet lub własna siatka, zapisane szablony i kalibracja drukarki"
     ],
-    "note": "Znak to grafika na etykietę: nie certyfikuje produktu. Dla znaków zgodności i znaków towarowych aplikacja pokazuje warunki użycia, np. wymagany certyfikat lub numer licencji. Dostępne w PDF42, DOC42 i XLS42 na macOS.",
+    "note": "Znak to grafika na etykietę: nie certyfikuje produktu. Dla znaków zgodności i znaków towarowych aplikacja pokazuje warunki użycia, np. wymagany certyfikat lub numer licencji. Dostępne w PDF42, DOC42 i XLS42 na Macu i w systemie Windows.",
     "qrAlt": "„Insert Symbol or Code” w XLS42: kod QR o rozmiarze 30 mm utworzony z linku do produktu.",
     "labelsAlt": "„Create Labels” w XLS42: arkusz etykiet z kodami QR utworzonymi z dziesięciu wierszy produktów.",
     "caption": "Arkusz etykiet utworzony z dziesięciu wierszy arkusza kalkulacyjnego. Produkty są fikcyjne."
@@ -374,7 +374,10 @@
     "buildStep1": "Zainstaluj Xcode Command Line Tools od Apple.",
     "buildStep2": "Pobierz kod źródłowy z GitHub.",
     "buildStep3": "Zbuduj wszystkie sześć aplikacji albo tylko jedną i skopiuj ją do folderu Aplikacje.",
-    "windowsPreviewText": "Wersja wstępna zawiera wszystkie sześć aplikacji. Rozpakuj całe archiwum ZIP i uruchom wybraną aplikację. Zawiera narzędzia do tworzenia etykiet i kodów kreskowych."
+    "windowsPreviewText": "Wersja wstępna zawiera wszystkie sześć aplikacji. Rozpakuj całe archiwum ZIP i uruchom wybraną aplikację. Zawiera narzędzia do tworzenia etykiet i kodów kreskowych.",
+    "installTitle": "Pierwsze uruchomienie",
+    "installMac": "Mac: jeśli macOS informuje, że nie można otworzyć aplikacji, otwórz Ustawienia systemowe → Prywatność i ochrona i kliknij „Otwórz mimo to”. Trzeba to zrobić tylko raz dla każdej aplikacji.",
+    "installWindows": "Windows: jeśli SmartScreen wyświetli komunikat „System Windows chronił Twój komputer”, kliknij „Więcej informacji”, a potem „Uruchom mimo to”."
   },
   "about": {
     "title": "Biuro bez tajemnic.",

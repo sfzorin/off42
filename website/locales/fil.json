@@ -48,7 +48,7 @@
       },
       {
         "q": "Nabubuksan ba ng OFF42 ang mga Microsoft Office file?",
-        "a": "Oo. Binubuksan ng DOC42 ang DOCX at DOC, ng XLS42 ang XLSX at XLS, at ng PPT42 ang PPTX. Suportado rin ang mga OpenDocument file (ODT, ODS, ODP). Hindi lahat ng feature ng Office ay suportado, kaya suriin ang mga kumplikadong file pagkatapos mag-import."
+        "a": "Oo. Nabubuksan sa Mac at Windows ang DOCX, XLSX at PPTX, pati ang ODT, ODS at ODP. Sa Mac, binubuksan din ng DOC42 at XLS42 ang mga lumang DOC at XLS file. Hindi lahat ng feature ng Office ay suportado, kaya suriin ang mga kumplikadong file pagkatapos mag-import."
       },
       {
         "q": "Aling mga Mac ang sinusuportahan ng OFF42?",
@@ -102,7 +102,7 @@
       "Mga label sheet mula sa mga row ng spreadsheet, table sa dokumento, o pahina o bahagi ng PDF",
       "559 na uri ng label paper o sarili mong grid, mga naka-save na template at calibration ng printer"
     ],
-    "note": "Artwork para sa iyong label ang isang mark: hindi nito sine-certify ang produkto. Para sa mga conformity mark at trademark, ipinapakita ng app ang mga kondisyon ng paggamit, gaya ng kinakailangang certificate o numero ng lisensya. Available sa PDF42, DOC42 at XLS42 sa macOS.",
+    "note": "Artwork para sa iyong label ang isang mark: hindi nito sine-certify ang produkto. Para sa mga conformity mark at trademark, ipinapakita ng app ang mga kondisyon ng paggamit, gaya ng kinakailangang certificate o numero ng lisensya. Available sa PDF42, DOC42 at XLS42 sa Mac at Windows.",
     "qrAlt": "“Insert Symbol or Code” sa XLS42: isang 30 mm na QR code na ginawa mula sa link ng produkto.",
     "labelsAlt": "“Create Labels” sa XLS42: isang label sheet na may mga QR code na binuo mula sa sampung row ng produkto.",
     "caption": "Isang label sheet na ginawa mula sa sampung row ng spreadsheet. Kathang-isip ang mga produkto."
@@ -374,7 +374,10 @@
     "buildStep1": "I-install ang Xcode Command Line Tools ng Apple.",
     "buildStep2": "I-download ang source code mula sa GitHub.",
     "buildStep3": "I-build ang lahat ng anim na app, o i-build ang isang app at kopyahin ito sa Applications.",
-    "windowsPreviewText": "Preview na may anim na app. I-extract ang buong ZIP at buksan ang app na gusto mo. May mga tool para sa mga label at barcode."
+    "windowsPreviewText": "Preview na may anim na app. I-extract ang buong ZIP at buksan ang app na gusto mo. May mga tool para sa mga label at barcode.",
+    "installTitle": "Unang pagbukas",
+    "installMac": "Mac: kung sinabi ng macOS na hindi mabuksan ang app, buksan ang System Settings → Privacy & Security at i-click ang Open Anyway. Isang beses lang ito kailangang gawin sa bawat app.",
+    "installWindows": "Windows: kung ipinakita ng SmartScreen ang “Pinrotektahan ng Windows ang iyong PC”, i-click ang Higit pang impormasyon, pagkatapos ang Patakbuhin pa rin."
   },
   "about": {
     "title": "Isang opisinang walang itinatago.",

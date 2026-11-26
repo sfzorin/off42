@@ -48,7 +48,7 @@
       },
       {
         "q": "OFF42 apre i file di Microsoft Office?",
-        "a": "Sì. DOC42 apre DOCX e DOC, XLS42 apre XLSX e XLS e PPT42 apre PPTX. Sono supportati anche i file OpenDocument (ODT, ODS, ODP). Non tutte le funzioni di Office sono supportate, quindi controlla i file complessi dopo l'importazione."
+        "a": "Sì. DOCX, XLSX e PPTX si aprono su Mac e Windows, così come ODT, ODS e ODP. Su Mac, DOC42 e XLS42 aprono anche i vecchi file DOC e XLS. Non tutte le funzioni di Office sono supportate, quindi controlla i file complessi dopo l’importazione."
       },
       {
         "q": "Quali Mac supporta OFF42?",
@@ -102,7 +102,7 @@
       "Fogli di etichette da righe di un foglio di calcolo, tabelle di documenti o una pagina o area di un PDF",
       "559 formati di etichette o una griglia personalizzata, modelli salvati e calibrazione della stampante"
     ],
-    "note": "Una marcatura è una grafica per l'etichetta: non certifica il prodotto. Per le marcature di conformità e i marchi registrati l'app mostra le condizioni d'uso, ad esempio un certificato o un numero di licenza richiesto. Disponibile in PDF42, DOC42 e XLS42 su macOS.",
+    "note": "Una marcatura è una grafica per l'etichetta: non certifica il prodotto. Per le marcature di conformità e i marchi registrati l'app mostra le condizioni d'uso, ad esempio un certificato o un numero di licenza richiesto. Disponibile in PDF42, DOC42 e XLS42 su Mac e Windows.",
     "qrAlt": "«Insert Symbol or Code» in XLS42: un codice QR da 30 mm creato dal link di un prodotto.",
     "labelsAlt": "«Create Labels» in XLS42: un foglio di etichette con codici QR creati da dieci righe di prodotti.",
     "caption": "Un foglio di etichette creato da dieci righe di un foglio di calcolo. I prodotti sono di fantasia."
@@ -374,7 +374,10 @@
     "buildStep1": "Installa gli Xcode Command Line Tools di Apple.",
     "buildStep2": "Scarica il codice sorgente da GitHub.",
     "buildStep3": "Compila tutte e sei le app, oppure compilane una e copiala nella cartella Applicazioni.",
-    "windowsPreviewText": "Versione di anteprima con tutte e sei le app. Estrai tutto il contenuto dello ZIP e avvia l’app che ti serve. Include strumenti per creare etichette e codici a barre."
+    "windowsPreviewText": "Versione di anteprima con tutte e sei le app. Estrai tutto il contenuto dello ZIP e avvia l’app che ti serve. Include strumenti per creare etichette e codici a barre.",
+    "installTitle": "Primo avvio",
+    "installMac": "Mac: se macOS segnala che l’app non può essere aperta, apri Impostazioni di Sistema → Privacy e sicurezza e fai clic su «Apri comunque». Basta farlo una volta per app.",
+    "installWindows": "Windows: se SmartScreen mostra «Il PC è stato protetto da Windows», fai clic su «Ulteriori informazioni» e poi su «Esegui comunque»."
   },
   "about": {
     "title": "Un ufficio che non ha nulla da nascondere.",

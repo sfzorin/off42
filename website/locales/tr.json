@@ -48,7 +48,7 @@
       },
       {
         "q": "OFF42, Microsoft Office dosyalarını açabilir mi?",
-        "a": "Evet. DOC42 DOCX ve DOC, XLS42 XLSX ve XLS, PPT42 ise PPTX dosyalarını açar. OpenDocument dosyaları (ODT, ODS, ODP) da desteklenir. Her Office özelliği desteklenmez; karmaşık dosyaları içe aktardıktan sonra kontrol edin."
+        "a": "Evet. DOCX, XLSX ve PPTX Mac ve Windows’ta açılır; ODT, ODS ve ODP de öyle. Mac’te DOC42 ve XLS42 eski DOC ve XLS dosyalarını da açar. Office’in her özelliği desteklenmez, bu yüzden karmaşık dosyaları içe aktardıktan sonra kontrol edin."
       },
       {
         "q": "OFF42 hangi Mac'leri destekler?",
@@ -102,7 +102,7 @@
       "Tablo satırlarından, belge tablolarından veya bir PDF sayfasından ya da bölgesinden etiket sayfaları",
       "559 etiket kâğıdı formatı veya kendi ızgaranız, kayıtlı şablonlar ve yazıcı kalibrasyonu"
     ],
-    "note": "İşaret, etiketiniz için bir çizimdir: ürünü sertifikalandırmaz. Uygunluk işaretleri ve ticari markalar için uygulama, gerekli sertifika veya lisans numarası gibi kullanım koşullarını gösterir. macOS'ta PDF42, DOC42 ve XLS42'de kullanılabilir.",
+    "note": "İşaret, etiketiniz için bir çizimdir: ürünü sertifikalandırmaz. Uygunluk işaretleri ve ticari markalar için uygulama, gerekli sertifika veya lisans numarası gibi kullanım koşullarını gösterir. Mac ve Windows'ta PDF42, DOC42 ve XLS42'de kullanılabilir.",
     "qrAlt": "XLS42'de “Sembol veya Kod Ekle”: bir ürün bağlantısından oluşturulmuş 30 mm'lik QR kod.",
     "labelsAlt": "XLS42'de “Etiket Oluştur”: on ürün satırından oluşturulmuş QR kodlu bir etiket sayfası.",
     "caption": "On tablo satırından oluşturulmuş bir etiket sayfası. Ürünler kurgusaldır."
@@ -374,7 +374,10 @@
     "buildStep1": "Apple'ın Xcode Command Line Tools paketini yükleyin.",
     "buildStep2": "Kaynak kodunu GitHub'dan indirin.",
     "buildStep3": "Altı uygulamanın tümünü derleyin ya da tek bir uygulamayı derleyip Uygulamalar klasörüne kopyalayın.",
-    "windowsPreviewText": "Altı uygulamanın tamamını içeren önizleme sürümü. ZIP dosyasının tamamını çıkarıp istediğiniz uygulamayı açın. Etiket ve barkod oluşturma araçları içerir."
+    "windowsPreviewText": "Altı uygulamanın tamamını içeren önizleme sürümü. ZIP dosyasının tamamını çıkarıp istediğiniz uygulamayı açın. Etiket ve barkod oluşturma araçları içerir.",
+    "installTitle": "İlk açılış",
+    "installMac": "Mac: macOS uygulamanın açılamadığını söylerse Sistem Ayarları → Gizlilik ve Güvenlik bölümünü açıp “Yine de Aç” düğmesine tıklayın. Bunu her uygulama için yalnızca bir kez yapmanız gerekir.",
+    "installWindows": "Windows: SmartScreen “Windows bilgisayarınızı korudu” uyarısı verirse “Daha fazla bilgi”ye, ardından “Yine de çalıştır”a tıklayın."
   },
   "about": {
     "title": "Saklayacak şeyi olmayan bir ofis.",

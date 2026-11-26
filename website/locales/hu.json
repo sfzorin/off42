@@ -48,7 +48,7 @@
       },
       {
         "q": "Meg tudja nyitni az OFF42 a Microsoft Office-fájlokat?",
-        "a": "Igen. A DOC42 megnyitja a DOCX- és DOC-, az XLS42 az XLSX- és XLS-, a PPT42 pedig a PPTX-fájlokat. Az OpenDocument-fájlokat (ODT, ODS, ODP) is támogatja. Nem minden Office-funkció támogatott, ezért importálás után ellenőrizd az összetett fájlokat."
+        "a": "Igen. A DOCX, XLSX és PPTX fájlok Macen és Windowson is megnyílnak, az ODT, ODS és ODP fájlokkal együtt. Macen a DOC42 és az XLS42 a régi DOC és XLS fájlokat is megnyitja. Nem minden Office-funkció támogatott, ezért importálás után ellenőrizd az összetett fájlokat."
       },
       {
         "q": "Milyen Maceken fut az OFF42?",
@@ -102,7 +102,7 @@
       "Címkeívek táblázatsorokból, dokumentumtáblázatokból vagy egy PDF-oldalból, illetve -területből",
       "559 címkeív-formátum vagy saját rács, mentett sablonok és nyomtatókalibrálás"
     ],
-    "note": "A jelölés grafika a címkédhez: nem tanúsítja a terméket. A megfelelőségi jelöléseknél és védjegyeknél az alkalmazás megmutatja a használat feltételeit, például a szükséges tanúsítványt vagy licencszámot. Elérhető a PDF42-ben, a DOC42-ben és az XLS42-ben macOS-en.",
+    "note": "A jelölés grafika a címkédhez: nem tanúsítja a terméket. A megfelelőségi jelöléseknél és védjegyeknél az alkalmazás megmutatja a használat feltételeit, például a szükséges tanúsítványt vagy licencszámot. Elérhető a PDF42-ben, a DOC42-ben és az XLS42-ben Macen és Windowson.",
     "qrAlt": "„Insert Symbol or Code” az XLS42-ben: egy termékhivatkozásból készült, 30 mm-es QR-kód.",
     "labelsAlt": "„Create Labels” az XLS42-ben: tíz terméksorból készült, QR-kódos címkeív.",
     "caption": "Tíz táblázatsorból készült címkeív. A termékek kitaláltak."
@@ -374,7 +374,10 @@
     "buildStep1": "Telepítsd az Apple Xcode Command Line Tools csomagját.",
     "buildStep2": "Töltsd le a forráskódot a GitHubról.",
     "buildStep3": "Fordítsd le mind a hat alkalmazást, vagy csak egyet, és másold az Alkalmazások mappába.",
-    "windowsPreviewText": "Előzetes verzió mind a hat alkalmazással. Bontsd ki a teljes ZIP-fájlt, majd indítsd el a kívánt alkalmazást. Címkék és vonalkódok készítésére is használható."
+    "windowsPreviewText": "Előzetes verzió mind a hat alkalmazással. Bontsd ki a teljes ZIP-fájlt, majd indítsd el a kívánt alkalmazást. Címkék és vonalkódok készítésére is használható.",
+    "installTitle": "Első indítás",
+    "installMac": "Mac: ha a macOS azt jelzi, hogy az alkalmazás nem nyitható meg, nyisd meg a Rendszerbeállítások → Adatvédelem és biztonság részt, és kattints a „Megnyitás mindenképp” gombra. Ezt alkalmazásonként csak egyszer kell megtenni.",
+    "installWindows": "Windows: ha a SmartScreen a „A Windows megvédte a számítógépét” üzenetet jeleníti meg, kattints a „További információ”, majd a „Futtatás mindenképpen” lehetőségre."
   },
   "about": {
     "title": "Iroda, titkok nélkül.",

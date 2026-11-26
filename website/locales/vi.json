@@ -48,7 +48,7 @@
       },
       {
         "q": "OFF42 có mở được tệp Microsoft Office không?",
-        "a": "Có. DOC42 mở DOCX và DOC, XLS42 mở XLSX và XLS, PPT42 mở PPTX. Tệp OpenDocument (ODT, ODS, ODP) cũng được hỗ trợ. Không phải mọi tính năng Office đều được hỗ trợ, vì vậy hãy kiểm tra tệp phức tạp sau khi nhập."
+        "a": "Có. DOCX, XLSX và PPTX mở được trên Mac và Windows, ODT, ODS và ODP cũng vậy. Trên Mac, DOC42 và XLS42 còn mở được các tệp DOC và XLS cũ. Không phải mọi tính năng của Office đều được hỗ trợ, vì vậy hãy kiểm tra các tệp phức tạp sau khi nhập."
       },
       {
         "q": "OFF42 hỗ trợ những máy Mac nào?",
@@ -102,7 +102,7 @@
       "Tờ nhãn từ các hàng bảng tính, bảng trong văn bản, hoặc trang hay vùng PDF",
       "559 khổ giấy nhãn hoặc lưới tùy chỉnh, mẫu đã lưu và hiệu chỉnh máy in"
     ],
-    "note": "Dấu chỉ là hình vẽ cho nhãn: chèn dấu không có nghĩa là sản phẩm được chứng nhận. Với dấu hợp chuẩn và nhãn hiệu thương mại, ứng dụng hiển thị điều kiện sử dụng, chẳng hạn chứng chỉ hoặc số giấy phép bắt buộc. Có trong PDF42, DOC42 và XLS42 trên macOS.",
+    "note": "Dấu chỉ là hình vẽ cho nhãn: chèn dấu không có nghĩa là sản phẩm được chứng nhận. Với dấu hợp chuẩn và nhãn hiệu thương mại, ứng dụng hiển thị điều kiện sử dụng, chẳng hạn chứng chỉ hoặc số giấy phép bắt buộc. Có trong PDF42, DOC42 và XLS42 trên Mac và Windows.",
     "qrAlt": "“Insert Symbol or Code” trong XLS42: mã QR rộng 30 mm tạo từ đường dẫn sản phẩm.",
     "labelsAlt": "“Create Labels” trong XLS42: tờ nhãn có mã QR tạo từ mười hàng sản phẩm.",
     "caption": "Tờ nhãn tạo từ mười hàng bảng tính. Các sản phẩm là hư cấu."
@@ -374,7 +374,10 @@
     "buildStep1": "Cài đặt Xcode Command Line Tools của Apple.",
     "buildStep2": "Tải mã nguồn từ GitHub.",
     "buildStep3": "Biên dịch cả sáu ứng dụng, hoặc biên dịch một ứng dụng và sao chép vào thư mục Applications.",
-    "windowsPreviewText": "Bản xem trước có đủ sáu ứng dụng. Giải nén toàn bộ tệp ZIP rồi mở ứng dụng bạn muốn. Có công cụ tạo nhãn và mã vạch."
+    "windowsPreviewText": "Bản xem trước có đủ sáu ứng dụng. Giải nén toàn bộ tệp ZIP rồi mở ứng dụng bạn muốn. Có công cụ tạo nhãn và mã vạch.",
+    "installTitle": "Lần mở đầu tiên",
+    "installMac": "Mac: nếu macOS báo không thể mở ứng dụng, hãy mở Cài đặt hệ thống → Quyền riêng tư & Bảo mật rồi nhấp Vẫn mở. Bạn chỉ cần làm một lần cho mỗi ứng dụng.",
+    "installWindows": "Windows: nếu SmartScreen hiện “Windows đã bảo vệ PC của bạn”, hãy nhấp Thông tin thêm, rồi nhấp Vẫn chạy."
   },
   "about": {
     "title": "Một bộ văn phòng không giấu điều gì.",

@@ -48,7 +48,7 @@
       },
       {
         "q": "Bisakah OFF42 membuka file Microsoft Office?",
-        "a": "Ya. DOC42 membuka DOCX dan DOC, XLS42 membuka XLSX dan XLS, dan PPT42 membuka PPTX. File OpenDocument (ODT, ODS, ODP) juga didukung. Tidak semua fitur Office didukung, jadi periksa file yang rumit setelah diimpor."
+        "a": "Ya. DOCX, XLSX, dan PPTX dapat dibuka di Mac dan Windows, begitu pula ODT, ODS, dan ODP. Di Mac, DOC42 dan XLS42 juga membuka file DOC dan XLS lama. Tidak semua fitur Office didukung, jadi periksa file yang kompleks setelah diimpor."
       },
       {
         "q": "Mac mana saja yang didukung OFF42?",
@@ -102,7 +102,7 @@
       "Lembar label dari baris spreadsheet, tabel dokumen, atau halaman maupun area PDF",
       "559 jenis kertas label atau kisi Anda sendiri, templat tersimpan, dan kalibrasi printer"
     ],
-    "note": "Tanda adalah gambar untuk label Anda: tanda tidak menyertifikasi produk. Untuk tanda kesesuaian dan merek dagang, aplikasi menampilkan syarat penggunaannya, seperti sertifikat atau nomor lisensi yang diwajibkan. Tersedia di PDF42, DOC42, dan XLS42 di macOS.",
+    "note": "Tanda adalah gambar untuk label Anda: tanda tidak menyertifikasi produk. Untuk tanda kesesuaian dan merek dagang, aplikasi menampilkan syarat penggunaannya, seperti sertifikat atau nomor lisensi yang diwajibkan. Tersedia di PDF42, DOC42, dan XLS42 di Mac dan Windows.",
     "qrAlt": "“Insert Symbol or Code” di XLS42: kode QR 30 mm yang dibuat dari tautan produk.",
     "labelsAlt": "“Create Labels” di XLS42: lembar label berisi kode QR yang dibuat dari sepuluh baris produk.",
     "caption": "Lembar label yang dibuat dari sepuluh baris spreadsheet. Produknya fiktif."
@@ -374,7 +374,10 @@
     "buildStep1": "Instal Xcode Command Line Tools dari Apple.",
     "buildStep2": "Unduh kode sumber dari GitHub.",
     "buildStep3": "Bangun keenam aplikasi, atau bangun satu aplikasi lalu salin ke folder Aplikasi.",
-    "windowsPreviewText": "Versi pratinjau berisi keenam aplikasi. Ekstrak seluruh isi ZIP, lalu jalankan aplikasi yang Anda inginkan. Termasuk alat untuk membuat label dan kode batang."
+    "windowsPreviewText": "Versi pratinjau berisi keenam aplikasi. Ekstrak seluruh isi ZIP, lalu jalankan aplikasi yang Anda inginkan. Termasuk alat untuk membuat label dan kode batang.",
+    "installTitle": "Peluncuran pertama",
+    "installMac": "Mac: jika macOS menyatakan app tidak dapat dibuka, buka Pengaturan Sistem → Privasi & Keamanan lalu klik Tetap Buka. Ini hanya perlu dilakukan sekali untuk setiap app.",
+    "installWindows": "Windows: jika SmartScreen menampilkan “Windows melindungi PC Anda”, klik Informasi lebih lanjut, lalu Tetap jalankan."
   },
   "about": {
     "title": "Kantor tanpa hal yang disembunyikan.",

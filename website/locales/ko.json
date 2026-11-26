@@ -48,7 +48,7 @@
       },
       {
         "q": "Microsoft Office 파일을 열 수 있나요?",
-        "a": "네. DOC42는 DOCX와 DOC, XLS42는 XLSX와 XLS, PPT42는 PPTX를 엽니다. OpenDocument 파일(ODT, ODS, ODP)도 지원합니다. 모든 Office 기능이 지원되는 것은 아니므로 복잡한 파일은 가져온 뒤 확인하세요."
+        "a": "네. DOCX, XLSX, PPTX는 Mac과 Windows에서 열 수 있으며 ODT, ODS, ODP도 마찬가지입니다. Mac에서는 DOC42와 XLS42가 이전 형식의 DOC와 XLS 파일도 엽니다. Office의 모든 기능을 지원하는 것은 아니므로 복잡한 파일은 가져온 후 확인하세요."
       },
       {
         "q": "어떤 Mac을 지원하나요?",
@@ -102,7 +102,7 @@
       "스프레드시트 행, 문서 표, PDF 페이지나 영역으로 만드는 라벨 시트",
       "559가지 라벨 용지 또는 직접 만든 격자, 템플릿 저장과 프린터 보정"
     ],
-    "note": "마크는 라벨에 쓰는 그래픽입니다. 마크를 넣는다고 제품이 인증되는 것은 아닙니다. 적합성 마크와 상표에 대해서는 필요한 인증서나 라이선스 번호 같은 사용 조건을 앱이 보여 줍니다. macOS의 PDF42, DOC42, XLS42에서 사용할 수 있습니다.",
+    "note": "마크는 라벨에 쓰는 그래픽입니다. 마크를 넣는다고 제품이 인증되는 것은 아닙니다. 적합성 마크와 상표에 대해서는 필요한 인증서나 라이선스 번호 같은 사용 조건을 앱이 보여 줍니다. Mac과 Windows의 PDF42, DOC42, XLS42에서 사용할 수 있습니다.",
     "qrAlt": "XLS42의 “Insert Symbol or Code”: 제품 링크로 만든 30mm QR 코드.",
     "labelsAlt": "XLS42의 “Create Labels”: 제품 10개 행으로 만든 QR 코드 라벨 시트.",
     "caption": "스프레드시트 10개 행으로 만든 라벨 시트. 제품은 가상입니다."
@@ -374,7 +374,10 @@
     "buildStep1": "Apple의 Xcode Command Line Tools를 설치합니다.",
     "buildStep2": "GitHub에서 소스 코드를 다운로드합니다.",
     "buildStep3": "여섯 개 앱을 모두 빌드하거나, 앱 하나를 빌드해 응용 프로그램 폴더로 복사합니다.",
-    "windowsPreviewText": "앱 6개가 모두 포함된 미리 보기 버전입니다. ZIP 전체를 압축 해제한 뒤 원하는 앱을 실행하세요. 라벨 및 바코드 제작 도구가 포함되어 있습니다."
+    "windowsPreviewText": "앱 6개가 모두 포함된 미리 보기 버전입니다. ZIP 전체를 압축 해제한 뒤 원하는 앱을 실행하세요. 라벨 및 바코드 제작 도구가 포함되어 있습니다.",
+    "installTitle": "처음 실행",
+    "installMac": "Mac: 앱을 열 수 없다는 메시지가 macOS에 표시되면 시스템 설정 → 개인정보 보호 및 보안을 열고 ‘그래도 열기’를 클릭하세요. 앱마다 한 번만 하면 됩니다.",
+    "installWindows": "Windows: SmartScreen에 ‘Windows의 PC 보호’가 표시되면 ‘추가 정보’를 클릭한 다음 ‘실행’을 클릭하세요."
   },
   "about": {
     "title": "속까지 열린 오피스.",

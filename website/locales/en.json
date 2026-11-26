@@ -48,7 +48,7 @@
       },
       {
         "q": "Can OFF42 open Microsoft Office files?",
-        "a": "Yes. DOC42 opens DOCX and DOC, XLS42 opens XLSX and XLS, and PPT42 opens PPTX. OpenDocument files (ODT, ODS, ODP) are supported too. Not every Office feature is supported, so check complex files after import."
+        "a": "Yes. DOCX, XLSX and PPTX open on Mac and Windows, and so do ODT, ODS and ODP. On Mac, DOC42 and XLS42 also open legacy DOC and XLS files. Not every Office feature is supported, so check complex files after import."
       },
       {
         "q": "Which Macs does OFF42 support?",
@@ -102,7 +102,7 @@
       "Label sheets from spreadsheet rows, document tables or a PDF page or region",
       "559 label stocks or your own grid, saved templates and printer calibration"
     ],
-    "note": "A mark is artwork for your label: it does not certify the product. For conformity marks and trademarks the app shows the conditions of use, such as a required certificate or licence number. In PDF42, DOC42 and XLS42 on macOS.",
+    "note": "A mark is artwork for your label: it does not certify the product. For conformity marks and trademarks the app shows the conditions of use, such as a required certificate or licence number. In PDF42, DOC42 and XLS42 on Mac and Windows.",
     "qrAlt": "Insert Symbol or Code in XLS42: a 30 mm QR code made from a product link.",
     "labelsAlt": "Create Labels in XLS42: a label sheet with QR codes built from ten product rows.",
     "caption": "A label sheet made from ten spreadsheet rows. The products are fictional."
@@ -374,7 +374,10 @@
     "buildStep1": "Install Apple's Xcode Command Line Tools.",
     "buildStep2": "Download the source code from GitHub.",
     "buildStep3": "Build all six apps, or build one app and copy it to Applications.",
-    "windowsPreviewText": "Preview with all six apps. Extract the entire ZIP, then launch the app you want. Includes tools for labels and barcodes."
+    "windowsPreviewText": "Preview with all six apps. Extract the entire ZIP, then launch the app you want. Includes tools for labels and barcodes.",
+    "installTitle": "First launch",
+    "installMac": "Mac: if macOS says the app can’t be opened, open System Settings → Privacy & Security and click Open Anyway. You only do this once per app.",
+    "installWindows": "Windows: if SmartScreen says “Windows protected your PC”, click More info, then Run anyway."
   },
   "about": {
     "title": "An office with nothing to hide.",

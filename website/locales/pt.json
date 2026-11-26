@@ -48,7 +48,7 @@
       },
       {
         "q": "O OFF42 abre arquivos do Microsoft Office?",
-        "a": "Sim. O DOC42 abre DOCX e DOC, o XLS42 abre XLSX e XLS, e o PPT42 abre PPTX. Arquivos OpenDocument (ODT, ODS, ODP) também são compatíveis. Nem todos os recursos do Office são suportados, então confira arquivos complexos após a importação."
+        "a": "Sim. DOCX, XLSX e PPTX abrem no Mac e no Windows, assim como ODT, ODS e ODP. No Mac, o DOC42 e o XLS42 também abrem arquivos DOC e XLS antigos. Nem todos os recursos do Office são compatíveis, então confira os arquivos complexos após a importação."
       },
       {
         "q": "Quais Macs são compatíveis com o OFF42?",
@@ -102,7 +102,7 @@
       "Folhas de etiquetas a partir de linhas de planilha, tabelas de documentos ou uma página ou região de PDF",
       "559 formatos de etiqueta ou sua própria grade, modelos salvos e calibração da impressora"
     ],
-    "note": "Uma marca é arte para a sua etiqueta: ela não certifica o produto. Para marcas de conformidade e marcas registradas, o app mostra as condições de uso, como um certificado ou número de licença obrigatório. Disponível no PDF42, DOC42 e XLS42 no macOS.",
+    "note": "Uma marca é arte para a sua etiqueta: ela não certifica o produto. Para marcas de conformidade e marcas registradas, o app mostra as condições de uso, como um certificado ou número de licença obrigatório. Disponível no PDF42, DOC42 e XLS42 no Mac e no Windows.",
     "qrAlt": "“Insert Symbol or Code” no XLS42: um QR code de 30 mm gerado a partir do link de um produto.",
     "labelsAlt": "“Create Labels” no XLS42: uma folha de etiquetas com QR codes gerados a partir de dez linhas de produtos.",
     "caption": "Uma folha de etiquetas feita a partir de dez linhas de planilha. Os produtos são fictícios."
@@ -374,7 +374,10 @@
     "buildStep1": "Instale o Xcode Command Line Tools da Apple.",
     "buildStep2": "Baixe o código-fonte do GitHub.",
     "buildStep3": "Compile os seis aplicativos ou compile apenas um e copie-o para a pasta Aplicativos.",
-    "windowsPreviewText": "Versão de prévia com os seis aplicativos. Extraia todo o conteúdo do ZIP e abra o aplicativo desejado. Inclui ferramentas para criar etiquetas e códigos de barras."
+    "windowsPreviewText": "Versão de prévia com os seis aplicativos. Extraia todo o conteúdo do ZIP e abra o aplicativo desejado. Inclui ferramentas para criar etiquetas e códigos de barras.",
+    "installTitle": "Primeira abertura",
+    "installMac": "Mac: se o macOS disser que o app não pode ser aberto, abra Ajustes do Sistema → Privacidade e Segurança e clique em “Abrir Mesmo Assim”. Isso só é necessário uma vez por app.",
+    "installWindows": "Windows: se o SmartScreen exibir “O Windows protegeu seu computador”, clique em “Mais informações” e depois em “Executar assim mesmo”."
   },
   "about": {
     "title": "Um escritório sem nada a esconder.",

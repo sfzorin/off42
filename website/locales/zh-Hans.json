@@ -48,7 +48,7 @@
       },
       {
         "q": "OFF42 能打开 Microsoft Office 文件吗？",
-        "a": "可以。DOC42 能打开 DOCX 和 DOC，XLS42 能打开 XLSX 和 XLS，PPT42 能打开 PPTX，同时也支持 OpenDocument 文件（ODT、ODS、ODP）。并非所有 Office 功能都受支持，导入复杂文件后请检查。"
+        "a": "可以。DOCX、XLSX 和 PPTX 可在 Mac 和 Windows 上打开，ODT、ODS 和 ODP 也一样。在 Mac 上，DOC42 和 XLS42 还能打开旧版 DOC 和 XLS 文件。并非所有 Office 功能都受支持，因此导入后请检查复杂文件。"
       },
       {
         "q": "OFF42 支持哪些 Mac？",
@@ -102,7 +102,7 @@
       "根据电子表格行、文档表格或 PDF 页面及区域生成标签纸",
       "559 种标签纸规格或自定义网格，可保存模板并校准打印机"
     ],
-    "note": "标志只是用于标签的图形：插入标志并不代表产品通过认证。对于合格标志和商标，应用会显示使用条件，例如所需的证书或许可证编号。适用于 macOS 上的 PDF42、DOC42 和 XLS42。",
+    "note": "标志只是用于标签的图形：插入标志并不代表产品通过认证。对于合格标志和商标，应用会显示使用条件，例如所需的证书或许可证编号。适用于 Mac 和 Windows 上的 PDF42、DOC42 和 XLS42。",
     "qrAlt": "XLS42 中的“Insert Symbol or Code”：由产品链接生成的 30 毫米 QR 码。",
     "labelsAlt": "XLS42 中的“Create Labels”：根据十行产品数据生成的 QR 码标签纸。",
     "caption": "由十行电子表格数据生成的标签纸。产品均为虚构。"
@@ -374,7 +374,10 @@
     "buildStep1": "安装 Apple 的 Xcode Command Line Tools。",
     "buildStep2": "从 GitHub 下载源代码。",
     "buildStep3": "构建全部六款应用，或只构建一款应用并拷贝到“应用程序”文件夹。",
-    "windowsPreviewText": "预览版包含全部六款应用。请完整解压 ZIP 文件，再启动所需的应用。 包含标签和条码制作工具。"
+    "windowsPreviewText": "预览版包含全部六款应用。请完整解压 ZIP 文件，再启动所需的应用。 包含标签和条码制作工具。",
+    "installTitle": "首次启动",
+    "installMac": "Mac：如果 macOS 提示无法打开该 App，请打开“系统设置 → 隐私与安全性”，然后点按“仍要打开”。每个 App 只需操作一次。",
+    "installWindows": "Windows：如果 SmartScreen 显示“Windows 已保护你的电脑”，请点击“更多信息”，然后点击“仍要运行”。"
   },
   "about": {
     "title": "一个坦诚开放的办公套件。",

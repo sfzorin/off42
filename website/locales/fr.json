@@ -48,7 +48,7 @@
       },
       {
         "q": "OFF42 ouvre-t-il les fichiers Microsoft Office ?",
-        "a": "Oui. DOC42 ouvre DOCX et DOC, XLS42 ouvre XLSX et XLS, et PPT42 ouvre PPTX. Les fichiers OpenDocument (ODT, ODS, ODP) sont aussi pris en charge. Toutes les fonctions d'Office ne le sont pas : vérifiez les fichiers complexes après l'import."
+        "a": "Oui. DOCX, XLSX et PPTX s’ouvrent sur Mac et Windows, tout comme ODT, ODS et ODP. Sur Mac, DOC42 et XLS42 ouvrent aussi les anciens fichiers DOC et XLS. Toutes les fonctions d’Office ne sont pas prises en charge : vérifiez donc les fichiers complexes après l’import."
       },
       {
         "q": "Quels Mac sont compatibles avec OFF42 ?",
@@ -102,7 +102,7 @@
       "Planches d'étiquettes à partir de lignes de tableur, de tableaux de documents ou d'une page ou zone PDF",
       "559 formats d'étiquettes ou votre propre grille, modèles enregistrés et étalonnage de l'imprimante"
     ],
-    "note": "Un marquage est un graphisme pour votre étiquette : il ne certifie pas le produit. Pour les marquages de conformité et les marques déposées, l'app affiche les conditions d'utilisation, comme un certificat ou un numéro de licence requis. Disponible dans PDF42, DOC42 et XLS42 sur macOS.",
+    "note": "Un marquage est un graphisme pour votre étiquette : il ne certifie pas le produit. Pour les marquages de conformité et les marques déposées, l'app affiche les conditions d'utilisation, comme un certificat ou un numéro de licence requis. Disponible dans PDF42, DOC42 et XLS42 sur Mac et Windows.",
     "qrAlt": "« Insert Symbol or Code » dans XLS42 : un code QR de 30 mm créé à partir d'un lien produit.",
     "labelsAlt": "« Create Labels » dans XLS42 : une planche d'étiquettes avec des codes QR créés à partir de dix lignes de produits.",
     "caption": "Une planche d'étiquettes créée à partir de dix lignes de tableur. Les produits sont fictifs."
@@ -374,7 +374,10 @@
     "buildStep1": "Installez les Xcode Command Line Tools d'Apple.",
     "buildStep2": "Téléchargez le code source depuis GitHub.",
     "buildStep3": "Compilez les six apps, ou une seule et copiez-la dans le dossier Applications.",
-    "windowsPreviewText": "Version préliminaire avec les six applications. Décompressez toute l’archive ZIP, puis lancez l’application de votre choix. Des outils permettent de créer des étiquettes et des codes-barres."
+    "windowsPreviewText": "Version préliminaire avec les six applications. Décompressez toute l’archive ZIP, puis lancez l’application de votre choix. Des outils permettent de créer des étiquettes et des codes-barres.",
+    "installTitle": "Premier lancement",
+    "installMac": "Mac : si macOS indique que l’app ne peut pas être ouverte, ouvrez Réglages Système → Confidentialité et sécurité, puis cliquez sur « Ouvrir quand même ». Cette étape n’est nécessaire qu’une fois par app.",
+    "installWindows": "Windows : si SmartScreen affiche « Windows a protégé votre ordinateur », cliquez sur « Informations complémentaires », puis sur « Exécuter quand même »."
   },
   "about": {
     "title": "Un bureau qui n'a rien à cacher.",
