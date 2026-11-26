@@ -11,6 +11,8 @@ marks42 = { path = "../marks42" }
 pdf42-core = { path = "../pdf42-core" }
 doc42-core = { path = "../doc42-core" }
 xls42-core = { path = "../xls42-core" }
+scn42-core = { path = "../scn42-core" }
+chrono = "0.4"
 unicode-segmentation = "1"
 lopdf = "0.47"
 tempfile = "3"
@@ -21,4 +23,3 @@ sha2 = "0.10"
 suite42-core = { path = "../suite42-core" }
 
 [dev-dependencies]
-scn42-core = { path = "../scn42-core" }

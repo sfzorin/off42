@@ -12,7 +12,7 @@ const MAX_BYTES: u64 = 2 * 1024 * 1024;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct Entry {
+pub struct Entry {
     pub path: PathBuf,
     pub pages: usize,
     pub bytes: u64,
@@ -28,7 +28,7 @@ impl Entry {
             && self.bytes > 0
     }
 
-    pub(super) fn label(&self, index: usize) -> String {
+    pub fn label(&self, index: usize) -> String {
         let date = chrono::DateTime::from_timestamp(self.saved_at, 0)
             .map(|date| {
                 date.with_timezone(&chrono::Local)
@@ -38,9 +38,9 @@ impl Entry {
             .unwrap_or_default();
         let name = self.path.file_name().unwrap_or_default().to_string_lossy();
         let pages = if self.pages == 1 {
-            win42::localization::text("1 page")
+            crate::localization::text("1 page")
         } else {
-            win42::localization::text("%d pages").replace("%d", &self.pages.to_string())
+            crate::localization::text("%d pages").replace("%d", &self.pages.to_string())
         };
         format!(
             "{}. {name} · {date} · {pages} · {:.1} KiB · {}",
@@ -54,11 +54,9 @@ impl Entry {
     }
 }
 
-pub(super) fn location() -> Option<PathBuf> {
+pub fn location() -> Option<PathBuf> {
     Some(
-        PathBuf::from(std::env::var_os("LOCALAPPDATA")?)
-            .join("off42")
-            .join("Scan History.json"),
+        crate::storage::local_data()?.join("Scan History.json"),
     )
 }
 
@@ -88,7 +86,7 @@ fn read(path: &Path) -> Result<(Vec<Entry>, Option<FileIdentity>), String> {
     ))
 }
 
-pub(super) fn load() -> Vec<Entry> {
+pub fn load() -> Vec<Entry> {
     location()
         .and_then(|path| read(&path).ok())
         .map_or_else(Vec::new, |(entries, _)| entries)
@@ -132,7 +130,7 @@ fn edit(path: &Path, change: impl Fn(&mut Vec<Entry>)) -> Result<(), String> {
     .map_err(|error| error.to_string())
 }
 
-pub(super) fn record(paths: &[(&Path, usize)]) -> Result<(), String> {
+pub fn record(paths: &[(&Path, usize)]) -> Result<(), String> {
     let history = location().ok_or("Scan history directory unavailable")?;
     record_at(&history, paths)
 }
@@ -167,14 +165,14 @@ fn record_at(history: &Path, paths: &[(&Path, usize)]) -> Result<(), String> {
     })
 }
 
-pub(super) fn remove(path: &Path) -> Result<(), String> {
+pub fn remove(path: &Path) -> Result<(), String> {
     let history = location().ok_or("Scan history directory unavailable")?;
     edit(&history, |entries| {
         entries.retain(|entry| !same_path(&entry.path, path))
     })
 }
 
-pub(super) fn clear() -> Result<(), String> {
+pub fn clear() -> Result<(), String> {
     let history = location().ok_or("Scan history directory unavailable")?;
     edit(&history, Vec::clear)
 }
@@ -182,6 +180,21 @@ pub(super) fn clear() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn stored_history_format_is_pinned() {
+        let directory = tempfile::tempdir().unwrap();
+        let history = directory.path().join("Scan History.json");
+        let scan = directory.path().join("scan.pdf");
+        std::fs::write(&scan, b"%PDF").unwrap();
+        record_at(&history, &[(&scan, 2)]).unwrap();
+        let (entries, _) = read(&history).unwrap();
+        let expected = format!(
+            r#"[{{"path":{},"pages":2,"bytes":4,"saved_at":{}}}]"#,
+            serde_json::to_string(&entries[0].path).unwrap(),
+            entries[0].saved_at
+        );
+        assert_eq!(std::fs::read_to_string(&history).unwrap(), expected);
+    }
 
     #[test]
     fn records_metadata_and_replaces_duplicates_without_touching_exports() {

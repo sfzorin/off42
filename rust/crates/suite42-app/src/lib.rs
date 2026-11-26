@@ -18,6 +18,7 @@ pub mod platform;
 pub mod print_calibration;
 pub mod production;
 pub mod recents;
+pub mod scan;
 pub mod report;
 pub mod rich_pages;
 pub mod recovery;

@@ -1,6 +1,5 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
-mod export_naming;
-mod history;
+use suite42_app::scan::{export_naming, history};
 mod ocr_batch;
 mod ocr_settings;
 mod pdf_import;

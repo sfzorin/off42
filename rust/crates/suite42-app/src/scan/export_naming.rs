@@ -13,22 +13,22 @@ const MAX_TEMPLATE: usize = 512;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct Settings {
-    pub(super) template: String,
+pub struct Settings {
+    pub template: String,
     next: u64,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            template: format!("{} YYYY-MM-DD HH-mm", win42::localization::text("Scan")),
+            template: format!("{} YYYY-MM-DD HH-mm", crate::localization::text("Scan")),
             next: 1,
         }
     }
 }
 
 impl Settings {
-    pub(super) fn suggest(&self, page: Option<&scn42_core::Page>) -> String {
+    pub fn suggest(&self, page: Option<&scn42_core::Page>) -> String {
         let title = if self.template.contains("{title}") {
             page.map(|page| first_line(&page.words)).unwrap_or_default()
         } else {
@@ -95,7 +95,7 @@ fn expand(template: &str, date: DateTime<Local>, next: u64, title: &str) -> Stri
         .collect();
     let name = name.trim_matches(|ch: char| ch.is_whitespace() || matches!(ch, '-' | '_' | '.'));
     if name.is_empty() {
-        return win42::localization::text("Scan");
+        return crate::localization::text("Scan");
     }
     let stem = name
         .split('.')
@@ -124,9 +124,7 @@ fn expand(template: &str, date: DateTime<Local>, next: u64, title: &str) -> Stri
 
 fn location() -> Option<PathBuf> {
     Some(
-        PathBuf::from(std::env::var_os("LOCALAPPDATA")?)
-            .join("off42")
-            .join("Scan Export Naming.json"),
+        crate::storage::local_data()?.join("Scan Export Naming.json"),
     )
 }
 
@@ -159,7 +157,7 @@ fn read(path: &Path) -> Result<(Settings, Option<FileIdentity>), String> {
     Ok((settings, Some(FileIdentity::from_bytes(&bytes, modified))))
 }
 
-pub(super) fn load() -> Settings {
+pub fn load() -> Settings {
     location()
         .and_then(|path| read(&path).ok())
         .map(|(settings, _)| settings)
@@ -192,7 +190,7 @@ fn edit(path: &Path, change: impl FnOnce(&mut Settings)) -> Result<(), String> {
     .map_err(|error| error.to_string())
 }
 
-pub(super) fn set_template(template: &str) -> Result<(), String> {
+pub fn set_template(template: &str) -> Result<(), String> {
     let template = template.trim();
     if !valid_template(template) {
         return Err("Enter a filename template of up to 512 bytes".into());
@@ -201,7 +199,7 @@ pub(super) fn set_template(template: &str) -> Result<(), String> {
     edit(&path, |settings| settings.template = template.into())
 }
 
-pub(super) fn advance() -> Result<(), String> {
+pub fn advance() -> Result<(), String> {
     let path = location().ok_or("Scan export settings directory unavailable")?;
     edit(&path, |settings| {
         settings.next = settings.next.saturating_add(1)
@@ -211,6 +209,16 @@ pub(super) fn advance() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn stored_naming_settings_format_is_pinned() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("Scan Export Naming.json");
+        edit(&path, |settings| settings.template = "Scan {n}".into()).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), br#"{"template":"Scan {n}","next":1}"#);
+        std::fs::write(&path, br#"{"template":"Lot {n}","next":7}"#).unwrap();
+        let (settings, _) = read(&path).unwrap();
+        assert_eq!((settings.template.as_str(), settings.next), ("Lot {n}", 7));
+    }
     use chrono::TimeZone;
 
     #[test]

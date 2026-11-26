@@ -2040,6 +2040,7 @@ dependencies = [
  "scn42-core",
  "serde",
  "serde_json",
+ "suite42-app",
  "suite42-core",
  "suite42-pdf-raster",
  "tempfile",
@@ -2287,6 +2288,7 @@ dependencies = [
 name = "suite42-app"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "doc42-core",
  "image",
  "label42",

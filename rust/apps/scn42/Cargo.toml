@@ -5,6 +5,7 @@ edition = "2021"
 [dependencies]
 suite42-pdf-raster = { path = "../../crates/suite42-pdf-raster" }
 win42 = { path = "../../crates/win42" }
+suite42-app = { path = "../../crates/suite42-app" }
 scn42-core = { path = "../../crates/scn42-core" }
 img42-core = { path = "../../crates/img42-core" }
 suite42-core = { path = "../../crates/suite42-core" }
