@@ -1,9 +1,8 @@
 pub mod ocr;
 pub mod recovery;
-mod grid_axis;
-pub use grid_axis::GridAxis;
-mod sparse_table;
-pub use sparse_table::SparseTable;
+pub use suite42_app::{GridAxis, GridRange, SparseTable};
+#[cfg(windows)]
+use suite42_app::grid_geometry;
 mod system_font;
 pub use system_font::program as system_font_program;
 #[cfg(any(windows,test))]
@@ -622,8 +621,6 @@ mod dialogs;
 #[cfg(windows)]
 mod grid;
 #[cfg(any(windows, test))]
-mod grid_geometry;
-#[cfg(any(windows, test))]
 mod label_preferences;
 #[cfg(any(windows, test))]
 mod marks;
@@ -1229,13 +1226,6 @@ pub struct PresenterView<'a> {
     pub next: Option<usize>,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct GridRange {
-    pub top: usize,
-    pub left: usize,
-    pub bottom: usize,
-    pub right: usize,
-}
 #[derive(Clone)]
 pub struct GridPicture {
     pub selected: bool,

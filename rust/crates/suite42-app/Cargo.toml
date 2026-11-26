@@ -1,0 +1,9 @@
+[package]
+name = "suite42-app"
+version = "0.1.0"
+edition = "2021"
+description = "Portable application services shared by the off42 Windows, Linux, command-line and web shells"
+
+[dependencies]
+
+[dev-dependencies]

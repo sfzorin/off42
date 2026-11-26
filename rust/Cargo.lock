@@ -2283,6 +2283,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "suite42-app"
+version = "0.1.0"
+
+[[package]]
 name = "suite42-core"
 version = "0.1.0"
 dependencies = [
@@ -2717,6 +2721,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "suite42-app",
  "suite42-core",
  "tempfile",
  "windows",

@@ -68,7 +68,7 @@ impl GridAxis {
         (0..self.len()).map(|i| &self[i])
     }
     /// Only positive-length cells intersecting this logical interval are visited, including long hidden runs.
-    pub(crate) fn intersecting(&self, start: i64, end: i64) -> impl Iterator<Item = usize> + '_ {
+    pub fn intersecting(&self, start: i64, end: i64) -> impl Iterator<Item = usize> + '_ {
         let mut pixel = start.max(0);
         std::iter::from_fn(move || {
             if pixel >= end {

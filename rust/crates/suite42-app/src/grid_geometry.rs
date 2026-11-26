@@ -1,5 +1,13 @@
 //! Pure 64-bit geometry for the native variable-size grid.
-use crate::{GridAxis, GridRange};
+use crate::GridAxis;
+/// Inclusive cell range of a grid selection.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct GridRange {
+    pub top: usize,
+    pub left: usize,
+    pub bottom: usize,
+    pub right: usize,
+}
 fn pixel(value: i64) -> i32 {
     value.clamp(-1_000_000_000, 1_000_000_000) as i32
 }
@@ -16,10 +24,10 @@ fn offsets(lengths: &[i32]) -> GridAxis {
     )
     .unwrap()
 }
-pub(crate) fn index_at(axis: &GridAxis, value: i64) -> Option<usize> {
+pub fn index_at(axis: &GridAxis, value: i64) -> Option<usize> {
     axis.index_at(value)
 }
-pub(crate) fn position(
+pub fn position(
     axis: &GridAxis,
     index: usize,
     frozen: usize,
@@ -28,7 +36,7 @@ pub(crate) fn position(
 ) -> i32 {
     pixel(i64::from(header) + axis.offset(index) - if index < frozen { 0 } else { scroll })
 }
-pub(crate) fn index_at_view(
+pub fn index_at_view(
     axis: &GridAxis,
     value: i32,
     frozen: usize,
@@ -47,7 +55,7 @@ pub(crate) fn index_at_view(
         Some(index)
     }
 }
-pub(crate) fn visible(
+pub fn visible(
     axis: &GridAxis,
     frozen: usize,
     scroll: i64,
@@ -65,7 +73,7 @@ pub(crate) fn visible(
         .collect()
 }
 /// The OS scrollbar remains 32-bit; the worksheet origin never loses its exact 64-bit coordinate.
-pub(crate) struct ScrollRange {
+pub struct ScrollRange {
     pub total: i64,
     pub page: i64,
 }
@@ -101,12 +109,12 @@ impl ScrollRange {
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Fragment {
+pub struct Fragment {
     pub rect: (i32, i32, i32, i32),
     pub clip: (i32, i32, i32, i32),
     pub visible: (i32, i32, i32, i32),
 }
-pub(crate) fn pane_fragment(
+pub fn pane_fragment(
     range: GridRange,
     xs: &GridAxis,
     ys: &GridAxis,
@@ -172,7 +180,7 @@ pub(crate) fn pane_fragment(
     }
 }
 #[cfg(test)]
-pub(crate) fn bounds(
+pub fn bounds(
     row: usize,
     col: usize,
     merge: Option<GridRange>,

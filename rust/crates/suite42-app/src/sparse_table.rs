@@ -38,8 +38,7 @@ impl SparseTable {
     pub fn cell(&self, row: usize, column: usize) -> &str {
         self.cells.get(&(row, column)).map_or("", String::as_str)
     }
-    #[cfg(any(windows, test))]
-    pub(crate) fn from_dense(rows: Vec<Vec<String>>) -> Option<Self> {
+    pub fn from_dense(rows: Vec<Vec<String>>) -> Option<Self> {
         let columns = rows.first().map_or(0, Vec::len);
         let count = rows.len();
         if rows.iter().any(|r| r.len() != columns) {
