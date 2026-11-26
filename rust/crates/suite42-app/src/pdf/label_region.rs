@@ -1,6 +1,5 @@
 //! Map a readonly PDF selection through crop bounds and page rotation.
-#[cfg_attr(not(windows), allow(dead_code))]
-pub(super) fn page_point(
+pub fn page_point(
     bounds: [f64; 4],
     rotation: i64,
     size: [u32; 2],
@@ -27,8 +26,7 @@ pub(super) fn page_point(
         bounds[1] + y * (bounds[3] - bounds[1]),
     ])
 }
-#[cfg_attr(not(windows), allow(dead_code))]
-pub(super) fn rectangle(a: [f64; 2], b: [f64; 2]) -> Result<[f64; 4], String> {
+pub fn rectangle(a: [f64; 2], b: [f64; 2]) -> Result<[f64; 4], String> {
     if a.into_iter().chain(b).any(|v| !v.is_finite()) {
         return Err("Invalid PDF label area".into());
     }

@@ -12,6 +12,7 @@ pub mod label_preferences;
 pub mod localization;
 pub mod marks;
 pub mod note_pagination;
+pub mod pdf;
 pub mod pdf_print_layout;
 pub mod print_calibration;
 pub mod production;

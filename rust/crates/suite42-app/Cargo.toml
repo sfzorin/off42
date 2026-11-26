@@ -8,10 +8,14 @@ description = "Portable application services shared by the off42 Windows, Linux,
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 label42 = { path = "../label42" }
 marks42 = { path = "../marks42" }
+pdf42-core = { path = "../pdf42-core" }
+lopdf = "0.47"
+tempfile = "3"
+zip = { version = "6", default-features = false, features = ["deflate"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 sha2 = "0.10"
 suite42-core = { path = "../suite42-core" }
 
 [dev-dependencies]
-tempfile = "3"
+scn42-core = { path = "../scn42-core" }

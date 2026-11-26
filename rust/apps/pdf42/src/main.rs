@@ -1,11 +1,11 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 mod decorations;
-mod label_region;
+#[cfg(windows)]
+use suite42_app::pdf::label_region;
+use suite42_app::pdf::{merge, page_export};
 mod comparison;
 mod ocr;
-mod merge;
 mod batch_headers;
-mod page_export;
 mod text_export;
 #[cfg(any(windows, test))]
 mod signatures;
