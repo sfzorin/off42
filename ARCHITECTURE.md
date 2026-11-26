@@ -15,7 +15,7 @@ off42 has two independent implementations of the same six apps (PDF42, DOC42, XL
 | — app crates | `rust/apps/*` | ~30k lines | Win32 wiring plus portable features (PDF comparison/merge/Bates/signatures, Goal Seek/Solver/sorting, export naming, history) |
 | Website | Node generator (`website/`), Cloudflare | — | 20 languages |
 | Linux | PR #4, paused | — | egui host + `off42` CLI over the Rust cores |
-| Web | not started | — | — |
+| Web | groundwork (`web/`, `rust/crates/off42-wasm`) | — | Not deployed; cores build for wasm32 |
 
 Every feature is written twice, once in Swift and once in Rust. `rust/PARITY.md` tracks the drift, and some
 ports (for example `marks42`) must stay bit-identical to Swift by hand.

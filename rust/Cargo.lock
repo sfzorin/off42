@@ -1479,6 +1479,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "off42-wasm"
+version = "0.1.0"
+dependencies = [
+ "doc42-core",
+ "label42",
+ "marks42",
+ "pdf42-core",
+ "ppt42-core",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+ "xls42-core",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1917,6 +1932,8 @@ version = "0.102.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ca3d0e879a578c1313c2800ab0c6c029d38eed18098675e50341a30d32372ed"
 dependencies = [
+ "js-sys",
+ "wasm-bindgen",
  "zip 9.4.1",
 ]
 
@@ -2286,6 +2303,7 @@ dependencies = [
 name = "suite42-pdf-text"
 version = "0.1.0"
 dependencies = [
+ "getrandom",
  "lopdf",
  "ttf-parser 0.21.1",
 ]
@@ -2407,6 +2425,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb87b95ec50ddfa440816d227a17b2ccbdda963a316a727fda0fc4334f7d134"
 dependencies = [
  "deranged",
+ "js-sys",
  "num-conv",
  "powerfmt",
  "serde_core",
@@ -2859,6 +2878,7 @@ dependencies = [
  "sha2 0.10.9",
  "spreadsheet-ods",
  "suite42-core",
+ "time",
  "zip 6.0.0",
 ]
 

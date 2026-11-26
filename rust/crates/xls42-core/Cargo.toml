@@ -20,3 +20,11 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 libm = "0.2"
 fastrand = "2"
 regex = "1"
+
+# Browser builds (wasm32-unknown-unknown) read the clock and time zone from JavaScript.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "wasmbind"] }
+# spreadsheet-ods turns on zip's "time" feature; time reads the clock from JavaScript on wasm32-unknown-unknown.
+time = { version = "0.3", default-features = false, features = ["std", "wasm-bindgen"] }
+# rust_xlsxwriter stamps workbook properties with the current time; its "wasm" feature reads it from JavaScript.
+rust_xlsxwriter = { version = "0.102", features = ["wasm"] }

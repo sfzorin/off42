@@ -1,0 +1,23 @@
+{
+  "name": "off42-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "off42 in the browser: a thin web UI over the Rust cores compiled to WebAssembly",
+  "scripts": {
+    "build:wasm": "sh scripts/build-wasm.sh",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "node test/smoke.mjs && node test/offline.mjs",
+    "test:ui": "node test/ui.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.65.1",
+    "typescript": "5.9.3",
+    "vite": "8.3.8"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
