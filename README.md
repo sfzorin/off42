@@ -1071,9 +1071,13 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   OCSP nonces and asynchronous (multi-signature) CSC operations are not supported. Network calls block the window
   while they run (the OAuth wait keeps the run loop alive).
 - Office/ODF signatures: not yet checked against Microsoft Office (no Office installation was available); they were
-  verified with LibreOffice and an independent XMLDSig check (STATUS.md). Signatures created by LibreOffice 25.2 in
-  .docx files are reported as invalid by DOC42 (LibreOffice's relationship transform differs; its ODF signatures are
-  read correctly). XAdES timestamps (XAdES-T) and signature lines with images are not created. No real AKİS card or
+  verified with LibreOffice and an independent XMLDSig check (STATUS.md). Signatures that LibreOffice 25.2 creates in
+  .docx/.xlsx files are verified: LibreOffice's relationship transform also digests the whitespace between
+  relationships, and DOC42/XLS42 accept either that digest or the ECMA-376 one. This was tested with .docx/.xlsx
+  files written by DOC42/XLS42 and signed by LibreOffice 25.2.4 through its signing API (not its Sign dialog, which
+  can also keep earlier signatures), and with Microsoft Office 2007/2010 sample files from Apache POI; .pptx signed by
+  LibreOffice and files signed by current Microsoft Office were not tested. LibreOffice's ODF signatures are checked
+  only with LibreOffice's own test files (good.odt/bad.odt). XAdES timestamps (XAdES-T) and signature lines with images are not created. No real AKİS card or
   Turkish qualified certificate was used in testing; smart-card signing was tested with SoftHSM.
 - GOST signatures need the user's own CryptoPro CSP. The GOST path has been exercised only against stand-in tools
   (`scripts/fake-cryptopro`), not against a real CSP install, so `cryptcp` option compatibility (`-cadesbes`,
@@ -1122,8 +1126,9 @@ python3 scripts/audit-spreadsheets-cli.py --binary .build/debug/XLS42
 python3 scripts/audit-presentations-cli.py --binary .build/debug/PPT42
 python3 scripts/audit-images-cli.py --binary .build/debug/IMG42
 python3 scripts/audit-scans-cli.py --binary .build/debug/SCN42
-# Office/ODF signatures: Suite42, an independent lxml+OpenSSL check, LibreOffice (if installed), Office/LibreOffice
-# fixtures (downloaded). Smart cards: needs `brew install softhsm opensc`.
+# Office/ODF signatures: Suite42, an independent lxml+OpenSSL check, LibreOffice (if installed), committed
+# LibreOffice-signed fixtures with tampered copies, Office/LibreOffice fixtures (downloaded).
+# Smart cards: needs `brew install softhsm opensc`.
 python3 scripts/audit-document-signatures.py
 python3 scripts/audit-eimza.py
 swiftc -module-cache-path .build/ModuleCache Sources/Kit42/Zip.swift Sources/Kit42/TextDecoding.swift \

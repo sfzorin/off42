@@ -74,6 +74,7 @@ enum SelfTest {
         failed += deepFormulas()
         failed += deepSheetReferences()
         failed += technicalFiles()
+        failed += DocumentSignatureSelfTest.run()
         print(failed == 0 ? "ALL PASSED" : "\(failed) FAILED")
         return failed == 0 ? 0 : 1
     }
