@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -125,7 +126,7 @@ private fun GridCell(
     end: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier.width(width).height(RowHeight).border(0.5.dp, line).padding(horizontal = 6.dp),
+    Box(modifier.semantics(mergeDescendants = true) {}.width(width).height(RowHeight).border(0.5.dp, line).padding(horizontal = 6.dp),
         contentAlignment = Alignment.CenterStart) {
         Text(
             text,

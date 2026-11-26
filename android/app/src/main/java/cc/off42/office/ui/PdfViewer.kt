@@ -46,7 +46,9 @@ import cc.off42.office.Off42ViewModel
 import cc.off42.office.OpenedFile
 import cc.off42.office.R
 import java.io.File
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -58,13 +60,20 @@ import kotlinx.coroutines.withContext
  */
 class PdfPages private constructor(private val file: File, private val renderer: PdfRenderer) : AutoCloseable {
     private val lock = Mutex()
-    val count: Int get() = renderer.pageCount
+    val count: Int = renderer.pageCount
 
-    suspend fun aspect(index: Int): Float = lock.withLock {
+    @Volatile
+    private var closed = false
+
+    /** Page width / height, or null once closed. */
+    suspend fun aspect(index: Int): Float? = lock.withLock {
+        if (closed) return@withLock null
         withContext(Dispatchers.IO) { renderer.openPage(index).use { it.width.toFloat() / it.height.toFloat() } }
     }
 
-    suspend fun render(index: Int, widthPx: Int): Bitmap = lock.withLock {
+    /** The page at a pixel width, or null once closed. */
+    suspend fun render(index: Int, widthPx: Int): Bitmap? = lock.withLock {
+        if (closed) return@withLock null
         withContext(Dispatchers.IO) {
             renderer.openPage(index).use { page ->
                 val width = widthPx.coerceIn(64, 2400)
@@ -77,9 +86,16 @@ class PdfPages private constructor(private val file: File, private val renderer:
         }
     }
 
+    /** Closes once no page is being rendered; later calls to [aspect] and [render] return null. */
     override fun close() {
-        runCatching { renderer.close() }
-        file.delete()
+        if (closed) return
+        closed = true
+        CoroutineScope(Dispatchers.IO).launch {
+            lock.withLock {
+                runCatching { renderer.close() }
+                file.delete()
+            }
+        }
     }
 
     companion object {
@@ -100,8 +116,10 @@ class PdfPages private constructor(private val file: File, private val renderer:
 fun rememberPdfPages(key: Any, bytes: ByteArray): Result<PdfPages>? {
     val context = LocalContext.current
     val pages by produceState<Result<PdfPages>?>(null, key) { value = PdfPages.open(context, bytes) }
-    DisposableEffect(pages) { onDispose { pages?.getOrNull()?.close() } }
-    return pages
+    // Capture this value: the effect of a previous value must close that renderer, not the current one.
+    val current = pages
+    DisposableEffect(current) { onDispose { current?.getOrNull()?.close() } }
+    return current
 }
 
 @Composable
@@ -161,7 +179,7 @@ fun PdfPage(pages: PdfPages, index: Int, maxWidth: androidx.compose.ui.unit.Dp =
     BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
         val width = minOf(this.maxWidth, maxWidth)
         val px = with(LocalDensity.current) { width.roundToPx() }
-        val aspect by produceState(0.7071f, pages, index) { value = pages.aspect(index) }
+        val aspect by produceState(0.7071f, pages, index) { pages.aspect(index)?.let { value = it } }
         val bitmap by produceState<Bitmap?>(null, pages, index, px) { value = pages.render(index, px) }
         Surface(shadowElevation = 2.dp, modifier = Modifier.widthIn(max = width).fillMaxWidth().aspectRatio(aspect)
             .semantics { contentDescription = label }.testTag("pdf-page-$index")) {
