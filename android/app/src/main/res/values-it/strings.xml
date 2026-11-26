@@ -8,7 +8,7 @@
     <string name="height_mm">Altezza, mm</string>
     <string name="new_impression">Nuova impronta</string>
     <string name="file_unsupported">I file di tipo «.%1$s» non sono supportati qui.</string>
-    <string name="file_size">%1$s KB</string>
+    <string name="slides_notes_title">Note del relatore</string>
     <string name="doc_preview">Anteprima del documento</string>
     <string name="doc_stats">%1$s parole · %2$s caratteri · %3$s paragrafi</string>
     <string name="doc_convert_anyway">%1$s.\n\nConvertire comunque? Stili, impostazioni e altre parti che %2$s non può contenere vengono omessi; il testo e la formattazione supportata vengono mantenuti.</string>
@@ -17,21 +17,20 @@
     <string name="sheet_truncated">Sono mostrate le prime %1$d righe e %2$d colonne.</string>
     <string name="slides_hidden">nascosta</string>
     <string name="slides_untitled">Slide senza titolo</string>
-    <string name="slides_picture">[immagine]</string>
-    <string name="slides_notes">Note: %1$s</string>
-    <string name="slides_outline">%1$d slide — schema di testo</string>
+    <string name="slides_picture">Immagine</string>
+    <string name="slides_outline_note">Le diapositive sono mostrate come testo e tabelle; la visualizzazione completa arriverà presto</string>
     <string name="pdf_encrypted">Questo PDF è protetto da password.</string>
     <string name="pdf_pages">Pagine</string>
     <string name="pdf_bookmarks">Segnalibri</string>
     <string name="pdf_attachments">Allegati</string>
     <string name="pdf_form_fields">Campi modulo</string>
-    <string name="code_title">Codice a barre o codice QR</string>
+    <string name="code_title">Codici</string>
     <string name="code_type">Tipo</string>
     <string name="code_qr">Codice QR</string>
     <string name="code_content">Contenuto</string>
     <string name="code_caption">Stampa il contenuto sotto (SVG)</string>
     <string name="code_preview">Anteprima del codice</string>
-    <string name="labels_title">Foglio di etichette (PDF A4)</string>
+    <string name="labels_title">Fogli di etichette</string>
     <string name="labels_stock">Formato etichette</string>
     <string name="labels_custom">Dimensioni personalizzate…</string>
     <string name="labels_gap_x">Spaziatura X, mm</string>
@@ -46,7 +45,6 @@
     <string name="marks_hint">Solo grafica: apporre una marcatura non certifica nulla. Segui le regole d\'uso di ciascuna marcatura.</string>
     <string name="marks_search">Cerca</string>
     <string name="marks_search_placeholder">CE, riciclo, fragile…</string>
-    <string name="marks_category">Categoria</string>
     <string name="marks_all">Tutte</string>
     <string name="marks_unverified">Questo disegno non è verificato (licenza o provenienza).</string>
     <string name="marks_needs_number">Richiede un numero di registrazione accanto.</string>
@@ -55,7 +53,7 @@
     <string name="sig_form">Forma</string>
     <string name="sig_pen">Penna</string>
     <string name="sig_ink">Inchiostro</string>
-    <string name="sig_generate">Genera</string>
+    <string name="sig_generate">Nuove varianti</string>
     <string name="sig_alt">Firma di %1$s</string>
     <string name="sig_form_0">Qualsiasi forma</string>
     <string name="sig_form_1">Nome completo</string>
@@ -103,4 +101,5 @@
     <string name="tab_label_sheet">Foglio di etichette</string>
     <string name="labels_make">Crea foglio di etichette</string>
     <string name="pdf_page">Pagina %1$d di %2$d</string>
+    <string name="marks_category">Categoria</string>
 </resources>

@@ -8,7 +8,7 @@
     <string name="height_mm">Cao, mm</string>
     <string name="new_impression">Mẫu mới</string>
     <string name="file_unsupported">Không hỗ trợ tệp “.%1$s” ở đây.</string>
-    <string name="file_size">%1$s KB</string>
+    <string name="slides_notes_title">Ghi chú của người trình bày</string>
     <string name="doc_preview">Xem trước tài liệu</string>
     <string name="doc_stats">%1$s từ · %2$s ký tự · %3$s đoạn</string>
     <string name="doc_convert_anyway">%1$s.\n\nVẫn chuyển đổi? Kiểu, thiết lập và các phần khác mà %2$s không lưu được sẽ bị bỏ qua; văn bản và định dạng được hỗ trợ vẫn được giữ lại.</string>
@@ -17,21 +17,20 @@
     <string name="sheet_truncated">Đang hiển thị %1$d hàng và %2$d cột đầu tiên.</string>
     <string name="slides_hidden">ẩn</string>
     <string name="slides_untitled">Trang chiếu không có tiêu đề</string>
-    <string name="slides_picture">[hình ảnh]</string>
-    <string name="slides_notes">Ghi chú: %1$s</string>
-    <string name="slides_outline">%1$d trang chiếu — dàn ý văn bản</string>
+    <string name="slides_picture">Hình ảnh</string>
+    <string name="slides_outline_note">Trang chiếu được hiển thị dạng văn bản và bảng; chế độ hiển thị đầy đủ sắp có</string>
     <string name="pdf_encrypted">PDF này được bảo vệ bằng mật khẩu.</string>
     <string name="pdf_pages">Trang</string>
     <string name="pdf_bookmarks">Dấu trang</string>
     <string name="pdf_attachments">Tệp đính kèm</string>
     <string name="pdf_form_fields">Trường biểu mẫu</string>
-    <string name="code_title">Mã vạch hoặc mã QR</string>
+    <string name="code_title">Mã</string>
     <string name="code_type">Loại</string>
     <string name="code_qr">Mã QR</string>
     <string name="code_content">Nội dung</string>
     <string name="code_caption">In nội dung bên dưới (SVG)</string>
     <string name="code_preview">Xem trước mã</string>
-    <string name="labels_title">Tờ nhãn (PDF A4)</string>
+    <string name="labels_title">Tờ nhãn</string>
     <string name="labels_stock">Giấy nhãn</string>
     <string name="labels_custom">Kích thước tùy chỉnh…</string>
     <string name="labels_gap_x">Khoảng cách X, mm</string>
@@ -46,7 +45,6 @@
     <string name="marks_hint">Chỉ là hình vẽ: chèn dấu không có nghĩa là được chứng nhận. Hãy tuân theo quy định sử dụng riêng của từng dấu.</string>
     <string name="marks_search">Tìm kiếm</string>
     <string name="marks_search_placeholder">CE, tái chế, dễ vỡ…</string>
-    <string name="marks_category">Danh mục</string>
     <string name="marks_all">Tất cả</string>
     <string name="marks_unverified">Hình vẽ này chưa được xác minh (giấy phép hoặc nguồn gốc).</string>
     <string name="marks_needs_number">Cần ghi số đăng ký bên cạnh.</string>
@@ -55,7 +53,7 @@
     <string name="sig_form">Kiểu</string>
     <string name="sig_pen">Bút</string>
     <string name="sig_ink">Mực</string>
-    <string name="sig_generate">Tạo</string>
+    <string name="sig_generate">Biến thể mới</string>
     <string name="sig_alt">Chữ ký của %1$s</string>
     <string name="sig_form_0">Kiểu bất kỳ</string>
     <string name="sig_form_1">Họ tên đầy đủ</string>
@@ -103,4 +101,5 @@
     <string name="tab_label_sheet">Tờ nhãn</string>
     <string name="labels_make">Tạo tờ nhãn</string>
     <string name="pdf_page">Trang %1$d/%2$d</string>
+    <string name="marks_category">Danh mục</string>
 </resources>

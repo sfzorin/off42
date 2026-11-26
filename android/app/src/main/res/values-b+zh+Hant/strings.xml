@@ -8,7 +8,7 @@
     <string name="height_mm">高度（公釐）</string>
     <string name="new_impression">重新用印</string>
     <string name="file_unsupported">這裡不支援「.%1$s」類型的檔案。</string>
-    <string name="file_size">%1$s KB</string>
+    <string name="slides_notes_title">備忘稿</string>
     <string name="doc_preview">文件預覽</string>
     <string name="doc_stats">%1$s 個字詞 · %2$s 個字元 · %3$s 個段落</string>
     <string name="doc_convert_anyway">%1$s。\n\n仍要轉換嗎？%2$s 無法容納的樣式、設定和其他部分會被捨棄；文字與支援的格式會保留。</string>
@@ -17,21 +17,20 @@
     <string name="sheet_truncated">僅顯示前 %1$d 列和前 %2$d 欄。</string>
     <string name="slides_hidden">已隱藏</string>
     <string name="slides_untitled">未命名投影片</string>
-    <string name="slides_picture">[圖片]</string>
-    <string name="slides_notes">備忘稿：%1$s</string>
-    <string name="slides_outline">%1$d 張投影片 — 文字大綱</string>
+    <string name="slides_picture">圖片</string>
+    <string name="slides_outline_note">投影片以文字和表格顯示；完整呈現即將推出</string>
     <string name="pdf_encrypted">此 PDF 受密碼保護。</string>
     <string name="pdf_pages">頁數</string>
     <string name="pdf_bookmarks">書籤</string>
     <string name="pdf_attachments">附件</string>
     <string name="pdf_form_fields">表單欄位</string>
-    <string name="code_title">條碼或 QR 碼</string>
+    <string name="code_title">條碼</string>
     <string name="code_type">類型</string>
     <string name="code_qr">QR 碼</string>
     <string name="code_content">內容</string>
     <string name="code_caption">在下方列印內容（SVG）</string>
     <string name="code_preview">條碼預覽</string>
-    <string name="labels_title">標籤紙（A4 PDF）</string>
+    <string name="labels_title">標籤紙</string>
     <string name="labels_stock">標籤紙規格</string>
     <string name="labels_custom">自訂尺寸…</string>
     <string name="labels_gap_x">水平間距（公釐）</string>
@@ -46,7 +45,6 @@
     <string name="marks_hint">僅為圖形：加入標誌不代表任何認證。請遵守各標誌本身的使用規定。</string>
     <string name="marks_search">搜尋</string>
     <string name="marks_search_placeholder">CE、回收、易碎…</string>
-    <string name="marks_category">類別</string>
     <string name="marks_all">全部</string>
     <string name="marks_unverified">此圖形未經查證（授權或來源）。</string>
     <string name="marks_needs_number">需在旁邊標示登記編號。</string>
@@ -55,7 +53,7 @@
     <string name="sig_form">形式</string>
     <string name="sig_pen">筆</string>
     <string name="sig_ink">墨水</string>
-    <string name="sig_generate">產生</string>
+    <string name="sig_generate">新的樣式</string>
     <string name="sig_alt">%1$s 的簽名</string>
     <string name="sig_form_0">任意形式</string>
     <string name="sig_form_1">全名</string>
@@ -103,4 +101,5 @@
     <string name="tab_label_sheet">標籤紙</string>
     <string name="labels_make">產生標籤紙</string>
     <string name="pdf_page">第 %1$d 頁，共 %2$d 頁</string>
+    <string name="marks_category">類別</string>
 </resources>

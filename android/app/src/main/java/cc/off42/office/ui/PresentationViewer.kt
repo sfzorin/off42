@@ -42,7 +42,7 @@ fun PresentationViewer(viewModel: Off42ViewModel, file: OpenedFile, slides: List
         item(span = { GridItemSpan(maxLineSpan) }) {
             Column {
                 SaveAsRow(saveFormats(file.kind)) { viewModel.saveAs(file, it) }
-                Text(stringResource(R.string.slides_outline, slides.size), Modifier.padding(horizontal = 16.dp),
+                Text(stringResource(R.string.slides_outline_note), Modifier.padding(horizontal = 16.dp),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -75,7 +75,7 @@ private fun SlideCard(index: Int, slide: Slide) {
                 }
             }
             if (slide.notes.isNotEmpty()) {
-                Text(stringResource(R.string.slides_notes, slide.notes), style = MaterialTheme.typography.bodySmall,
+                Text("${stringResource(R.string.slides_notes_title)}: ${slide.notes}", style = MaterialTheme.typography.bodySmall,
                     fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

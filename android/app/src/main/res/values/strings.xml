@@ -3,6 +3,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="app_name" translatable="false">OFF42</string>
     <string name="section_pdf" translatable="false">PDF</string>
+    <string name="file_size" translatable="false">%1$s KB</string>
     <string name="section_labels">Labels &amp; codes</string>
     <string name="section_marks">Signatures &amp; stamps</string>
     <string name="save_as">Save as</string>
@@ -10,7 +11,7 @@
     <string name="height_mm">Height, mm</string>
     <string name="new_impression">New impression</string>
     <string name="file_unsupported">Files of type “.%1$s” are not supported here.</string>
-    <string name="file_size">%1$s KB</string>
+    <string name="slides_notes_title">Speaker notes</string>
     <string name="doc_preview">Document preview</string>
     <string name="doc_stats">%1$s words · %2$s characters · %3$s paragraphs</string>
     <string name="doc_convert_anyway">%1$s.\n\nConvert anyway? Styles, settings and other parts that %2$s cannot hold are left out; the text and supported formatting are kept.</string>
@@ -19,21 +20,20 @@
     <string name="sheet_truncated">Showing the first %1$d rows and %2$d columns.</string>
     <string name="slides_hidden">hidden</string>
     <string name="slides_untitled">Untitled slide</string>
-    <string name="slides_picture">[picture]</string>
-    <string name="slides_notes">Notes: %1$s</string>
-    <string name="slides_outline">%1$d slides — text outline</string>
+    <string name="slides_picture">Picture</string>
+    <string name="slides_outline_note">Slides are shown as text and tables; full slide rendering is coming</string>
     <string name="pdf_encrypted">This PDF is password-protected.</string>
     <string name="pdf_pages">Pages</string>
     <string name="pdf_bookmarks">Bookmarks</string>
     <string name="pdf_attachments">Attachments</string>
     <string name="pdf_form_fields">Form fields</string>
-    <string name="code_title">Barcode or QR code</string>
+    <string name="code_title">Codes</string>
     <string name="code_type">Type</string>
     <string name="code_qr">QR code</string>
     <string name="code_content">Content</string>
     <string name="code_caption">Print the content underneath (SVG)</string>
     <string name="code_preview">Code preview</string>
-    <string name="labels_title">Label sheet (A4 PDF)</string>
+    <string name="labels_title">Label sheets</string>
     <string name="labels_stock">Label stock</string>
     <string name="labels_custom">Custom size…</string>
     <string name="labels_gap_x">Gap X, mm</string>
@@ -48,7 +48,6 @@
     <string name="marks_hint">Artwork only: placing a mark certifies nothing. Follow each mark\'s own rules of use.</string>
     <string name="marks_search">Search</string>
     <string name="marks_search_placeholder">CE, recycling, fragile…</string>
-    <string name="marks_category">Category</string>
     <string name="marks_all">All</string>
     <string name="marks_unverified">This drawing is unverified (licensing or provenance).</string>
     <string name="marks_needs_number">Needs a registration number next to it.</string>
@@ -57,7 +56,7 @@
     <string name="sig_form">Form</string>
     <string name="sig_pen">Pen</string>
     <string name="sig_ink">Ink</string>
-    <string name="sig_generate">Generate</string>
+    <string name="sig_generate">New variants</string>
     <string name="sig_alt">Signature of %1$s</string>
     <string name="sig_form_0">Any form</string>
     <string name="sig_form_1">Full name</string>
@@ -105,4 +104,5 @@
     <string name="tab_label_sheet">Label sheet</string>
     <string name="labels_make">Create label sheet</string>
     <string name="pdf_page">Page %1$d of %2$d</string>
+    <string name="marks_category">Category</string>
 </resources>

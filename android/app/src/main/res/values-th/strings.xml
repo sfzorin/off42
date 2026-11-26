@@ -8,7 +8,7 @@
     <string name="height_mm">ความสูง (มม.)</string>
     <string name="new_impression">ประทับใหม่</string>
     <string name="file_unsupported">ไม่รองรับไฟล์ประเภท “.%1$s” ที่นี่</string>
-    <string name="file_size">%1$s KB</string>
+    <string name="slides_notes_title">บันทึกของผู้บรรยาย</string>
     <string name="doc_preview">ตัวอย่างเอกสาร</string>
     <string name="doc_stats">%1$s คำ · %2$s อักขระ · %3$s ย่อหน้า</string>
     <string name="doc_convert_anyway">%1$s\n\nต้องการแปลงต่อหรือไม่ สไตล์ การตั้งค่า และส่วนอื่นๆ ที่ %2$s เก็บไว้ไม่ได้จะถูกตัดออก ส่วนข้อความและการจัดรูปแบบที่รองรับจะยังคงอยู่</string>
@@ -17,21 +17,20 @@
     <string name="sheet_truncated">แสดง %1$d แถวและ %2$d คอลัมน์แรก</string>
     <string name="slides_hidden">ซ่อนอยู่</string>
     <string name="slides_untitled">สไลด์ไม่มีชื่อ</string>
-    <string name="slides_picture">[รูปภาพ]</string>
-    <string name="slides_notes">บันทึกย่อ: %1$s</string>
-    <string name="slides_outline">%1$d สไลด์ — โครงร่างข้อความ</string>
+    <string name="slides_picture">รูปภาพ</string>
+    <string name="slides_outline_note">สไลด์แสดงเป็นข้อความและตาราง การแสดงผลสไลด์เต็มรูปแบบกำลังจะมา</string>
     <string name="pdf_encrypted">PDF นี้มีการป้องกันด้วยรหัสผ่าน</string>
     <string name="pdf_pages">หน้า</string>
     <string name="pdf_bookmarks">บุ๊กมาร์ก</string>
     <string name="pdf_attachments">ไฟล์แนบ</string>
     <string name="pdf_form_fields">ช่องฟอร์ม</string>
-    <string name="code_title">บาร์โค้ดหรือ QR โค้ด</string>
+    <string name="code_title">โค้ด</string>
     <string name="code_type">ประเภท</string>
     <string name="code_qr">QR โค้ด</string>
     <string name="code_content">เนื้อหา</string>
     <string name="code_caption">พิมพ์เนื้อหาไว้ด้านล่าง (SVG)</string>
     <string name="code_preview">ตัวอย่างโค้ด</string>
-    <string name="labels_title">แผ่นฉลาก (A4 PDF)</string>
+    <string name="labels_title">แผ่นฉลาก</string>
     <string name="labels_stock">กระดาษฉลาก</string>
     <string name="labels_custom">ขนาดกำหนดเอง…</string>
     <string name="labels_gap_x">ระยะห่างแนวนอน (มม.)</string>
@@ -46,7 +45,6 @@
     <string name="marks_hint">เป็นเพียงภาพกราฟิก การวางเครื่องหมายไม่ได้รับรองสิ่งใด โปรดปฏิบัติตามกฎการใช้งานของแต่ละเครื่องหมาย</string>
     <string name="marks_search">ค้นหา</string>
     <string name="marks_search_placeholder">CE, รีไซเคิล, แตกง่าย…</string>
-    <string name="marks_category">หมวดหมู่</string>
     <string name="marks_all">ทั้งหมด</string>
     <string name="marks_unverified">ภาพนี้ยังไม่ได้รับการตรวจสอบ (สัญญาอนุญาตหรือแหล่งที่มา)</string>
     <string name="marks_needs_number">ต้องมีหมายเลขทะเบียนกำกับไว้ข้างๆ</string>
@@ -55,7 +53,7 @@
     <string name="sig_form">รูปแบบ</string>
     <string name="sig_pen">ปากกา</string>
     <string name="sig_ink">หมึก</string>
-    <string name="sig_generate">สร้าง</string>
+    <string name="sig_generate">รูปแบบใหม่</string>
     <string name="sig_alt">ลายเซ็นของ %1$s</string>
     <string name="sig_form_0">รูปแบบใดก็ได้</string>
     <string name="sig_form_1">ชื่อเต็ม</string>
@@ -103,4 +101,5 @@
     <string name="tab_label_sheet">แผ่นฉลาก</string>
     <string name="labels_make">สร้างแผ่นฉลาก</string>
     <string name="pdf_page">หน้า %1$d จาก %2$d</string>
+    <string name="marks_category">หมวดหมู่</string>
 </resources>

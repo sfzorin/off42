@@ -8,7 +8,7 @@
     <string name="height_mm">Hauteur, mm</string>
     <string name="new_impression">Nouvelle empreinte</string>
     <string name="file_unsupported">Les fichiers de type « .%1$s » ne sont pas pris en charge ici.</string>
-    <string name="file_size">%1$s Ko</string>
+    <string name="slides_notes_title">Notes de l’orateur</string>
     <string name="doc_preview">Aperçu du document</string>
     <string name="doc_stats">%1$s mots · %2$s caractères · %3$s paragraphes</string>
     <string name="doc_convert_anyway">%1$s.\n\nConvertir quand même ? Les styles, réglages et autres éléments que %2$s ne peut pas contenir sont omis ; le texte et la mise en forme prise en charge sont conservés.</string>
@@ -17,21 +17,20 @@
     <string name="sheet_truncated">Affichage des %1$d premières lignes et %2$d premières colonnes.</string>
     <string name="slides_hidden">masquée</string>
     <string name="slides_untitled">Diapositive sans titre</string>
-    <string name="slides_picture">[image]</string>
-    <string name="slides_notes">Notes : %1$s</string>
-    <string name="slides_outline">%1$d diapositives — plan texte</string>
+    <string name="slides_picture">Image</string>
+    <string name="slides_outline_note">Les diapositives s’affichent en texte et tableaux ; le rendu complet arrive bientôt</string>
     <string name="pdf_encrypted">Ce PDF est protégé par un mot de passe.</string>
     <string name="pdf_pages">Pages</string>
     <string name="pdf_bookmarks">Signets</string>
     <string name="pdf_attachments">Pièces jointes</string>
     <string name="pdf_form_fields">Champs de formulaire</string>
-    <string name="code_title">Code-barres ou code QR</string>
+    <string name="code_title">Codes</string>
     <string name="code_type">Type</string>
     <string name="code_qr">Code QR</string>
     <string name="code_content">Contenu</string>
     <string name="code_caption">Imprimer le contenu en dessous (SVG)</string>
     <string name="code_preview">Aperçu du code</string>
-    <string name="labels_title">Planche d\'étiquettes (PDF A4)</string>
+    <string name="labels_title">Planches d’étiquettes</string>
     <string name="labels_stock">Format d\'étiquettes</string>
     <string name="labels_custom">Taille personnalisée…</string>
     <string name="labels_gap_x">Espacement X, mm</string>
@@ -46,7 +45,6 @@
     <string name="marks_hint">Graphisme uniquement : apposer un marquage ne certifie rien. Respectez les règles d\'utilisation propres à chaque marquage.</string>
     <string name="marks_search">Rechercher</string>
     <string name="marks_search_placeholder">CE, recyclage, fragile…</string>
-    <string name="marks_category">Catégorie</string>
     <string name="marks_all">Tous</string>
     <string name="marks_unverified">Ce dessin n\'est pas vérifié (licence ou provenance).</string>
     <string name="marks_needs_number">Doit être accompagné d\'un numéro d\'enregistrement.</string>
@@ -55,7 +53,7 @@
     <string name="sig_form">Forme</string>
     <string name="sig_pen">Stylo</string>
     <string name="sig_ink">Encre</string>
-    <string name="sig_generate">Générer</string>
+    <string name="sig_generate">Nouvelles variantes</string>
     <string name="sig_alt">Signature de %1$s</string>
     <string name="sig_form_0">Forme quelconque</string>
     <string name="sig_form_1">Nom complet</string>
@@ -103,4 +101,5 @@
     <string name="tab_label_sheet">Planche d’étiquettes</string>
     <string name="labels_make">Créer la planche</string>
     <string name="pdf_page">Page %1$d sur %2$d</string>
+    <string name="marks_category">Catégorie</string>
 </resources>

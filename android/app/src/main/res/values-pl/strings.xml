@@ -8,7 +8,7 @@
     <string name="height_mm">Wysokość, mm</string>
     <string name="new_impression">Nowy odcisk</string>
     <string name="file_unsupported">Pliki typu „.%1$s” nie są tutaj obsługiwane.</string>
-    <string name="file_size">%1$s KB</string>
+    <string name="slides_notes_title">Notatki prelegenta</string>
     <string name="doc_preview">Podgląd dokumentu</string>
     <string name="doc_stats">Słowa: %1$s · znaki: %2$s · akapity: %3$s</string>
     <string name="doc_convert_anyway">%1$s.\n\nKonwertować mimo to? Style, ustawienia i inne elementy, których %2$s nie może przechować, zostaną pominięte; tekst i obsługiwane formatowanie zostaną zachowane.</string>
@@ -17,21 +17,20 @@
     <string name="sheet_truncated">Wyświetlono początek arkusza — wiersze: %1$d, kolumny: %2$d.</string>
     <string name="slides_hidden">ukryty</string>
     <string name="slides_untitled">Slajd bez tytułu</string>
-    <string name="slides_picture">[obraz]</string>
-    <string name="slides_notes">Notatki: %1$s</string>
-    <string name="slides_outline">Slajdy: %1$d — konspekt tekstowy</string>
+    <string name="slides_picture">Obraz</string>
+    <string name="slides_outline_note">Slajdy są pokazane jako tekst i tabele; pełny podgląd pojawi się wkrótce</string>
     <string name="pdf_encrypted">Ten plik PDF jest chroniony hasłem.</string>
     <string name="pdf_pages">Strony</string>
     <string name="pdf_bookmarks">Zakładki</string>
     <string name="pdf_attachments">Załączniki</string>
     <string name="pdf_form_fields">Pola formularza</string>
-    <string name="code_title">Kod kreskowy lub kod QR</string>
+    <string name="code_title">Kody</string>
     <string name="code_type">Typ</string>
     <string name="code_qr">Kod QR</string>
     <string name="code_content">Zawartość</string>
     <string name="code_caption">Drukuj zawartość pod kodem (SVG)</string>
     <string name="code_preview">Podgląd kodu</string>
-    <string name="labels_title">Arkusz etykiet (PDF A4)</string>
+    <string name="labels_title">Arkusze etykiet</string>
     <string name="labels_stock">Format etykiet</string>
     <string name="labels_custom">Własny rozmiar…</string>
     <string name="labels_gap_x">Odstęp X, mm</string>
@@ -46,7 +45,6 @@
     <string name="marks_hint">Tylko grafika: umieszczenie znaku niczego nie certyfikuje. Przestrzegaj zasad użycia każdego znaku.</string>
     <string name="marks_search">Szukaj</string>
     <string name="marks_search_placeholder">CE, recykling, kruche…</string>
-    <string name="marks_category">Kategoria</string>
     <string name="marks_all">Wszystkie</string>
     <string name="marks_unverified">Ten rysunek nie został zweryfikowany (licencja lub pochodzenie).</string>
     <string name="marks_needs_number">Wymaga umieszczenia obok numeru rejestracyjnego.</string>
@@ -55,7 +53,7 @@
     <string name="sig_form">Forma</string>
     <string name="sig_pen">Przybór do pisania</string>
     <string name="sig_ink">Tusz</string>
-    <string name="sig_generate">Generuj</string>
+    <string name="sig_generate">Nowe warianty</string>
     <string name="sig_alt">Podpis: %1$s</string>
     <string name="sig_form_0">Dowolna forma</string>
     <string name="sig_form_1">Pełne imię i nazwisko</string>
@@ -103,4 +101,5 @@
     <string name="tab_label_sheet">Arkusz etykiet</string>
     <string name="labels_make">Utwórz arkusz etykiet</string>
     <string name="pdf_page">Strona %1$d z %2$d</string>
+    <string name="marks_category">Kategoria</string>
 </resources>

@@ -8,7 +8,7 @@
     <string name="height_mm">الارتفاع، مم</string>
     <string name="new_impression">بصمة جديدة</string>
     <string name="file_unsupported">الملفات من النوع «.%1$s» غير مدعومة هنا.</string>
-    <string name="file_size">%1$s كيلوبايت</string>
+    <string name="slides_notes_title">ملاحظات المتحدث</string>
     <string name="doc_preview">معاينة المستند</string>
     <string name="doc_stats">الكلمات: %1$s · الأحرف: %2$s · الفقرات: %3$s</string>
     <string name="doc_convert_anyway">%1$s.\n\nهل تريد التحويل على أي حال؟ ستُستبعد الأنماط والإعدادات والأجزاء الأخرى التي لا يستطيع %2$s الاحتفاظ بها، ويُحتفظ بالنص والتنسيق المدعوم.</string>
@@ -17,21 +17,20 @@
     <string name="sheet_truncated">يُعرض بداية الورقة فقط — الصفوف: %1$d، الأعمدة: %2$d.</string>
     <string name="slides_hidden">مخفية</string>
     <string name="slides_untitled">شريحة بلا عنوان</string>
-    <string name="slides_picture">[صورة]</string>
-    <string name="slides_notes">ملاحظات: %1$s</string>
-    <string name="slides_outline">عدد الشرائح: %1$d — مخطط نصي</string>
+    <string name="slides_picture">صورة</string>
+    <string name="slides_outline_note">تُعرض الشرائح كنصوص وجداول؛ العرض الكامل للشرائح قادم قريبًا</string>
     <string name="pdf_encrypted">ملف PDF هذا محمي بكلمة مرور.</string>
     <string name="pdf_pages">الصفحات</string>
     <string name="pdf_bookmarks">الإشارات المرجعية</string>
     <string name="pdf_attachments">المرفقات</string>
     <string name="pdf_form_fields">حقول النموذج</string>
-    <string name="code_title">رمز شريطي أو رمز QR</string>
+    <string name="code_title">الرموز</string>
     <string name="code_type">النوع</string>
     <string name="code_qr">رمز QR</string>
     <string name="code_content">المحتوى</string>
     <string name="code_caption">اطبع المحتوى أسفل الرمز (SVG)</string>
     <string name="code_preview">معاينة الرمز</string>
-    <string name="labels_title">ورقة ملصقات (PDF بحجم A4)</string>
+    <string name="labels_title">أوراق الملصقات</string>
     <string name="labels_stock">ورق الملصقات</string>
     <string name="labels_custom">حجم مخصص…</string>
     <string name="labels_gap_x">الفاصل X، مم</string>
@@ -46,7 +45,6 @@
     <string name="marks_hint">رسم فقط: وضع العلامة لا يمنح أي شهادة. اتبع قواعد الاستخدام الخاصة بكل علامة.</string>
     <string name="marks_search">بحث</string>
     <string name="marks_search_placeholder">CE، إعادة التدوير، قابل للكسر…</string>
-    <string name="marks_category">الفئة</string>
     <string name="marks_all">الكل</string>
     <string name="marks_unverified">هذا الرسم غير متحقَّق منه (الترخيص أو المصدر).</string>
     <string name="marks_needs_number">يتطلب رقم تسجيل بجانبه.</string>
@@ -55,7 +53,7 @@
     <string name="sig_form">الشكل</string>
     <string name="sig_pen">القلم</string>
     <string name="sig_ink">الحبر</string>
-    <string name="sig_generate">إنشاء</string>
+    <string name="sig_generate">أشكال جديدة</string>
     <string name="sig_alt">توقيع %1$s</string>
     <string name="sig_form_0">أي شكل</string>
     <string name="sig_form_1">الاسم الكامل</string>
@@ -103,4 +101,5 @@
     <string name="tab_label_sheet">ورقة ملصقات</string>
     <string name="labels_make">إنشاء ورقة ملصقات</string>
     <string name="pdf_page">الصفحة %1$d من %2$d</string>
+    <string name="marks_category">الفئة</string>
 </resources>

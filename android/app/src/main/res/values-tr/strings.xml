@@ -8,7 +8,7 @@
     <string name="height_mm">Yükseklik, mm</string>
     <string name="new_impression">Yeni baskı</string>
     <string name="file_unsupported">“.%1$s” türündeki dosyalar burada desteklenmez.</string>
-    <string name="file_size">%1$s KB</string>
+    <string name="slides_notes_title">Konuşmacı notları</string>
     <string name="doc_preview">Belge önizlemesi</string>
     <string name="doc_stats">%1$s sözcük · %2$s karakter · %3$s paragraf</string>
     <string name="doc_convert_anyway">%1$s.\n\nYine de dönüştürülsün mü? %2$s biçiminin tutamadığı stiller, ayarlar ve diğer bölümler dışarıda bırakılır; metin ve desteklenen biçimlendirme korunur.</string>
@@ -17,21 +17,20 @@
     <string name="sheet_truncated">İlk %1$d satır ve %2$d sütun gösteriliyor.</string>
     <string name="slides_hidden">gizli</string>
     <string name="slides_untitled">Başlıksız slayt</string>
-    <string name="slides_picture">[resim]</string>
-    <string name="slides_notes">Notlar: %1$s</string>
-    <string name="slides_outline">%1$d slayt — metin ana hattı</string>
+    <string name="slides_picture">Resim</string>
+    <string name="slides_outline_note">Slaytlar metin ve tablo olarak gösterilir; tam görüntüleme yakında</string>
     <string name="pdf_encrypted">Bu PDF parola korumalıdır.</string>
     <string name="pdf_pages">Sayfalar</string>
     <string name="pdf_bookmarks">Yer işaretleri</string>
     <string name="pdf_attachments">Ekler</string>
     <string name="pdf_form_fields">Form alanları</string>
-    <string name="code_title">Barkod veya QR kod</string>
+    <string name="code_title">Kodlar</string>
     <string name="code_type">Tür</string>
     <string name="code_qr">QR kod</string>
     <string name="code_content">İçerik</string>
     <string name="code_caption">İçeriği kodun altına yazdır (SVG)</string>
     <string name="code_preview">Kod önizlemesi</string>
-    <string name="labels_title">Etiket sayfası (A4 PDF)</string>
+    <string name="labels_title">Etiket sayfaları</string>
     <string name="labels_stock">Etiket kâğıdı</string>
     <string name="labels_custom">Özel boyut…</string>
     <string name="labels_gap_x">Boşluk X, mm</string>
@@ -46,7 +45,6 @@
     <string name="marks_hint">Yalnızca çizim: bir işaret yerleştirmek hiçbir şeyi sertifikalandırmaz. Her işaretin kendi kullanım kurallarına uyun.</string>
     <string name="marks_search">Ara</string>
     <string name="marks_search_placeholder">CE, geri dönüşüm, kırılacak eşya…</string>
-    <string name="marks_category">Kategori</string>
     <string name="marks_all">Tümü</string>
     <string name="marks_unverified">Bu çizim doğrulanmamıştır (lisans veya kaynak).</string>
     <string name="marks_needs_number">Yanında bir kayıt numarası gerekir.</string>
@@ -55,7 +53,7 @@
     <string name="sig_form">Biçim</string>
     <string name="sig_pen">Kalem</string>
     <string name="sig_ink">Mürekkep</string>
-    <string name="sig_generate">Oluştur</string>
+    <string name="sig_generate">Yeni varyantlar</string>
     <string name="sig_alt">%1$s imzası</string>
     <string name="sig_form_0">Herhangi bir biçim</string>
     <string name="sig_form_1">Tam ad</string>
@@ -103,4 +101,5 @@
     <string name="tab_label_sheet">Etiket sayfası</string>
     <string name="labels_make">Etiket sayfası oluştur</string>
     <string name="pdf_page">Sayfa %1$d / %2$d</string>
+    <string name="marks_category">Kategori</string>
 </resources>

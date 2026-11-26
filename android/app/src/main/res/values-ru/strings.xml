@@ -8,7 +8,7 @@
     <string name="height_mm">Высота, мм</string>
     <string name="new_impression">Новый оттиск</string>
     <string name="file_unsupported">Файлы типа «.%1$s» здесь не поддерживаются.</string>
-    <string name="file_size">%1$s КБ</string>
+    <string name="slides_notes_title">Заметки докладчика</string>
     <string name="doc_preview">Предпросмотр документа</string>
     <string name="doc_stats">Слов: %1$s · символов: %2$s · абзацев: %3$s</string>
     <string name="doc_convert_anyway">%1$s.\n\nВсё равно конвертировать? Стили, настройки и другие части, которые %2$s не может хранить, будут опущены; текст и поддерживаемое форматирование сохранятся.</string>
@@ -17,21 +17,20 @@
     <string name="sheet_truncated">Показано начало листа — строк: %1$d, столбцов: %2$d.</string>
     <string name="slides_hidden">скрыт</string>
     <string name="slides_untitled">Слайд без заголовка</string>
-    <string name="slides_picture">[изображение]</string>
-    <string name="slides_notes">Заметки: %1$s</string>
-    <string name="slides_outline">Слайдов: %1$d — текстовая структура</string>
+    <string name="slides_picture">Изображение</string>
+    <string name="slides_outline_note">Слайды показаны как текст и таблицы; полноценная отрисовка появится позже</string>
     <string name="pdf_encrypted">Этот PDF защищён паролем.</string>
     <string name="pdf_pages">Страницы</string>
     <string name="pdf_bookmarks">Закладки</string>
     <string name="pdf_attachments">Вложения</string>
     <string name="pdf_form_fields">Поля формы</string>
-    <string name="code_title">Штрихкод или QR-код</string>
+    <string name="code_title">Коды</string>
     <string name="code_type">Тип</string>
     <string name="code_qr">QR-код</string>
     <string name="code_content">Содержимое</string>
     <string name="code_caption">Печатать содержимое под кодом (SVG)</string>
     <string name="code_preview">Предпросмотр кода</string>
-    <string name="labels_title">Лист этикеток (PDF A4)</string>
+    <string name="labels_title">Листы этикеток</string>
     <string name="labels_stock">Этикеточная бумага</string>
     <string name="labels_custom">Свой размер…</string>
     <string name="labels_gap_x">Зазор X, мм</string>
@@ -46,7 +45,6 @@
     <string name="marks_hint">Только графика: размещение знака ничего не сертифицирует. Соблюдайте правила применения каждого знака.</string>
     <string name="marks_search">Поиск</string>
     <string name="marks_search_placeholder">CE, переработка, хрупкое…</string>
-    <string name="marks_category">Категория</string>
     <string name="marks_all">Все</string>
     <string name="marks_unverified">Этот рисунок не проверен (лицензия или происхождение).</string>
     <string name="marks_needs_number">Рядом нужен регистрационный номер.</string>
@@ -55,7 +53,7 @@
     <string name="sig_form">Форма</string>
     <string name="sig_pen">Ручка</string>
     <string name="sig_ink">Чернила</string>
-    <string name="sig_generate">Создать</string>
+    <string name="sig_generate">Новые варианты</string>
     <string name="sig_alt">Подпись: %1$s</string>
     <string name="sig_form_0">Любая форма</string>
     <string name="sig_form_1">Полное имя</string>
@@ -103,4 +101,5 @@
     <string name="tab_label_sheet">Лист этикеток</string>
     <string name="labels_make">Создать лист этикеток</string>
     <string name="pdf_page">Страница %1$d из %2$d</string>
+    <string name="marks_category">Категория</string>
 </resources>

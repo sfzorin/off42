@@ -8,7 +8,7 @@
     <string name="height_mm">Magasság, mm</string>
     <string name="new_impression">Új lenyomat</string>
     <string name="file_unsupported">A(z) „.%1$s” típusú fájlok itt nem támogatottak.</string>
-    <string name="file_size">%1$s KB</string>
+    <string name="slides_notes_title">Előadói jegyzetek</string>
     <string name="doc_preview">Dokumentum előnézete</string>
     <string name="doc_stats">%1$s szó · %2$s karakter · %3$s bekezdés</string>
     <string name="doc_convert_anyway">%1$s.\n\nMégis átalakítod? A stílusok, beállítások és egyéb részek, amelyeket a(z) %2$s nem tud tárolni, kimaradnak; a szöveg és a támogatott formázás megmarad.</string>
@@ -17,21 +17,20 @@
     <string name="sheet_truncated">Az első %1$d sor és %2$d oszlop látható.</string>
     <string name="slides_hidden">rejtett</string>
     <string name="slides_untitled">Cím nélküli dia</string>
-    <string name="slides_picture">[kép]</string>
-    <string name="slides_notes">Jegyzetek: %1$s</string>
-    <string name="slides_outline">%1$d dia — szöveges vázlat</string>
+    <string name="slides_picture">Kép</string>
+    <string name="slides_outline_note">A diák szövegként és táblázatként jelennek meg; a teljes megjelenítés hamarosan érkezik</string>
     <string name="pdf_encrypted">Ez a PDF jelszóval védett.</string>
     <string name="pdf_pages">Oldalak</string>
     <string name="pdf_bookmarks">Könyvjelzők</string>
     <string name="pdf_attachments">Mellékletek</string>
     <string name="pdf_form_fields">Űrlapmezők</string>
-    <string name="code_title">Vonalkód vagy QR-kód</string>
+    <string name="code_title">Kódok</string>
     <string name="code_type">Típus</string>
     <string name="code_qr">QR-kód</string>
     <string name="code_content">Tartalom</string>
     <string name="code_caption">A tartalom nyomtatása a kód alá (SVG)</string>
     <string name="code_preview">Kód előnézete</string>
-    <string name="labels_title">Címkeív (A4-es PDF)</string>
+    <string name="labels_title">Címkeívek</string>
     <string name="labels_stock">Címkeív-formátum</string>
     <string name="labels_custom">Egyéni méret…</string>
     <string name="labels_gap_x">Térköz X, mm</string>
@@ -46,7 +45,6 @@
     <string name="marks_hint">Csak grafika: egy jelölés elhelyezése semmit sem tanúsít. Tartsd be az egyes jelölések saját használati szabályait.</string>
     <string name="marks_search">Keresés</string>
     <string name="marks_search_placeholder">CE, újrahasznosítás, törékeny…</string>
-    <string name="marks_category">Kategória</string>
     <string name="marks_all">Mind</string>
     <string name="marks_unverified">Ez a rajz nincs ellenőrizve (licenc vagy eredet).</string>
     <string name="marks_needs_number">Mellé regisztrációs számot kell feltüntetni.</string>
@@ -55,7 +53,7 @@
     <string name="sig_form">Forma</string>
     <string name="sig_pen">Toll</string>
     <string name="sig_ink">Tinta</string>
-    <string name="sig_generate">Létrehozás</string>
+    <string name="sig_generate">Új változatok</string>
     <string name="sig_alt">%1$s aláírása</string>
     <string name="sig_form_0">Bármilyen forma</string>
     <string name="sig_form_1">Teljes név</string>
@@ -103,4 +101,5 @@
     <string name="tab_label_sheet">Címkeív</string>
     <string name="labels_make">Címkeív készítése</string>
     <string name="pdf_page">%1$d. oldal / %2$d</string>
+    <string name="marks_category">Kategória</string>
 </resources>

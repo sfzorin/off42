@@ -8,7 +8,7 @@
     <string name="height_mm">Taas, mm</string>
     <string name="new_impression">Bagong tatak</string>
     <string name="file_unsupported">Hindi sinusuportahan dito ang mga file na “.%1$s”.</string>
-    <string name="file_size">%1$s KB</string>
+    <string name="slides_notes_title">Speaker notes</string>
     <string name="doc_preview">Preview ng dokumento</string>
     <string name="doc_stats">%1$s salita · %2$s character · %3$s talata</string>
     <string name="doc_convert_anyway">%1$s.\n\nI-convert pa rin? Hindi isasama ang mga style, setting at iba pang bahaging hindi kayang hawakan ng %2$s; mananatili ang text at ang sinusuportahang formatting.</string>
@@ -17,21 +17,20 @@
     <string name="sheet_truncated">Ipinapakita ang unang %1$d row at %2$d column.</string>
     <string name="slides_hidden">nakatago</string>
     <string name="slides_untitled">Slide na walang pamagat</string>
-    <string name="slides_picture">[larawan]</string>
-    <string name="slides_notes">Mga tala: %1$s</string>
-    <string name="slides_outline">%1$d slide — text outline</string>
+    <string name="slides_picture">Larawan</string>
+    <string name="slides_outline_note">Ipinapakita ang mga slide bilang text at table; malapit na ang buong pag-render</string>
     <string name="pdf_encrypted">Protektado ng password ang PDF na ito.</string>
     <string name="pdf_pages">Mga pahina</string>
     <string name="pdf_bookmarks">Mga bookmark</string>
     <string name="pdf_attachments">Mga attachment</string>
     <string name="pdf_form_fields">Mga form field</string>
-    <string name="code_title">Barcode o QR code</string>
+    <string name="code_title">Mga code</string>
     <string name="code_type">Uri</string>
     <string name="code_qr">QR code</string>
     <string name="code_content">Nilalaman</string>
     <string name="code_caption">I-print ang nilalaman sa ilalim (SVG)</string>
     <string name="code_preview">Preview ng code</string>
-    <string name="labels_title">Label sheet (A4 PDF)</string>
+    <string name="labels_title">Mga label sheet</string>
     <string name="labels_stock">Label paper</string>
     <string name="labels_custom">Custom na laki…</string>
     <string name="labels_gap_x">Puwang X, mm</string>
@@ -46,7 +45,6 @@
     <string name="marks_hint">Artwork lang: walang sine-certify ang paglalagay ng mark. Sundin ang sariling patakaran sa paggamit ng bawat mark.</string>
     <string name="marks_search">Maghanap</string>
     <string name="marks_search_placeholder">CE, pag-recycle, babasagin…</string>
-    <string name="marks_category">Kategorya</string>
     <string name="marks_all">Lahat</string>
     <string name="marks_unverified">Hindi pa beripikado ang drawing na ito (lisensya o pinagmulan).</string>
     <string name="marks_needs_number">Kailangan ng registration number sa tabi nito.</string>
@@ -55,7 +53,7 @@
     <string name="sig_form">Anyo</string>
     <string name="sig_pen">Panulat</string>
     <string name="sig_ink">Tinta</string>
-    <string name="sig_generate">Gumawa</string>
+    <string name="sig_generate">Mga bagong variant</string>
     <string name="sig_alt">Lagda ni %1$s</string>
     <string name="sig_form_0">Anumang anyo</string>
     <string name="sig_form_1">Buong pangalan</string>
@@ -103,4 +101,5 @@
     <string name="tab_label_sheet">Sheet ng label</string>
     <string name="labels_make">Gumawa ng sheet ng label</string>
     <string name="pdf_page">Pahina %1$d ng %2$d</string>
+    <string name="marks_category">Kategorya</string>
 </resources>

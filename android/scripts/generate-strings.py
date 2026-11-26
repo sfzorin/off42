@@ -33,7 +33,7 @@ WEB_STRINGS = {
     "height_mm": ("common.heightMm", []),
     "new_impression": ("common.newImpression", []),
     "file_unsupported": ("files.unsupported", [("extension", "s")]),
-    "file_size": ("files.size", [("size", "s")]),
+    "slides_notes_title": ("slides.notesTitle", []),
     "doc_preview": ("doc.preview", []),
     "doc_stats": ("doc.stats", [("words", "s"), ("characters", "s"), ("paragraphs", "s")]),
     "doc_convert_anyway": ("doc.convertAnyway", [("error", "s"), ("format", "s")]),
@@ -42,21 +42,21 @@ WEB_STRINGS = {
     "sheet_truncated": ("sheet.truncated", [("rows", "d"), ("columns", "d")]),
     "slides_hidden": ("slides.hidden", []),
     "slides_untitled": ("slides.untitled", []),
-    "slides_picture": ("slides.picture", []),
-    "slides_notes": ("slides.notes", [("text", "s")]),
-    "slides_outline": ("slides.outline", [("count", "d")]),
+    "slides_picture": ("slides.pictureLabel", []),
+
+    "slides_outline_note": ("slides.outlineNote", []),
     "pdf_encrypted": ("pdf.encrypted", []),
     "pdf_pages": ("pdf.pages", []),
     "pdf_bookmarks": ("pdf.bookmarks", []),
     "pdf_attachments": ("pdf.attachments", []),
     "pdf_form_fields": ("pdf.formFields", []),
-    "code_title": ("code.title", []),
+    "code_title": ("labels.tab.codes", []),
     "code_type": ("code.type", []),
     "code_qr": ("code.qr", []),
     "code_content": ("code.content", []),
     "code_caption": ("code.caption", []),
     "code_preview": ("code.preview", []),
-    "labels_title": ("labels.title", []),
+    "labels_title": ("labels.tab.sheets", []),
     "labels_stock": ("labels.stock", []),
     "labels_custom": ("labels.custom", []),
     "labels_gap_x": ("labels.gapX", []),
@@ -71,7 +71,7 @@ WEB_STRINGS = {
     "marks_hint": ("marks.hint", []),
     "marks_search": ("marks.search", []),
     "marks_search_placeholder": ("marks.searchPlaceholder", []),
-    "marks_category": ("marks.category", []),
+
     "marks_all": ("marks.all", []),
     "marks_unverified": ("marks.unverified", []),
     "marks_needs_number": ("marks.needsNumber", []),
@@ -80,7 +80,7 @@ WEB_STRINGS = {
     "sig_form": ("sig.form", []),
     "sig_pen": ("sig.pen", []),
     "sig_ink": ("sig.ink", []),
-    "sig_generate": ("sig.generate", []),
+    "sig_generate": ("sig.newVariants", []),
     "sig_alt": ("sig.alt", [("name", "s")]),
     **{f"sig_form_{i}": (f"sig.form.{i}", []) for i in range(6)},
     **{f"sig_pen_{i}": (f"sig.pen.{i}", []) for i in range(4)},
@@ -125,6 +125,7 @@ def main():
         if lang == "en":
             lines.append('    <string name="app_name" translatable="false">OFF42</string>')
             lines.append('    <string name="section_pdf" translatable="false">PDF</string>')
+            lines.append('    <string name="file_size" translatable="false">%1$s KB</string>')
         for name, (key, args) in WEB_STRINGS.items():
             text = web.get(key)
             if text is None:

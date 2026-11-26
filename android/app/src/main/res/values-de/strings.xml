@@ -8,7 +8,7 @@
     <string name="height_mm">Höhe, mm</string>
     <string name="new_impression">Neuer Abdruck</string>
     <string name="file_unsupported">Dateien vom Typ „.%1$s“ werden hier nicht unterstützt.</string>
-    <string name="file_size">%1$s KB</string>
+    <string name="slides_notes_title">Notizen</string>
     <string name="doc_preview">Dokumentvorschau</string>
     <string name="doc_stats">%1$s Wörter · %2$s Zeichen · %3$s Absätze</string>
     <string name="doc_convert_anyway">%1$s.\n\nTrotzdem konvertieren? Formatvorlagen, Einstellungen und andere Teile, die %2$s nicht aufnehmen kann, entfallen; der Text und die unterstützte Formatierung bleiben erhalten.</string>
@@ -17,21 +17,20 @@
     <string name="sheet_truncated">Angezeigt werden die ersten %1$d Zeilen und %2$d Spalten.</string>
     <string name="slides_hidden">ausgeblendet</string>
     <string name="slides_untitled">Folie ohne Titel</string>
-    <string name="slides_picture">[Bild]</string>
-    <string name="slides_notes">Notizen: %1$s</string>
-    <string name="slides_outline">%1$d Folien – Textgliederung</string>
+    <string name="slides_picture">Bild</string>
+    <string name="slides_outline_note">Folien werden als Text und Tabellen gezeigt; die vollständige Darstellung folgt</string>
     <string name="pdf_encrypted">Dieses PDF ist passwortgeschützt.</string>
     <string name="pdf_pages">Seiten</string>
     <string name="pdf_bookmarks">Lesezeichen</string>
     <string name="pdf_attachments">Anhänge</string>
     <string name="pdf_form_fields">Formularfelder</string>
-    <string name="code_title">Barcode oder QR-Code</string>
+    <string name="code_title">Codes</string>
     <string name="code_type">Typ</string>
     <string name="code_qr">QR-Code</string>
     <string name="code_content">Inhalt</string>
     <string name="code_caption">Inhalt darunter drucken (SVG)</string>
     <string name="code_preview">Code-Vorschau</string>
-    <string name="labels_title">Etikettenbogen (A4-PDF)</string>
+    <string name="labels_title">Etikettenbögen</string>
     <string name="labels_stock">Etikettenformat</string>
     <string name="labels_custom">Eigene Größe…</string>
     <string name="labels_gap_x">Abstand X, mm</string>
@@ -46,7 +45,6 @@
     <string name="marks_hint">Nur die Grafik: Ein platziertes Zeichen zertifiziert nichts. Beachte die Nutzungsregeln des jeweiligen Zeichens.</string>
     <string name="marks_search">Suchen</string>
     <string name="marks_search_placeholder">CE, Recycling, zerbrechlich…</string>
-    <string name="marks_category">Kategorie</string>
     <string name="marks_all">Alle</string>
     <string name="marks_unverified">Diese Zeichnung ist nicht geprüft (Lizenz oder Herkunft).</string>
     <string name="marks_needs_number">Benötigt daneben eine Registrierungsnummer.</string>
@@ -55,7 +53,7 @@
     <string name="sig_form">Form</string>
     <string name="sig_pen">Stift</string>
     <string name="sig_ink">Tinte</string>
-    <string name="sig_generate">Erzeugen</string>
+    <string name="sig_generate">Neue Varianten</string>
     <string name="sig_alt">Unterschrift von %1$s</string>
     <string name="sig_form_0">Beliebige Form</string>
     <string name="sig_form_1">Vollständiger Name</string>
@@ -103,4 +101,5 @@
     <string name="tab_label_sheet">Etikettenbogen</string>
     <string name="labels_make">Etikettenbogen erstellen</string>
     <string name="pdf_page">Seite %1$d von %2$d</string>
+    <string name="marks_category">Kategorie</string>
 </resources>

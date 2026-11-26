@@ -8,7 +8,7 @@
     <string name="height_mm">Tinggi, mm</string>
     <string name="new_impression">Cetakan baharu</string>
     <string name="file_unsupported">Fail jenis “.%1$s” tidak disokong di sini.</string>
-    <string name="file_size">%1$s KB</string>
+    <string name="slides_notes_title">Nota penceramah</string>
     <string name="doc_preview">Pratonton dokumen</string>
     <string name="doc_stats">%1$s perkataan · %2$s aksara · %3$s perenggan</string>
     <string name="doc_convert_anyway">%1$s.\n\nTukar juga? Gaya, tetapan dan bahagian lain yang tidak dapat disimpan oleh %2$s akan ditinggalkan; teks dan pemformatan yang disokong dikekalkan.</string>
@@ -17,21 +17,20 @@
     <string name="sheet_truncated">Memaparkan %1$d baris dan %2$d lajur pertama.</string>
     <string name="slides_hidden">tersembunyi</string>
     <string name="slides_untitled">Slaid tanpa tajuk</string>
-    <string name="slides_picture">[gambar]</string>
-    <string name="slides_notes">Nota: %1$s</string>
-    <string name="slides_outline">%1$d slaid — rangka teks</string>
+    <string name="slides_picture">Gambar</string>
+    <string name="slides_outline_note">Slaid dipaparkan sebagai teks dan jadual; paparan slaid penuh akan datang</string>
     <string name="pdf_encrypted">PDF ini dilindungi kata laluan.</string>
     <string name="pdf_pages">Halaman</string>
     <string name="pdf_bookmarks">Penanda buku</string>
     <string name="pdf_attachments">Lampiran</string>
     <string name="pdf_form_fields">Medan borang</string>
-    <string name="code_title">Kod bar atau kod QR</string>
+    <string name="code_title">Kod</string>
     <string name="code_type">Jenis</string>
     <string name="code_qr">Kod QR</string>
     <string name="code_content">Kandungan</string>
     <string name="code_caption">Cetak kandungan di bawahnya (SVG)</string>
     <string name="code_preview">Pratonton kod</string>
-    <string name="labels_title">Helaian label (PDF A4)</string>
+    <string name="labels_title">Helaian label</string>
     <string name="labels_stock">Kertas label</string>
     <string name="labels_custom">Saiz tersuai…</string>
     <string name="labels_gap_x">Jarak X, mm</string>
@@ -46,7 +45,6 @@
     <string name="marks_hint">Grafik sahaja: meletakkan tanda tidak mensijilkan apa-apa. Ikut peraturan penggunaan setiap tanda.</string>
     <string name="marks_search">Cari</string>
     <string name="marks_search_placeholder">CE, kitar semula, mudah pecah…</string>
-    <string name="marks_category">Kategori</string>
     <string name="marks_all">Semua</string>
     <string name="marks_unverified">Lukisan ini belum disahkan (pelesenan atau asal usul).</string>
     <string name="marks_needs_number">Memerlukan nombor pendaftaran di sebelahnya.</string>
@@ -55,7 +53,7 @@
     <string name="sig_form">Bentuk</string>
     <string name="sig_pen">Pen</string>
     <string name="sig_ink">Dakwat</string>
-    <string name="sig_generate">Jana</string>
+    <string name="sig_generate">Varian baharu</string>
     <string name="sig_alt">Tandatangan %1$s</string>
     <string name="sig_form_0">Sebarang bentuk</string>
     <string name="sig_form_1">Nama penuh</string>
@@ -103,4 +101,5 @@
     <string name="tab_label_sheet">Helaian label</string>
     <string name="labels_make">Cipta helaian label</string>
     <string name="pdf_page">Halaman %1$d daripada %2$d</string>
+    <string name="marks_category">Kategori</string>
 </resources>
