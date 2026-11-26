@@ -136,18 +136,15 @@ An optional assistant panel in the web editors (documents and spreadsheets first
   allowlist and request/response size caps in the Worker; the owner also sets a credit/spend limit on the OpenRouter
   key. The Worker does not log document content.
 - Nothing is sent until the user opens the assistant and agrees; then only the selection, the document outline and the
-  text the model asks for through read commands. The privacy policy (all languages) and store notes describe this,
-  including that free models' providers may keep and train on what is sent.
+  text the model asks for through read commands. The privacy policy (all languages) and store notes describe this.
   Without the assistant every app keeps working fully offline.
 - Provider: OpenRouter; models are settings in the Worker. Measured in `assistant/eval/RESULTS.md` (PR #18).
-  - Free first: free OpenRouter models with `data_collection: "allow"` (owner's decision 2026-11-26): free
-    providers may store prompts and train on them. The consent prompt and the privacy policy say so before anything
-    is sent. OpenRouter caps free models per account at 20 requests/minute and 1000/day once $10 of credit has been
-    bought (50/day before), shared by all users of the site. The free model is picked from the eval
-    (`assistant/eval/RESULTS.md`).
-  - Paid fallback when the free model returns 429/5xx, exceeds the time limit or the daily free quota is used:
-    `deepseek/deepseek-v4.1-flash` pinned to Alibaba/Together/Google Vertex, no fallbacks to other providers,
-    `data_collection: "deny"`; then `z-ai/glm-5.3-flash` on Z.AI/Fireworks. About $0.00015 per action.
+  - Paid models only (owner's decision 2026-11-26): free OpenRouter models are capped per account (50 or 1000
+    requests/day for the whole site) and would need to keep users' text, so they are not used. Users pay nothing;
+    the owner pays per action (about $0.00015).
+  - Primary `deepseek/deepseek-v4.1-flash` pinned to Alibaba/Together/Google Vertex with no fallbacks to other
+    providers; fallback on 429/5xx or timeout `z-ai/glm-5.3-flash` on Z.AI/Fireworks. Both with
+    `data_collection: "deny"`, so providers do not keep or train on what is sent.
   - Stable instructions and tool definitions go first so provider-side prompt caching applies (`assistant/CACHING.md`).
 - Neui/Doors (server-side Go UI) was considered and rejected: it would move documents to a server and require
   rewriting the web UI.
