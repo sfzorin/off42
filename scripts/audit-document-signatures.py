@@ -10,9 +10,12 @@ Checks
      C14N + OpenSSL) and, unless --no-libreoffice, in LibreOffice (lo_verify.py, DocumentDigitalSignatures).
   3. Tampering: a changed part, an added part and a changed signature each make Suite42 report INVALID
      (LibreOffice is asked about the changed part as well).
-  4. Real third-party signatures (downloaded unless --no-download): Office 2010 DOCX/XLSX/PPTX and Office 2007 DOCX
+  4. LibreOffice 25.2.4 signatures (committed, scripts/office-signatures/fixtures/): a DOCX and an XLSX from our
+     writers, signed by LibreOffice (lo_verify.py --sign). They must verify; a changed part, a retargeted signed
+     relationship, changed whitespace in a signed .rels part and a broken signature value must not.
+  5. Real third-party signatures (downloaded unless --no-download): Office 2010 DOCX/XLSX/PPTX and Office 2007 DOCX
      from Apache POI's test data, LibreOffice good/bad ODT from LibreOffice's tests — the expected verdicts are fixed.
-  5. With --pkcs11: the same signing through a PKCS#11 token (P11Bridge42), e.g. SoftHSM with an imported key.
+  6. With --pkcs11: the same signing through a PKCS#11 token (P11Bridge42), e.g. SoftHSM with an imported key.
 Exit status 0 only when every check passes.
 """
 import argparse
@@ -161,7 +164,45 @@ def main():
             r = run([sys.executable, os.path.join(SIG, "lo_verify.py")] + [os.path.abspath(f) for f in tampered], timeout=600)
             check("LibreOffice also rejects the changed parts", "SignatureIsValid=True" not in r.stdout and r.stdout.count("SignatureIsValid=False") == len(tampered), r.stdout)
 
-        # 4. Signatures made by Microsoft Office and LibreOffice.
+        # 4. Signatures made by LibreOffice 25.2.4 (committed fixtures: DOC42/XLS42 files signed by LibreOffice through
+        #    DocumentDigitalSignatures.signDocumentWithCertificate with a throw-away test certificate; LibreOffice
+        #    reports them valid). Their relationship-transform digests count the whitespace in .rels parts.
+        lo_fixtures = [os.path.join(SIG, "fixtures", n) for n in ("libreoffice-25.2-signed.docx", "libreoffice-25.2-signed.xlsx")]
+        for f in lo_fixtures:
+            r = run([a.doc42, "--verify-document", f])
+            check("Suite42 verifies LibreOffice-signed %s" % os.path.basename(f),
+                  r.returncode == 0 and r.stdout.startswith("INTACT-UNTRUSTED") and len(r.stdout.strip().splitlines()) == 1, r.stdout)
+        r = run([sys.executable, os.path.join(SIG, "verify_xmldsig.py")] + lo_fixtures)
+        check("independent XMLDSig check of the LibreOffice-signed fixtures", r.returncode == 0, r.stdout)
+        def lo_change_part(name, data, extra):
+            return data.replace(b"</", b" </", 1) if name in ("word/document.xml", "xl/worksheets/sheet1.xml") else data
+        def lo_retarget(name, data, extra):
+            # A signed relationship pointed elsewhere; the whitespace of the part is left as LibreOffice signed it.
+            if name in ("word/_rels/document.xml.rels", "xl/_rels/workbook.xml.rels"):
+                return data.replace(b'Target="styles.xml"', b'Target="theme/theme1.xml"', 1)
+            return data
+        def lo_whitespace(name, data, extra):
+            # Changed whitespace in a signed relationships part changes LibreOffice's digest (LibreOffice rejects it too).
+            return data.replace(b"/><Relationship ", b"/>\n<Relationship ", 1) if name == "_rels/.rels" else data
+        lo_tampered = []
+        for f in lo_fixtures:
+            for label, fn in [("changed part", lo_change_part), ("retargeted relationship", lo_retarget),
+                              ("broken signature value", break_signature)]:
+                out = "lo-tampered-%s-%s" % (label.replace(" ", "-"), os.path.basename(f))
+                rewrite(f, out, fn)
+                r = run([a.doc42, "--verify-document", out])
+                check("Suite42 rejects %s in LibreOffice-signed %s" % (label, os.path.basename(f)),
+                      r.returncode != 0 and "INVALID" in r.stdout, r.stdout)
+                lo_tampered.append(out)
+        out = "lo-tampered-whitespace-" + os.path.basename(lo_fixtures[0])
+        rewrite(lo_fixtures[0], out, lo_whitespace)
+        r = run([a.doc42, "--verify-document", out])
+        check("Suite42 rejects changed whitespace in LibreOffice-signed _rels/.rels", r.returncode != 0 and "INVALID" in r.stdout, r.stdout)
+        if lo:
+            r = run([sys.executable, os.path.join(SIG, "lo_verify.py")] + lo_fixtures, timeout=600)
+            check("LibreOffice reports its own fixtures valid", r.returncode == 0, r.stdout)
+
+        # 5. Signatures made by Microsoft Office and LibreOffice.
         if not a.no_download:
             os.makedirs("fixtures", exist_ok=True)
             for name, url, expected in FIXTURES:

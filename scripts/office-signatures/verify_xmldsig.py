@@ -52,10 +52,16 @@ def c14n(node, algorithm):
     return etree.tostring(node, method="c14n", exclusive=exclusive, with_comments=comments)
 
 
-def rel_transform(data, ids, types):
+def rel_transform(data, ids, types, libxmlsec_text_nodes=False):
+    """ECMA-376 relationship transform. libxmlsec_text_nodes: the form the xmlsec library bundled with LibreOffice
+    (25.2) computes, which writes each text node directly under <Relationships> as an empty <text/> element ahead of
+    the sorted relationships (found by matching LibreOffice-made digests; LibreOffice reports those signatures valid)."""
     root = etree.fromstring(data)
     rels = [r for r in root.findall("{%s}Relationship" % RELS_NS) if r.get("Id") in ids or r.get("Type") in types]
     out = etree.Element("{%s}Relationships" % RELS_NS, nsmap={None: RELS_NS})
+    if libxmlsec_text_nodes:
+        for _ in range((1 if root.text is not None else 0) + sum(1 for c in root if c.tail is not None)):
+            etree.SubElement(out, "{%s}text" % RELS_NS)
     for r in sorted(rels, key=lambda r: r.get("Id").encode()):
         e = etree.SubElement(out, "{%s}Relationship" % RELS_NS)
         for a in ("Id", "Type", "Target"):
@@ -96,16 +102,16 @@ def check_signature(sig, zf, kind):
             problems.append("no manifest")
         for ref in manifest.findall("ds:Reference", NS) if manifest is not None else []:
             part = urllib.parse.unquote(ref.get("URI").split("?")[0]).lstrip("/")
-            data = zf.read(part)
+            candidates = [zf.read(part)]
             for t in ref.findall("ds:Transforms/ds:Transform", NS):
                 alg = t.get("Algorithm")
                 if alg == REL_TRANSFORM:
                     rids = {r.get("SourceId") for r in t.findall("mdssi:RelationshipReference", NS)}
                     types = {r.get("SourceType") for r in t.findall("mdssi:RelationshipsGroupReference", NS)}
-                    data = rel_transform(data, rids, types)
+                    candidates = [rel_transform(d, rids, types, legacy) for d in candidates for legacy in (False, True)]
                 elif alg in C14N:
-                    data = c14n(etree.fromstring(data).getroottree(), alg)
-            if not digest_ok(ref, data):
+                    candidates = [c14n(etree.fromstring(d).getroottree(), alg) for d in candidates]
+            if not any(digest_ok(ref, d) for d in candidates):
                 problems.append("manifest digest mismatch: " + part)
     else:
         skip = {"mimetype", "META-INF/documentsignatures.xml", "META-INF/macrosignatures.xml"}

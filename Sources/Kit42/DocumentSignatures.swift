@@ -268,14 +268,57 @@ enum OOXMLSignature {
     }
 
     /// The ECMA-376 relationship transform: selected relationships, sorted by Id, with an explicit TargetMode, canonical.
-    static func relationshipTransform(_ data: Data, sourceIDs: Set<String>, sourceTypes: Set<String>) -> Data {
+    ///
+    /// `libxmlsecTextNodes`: the output of the relationship transform in the xmlsec library that LibreOffice bundles
+    /// (checked with LibreOffice 25.2). It writes every text node directly under <Relationships> (the whitespace
+    /// between relationships) as an empty `<text></text>` element ahead of the sorted relationships, so its digest
+    /// differs from Office's whenever the relationships part is indented or ends with a line break. The selected
+    /// relationships themselves are serialised identically, so any change to them changes both digests.
+    static func relationshipTransform(_ data: Data, sourceIDs: Set<String>, sourceTypes: Set<String>,
+                                      libxmlsecTextNodes: Bool = false) -> Data {
         let selected = relationships(data).filter { sourceIDs.contains($0.id) || sourceTypes.contains($0.type) }
             .sorted { Array($0.id.utf8).lexicographicallyPrecedes(Array($1.id.utf8)) }
         var s = "<Relationships xmlns=\"\(relsNS)\">"
+        if libxmlsecTextNodes { s += String(repeating: "<text></text>", count: textNodes(data)) }
         for r in selected {
             s += "<Relationship Id=\"\(C14N.escapeAttr(r.id))\" Target=\"\(C14N.escapeAttr(r.target))\" TargetMode=\"\(r.external ? "External" : "Internal")\" Type=\"\(C14N.escapeAttr(r.type))\"></Relationship>"
         }
         return Data((s + "</Relationships>").utf8)
+    }
+
+    /// Text nodes that are children of the root element (adjacent character data counts once, as in libxml2).
+    static func textNodes(_ data: Data) -> Int {
+        guard let root = try? XNode.parse(data) else { return 0 }
+        return root.children.filter { if case .text = $0 { return true } else { return false } }.count
+    }
+
+    /// Digest check of one package-part Reference of the signature manifest. A relationship transform is evaluated
+    /// both as ECMA-376 specifies and as LibreOffice's xmlsec computes it (see `relationshipTransform`); the
+    /// reference matches when either digest is the signed one.
+    static func manifestReferenceMatches(_ ref: XNode, part: Data?, coveredIDs: inout Set<String>) throws -> Bool {
+        guard let method = ref.first("DigestMethod")?.attr("Algorithm"),
+              let expected = ref.first("DigestValue").flatMap({ Data(base64Encoded: $0.text.filter { !$0.isWhitespace }) }) else {
+            throw XMLDSigError.malformed("Reference")
+        }
+        guard let raw = part else { return false }
+        var candidates = [raw]
+        for t in ref.first("Transforms")?.all("Transform") ?? [] {
+            if t.attr("Algorithm") == relationshipTransform {
+                let ids = Set(t.all("RelationshipReference").compactMap { $0.attr("SourceId") })
+                let types = Set(t.all("RelationshipsGroupReference").compactMap { $0.attr("SourceType") })
+                coveredIDs.formUnion(ids)
+                candidates = candidates.flatMap { data -> [Data] in
+                    let standard = relationshipTransform(data, sourceIDs: ids, sourceTypes: types)
+                    let libreOffice = relationshipTransform(data, sourceIDs: ids, sourceTypes: types, libxmlsecTextNodes: true)
+                    return libreOffice == standard ? [standard] : [standard, libreOffice]
+                }
+            } else if let a = t.attr("Algorithm"), C14N.isSupported(a) {
+                candidates = try candidates.map { C14N.canonicalize(try XNode.parse($0), algorithm: a) }
+            } else {
+                throw XMLDSigError.unsupported(t.attr("Algorithm") ?? "transform")
+            }
+        }
+        return try candidates.contains { try XMLDigest.digest($0, method) == expected }
     }
 
     struct ManifestEntry {
@@ -452,23 +495,7 @@ enum OOXMLSignature {
                 let part = normalize((uri.components(separatedBy: "?")[0]).removingPercentEncoding ?? uri)
                 covered.insert(part)
                 do {
-                    let ok = try DocumentSignatures.checkReference(ref, root: signature) { _, transforms in
-                        guard let raw = zip[String(part.dropFirst())] else { return nil }
-                        var data = raw
-                        for t in transforms {
-                            if t.attr("Algorithm") == relationshipTransform {
-                                let ids = Set(t.all("RelationshipReference").compactMap { $0.attr("SourceId") })
-                                let types = Set(t.all("RelationshipsGroupReference").compactMap { $0.attr("SourceType") })
-                                coveredIDs[part, default: []].formUnion(ids)
-                                data = relationshipTransform(data, sourceIDs: ids, sourceTypes: types)
-                            } else if let a = t.attr("Algorithm"), C14N.isSupported(a) {
-                                data = C14N.canonicalize(try XNode.parse(data), algorithm: a)
-                            } else {
-                                throw XMLDSigError.unsupported(t.attr("Algorithm") ?? "transform")
-                            }
-                        }
-                        return data
-                    }
+                    let ok = try manifestReferenceMatches(ref, part: zip[String(part.dropFirst())], coveredIDs: &coveredIDs[part, default: []])
                     if !ok {
                         report.status = .invalid
                         report.problem = L("“%@” was changed after signing", DocumentSignatures.displayName(uri))

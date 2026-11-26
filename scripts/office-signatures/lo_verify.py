@@ -104,6 +104,8 @@ def main(paths):
             paths = paths[2:]
         if paths and paths[0] == "--sign":
             # --sign NSSDIR FILE...: LibreOffice signs the files in place (test fixtures for the other direction).
+            # Works for OOXML; for ODF, LibreOffice 25.2 raises IOException in signDocumentWithCertificate.
+            # Signing replaces any signatures the file already has (the Sign dialog would keep them).
             env["LO_SIG_SIGN"] = "1"
             env["MOZILLA_CERTIFICATE_FOLDER"] = "sql:" + os.path.abspath(paths[1])
             paths = paths[2:]
