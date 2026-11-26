@@ -4905,7 +4905,12 @@ def audit_chrome_structure(process, main, app, result, output=None):
         assert add and text(add) == "Add sheet" and u.IsWindowVisible(add) and rect(add).right <= tabs.left and abs(rect(add).top - tabs.top) < 12, "sheet + button"
         assert editor.bottom <= grid.top and editor.top > box.bottom and editor.right - editor.left > (client.right - client.left) // 2, ("formula bar is not above the grid", editor.top, editor.bottom, grid.top)
         assert grid.left - origin.x <= 1 and origin.x + client.right - grid.right <= 1, "grid is not full width"
-        checks.append("formula bar above a full-width grid, sheet tabs with + below it")
+        # A new workbook opens at A1: the grid created before layout must not scroll row 1 and column A away.
+        u.GetScrollPos.argtypes = [w.HWND, c.c_int]
+        grid_window = u.GetDlgItem(main, 102)
+        offsets = (u.GetScrollPos(grid_window, 0), u.GetScrollPos(grid_window, 1))
+        assert offsets == (0, 0), ("new workbook grid is scrolled past A1", offsets)
+        checks.append("formula bar above a full-width grid scrolled to A1, sheet tabs with + below it")
     if app == "PPT42":
         u.SendMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
         height = u.SendMessageW(listing, 0x1A1, 0, 0)  # LB_GETITEMHEIGHT
