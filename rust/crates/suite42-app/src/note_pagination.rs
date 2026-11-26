@@ -1,7 +1,7 @@
 //! Device-independent refinement for footnotes anchored to a body range.
 /// The callback measures a body page using the proposed end cap and reserved
 /// twips. Each refinement can only shorten the cap, avoiding anchor oscillation.
-pub(crate) fn refine_page(
+pub fn refine_page(
     start: i32,
     initial_end: i32,
     notes: &[(usize, i32, usize)],

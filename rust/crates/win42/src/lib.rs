@@ -7,8 +7,8 @@ mod system_font;
 pub use system_font::program as system_font_program;
 #[cfg(any(windows,test))]
 mod proofing;
-#[cfg(any(windows,test))]
-mod pdf_print_layout;
+#[cfg(windows)]
+use suite42_app::pdf_print_layout;
 #[cfg(windows)]
 pub mod pdfium;
 #[cfg(windows)]
@@ -620,9 +620,9 @@ mod native;
 pub use native::{render_scene_rgb, SceneTextMeasurer};
 #[cfg(windows)]
 mod report;
-#[cfg(any(windows, test))]
-mod note_pagination;
-#[cfg(any(windows, test))]
+#[cfg(windows)]
+use suite42_app::note_pagination;
+#[cfg(windows)]
 mod print_calibration;
 #[cfg(windows)]
 use suite42_app::production;

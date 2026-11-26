@@ -1,6 +1,6 @@
 //! Physical PDF placement shared by native print modes; calibration never changes document data.
 use crate::print_calibration::PrintCorrection;
-pub(super) fn destination(
+pub fn destination(
     points: (f64, f64),
     paper: (i32, i32),
     dpi: (i32, i32),
