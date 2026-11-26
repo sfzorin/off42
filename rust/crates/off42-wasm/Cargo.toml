@@ -1,0 +1,25 @@
+[package]
+name = "off42-wasm"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Bytes-in/bytes-out API over the off42 cores for the browser (WebAssembly)"
+
+# Native builds compile only the plain Rust API (tested by `cargo test`). The JavaScript bindings exist only
+# for wasm32; web/README.md builds the cdylib with `cargo rustc --crate-type cdylib` and wasm-bindgen-cli.
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+doc42-core = { path = "../doc42-core" }
+xls42-core = { path = "../xls42-core" }
+ppt42-core = { path = "../ppt42-core" }
+pdf42-core = { path = "../pdf42-core" }
+label42 = { path = "../label42" }
+marks42 = { path = "../marks42" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# Must match the wasm-bindgen-cli version used to generate the JavaScript glue (see web/README.md).
+wasm-bindgen = "=0.2.130"

@@ -316,10 +316,17 @@ impl Workbook {
         if data.len() > MAX_INPUT {
             return Err(Error::Limit);
         }
+        Self::from_csv_bytes(&data)
+    }
+    /// Opens CSV held in memory (hosts without file paths, such as the browser).
+    pub fn from_csv_bytes(data: &[u8]) -> Result<Self, Error> {
+        if data.len() > MAX_INPUT {
+            return Err(Error::Limit);
+        }
         let mut reader = csv::ReaderBuilder::new()
             .has_headers(false)
             .flexible(true)
-            .from_reader(data.as_slice());
+            .from_reader(data);
         let mut records = Vec::new();
         let mut cols = 1;
         for rec in reader.records() {

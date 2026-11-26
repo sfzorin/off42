@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>off42 web</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">off42 <span>web preview</span></div>
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="files" aria-selected="true">Files</button>
+        <button role="tab" data-tab="labels" aria-selected="false">Labels &amp; codes</button>
+        <button role="tab" data-tab="marks" aria-selected="false">Signatures &amp; stamps</button>
+      </nav>
+    </header>
+
+    <main>
+      <p class="privacy">
+        Files are opened and converted in this browser tab by the off42 engine (WebAssembly).
+        Nothing is uploaded: this page makes no network requests after it has loaded.
+      </p>
+      <div id="loading" class="notice">Loading the off42 engine…</div>
+
+      <section id="files" class="panel" role="tabpanel">
+        <label class="drop" id="drop">
+          <input type="file" id="file-input"
+            accept=".docx,.odt,.rtf,.md,.markdown,.html,.htm,.txt,.xlsx,.ods,.xls,.csv,.pptx,.odp,.pdf" />
+          <strong>Open a file</strong>
+          <span>or drop it here — DOCX, ODT, RTF, Markdown, HTML, text, XLSX, ODS, XLS, CSV, PPTX, ODP, PDF</span>
+        </label>
+        <div id="file-view"></div>
+      </section>
+
+      <section id="labels" class="panel" role="tabpanel" hidden>
+        <div class="grid two">
+          <article class="card">
+            <h2>Barcode or QR code</h2>
+            <div class="form">
+              <label>Type
+                <select id="code-format">
+                  <option value="qr">QR code</option>
+                  <option value="datamatrix">Data Matrix</option>
+                  <option value="code128">Code 128</option>
+                  <option value="aztec">Aztec</option>
+                </select>
+              </label>
+              <label>Content <input id="code-value" value="https://off42.cc" /></label>
+              <label>Width, mm <input id="code-width" type="number" min="3" max="250" step="1" value="40" /></label>
+              <label class="check"><input id="code-caption" type="checkbox" /> Print the content underneath (SVG)</label>
+            </div>
+            <div class="preview light" id="code-preview"></div>
+            <div class="actions">
+              <button id="code-png">Download PNG</button>
+              <button id="code-svg">Download SVG</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <h2>Label sheet (A4 PDF)</h2>
+            <div class="form">
+              <label>Label stock <select id="sheet-stock"></select></label>
+              <div class="row" id="sheet-custom" hidden>
+                <label>Width, mm <input id="sheet-width" type="number" value="70" /></label>
+                <label>Height, mm <input id="sheet-height" type="number" value="37" /></label>
+                <label>Gap X <input id="sheet-gapx" type="number" value="0" /></label>
+                <label>Gap Y <input id="sheet-gapy" type="number" value="0" /></label>
+              </div>
+              <label>Start at label <input id="sheet-first" type="number" min="1" value="1" /></label>
+              <label>Code on each label
+                <select id="sheet-code">
+                  <option value="">None</option>
+                  <option value="qr" selected>QR code</option>
+                  <option value="datamatrix">Data Matrix</option>
+                  <option value="code128">Code 128</option>
+                  <option value="aztec">Aztec</option>
+                </select>
+              </label>
+              <label>Labels — one per line: <code>text | code | copies</code>
+                <textarea id="sheet-lines" rows="6">Box 1 | BOX-0001 | 2
+Box 2 | BOX-0002
+Spare parts</textarea>
+              </label>
+            </div>
+            <div class="actions"><button id="sheet-pdf" class="primary">Download PDF</button></div>
+            <p class="status" id="sheet-status"></p>
+          </article>
+        </div>
+
+        <article class="card">
+          <h2>Product marks</h2>
+          <p class="hint">Artwork only: placing a mark certifies nothing. Follow each mark's own rules of use.</p>
+          <div class="form row">
+            <label>Search <input id="marks-search" placeholder="CE, recycling, fragile…" /></label>
+            <label>Category <select id="marks-category"><option value="">All</option></select></label>
+            <label>Width, mm <input id="marks-width" type="number" min="3" max="250" value="20" /></label>
+          </div>
+          <div id="marks-detail" class="mark-detail" hidden></div>
+          <div id="marks-grid" class="marks"></div>
+        </article>
+      </section>
+
+      <section id="marks" class="panel" role="tabpanel" hidden>
+        <div class="grid two">
+          <article class="card">
+            <h2>Handwritten signature</h2>
+            <div class="form">
+              <label>Name <input id="sig-name" value="Anna Smith" /></label>
+              <div class="row">
+                <label>Form <select id="sig-form"></select></label>
+                <label>Pen <select id="sig-pen"></select></label>
+                <label>Ink <select id="sig-ink"></select></label>
+              </div>
+            </div>
+            <div class="actions"><button id="sig-generate" class="primary">Generate</button></div>
+            <div id="sig-results" class="results"></div>
+          </article>
+
+          <article class="card">
+            <h2>Stamp</h2>
+            <div class="form">
+              <label>Template <select id="stamp-template"></select></label>
+              <div id="stamp-fields" class="form"></div>
+              <label>Ink <select id="stamp-ink"></select></label>
+            </div>
+            <div class="actions">
+              <button id="stamp-render" class="primary">Draw stamp</button>
+              <button id="stamp-again">New impression</button>
+              <button id="stamp-download">Download PNG</button>
+            </div>
+            <p class="hint">Stamps here use the bundled Noto Sans font (Latin, Cyrillic, Greek). Templates
+              in other scripts need system fonts that a browser does not expose.</p>
+            <div class="preview checker" id="stamp-preview"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span id="engine-version"></span>
+    </footer>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
