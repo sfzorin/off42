@@ -105,6 +105,23 @@ One version number for all platforms; each release lists which platforms it cove
 come from tagged CI runs. Mac: notarization when a Developer ID is available; until then, the first-launch
 instructions on the download page.
 
+### D10. Android app — **Agreed** (2026-11-26)
+
+A native Android app for tablets first and phones too: Kotlin and Jetpack Compose over the shared Rust core,
+called through a UniFFI bindings crate (`off42-mobile`). Same core as Windows, Linux, the CLI and the web; no web
+wrapper. Published on Google Play.
+
+### D11. iPad and iPhone app — **Agreed** (2026-11-26)
+
+A native SwiftUI app for iPadOS and iOS over the same Rust core through the same `off42-mobile` UniFFI crate,
+published on the App Store. The Mac's Swift/Kit42 code is not ported to iOS (D1/D2); this app is also the first
+Apple client of the shared core, ahead of phase 4.
+
+### D12. Mac App Store — **Agreed** (2026-11-26)
+
+The six existing Mac apps are also published on the Mac App Store, as a sandboxed build variant of the current
+Swift apps; the downloadable DMG stays. The same Apple Developer account is used to notarize the DMG.
+
 ## 3. Target layering (Windows, Linux, CLI, web)
 
 ```
@@ -136,11 +153,14 @@ instructions on the download page.
 
 | Phase | Work | Depends on | Status |
 | --- | --- | --- | --- |
-| 0 | Finish the current release work on the current architecture: Windows dark mode, signature learning, DOC42 pages; macOS preview 2 DMG | — | — |
+| 0 | Finish the current release work on the current architecture: Windows dark mode, signature learning, DOC42 pages; macOS preview 2 DMG | — | Done: macOS preview 2, Windows preview 5 |
 | 1 | Create `suite42-app`; move portable logic out of `win42` and `rust/apps/*`; Windows keeps working at every step (Windows CI green) | D3 | Moved on branch `phase1-suite42-app` (pull request, not merged); see below |
-| 2 | `off42` CLI and the Linux preview on top of phase 1 (rebase PR #4 onto it) | D4, D6 | On PR #4 (not merged); see below |
-| 3 | WebAssembly build of the core and the web UI | D5, D7 | — |
+| 2 | `off42` CLI and the Linux preview on top of phase 1 (rebase PR #4 onto it) | D4, D6 | Done (PR #4); Linux preview 1 released |
+| 3 | WebAssembly build of the core and the web UI | D5, D7 | Done: off42.cc/app (PR #8, #10) |
 | 4 | Move the Mac apps onto the core, one app at a time, behind the existing AppKit UI | phases 1–3, owner's go-ahead | — |
+| 5 | `off42-mobile` UniFFI bindings; Android app (Compose, tablets first) | D10 | Started |
+| 6 | iPad/iPhone SwiftUI app over `off42-mobile` | D11, phase 5 bindings | — |
+| 7 | Mac App Store build variant (sandbox) and DMG notarization | D12, Apple Developer account | — |
 
 Phase 1 result: `suite42-app` holds the `App` contract and every module listed in §1 that has no Win32 call; the
 crate's README lists them. Code that needs the platform is passed in by the shell: `platform::PdfText` (PDFium),
