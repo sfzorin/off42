@@ -259,6 +259,7 @@ if args.mode in ('all', 'tests'):
          'PDF page marks UI regressions:', True),
         ('PDF42', 'cert-wizard-keys', (out / 'sample.pdf',), {'K42_CERT_WIZARD': '0', 'SUITE42_KEY_DIR': str(out / 'keys')}, None, True),
         ('PDF42', 'cert-wizard-guide', (out / 'sample.pdf',), {'K42_CERT_WIZARD': '3', 'SUITE42_KEY_DIR': str(out / 'keys')}, None, True),
+        ('PDF42', 'pdf-signing', (), {'K42_SIGNING_AUDIT': '1'}, 'PDF42 signing UI regressions:', False),
         ('PPT42', 'ppt-notes', (), {'K42_NEW': '1', 'K42_DO': 'auditnotes', 'K42_AUDIT_RECENT': '1'}, 'PPT notes UI regressions: 6/6 passed', True),
         ('PPT42', 'ppt-editing', (), {'K42_NEW': '1', 'K42_DO': 'auditediting', 'K42_PASTEBOARD': '1'}, 'PPT editing UI regressions:', True),
         ('PPT42', 'ppt-text', (), {'K42_NEW': '1', 'K42_DO': 'audittext', 'K42_PASTEBOARD': '1'}, 'PPT text/table/show UI regressions:', True),
@@ -322,6 +323,7 @@ if args.mode in ('all', 'screenshots'):
         for action in ('eSignatureMarkAction', 'crossPageSealAction', 'certificationNoteAction', 'initialPagesAction'):
             results.append(run('PDF42', 'pdf-' + action, [out / 'page-marks.pdf'],
                                {'K42_ACTION': action, 'K42_STAMP_LIBRARY': str(out / 'stamps')}, snapshot=True))
+        results.append(run('PDF42', 'pdf-sign-dialog', [out / 'sample.pdf'], {'K42_ACTION': 'signDocumentAction'}, snapshot=True))
     if 'DOC42' in binaries:
         for name, script, appearance in [('doc-book', 'viewmode 1', 'light'),
                                           ('doc-columns', 'cols 2', 'dark'),

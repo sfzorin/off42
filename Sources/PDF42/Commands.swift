@@ -138,6 +138,10 @@ enum Cmd {
                                            toolTip: L("“Numbered, bound and sealed” with a stamp on the last page"))
     static let initialPages = Command(L("Initial Every Page…"), #selector(W.initialPagesAction(_:)), symbol: "signature",
                                       toolTip: L("Put a signature or initials on every page"))
+    static let batchSign = Command(L("Sign Multiple Files…"), #selector(A.batchSignAction(_:)), symbol: "signature")
+    static let verificationReport = Command(L("Export Verification Report…"), #selector(W.exportVerificationReportAction(_:)), symbol: "doc.text.magnifyingglass")
+    static let addCompletion = Command(L("Add Certificate of Completion…"), #selector(W.addCompletionCertificateAction(_:)), symbol: "qrcode")
+    static let verifyCompletion = Command(L("Verify Certificate of Completion"), #selector(W.verifyCompletionCertificateAction(_:)))
     static let importCertificate = Command(L("Import Certificate (.p12)…"), #selector(A.importCertificateAction(_:)))
     static let getCertificate = Command(L("Get a Certificate…"), #selector(A.getCertificateAction(_:)))
     static let createCertificate = Command(L("Create Self-Signed Certificate…"), #selector(A.createCertificateAction(_:)))
@@ -178,9 +182,10 @@ enum Cmd {
                           .command(crop), .command(tool(.crop)), .command(pageSize), .separator,
                           .command(watermark), .command(pageNumbers), .command(headerFooter), .command(pageLabels), .separator,
                           .command(removeWatermarks), .command(removeHeaderFooter)]),
-            (L("Signature"), [.command(sign), .command(verify), .separator,
+            (L("Signature"), [.command(sign), .command(batchSign), .command(verify), .command(verificationReport), .separator,
                          .command(enableLTV), .command(documentTimestamp), .separator,
                          .command(eSignatureMark), .command(initialPages), .command(crossPageSeal), .command(certificationNote), .separator,
+                         .command(addCompletion), .command(verifyCompletion), .separator,
                          .command(getCertificate), .command(importCertificate), .command(createCertificate), .separator,
                          .command(gostSignFile), .command(gostVerifyFile), .command(cryptoPro)]),
         ]

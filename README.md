@@ -299,6 +299,33 @@ lets you switch extensions off.
   - **Certification Note…** — "Всего пронумеровано, прошнуровано и скреплено печатью N (N in words) листов" (or the
     English/Turkish equivalent) at the bottom of the last page with the signatory line and date, a stamp over the
     line and an optional signature. The sheet count defaults to the page count; enter sheets for two-sided printing.
+- Handwritten visible signature: the Sign dialog's **Handwritten** menu picks a signature from the shared signature
+  library (a generated signature, or a drawn/scanned one; seals are offered too). The visible signature shows a new
+  impression of it on the left (generated signatures differ slightly each time, like a pen) and the certificate details
+  on the right: signer, date, issuer, serial number and PAdES level. A placed signature image that is selected when you
+  sign is used instead.
+- Signature › Sign Multiple Files…: choose PDFs and/or folders (searched recursively), where to save (next to each
+  original or one folder), a file-name suffix and the page for a visible signature (first or last), then the usual
+  Sign dialog (one certificate and one PAdES level for all). A progress window with Cancel runs through the files;
+  each signed copy is a new file (`name (signed).pdf`, numbered if it exists; originals are never changed); files that
+  are already signed get an additional signature; damaged or encrypted files are listed as failures in the summary
+  (Show in Finder). CLI: `--batch-sign identity.p12 password OUTDIR FILE-OR-FOLDER… [level=…] [tsa | tsa=URL]
+  [visible | visible=first|last] [handwriting=LIBRARY.png | signature-name="Name"] [suffix=…] [reason=…] [location=…]
+  [completion]`; it exits 1 if any file failed.
+- Signature › Export Verification Report…: a PDF report of every signature and document timestamp — signer, email,
+  claimed signing time, trusted timestamp and its TSA, format/sub-filter, PAdES level, LTV status, reason, location,
+  the signed revision (byte range), integrity, certificate trust, and the certificate chain (subject, issuer, serial,
+  validity, key, SHA-256 fingerprint), plus the document's SHA-256 and the DSS contents. Built locally; trust is the
+  macOS trust store at the signing time. CLI: `--verify-report in.pdf report.pdf`.
+- Signature › Add Certificate of Completion…: appends a last page, as an incremental update, with the SHA-256 and
+  length of the document as it was (all bytes before the page), the signing history (signers, trusted or claimed
+  times, status, format) and a QR code holding the hash, length and signers. Nothing is sent anywhere. Because the
+  update is appended, existing signatures stay valid for their revision (viewers say the document was extended after
+  signing) and anyone can check the hash offline: `head -c LENGTH file.pdf | shasum -a 256`. Signature › Verify
+  Certificate of Completion reads the QR code (or the printed line under it) and checks the hash; the verification
+  report includes the result. CLI: `--completion in.pdf out.pdf`, `--verify-completion file.pdf` (exit 0 = match,
+  1 = mismatch, 2 = none found). The page records; it is not itself signed (add a document timestamp afterwards to
+  seal it).
 - Thumbnails: drag to reorder pages, multi-select, drop PDFs/images to insert.
 - OCR (⌥⌘T): Vision (ru/en/tr) adds an invisible searchable text layer to scans. It processes a captured document state,
   preserves the page's annotation appearance and avoids applying a stale result after intervening document changes.
@@ -993,7 +1020,11 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   with cross-reference streams are re-saved before the first signature, which is impossible once they are signed).
   The PAdES level is reported from the file's structure (attributes, timestamps, DSS order, revocation coverage); it is
   not an eIDAS qualification check: PDF42 does not consult the EU trusted lists, and its trust decision is the macOS
-  trust store. CSC remote signing has been tested only against a local mock service, not a real QTSP. Get a Certificate…
+  trust store. Batch signing runs one file at a time on the main thread (Cancel takes effect between
+  files; a timestamp or remote-signing request blocks the window while it runs); a remote (CSC) credential that needs a
+  PIN or one-time code asks for it for every file. The verification report does not fetch revocation data and does not
+  check certificate policies or key usage. The certificate of completion is not signed and its QR code holds at most
+  eight signers. CSC remote signing has been tested only against a local mock service, not a real QTSP. Get a Certificate…
   has been tested against a local OpenSSL CA only; a Secure Enclave key cannot be backed up or moved to another Mac,
   is P-256 only (some authorities accept only RSA), and is not a certified QSCD for eIDAS qualified signatures. RSA-PSS keys,
   OCSP nonces and asynchronous (multi-signature) CSC operations are not supported. Network calls block the window

@@ -196,6 +196,10 @@ enum PDFSelfTest {
             ("testCertmgrListIsParsed", testCertmgrListIsParsed),
             ("testPowerOfAttorneyIsParsed", testPowerOfAttorneyIsParsed),
             ("testPageMarkHelpers", testPageMarkHelpers),
+            ("testSignatureAppearanceUsesFreshImpressions", testSignatureAppearanceUsesFreshImpressions),
+            ("testBatchSigningSignsEveryFileAndReportsFailures", testBatchSigningSignsEveryFileAndReportsFailures),
+            ("testVerificationReportListsSignatureDetails", testVerificationReportListsSignatureDetails),
+            ("testCompletionCertificateRoundTrip", testCompletionCertificateRoundTrip),
         ]
         for (name, run) in checks {
             let before = failures

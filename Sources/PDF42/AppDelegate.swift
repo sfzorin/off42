@@ -38,6 +38,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(forName: NSWindow.didBecomeMainNotification, object: nil, queue: .main) { [weak self] note in
             if (note.object as? NSWindow)?.windowController is EditorWindowController { self?.welcome.close() }
         }
+        if ProcessInfo.processInfo.environment["K42_SIGNING_AUDIT"] != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { SigningUIAudit.run() }
+        }
         let prepareSnapshot: () -> Void = {
             let env = ProcessInfo.processInfo.environment
             let editor = NSApp.orderedWindows.compactMap { $0.windowController as? EditorWindowController }.first
@@ -195,6 +198,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.behavior = .transient
         if let view = sender as? NSView { popover.show(relativeTo: view.bounds, of: view, preferredEdge: .maxX) }
     }
+
+    @objc func batchSignAction(_ sender: Any?) { BatchSignUI.start() }
 
     @objc func importCertificateAction(_ sender: Any?) {
         if let identity = SignDialog.importCertificate() {

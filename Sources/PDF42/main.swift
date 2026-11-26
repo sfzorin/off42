@@ -105,6 +105,7 @@ if let code = GOSTCLI.run(args) { exit(code) }
 if let code = PDFMainCLI.run(args) { exit(code) }
 if let code = KeyCLI.run(args) { exit(code) }
 
+if let code = SigningWorkflowCLI.run(args) { exit(code) }
 if let code = ToolsCLI.run(args) { exit(code) }
 
 let app = NSApplication.shared

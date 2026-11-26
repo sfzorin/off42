@@ -96,6 +96,9 @@ enum SignDialog {
         let visible = NSButton(checkboxWithTitle: stampSelected ? L("Visible signature (in place of the selected image)") : L("Visible signature (bottom right of the current page)"),
                                target: nil, action: nil)
         visible.state = stampSelected || d.bool(forKey: "sign.visible") ? .on : .off
+        // Handwritten signature from the library for the visible signature (a new impression per document).
+        let (handwriting, handwritingChoices) = HandwrittenSignature.popup(selecting: HandwrittenSignature.selected)
+        handwriting.isEnabled = !stampSelected
         let timestamp = NSButton(checkboxWithTitle: L("Add a trusted timestamp (needs internet)"), target: nil, action: nil)
         timestamp.state = d.object(forKey: "sign.tsa") == nil || d.bool(forKey: "sign.tsa") ? .on : .off
         let tsa = NSTextField(string: d.string(forKey: "sign.tsaURL") ?? "http://timestamp.digicert.com")
@@ -106,7 +109,7 @@ enum SignDialog {
                                  info: L("The signature is added to a copy of the document. Certificates come from the macOS Keychain, the Secure Enclave (Get a Certificate…), a remote signing service (CSC) or, for GOST signatures, CryptoPro CSP. Long-term levels (B-T and above) need the timestamp server."),
                                  ok: L("Sign…"),
                                  rows: [(L("Certificate:"), popup), ("", actions), (L("PIN:"), pin), (L("Reason:"), reason), (L("Location:"), location),
-                                        (L("Power of attorney:"), poaRow), ("", visible), (L("Format:"), format), ("", timestamp), (L("TSA server:"), tsa)])
+                                        (L("Power of attorney:"), poaRow), ("", visible), (L("Handwritten:"), handwriting), (L("Format:"), format), ("", timestamp), (L("TSA server:"), tsa)])
         alert.icon = Theme42.symbol("checkmark.seal.fill", size: 40)
         signButton = alert.buttons.first
         signButton?.isEnabled = !choices.isEmpty
@@ -133,6 +136,10 @@ enum SignDialog {
             d.set(tsa.stringValue, forKey: "sign.tsaURL")
             d.set(choice.title, forKey: "sign.certificate")
             d.set(format.indexOfSelectedItem, forKey: "sign.level")
+            if !stampSelected {
+                let i = handwriting.indexOfSelectedItem - 1
+                HandwrittenSignature.selected = i >= 0 && i < handwritingChoices.count ? handwritingChoices[i].url : nil
+            }
             let signer: PDFSigner.Signer
             switch choice {
             case .keychain(let id): signer = .keychain(id)
