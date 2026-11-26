@@ -6951,6 +6951,10 @@ unsafe fn chrome_ctlcolor(m: u32, w: WPARAM, l: LPARAM) -> Option<LRESULT> {
         (p.background, p.secondary)
     } else if control == edit && formula && matches!(m, WM_CTLCOLOREDIT | WM_CTLCOLORSTATIC) {
         (if crate::theme::is_dark() { crate::theme::FIELD } else { [255; 3] }, p.text)
+    } else if control == edit && m == WM_CTLCOLORSTATIC {
+        // Read-only message pane (PDF42/IMG42/SCN42 empty state, "Rendering page…"): it sits on the
+        // canvas, so it takes the canvas colour instead of the system dialog grey.
+        (p.canvas, p.secondary)
     } else {
         return None;
     };
