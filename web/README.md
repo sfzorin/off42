@@ -1,20 +1,24 @@
 # off42 web
 
-A thin web interface over the off42 Rust cores compiled to WebAssembly (ARCHITECTURE.md, decisions D4 and D5).
-Files are read with the browser's file picker, processed inside the tab and offered back as downloads. Nothing is
+A web app over the off42 Rust cores compiled to WebAssembly (ARCHITECTURE.md, decisions D4 and D5). Files are read with the browser's file picker, processed inside the tab and offered back as downloads. Nothing is
 uploaded: the built page carries a Content Security Policy with `connect-src 'self'`, and the tests check that no
 request leaves the page's own origin. The site serves it at https://off42.cc/app/ (see *Publishing on off42.cc*).
 
 ## What it does
 
-**Files** — open a local file:
+The page is an app frame in the off42.cc identity: a sidebar (a top bar on phones) with Documents, Spreadsheets,
+Presentations, PDF, Labels & codes and Signatures & stamps, each with its app colour. Every file section starts
+with an empty state (Open file, or drop a file anywhere on the page; a file opened in the wrong section goes to
+its own) and lists the files opened in this tab; they are kept in memory only and are gone after a reload. The
+theme follows the system's light or dark setting. Sections have their own URL (`#documents`, `#spreadsheets`,
+`#presentations`, `#pdf`, `#labels`, `#signatures`).
 
 | Input | Shown as | Save as |
 | --- | --- | --- |
-| DOCX, ODT, RTF, Markdown, HTML, text | HTML preview (sandboxed, no scripts), word count | DOCX, ODT, RTF, Markdown, HTML, text |
-| XLSX, ODS, XLS (read-only), CSV | Sheets with calculated, formatted values | XLSX, ODS, CSV, displayed values of a sheet as CSV |
-| PPTX, ODP | Text outline of the slides (titles, text, tables, notes) | PPTX, ODP |
-| PDF | Page count, metadata, bookmarks, attachments, form fields | — |
+| DOCX, ODT, RTF, Markdown, HTML, text | The HTML preview on an A4-wide page (sandboxed frame without scripts; links do not navigate); words, characters and paragraphs in the status bar | DOCX, ODT, RTF, Markdown, HTML, text |
+| XLSX, ODS, XLS (read-only), CSV | A grid with column letters and row numbers, sticky headers, sheet tabs, right-aligned numbers and the selected cell's address and value; calculated, formatted values; first 1000 rows × 100 columns | XLSX, ODS, CSV, displayed values of a sheet as CSV |
+| PPTX, ODP | Slide thumbnails and the selected slide as a 16:9 card with its text, tables and picture placeholders; speaker notes; arrow keys move between slides | PPTX, ODP |
+| PDF | Pages, file size, document properties, bookmark tree, attachments and form fields; page view marked as coming | — |
 
 Conversions use the cores' own encoders and their fidelity rules: a conversion that would lose content the target
 format cannot carry is refused with the core's message (for example bookmarks to Markdown, or plain text from a
@@ -22,27 +26,38 @@ formatted document). Word and OpenDocument files keep opaque package parts (sett
 same-format save can preserve; converting them to another format asks first and then drops only those parts.
 doc42-core refuses digitally signed DOCX files rather than silently dropping the signature.
 
-**Labels & codes** — QR, Data Matrix, Code 128 and Aztec as PNG (300 dpi) or SVG; A4 label sheets as PDF from the
-built-in stock catalogue or a custom size; the product mark catalogue (CE, UKCA, recycling, handling, …) as SVG or
-PNG (600 dpi).
+**Labels & codes** — QR, Data Matrix, Code 128 and Aztec with a live preview as you type and a width control, as
+PNG (300 dpi) or SVG; A4 label sheets as PDF from the built-in stock catalogue or a custom size, with a schematic
+preview of the first sheet drawn from the stock geometry; the product mark catalogue (CE, UKCA, recycling,
+handling, …) with search and category filters, as SVG or PNG (600 dpi).
 
-**Signatures & stamps** — generated handwritten signatures (form, pen, ink; three designs per run, new impressions on
-request) and stamps from the stamp catalogue, as transparent PNG. Randomness comes from Web Crypto; the date in date
-stamps comes from the browser.
+**Signatures & stamps** — six generated handwritten signature variants at a time (form, pen, ink; a new impression
+per variant, new variants on request) and a stamp editor with a live preview, all as transparent PNG. Randomness
+comes from Web Crypto; the date in date stamps comes from the browser. The first stamp template depends on the
+interface language.
+
+**Loading** — the engine runs in a Web Worker (`src/engine.worker.ts`), so opening or converting a large file does
+not freeze the page. The worker streams the wasm download and compiles it while it arrives; the loading screen
+shows the percentage and the downloaded size. The interface catalog is loaded before anything is shown, so no
+English text appears before another language.
 
 ### Limitations
 
 - No page rendering or PDF output for documents, spreadsheets or presentations: the cores have no PDF writer for
   them (the desktop apps print through the operating system), and PDF page rendering needs PDFium for wasm32.
-- Presentations show a text outline, not rendered slides.
+- Presentations show their text, tables and picture placeholders, not rendered slides.
 - Stamps use only the bundled Noto Sans font (Latin, Cyrillic, Greek); stamp templates for Chinese, Japanese,
   Korean, Arabic or Hebrew text need fonts that a browser does not expose to WebAssembly.
-- All work runs on the main thread; very large files block the page while they are processed.
+- Large spreadsheets show their first 1000 rows and 100 columns (conversions include everything).
 - Messages from the engine (conversion refusals, parse errors) are in English. Stamp template names exist in English,
   Russian and Turkish only, stamp categories and field names in English only; product mark names and descriptions
   exist in 11 languages (other languages show English).
-- The engine is one wasm file of about 16 MB (about 6 MB gzip-compressed). off42.cc sends `Cache-Control:
-  no-transform`, which in practice means the file is served uncompressed.
+- The engine is one wasm file of 12.9 MB (5.3 MB with gzip, 5.1 MB with zstd -3, 4.1 MB with brotli -11). The
+  site-wide `Cache-Control: no-transform` is replaced for `/app/*` in `website/public/_headers`, so Cloudflare may
+  compress it (its compression list includes `application/wasm`); whether it does can only be checked after
+  deployment, by requesting the wasm file with `Accept-Encoding: br, gzip` and looking at `Content-Encoding`.
+  Cloudflare's static assets have no documented support for serving precompressed `.br`/`.gz` copies, so none are
+  shipped.
 
 ## Languages
 
@@ -50,8 +65,9 @@ The interface uses the 20 languages of off42.cc: `src/locales/<code>.json` are f
 as `en.json` (English is the fallback for a missing key; `{name}` placeholders are filled in by `t()` in
 `src/i18n.ts`). The language comes from `?lang=<code>` (as linked from the site), otherwise from the browser's
 preferred languages (`zh-TW`/`zh-HK` → `zh-Hant`, `tl` → `fil`), otherwise English; the picker in the header
-reloads the page with `?lang=`. Arabic switches the page to right-to-left. Catalogs other than English are loaded
-as separate chunks. The language is passed to the engine where the cores have translations: `productMarks(lang)`
+reloads the page with `?lang=` and keeps the section. Arabic switches the page to right-to-left. Catalogs other than
+English are loaded as separate chunks; the page stays on a text-free loading screen until the catalog is in, while
+the engine downloads in parallel. The language is passed to the engine where the cores have translations: `productMarks(lang)`
 (label42 mark copy) and `stampTemplates(lang)` (marks42 template titles). Signature forms, pens and inks are
 translated in the catalogs (keys `sig.form.<n>`, `sig.pen.<n>`, `ink.<name>`).
 
@@ -59,15 +75,21 @@ translated in the catalogs (keys `sig.form.<n>`, `sig.pen.<n>`, `ink.<name>`).
 
 - `rust/crates/off42-wasm` — the bytes-in/bytes-out API (plain Rust, tested natively with `cargo test`) and its
   wasm-bindgen exports (`src/bindings.rs`, compiled only for `wasm32`).
-- `web/src` — the page (`index.html`, `src/main.ts`, `src/style.css`); `src/wasm` is generated and not committed.
+- `web/src` — the page (`index.html`, `src/main.ts`, `src/style.css`, line icons in `src/icons.ts`), the engine
+  worker (`src/engine.worker.ts`) and its async wrapper (`src/engine.ts`: every export becomes
+  `call(name, ...args)`; after a wasm trap the worker is replaced); `src/wasm` is generated and not committed.
 - `web/test/smoke.mjs` — Node loads the wasm package and exercises every export on fixtures.
 - `web/test/offline.mjs` — checks that the production build is self-contained (CSP, no remote URLs).
 - `web/test/ui.mjs` — headless Chromium (Playwright) drives the built page served at `/app/` with the headers of
-  `website/public/_headers` (`test/serve.mjs`, so the site's Content-Security-Policy applies as on off42.cc): opens
-  files, downloads conversions, generates codes, label sheets, marks, signatures and stamps, switches languages
-  (`?lang=`, picker, browser default, RTL, localized names from the cores) and fails on any request outside the
-  page's origin or any page error. `--dir ../website/public/app` tests the published copy; `--url <app URL>`
-  tests an app served elsewhere, for example by `npx wrangler dev` in `website/`.
+  `website/public/_headers` (`test/serve.mjs`, so the site's Content-Security-Policy applies as on off42.cc): the
+  loading screen and the worker, every section with its empty state, viewer and conversions (Markdown, DOCX with
+  the package-parts confirmation, CSV, XLSX, PPTX, ODP and the PDF fixture `test/fixtures/sample.pdf` with
+  properties, nested bookmarks, an attachment and a form field), routing of a file to its section, codes, label
+  sheets, marks, signature variants and the stamp editor; languages (`?lang=` with the catalog held back to show
+  that no English appears, picker, browser default, RTL layout, localized names from the cores), the dark theme
+  and the phone layout. It fails on any request outside the page's origin or any page error.
+  `--dir ../website/public/app` tests the published copy; `--url <app URL>` tests an app served elsewhere, for
+  example by `npx wrangler dev` in `website/`; `--screenshots <dir>` saves screenshots of the main screens.
 - `web/scripts/publish-to-site.sh`, `web/scripts/site-build.mjs` — publishing to off42.cc (below).
 
 ## Build
@@ -91,7 +113,12 @@ npx playwright install --only-shell chromium && npm run test:ui   # headless bro
 inline scripts would break); `npm run preview` serves `dist/`. Any static file server works for `dist/`; it must
 serve `.wasm` as `application/wasm`.
 
-The `wasm-release` Cargo profile (in `rust/Cargo.toml`) optimises for size with LTO; native profiles are unchanged.
+The `wasm-release` Cargo profile (in `rust/Cargo.toml`) optimises for size (`opt-level = "z"`, LTO, one codegen
+unit, `panic = "abort"`, stripped symbols); native profiles are unchanged. Against the previous `opt-level = "s"`
+without stripping, the engine went from 16,008,161 to 12,885,801 bytes (gzip -9: 6,056,802 → 5,275,968; brotli
+-11: 4,534,208 → 4,120,992). `wasm-opt -Oz` (binaryen 132) shrinks it further to 12,262,426 bytes but makes the
+compressed file slightly larger (gzip -9 5,299,407, brotli -11 4,159,525) and adds over a minute to the build, so
+the build does not run it.
 The cdylib crate type is requested on the command line only, so native workspace builds of `off42-wasm` stay a
 plain library.
 
@@ -113,14 +140,18 @@ without its tests) and the hash and size of every published file. CI (`.github/w
 runs `node web/scripts/site-build.mjs check website/public/app` and fails when the sources changed without
 republishing, a published file was edited, or a file exceeds Cloudflare's 25 MiB static asset limit. Changes to
 the core crates that off42-wasm links (doc42-core, xls42-core, …) are not part of the hash: republish after such
-changes when they should reach the site. Each republish adds a new 16 MB wasm file to the Git history.
+changes when they should reach the site. Each republish adds a new 13 MB wasm file to the Git history.
 
 Asset names are content-hashed and referenced relative to the page (`base: './'`), so the same build works at
 `/app/` and anywhere else. The site's Worker runs only for `/assets/video/*`; everything under `/app/` is served
 as static assets, whose MIME type follows the file extension (`.wasm` → `application/wasm`, checked with
 `wrangler dev` 4.166 and the browser test). Responses carry the site-wide headers from `website/public/_headers`;
 its Content-Security-Policy allows `'wasm-unsafe-eval'` and `blob:` images for the app, and the page's own
-`<meta>` policy (scripts, styles, wasm and fetches from its own origin only) applies on top of it.
+`<meta>` policy (scripts, styles, wasm and fetches from its own origin only) applies on top of it. The engine
+worker is a same-origin script, allowed by `script-src 'self'`. For `/app/*` the file replaces the site's
+`Cache-Control: public, no-transform` (detached with `! Cache-Control`; Cloudflare applies rules in file order):
+the page is revalidated on every visit, the content-hashed files under `/app/assets/` are cached for a year, and
+without `no-transform` the edge may compress them.
 
 ## Core crates on wasm32-unknown-unknown
 

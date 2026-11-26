@@ -5,7 +5,9 @@ members = ["crates/*", "apps/*"]
 # Browser build of crates/off42-wasm (web/scripts/build-wasm.sh); native profiles are unaffected.
 [profile.wasm-release]
 inherits = "release"
-opt-level = "s"
+opt-level = "z"
 lto = true
 codegen-units = 1
 panic = "abort"
+strip = true
+debug = false
