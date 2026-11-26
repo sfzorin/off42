@@ -7,6 +7,7 @@ description = "Portable application services shared by the off42 Windows, Linux,
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
+sha2 = "0.10"
 suite42-core = { path = "../suite42-core" }
 
 [dev-dependencies]
