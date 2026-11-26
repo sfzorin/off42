@@ -4805,6 +4805,132 @@ def audit_window_layout(bin_dir,output):
     return result
 
 
+def audit_dark_mode(bin_dir, output):
+    """Switch the current user's app mode through the registry and check that chrome follows while content stays paper."""
+    import winreg
+    dwm = c.WinDLL("dwmapi")
+    dwm.DwmGetWindowAttribute.argtypes = [w.HWND, w.DWORD, c.c_void_p, w.DWORD]
+    dwm.DwmGetWindowAttribute.restype = c.c_long
+    gdi = c.WinDLL("gdi32", use_last_error=True)
+    u.GetWindowRect.argtypes = [w.HWND, c.POINTER(w.RECT)]
+    u.GetDC.argtypes, u.GetDC.restype = [w.HWND], w.HDC
+    u.ReleaseDC.argtypes = [w.HWND, w.HDC]
+    u.PrintWindow.argtypes = [w.HWND, w.HDC, w.UINT]
+    gdi.CreateCompatibleDC.argtypes, gdi.CreateCompatibleDC.restype = [w.HDC], w.HDC
+    gdi.CreateCompatibleBitmap.argtypes, gdi.CreateCompatibleBitmap.restype = [w.HDC, c.c_int, c.c_int], w.HBITMAP
+    gdi.SelectObject.argtypes, gdi.SelectObject.restype = [w.HDC, w.HANDLE], w.HANDLE
+    gdi.GetPixel.argtypes, gdi.GetPixel.restype = [w.HDC, c.c_int, c.c_int], w.DWORD
+    gdi.DeleteObject.argtypes, gdi.DeleteDC.argtypes = [w.HANDLE], [w.HDC]
+    path = r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+    name = "AppsUseLightTheme"
+
+    def rect(hwnd):
+        value = w.RECT()
+        assert u.GetWindowRect(hwnd, c.byref(value))
+        return value
+
+    def luminance(main, control):
+        """Average a 3x3 patch near the right end of a control, rendered through PrintWindow."""
+        frame, box = rect(main), rect(control)
+        width, height = frame.right - frame.left, frame.bottom - frame.top
+        screen = u.GetDC(None)
+        target = gdi.CreateCompatibleDC(screen)
+        bitmap = gdi.CreateCompatibleBitmap(screen, width, height)
+        previous = gdi.SelectObject(target, bitmap)
+        try:
+            assert u.PrintWindow(main, target, 2), "PrintWindow failed"
+            x = box.right - frame.left - 8
+            y = (box.top + box.bottom) // 2 - frame.top
+            values = []
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    colour = gdi.GetPixel(target, x + dx, y + dy)
+                    values.append(((colour & 0xFF) + (colour >> 8 & 0xFF) + (colour >> 16 & 0xFF)) / 3)
+            return sum(values) / len(values)
+        finally:
+            gdi.SelectObject(target, previous)
+            gdi.DeleteObject(bitmap)
+            gdi.DeleteDC(target)
+            u.ReleaseDC(None, screen)
+
+    def caption_dark(main):
+        value = c.c_int(-1)
+        result = dwm.DwmGetWindowAttribute(main, 20, c.byref(value), 4)
+        return None if result != 0 else bool(value.value)
+
+    def set_mode(light):
+        with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, path, 0, winreg.KEY_SET_VALUE) as key:
+            winreg.SetValueEx(key, name, 0, winreg.REG_DWORD, int(light))
+
+    def broadcast(main):
+        message = c.create_unicode_buffer("ImmersiveColorSet")
+        result = c.c_size_t()
+        assert u.SendMessageTimeoutW(main, 0x1A, 0, c.cast(message, c.c_void_p).value, 2, 5000, c.byref(result))
+
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, path) as key:
+            original = winreg.QueryValueEx(key, name)[0]
+    except FileNotFoundError:
+        original = None
+    root = output / "dark-mode-settings"
+    root.mkdir(exist_ok=True)
+    environment = os.environ.copy()
+    environment["LOCALAPPDATA"] = str(root)
+    result = {"scenario": "system dark mode", "checks": [], "notes": []}
+    try:
+        for app in ["DOC42", "XLS42", "PDF42", "IMG42", "PPT42", "SCN42"]:
+            process = None
+            try:
+                set_mode(False)
+                process = subprocess.Popen([str(bin_dir / (app + ".exe")), "--language", "en"], env=environment)
+                main = modal(process, native_class="Suite42Native")
+                status = wait_for(lambda: max((h for h in windows(process.pid, main) if classname(h).lower() == "static"),
+                                              key=lambda h: rect(h).bottom, default=None), "status bar " + app, process)
+                content = next((h for h in windows(process.pid, main) if u.GetDlgCtrlID(h) == 101), None) if app == "DOC42" else None
+
+                def state(dark):
+                    caption = caption_dark(main)
+                    chrome = luminance(main, status)
+                    paper = luminance(main, content) if content else None
+                    ok = (caption is None or caption == dark) and (chrome < 80 if dark else chrome > 170)
+                    return ok and (paper is None or paper > 160), (caption, round(chrome), paper and round(paper))
+
+                last = {}
+                def reached(dark):
+                    ok, observed = state(dark)
+                    last["observed"] = observed
+                    return ok
+                wait_for(lambda: reached(True), app + " dark chrome at launch", process, timeout=10)
+                if last["observed"][0] is None:
+                    result["notes"].append(app + ": DwmGetWindowAttribute(20) unavailable; caption not read back")
+                capture_window(main, output / (app + "-dark.bmp"))
+                set_mode(True)
+                broadcast(main)
+                wait_for(lambda: reached(False), app + " light chrome after ImmersiveColorSet", process, timeout=10)
+                set_mode(False)
+                broadcast(main)
+                wait_for(lambda: reached(True), app + " dark chrome restored live", process, timeout=10)
+                result["checks"].append(app + ": dark caption/status bar at launch, live switch to light and back via "
+                                        "WM_SETTINGCHANGE ImmersiveColorSet" + ("; document editor stays white" if content else "")
+                                        + f"; last observed {last['observed']}")
+                u.PostMessageW(main, WM_CLOSE, 0, 0)
+                process.wait(timeout=5)
+            finally:
+                if process and process.poll() is None:
+                    process.terminate()
+                    process.wait(timeout=5)
+    finally:
+        if original is None:
+            try:
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, path, 0, winreg.KEY_SET_VALUE) as key:
+                    winreg.DeleteValue(key, name)
+            except FileNotFoundError:
+                pass
+        else:
+            set_mode(bool(original))
+    return result
+
+
 def audit_language_picker(bin_dir, output):
     root = output / "language-picker-settings"
     root.mkdir(exist_ok=True)
@@ -5068,6 +5194,7 @@ def main():
     parser.add_argument("--recents", action="store_true")
     parser.add_argument("--multiwindow", action="store_true")
     parser.add_argument("--window-layout", action="store_true")
+    parser.add_argument("--dark-mode", action="store_true")
     parser.add_argument("--rich-search", action="store_true")
     parser.add_argument("--preset-shapes", action="store_true")
     parser.add_argument("--pdf-decorations", action="store_true")
@@ -5146,6 +5273,13 @@ def main():
             results.append(audit_window_layout(args.bin_dir,args.output))
         except Exception as error:
             results.append({"scenario":"native window placement", "error":str(error), "traceback":traceback.format_exc()})
+        print(json.dumps(results[-1]),flush=True)
+        (args.output/"results.json").write_text(json.dumps(results,indent=2),encoding="utf-8")
+    if args.dark_mode:
+        try:
+            results.append(audit_dark_mode(args.bin_dir,args.output))
+        except Exception as error:
+            results.append({"scenario":"system dark mode", "error":str(error), "traceback":traceback.format_exc()})
         print(json.dumps(results[-1]),flush=True)
         (args.output/"results.json").write_text(json.dumps(results,indent=2),encoding="utf-8")
     assert all("error" not in result for result in results), results

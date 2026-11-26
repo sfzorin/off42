@@ -323,6 +323,7 @@ pub unsafe fn open(owner: HWND, edit: HWND, job: RichPrint) -> Result<(), String
     if hwnd.is_null() {
         return Err("Cannot open print preview".into());
     }
+    crate::theme::frame(hwnd);
     EnableWindow(owner, 0);
     ShowWindow(hwnd, SW_SHOW);
     SetFocus(hwnd);

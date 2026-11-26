@@ -3410,6 +3410,9 @@ unsafe fn select_grid_cell(row: usize, col: Option<usize>) {
     }
 }
 unsafe extern "system" fn proc(h: HWND, m: u32, w: WPARAM, l: LPARAM) -> LRESULT {
+    if let Some(result) = crate::theme::handle(h, m, w, l) {
+        return result;
+    }
     match m {
         WM_TIMER if w == RICH_SIDEBAR_TIMER => {
             KillTimer(h, RICH_SIDEBAR_TIMER);
@@ -3915,6 +3918,7 @@ pub fn run(app: Box<dyn App>) {
         }
         let _apartment = ComApartment;
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        crate::theme::init();
         let instance = GetModuleHandleW(null());
         let class = wide("Suite42Native");
         let wc = WNDCLASSW {
@@ -4164,6 +4168,7 @@ pub fn run(app: Box<dyn App>) {
         if h.is_null() {
             return;
         }
+        crate::theme::frame(h);
         let mut toolbar = Vec::new();
         for spec in &specs {
             if !STATE.with(|s|s.borrow().as_ref().unwrap().app.toolbar_command_visible(spec.id)) {continue;}
@@ -4308,6 +4313,9 @@ pub fn run(app: Box<dyn App>) {
         for control in [list, table, edit, status].into_iter().chain(buttons) {
             SendMessageW(control, WM_SETFONT, font, 1);
         }
+        // Sidebar, status bar and toolbar follow the system appearance; the document editor, table and canvas do not.
+        crate::theme::chrome(&[list, status, toolbar_more]);
+        crate::theme::chrome(&toolbar.iter().map(|&(_, b)| b).collect::<Vec<_>>());
         let ruler_horizontal = if rich {
             crate::rich_ruler::create(h, false)
         } else {
