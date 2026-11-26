@@ -55,12 +55,12 @@ inside Rust.
 | Platform | Options | Recommendation |
 | --- | --- | --- |
 | Windows | Keep Win32 (`win42`) · switch to a cross-platform toolkit | **Keep Win32.** It is native, verified by CI audits and shipping. |
-| Linux | egui (as in PR #4) · GTK 4 · Slint · Tauri (web UI) | **egui for the first preview**, accepted as a stopgap: one Rust code base, no system dependencies, already green in CI. Revisit after the web UI exists. |
+| Linux | egui (as in PR #4) · GTK 4 · Slint · Tauri (web UI) | **egui**: one Rust code base, no system dependencies, already green in CI. |
 | Web | WASM core + web UI (TypeScript) · egui compiled to WASM | **Web UI over the WASM core.** egui in a browser does not look or behave like a web page. |
 | Mac | AppKit (current) | Unchanged until phase 4. |
 
-Open point for the owner: whether Linux should later reuse the web UI (via Tauri) instead of egui. That would
-leave three UIs to maintain (AppKit, Win32, web) instead of four.
+Linux and the web keep separate interfaces: four UIs in total (AppKit, Win32, egui, web), each a thin shell
+over the same core. The owner decided against merging the Linux and web interfaces (2026-11-26).
 
 ### D5. Web version — **Agreed**
 
