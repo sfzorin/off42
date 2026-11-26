@@ -122,6 +122,28 @@ Apple client of the shared core, ahead of phase 4.
 The six existing Mac apps are also published on the Mac App Store, as a sandboxed build variant of the current
 Swift apps; the downloadable DMG stays. The same Apple Developer account is used to notarize the DMG.
 
+### D13. AI assistant in the editors — **Agreed** (2026-11-26)
+
+An optional assistant panel in the web editors (documents and spreadsheets first) edits the open file on request.
+
+- It works only through the editor's command layer: the same serializable commands the toolbar and menus use, defined
+  in the Rust core (stage 2 editing), so every assistant change is one Undo step and the same commands can later reach
+  Windows, Linux, Android and iPad.
+- The agent loop runs in the browser; tools execute locally on the open document. Requests go to a same-origin
+  Cloudflare Worker (`off42.cc/api/assistant`) that holds the OpenRouter API key as a secret (`OPENROUTER_API_KEY`,
+  set by the owner with `wrangler secret put`) and forwards to OpenRouter's chat-completions API with tool calling. The key never reaches the browser; the page still makes no requests to other origins.
+- Open to everyone without an account, with a per-user daily limit, a bot check (Cloudflare Turnstile), a model
+  allowlist and request/response size caps in the Worker; the owner also sets a credit/spend limit on the OpenRouter
+  key. The Worker does not log document content.
+- Nothing is sent until the user opens the assistant and agrees; then only the selection, the document outline and the
+  text the model asks for through read commands. The privacy policy (all languages) and store notes describe this.
+  Without the assistant every app keeps working fully offline.
+- Provider: OpenRouter, so the model is one setting in the Worker (an allowlist of OpenRouter model ids, chosen by
+  the owner) and can be switched without changing the app; stable instructions and tool definitions go first so
+  providers that support prompt caching can reuse them.
+- Neui/Doors (server-side Go UI) was considered and rejected: it would move documents to a server and require
+  rewriting the web UI.
+
 ## 3. Target layering (Windows, Linux, CLI, web)
 
 ```
@@ -158,9 +180,10 @@ Swift apps; the downloadable DMG stays. The same Apple Developer account is used
 | 2 | `off42` CLI and the Linux preview on top of phase 1 (rebase PR #4 onto it) | D4, D6 | Done (PR #4); Linux preview 1 released |
 | 3 | WebAssembly build of the core and the web UI | D5, D7 | Done: off42.cc/app (PR #8, #10) |
 | 4 | Move the Mac apps onto the core, one app at a time, behind the existing AppKit UI | phases 1–3, owner's go-ahead | — |
-| 5 | `off42-mobile` UniFFI bindings; Android app (Compose, tablets first) | D10 | Built on branch `phase5-android` (pull request, not merged; not on Google Play); see below |
-| 6 | iPad/iPhone SwiftUI app over `off42-mobile` | D11, phase 5 bindings | — |
+| 5 | `off42-mobile` UniFFI bindings; Android app (Compose, tablets first) | D10 | Done (PR #13); not on Google Play yet (needs the owner's developer account and upload key) |
+| 6 | iPad/iPhone SwiftUI app over `off42-mobile` | D11, phase 5 bindings | In progress |
 | 7 | Mac App Store build variant (sandbox) and DMG notarization | D12, Apple Developer account | Prepared without an account: `APP_STORE` variant, `scripts/build-app-store.sh`, DMG notarization in `scripts/sign_and_notarize.sh` (appstore/README.md); signing, upload and sandbox runtime checks wait for the account |
+| 8 | Web editing (stage 2) with the shared command layer, then the AI assistant: Worker proxy, assistant panel, consent and policy updates | D13 | — |
 
 Phase 1 result: `suite42-app` holds the `App` contract and every module listed in §1 that has no Win32 call; the
 crate's README lists them. Code that needs the platform is passed in by the shell: `platform::PdfText` (PDFium),
