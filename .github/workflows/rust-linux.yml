@@ -65,6 +65,44 @@ jobs:
           name: off42-linux-x86_64
           path: rust/build/off42-linux-x86_64.tar.gz
 
+  linux-ui-shots:
+    # Renders each app window state offscreen (egui_kittest + wgpu on Mesa's software Vulkan driver)
+    # and uploads the PNGs; the same tests assert the window structure without rendering.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install window-system and software Vulkan packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pkg-config libx11-dev libxcursor-dev libxrandr-dev \
+            libxi-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev libfontconfig1-dev libvulkan1 mesa-vulkan-drivers
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            rust/target
+          key: linux-shots-${{ hashFiles('rust/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: linux-shots-${{ hashFiles('rust/Cargo.lock') }}-
+      - name: Render the Linux app windows
+        env:
+          OFF42_SHOTS_DIR: ${{ github.workspace }}/rust/build/linux-ui-shots
+        run: |
+          set -euo pipefail
+          cargo test --locked -p egui42 -p doc42 -p xls42 -p ppt42 -p pdf42 -p img42 -p scn42 \
+            --features egui42/shots linux_window -- --test-threads=1
+          ls -l "$OFF42_SHOTS_DIR"
+          for app in doc42 xls42 ppt42 pdf42 img42 scn42; do
+            ls "$OFF42_SHOTS_DIR"/$app-*.png > /dev/null || { echo "no screenshots for $app"; exit 1; }
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-ui-shots
+          path: rust/build/linux-ui-shots
+
   cli-macos:
     runs-on: macos-latest
     defaults:

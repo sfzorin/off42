@@ -9,6 +9,9 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use suite42_core::session::{publish_bundle, FileIdentity};
 
+#[cfg(feature = "kittest")]
+pub mod testing;
+
 const UNDO: u16 = 4;
 const REDO: u16 = 5;
 
@@ -247,23 +250,7 @@ pub fn save_as(app: &mut dyn App, path: &Path) -> Result<(), String> {
 
 fn gui(app: Box<dyn App>, file: Option<PathBuf>) -> Result<(), String> {
     let title = format!("{} — off42 Linux preview", app.name());
-    let mut host = Host {
-        app,
-        path_input: String::new(),
-        export_path: String::new(),
-        text: String::new(),
-        status: String::new(),
-        texture: None,
-        image_stamp: 0,
-        input: None,
-    };
-    if let Some(file) = file {
-        host.path_input = file.display().to_string();
-        host.open();
-    } else if host.app.supports_new() {
-        let _ = host.app.new_document();
-    }
-    host.reload();
+    let host = Host::new(app, file);
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_title(title.clone())
@@ -274,7 +261,7 @@ fn gui(app: Box<dyn App>, file: Option<PathBuf>) -> Result<(), String> {
         .map_err(|e| format!("Cannot open a window ({e}). Use --help for command-line conversion."))
 }
 
-struct Host {
+pub struct Host {
     app: Box<dyn App>,
     path_input: String,
     export_path: String,
@@ -286,6 +273,26 @@ struct Host {
 }
 
 impl Host {
+    pub fn new(app: Box<dyn App>, file: Option<PathBuf>) -> Self {
+        let mut host = Host {
+            app,
+            path_input: String::new(),
+            export_path: String::new(),
+            text: String::new(),
+            status: String::new(),
+            texture: None,
+            image_stamp: 0,
+            input: None,
+        };
+        if let Some(file) = file {
+            host.path_input = file.display().to_string();
+            host.open();
+        } else if host.app.supports_new() {
+            let _ = host.app.new_document();
+        }
+        host.reload();
+        host
+    }
     fn report(&mut self, result: Result<(), String>, done: &str) {
         self.status = match result {
             Ok(()) => done.to_string(),
@@ -329,6 +336,12 @@ impl Host {
 
 impl eframe::App for Host {
     fn ui(&mut self, root: &mut eframe::egui::Ui, _frame: &mut eframe::Frame) {
+        self.draw(root);
+    }
+}
+
+impl Host {
+    pub fn draw(&mut self, root: &mut eframe::egui::Ui) {
         use eframe::egui;
         let ctx = &root.ctx().clone();
         if self.app.poll_background() {

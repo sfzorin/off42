@@ -4005,3 +4005,15 @@ mod chart_ui_tests {
     }
 }
 
+#[cfg(all(test, not(windows)))]
+mod linux_window {
+    #[test]
+    fn linux_window_states() {
+        let dir = std::env::temp_dir().join(format!("off42-ui-{}-{}", env!("CARGO_PKG_NAME"), std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        #[allow(unused_variables)]
+        let sample: Option<std::path::PathBuf> = { None };
+        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::Ppt::new(super::Presentation::new())), sample.as_deref());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

@@ -3932,3 +3932,18 @@ mod word_edit_regression {
         app.action(4).unwrap();app.prepare_rich_word(&native,(3,10),"spelling").unwrap();app.doc.transact(|s|{s.sections[0].page.margin_left+=1;Ok(())}).unwrap();let changed=app.doc.state().clone();assert!(app.finish_rich_word(true).is_err());assert_eq!(app.doc.state(),&changed);
     }
 }
+
+#[cfg(all(test, not(windows)))]
+mod linux_window {
+    #[test]
+    fn linux_window_states() {
+        let dir = std::env::temp_dir().join(format!("off42-ui-{}-{}", env!("CARGO_PKG_NAME"), std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        #[allow(unused_variables)]
+        let sample: Option<std::path::PathBuf> = { let p = dir.join("Quarterly report.md");
+            std::fs::write(&p, "# Quarterly report\n\nRevenue grew by **12%** while costs stayed flat.\n\n## Next steps\n\n- Hire two engineers\n- Ship the browser version\n").unwrap();
+            Some(p) };
+        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::Doc::new()), sample.as_deref());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

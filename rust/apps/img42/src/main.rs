@@ -1453,3 +1453,16 @@ mod batch_option_tests {
         }
     }
 }
+
+#[cfg(all(test, not(windows)))]
+mod linux_window {
+    #[test]
+    fn linux_window_states() {
+        let dir = std::env::temp_dir().join(format!("off42-ui-{}-{}", env!("CARGO_PKG_NAME"), std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        #[allow(unused_variables)]
+        let sample: Option<std::path::PathBuf> = { Some(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/win42/fixtures/ocr-english.png")) };
+        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::Img::default()), sample.as_deref());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
