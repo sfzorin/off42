@@ -599,8 +599,8 @@ pub trait App {
 }
 #[cfg(windows)]
 mod clipboard;
-#[cfg(any(windows, test))]
-mod clipboard_envelope;
+#[cfg(windows)]
+use suite42_app::clipboard_envelope;
 #[cfg(windows)]
 mod dialogs;
 #[cfg(windows)]
@@ -612,8 +612,8 @@ mod marks;
 pub mod generator;
 #[cfg(windows)]
 use suite42_app::recents;
-#[cfg(any(windows, test))]
-mod window_layout;
+#[cfg(windows)]
+use suite42_app::window_layout;
 #[cfg(windows)]
 mod native;
 #[cfg(windows)]

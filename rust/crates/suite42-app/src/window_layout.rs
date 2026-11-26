@@ -1,4 +1,4 @@
-//! Per-app native placement preferences; no document paths or content.
+//! Per-app window placement and panel preferences; no document paths or content.
 use serde::{Deserialize, Serialize};
 use std::{
     io::Read,
@@ -6,7 +6,7 @@ use std::{
 };
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, default)]
-pub(crate) struct Panels {
+pub struct Panels {
     pub sidebar: bool,
     pub toolbar: bool,
     pub status: bool,
@@ -29,7 +29,7 @@ impl Panels {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct Layout {
+pub struct Layout {
     version: u8,
     pub normal: [i32; 4],
     pub maximized: bool,
@@ -59,8 +59,7 @@ fn location(app: &str) -> Option<PathBuf> {
         return None;
     }
     Some(
-        PathBuf::from(std::env::var_os("LOCALAPPDATA")?)
-            .join("off42")
+        crate::storage::local_data()?
             .join("Window Layout")
             .join(format!("{app}.json")),
     )
@@ -75,7 +74,7 @@ fn read_at(path: &Path) -> Option<Layout> {
     let layout: Layout = serde_json::from_slice(&bytes).ok()?;
     layout.valid().then_some(layout)
 }
-pub(crate) fn load(app: &str) -> Option<Layout> {
+pub fn load(app: &str) -> Option<Layout> {
     read_at(&location(app)?)
 }
 fn write_at(path: &Path, layout: &Layout) -> Result<(), String> {
@@ -101,7 +100,7 @@ fn write_at(path: &Path, layout: &Layout) -> Result<(), String> {
     .map(|_| ())
     .map_err(|e| e.to_string())
 }
-pub(crate) fn save(app: &str, layout: &Layout) -> Result<(), String> {
+pub fn save(app: &str, layout: &Layout) -> Result<(), String> {
     write_at(
         &location(app).ok_or("Window preferences unavailable")?,
         layout,
@@ -110,6 +109,20 @@ pub(crate) fn save(app: &str, layout: &Layout) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn stored_layout_format_is_pinned() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("layout.json");
+        let mut layout = Layout::new([-800, 40, 0, 640], true).unwrap();
+        write_at(&path, &layout).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), br#"{"version":1,"normal":[-800,40,0,640],"maximized":true}"#);
+        layout.panels.rulers = false;
+        write_at(&path, &layout).unwrap();
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            br#"{"version":1,"normal":[-800,40,0,640],"maximized":true,"panels":{"sidebar":true,"toolbar":true,"status":true,"rulers":false}}"#
+        );
+    }
     #[test]
     fn placement_round_trips_atomically_and_rejects_corrupt_or_excessive_preferences() {
         let directory = tempfile::tempdir().unwrap();

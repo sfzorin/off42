@@ -1,7 +1,7 @@
 //! Bound typed clipboard data to the simultaneously published Unicode text.
 const MAGIC: &[u8; 8] = b"S42CLP1\0";
 const LIMIT: usize = 64 * 1024 * 1024;
-pub(crate) fn encode(bytes: &[u8], text: &str) -> Result<Vec<u8>, &'static str> {
+pub fn encode(bytes: &[u8], text: &str) -> Result<Vec<u8>, &'static str> {
     let total = 24usize
         .checked_add(text.len())
         .and_then(|n| n.checked_add(bytes.len()))
@@ -17,7 +17,7 @@ pub(crate) fn encode(bytes: &[u8], text: &str) -> Result<Vec<u8>, &'static str> 
     result.extend_from_slice(bytes);
     Ok(result)
 }
-pub(crate) fn decode<'a>(data: &'a [u8], text: &str) -> Option<&'a [u8]> {
+pub fn decode<'a>(data: &'a [u8], text: &str) -> Option<&'a [u8]> {
     if data.len() < 24 || data.len() > LIMIT || &data[..8] != MAGIC {
         return None;
     }
