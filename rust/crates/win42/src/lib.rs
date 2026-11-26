@@ -607,7 +607,7 @@ mod dialogs;
 mod grid;
 #[cfg(windows)]
 use suite42_app::label_preferences;
-#[cfg(any(windows, test))]
+#[cfg(windows)]
 mod marks;
 pub mod generator;
 #[cfg(windows)]

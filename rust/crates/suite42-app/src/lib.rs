@@ -4,9 +4,11 @@
 //! platform storage locations; this crate owns the logic and data formats they share.
 pub mod grid_axis;
 pub mod grid_geometry;
+pub mod generator;
 pub mod input;
 pub mod label_preferences;
 pub mod localization;
+pub mod marks;
 pub mod production;
 pub mod recents;
 pub mod recovery;
