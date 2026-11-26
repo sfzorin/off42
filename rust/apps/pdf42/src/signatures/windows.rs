@@ -518,6 +518,7 @@ fn trust(cert: &Certificate) -> Result<(), u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lopdf::{Document, Object};
 
     struct Provider {
         handle: usize,

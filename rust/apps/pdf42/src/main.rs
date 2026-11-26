@@ -7,7 +7,7 @@ use suite42_app::pdf::{batch_headers, merge, page_export};
 use suite42_app::pdf::comparison;
 mod ocr;
 mod text_export;
-#[cfg(any(windows, test))]
+#[cfg(windows)]
 mod signatures;
 use pdf42_core::PdfDocument;
 use std::path::Path;
