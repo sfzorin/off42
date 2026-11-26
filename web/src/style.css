@@ -557,6 +557,8 @@ table.fields { border-collapse: collapse; font-size: 13px; width: 100%; }
   box-shadow: 0 4px 12px rgb(0 0 0 / 25%); font-size: 14px;
 }
 [dir="rtl"] .snackbar { padding: 6px 16px 6px 6px; }
+/* The spreadsheet editor's sheet-tab bar (40 px) runs along the bottom: the snackbar sits above it. */
+body:has(#spreadsheets:not([hidden]) .sheet-bar) .snackbar { bottom: 64px; }
 .snackbar.show { animation: snack-in 0.18s ease-out; }
 @keyframes snack-in { from { transform: translateY(12px); opacity: 0; } }
 .snackbar > .icon { color: #f2b8b5; width: 18px; height: 18px; }
@@ -645,6 +647,8 @@ table.fields { border-collapse: collapse; font-size: 13px; width: 100%; }
   .sheet-bar { height: 48px; }
   .sheet-tab { height: 44px; }
   .snackbar { inset-inline: 12px; bottom: 68px; max-width: none; }
+  /* Above the bottom toolbar (56 px) and the sheet-tab bar (48 px). */
+  body:has(#spreadsheets:not([hidden]) .sheet-bar) .snackbar { bottom: 116px; }
   .tabs [role="tab"] { height: 48px; }
   .settings { padding: 16px; }
   .tool-canvas { padding: 20px 16px 32px; }

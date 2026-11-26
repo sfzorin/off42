@@ -23,8 +23,8 @@ setting; Arabic is laid out right to left.
   format badge, "On this device", a *Download* pill that returns the file as opened), a menu bar (File, View, the
   app's own menu, Help; keyboard navigable) and one rounded toolbar, then the content on a grey canvas. Menus and
   toolbar carry only what works: Open, Download, *Download as ▸* every export format, Rename, Print, Close, zoom,
-  full screen, and per app the items below. Messages appear in one snackbar at the bottom start; a new message
-  replaces the previous one.
+  full screen, and per app the items below. Messages appear in one snackbar at the bottom start, above the sheet tabs in
+  spreadsheets; a new message replaces the previous one.
 - **Phone** (≤ 600 px): a compact bar (back, file name, download, ⋮). The ⋮ menu holds the same commands as the menu
   bar; the toolbar moves to the bottom; touch targets are at least 44 px.
 
@@ -115,7 +115,8 @@ translated in the catalogs (keys `sig.form.<n>`, `sig.pen.<n>`, `ink.<name>`).
   snackbar replacing the previous message; codes, label sheets, marks, signature variants and the stamp editor;
   languages (`?lang=` with the catalog held back to show that no English appears, language menu, browser default,
   RTL drawer, bar and menus, localized names from the cores), the dark theme and the phone layout (bar sizes, ⋮
-  menu with the same commands, bottom toolbar, 44 px targets, no horizontal scrolling). It fails on any request
+  menu with the same commands, bottom toolbar, 44 px targets, no horizontal scrolling); the snackbar never overlaps
+  the sheet-tab bar or the phone toolbar. It fails on any request
   outside the page's origin or any page error.
   `--dir ../website/public/app` tests the published copy; `--url <app URL>` tests an app served elsewhere, for
   example by `npx wrangler dev` in `website/`; `--screenshots <dir>` saves screenshots of the main screens.
