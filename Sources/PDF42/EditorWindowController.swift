@@ -667,13 +667,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
         var removedStamp: (PDFAnnotation, PDFPage)?
         var stampOrder: [PDFAnnotation]?
         if visible, let page = stamp != nil ? stampPage : pdfView.currentPage {
-            let rect: CGRect
-            if let stamp { rect = stamp.bounds } else {
-                let box = page.bounds(for: .cropBox)
-                rect = CGRect(x: box.maxX - 36 - 220, y: box.minY + 36, width: 220, height: 72)
-            }
-            guard let appearance = Self.signatureAppearance(size: rect.size, image: stamp?.image, name: options.signerName,
-                                                             reason: options.reason, date: Date()) else {
+            let rect = stamp?.bounds ?? SignatureAppearance.defaultRect(in: page.bounds(for: .cropBox))
+            // The selected image, or a fresh impression of the handwritten signature chosen in the dialog.
+            guard let appearance = SignatureAppearance.render(size: rect.size,
+                                                              handwriting: stamp?.image ?? HandwrittenSignature.impression(HandwrittenSignature.selected),
+                                                              details: SignatureAppearance.details(for: options)) else {
                 presentError(NSError(domain: NSCocoaErrorDomain, code: NSFileWriteUnknownError,
                                      userInfo: [NSLocalizedDescriptionKey: L("The image size is invalid")]))
                 return
@@ -722,7 +720,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
 
     /// Save panel for a signed/extended copy; warnings (missing revocation data) are shown first.
-    private func saveSignedCopy(_ result: PAdES.Result, suffix: String?) {
+    func saveSignedCopy(_ result: PAdES.Result, suffix: String?) {
         guard let doc = pdfDoc else { return }
         let signed = result.data
         if !result.warnings.isEmpty {
@@ -1335,7 +1333,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
             return !pendingRedactions.isEmpty
         case #selector(clearCompareHighlightsAction(_:)):
             return hasCompareHighlights
-        case #selector(splitAction(_:)):
+        case #selector(splitAction(_:)), #selector(crossPageSealAction(_:)):
             return pdf.pageCount > 1
         case #selector(showAttachmentsAction(_:)):
             menuItem?.state = sidebar.mode == .attachments ? .on : .off

@@ -130,7 +130,20 @@ enum Cmd {
     static let verify = Command(L("Verify Signatures"), #selector(W.verifySignaturesAction(_:)), shortcut: Shortcut("v", [.command, .option]))
     static let enableLTV = Command(L("Enable Long-Term Validation"), #selector(W.enableLTVAction(_:)))
     static let documentTimestamp = Command(L("Add Document Timestamp"), #selector(W.documentTimestampAction(_:)))
+    static let eSignatureMark = Command(L("Electronic Signature Mark…"), #selector(W.eSignatureMarkAction(_:)), symbol: "checkmark.seal.text.page",
+                                        toolTip: L("Add the mark for a printed copy of an electronically signed document"))
+    static let crossPageSeal = Command(L("Cross-Page Seal…"), #selector(W.crossPageSealAction(_:)), symbol: "seal",
+                                       toolTip: L("Split one stamp across the right edges of the pages"))
+    static let certificationNote = Command(L("Certification Note…"), #selector(W.certificationNoteAction(_:)), symbol: "text.badge.checkmark",
+                                           toolTip: L("“Numbered, bound and sealed” with a stamp on the last page"))
+    static let initialPages = Command(L("Initial Every Page…"), #selector(W.initialPagesAction(_:)), symbol: "signature",
+                                      toolTip: L("Put a signature or initials on every page"))
+    static let batchSign = Command(L("Sign Multiple Files…"), #selector(A.batchSignAction(_:)), symbol: "signature")
+    static let verificationReport = Command(L("Export Verification Report…"), #selector(W.exportVerificationReportAction(_:)), symbol: "doc.text.magnifyingglass")
+    static let addCompletion = Command(L("Add Certificate of Completion…"), #selector(W.addCompletionCertificateAction(_:)), symbol: "qrcode")
+    static let verifyCompletion = Command(L("Verify Certificate of Completion"), #selector(W.verifyCompletionCertificateAction(_:)))
     static let importCertificate = Command(L("Import Certificate (.p12)…"), #selector(A.importCertificateAction(_:)))
+    static let getCertificate = Command(L("Get a Certificate…"), #selector(A.getCertificateAction(_:)))
     static let createCertificate = Command(L("Create Self-Signed Certificate…"), #selector(A.createCertificateAction(_:)))
     static let gostSignFile = Command(L("Sign Any File with GOST (.sig)…"), #selector(A.gostSignFileAction(_:)))
     static let gostVerifyFile = Command(L("Verify Detached Signature (.sig)…"), #selector(A.gostVerifyFileAction(_:)))
@@ -169,9 +182,11 @@ enum Cmd {
                           .command(crop), .command(tool(.crop)), .command(pageSize), .separator,
                           .command(watermark), .command(pageNumbers), .command(headerFooter), .command(pageLabels), .separator,
                           .command(removeWatermarks), .command(removeHeaderFooter)]),
-            (L("Signature"), [.command(sign), .command(verify), .separator,
+            (L("Signature"), [.command(sign), .command(batchSign), .command(verify), .command(verificationReport), .separator,
                          .command(enableLTV), .command(documentTimestamp), .separator,
-                         .command(importCertificate), .command(createCertificate), .separator,
+                         .command(eSignatureMark), .command(initialPages), .command(crossPageSeal), .command(certificationNote), .separator,
+                         .command(addCompletion), .command(verifyCompletion), .separator,
+                         .command(getCertificate), .command(importCertificate), .command(createCertificate), .separator,
                          .command(gostSignFile), .command(gostVerifyFile), .command(cryptoPro)]),
         ]
         spec.help = [.command(shortcuts), .command(welcome)]

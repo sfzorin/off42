@@ -3017,5 +3017,12 @@
   "⌘F / ⌘G — find, ⌥⌘G — go to page": "⌘F / ⌘G — hanapin, ⌥⌘G — pumunta sa pahina",
   "⌘L / ⌘R — rotate page, ⌥⌘⌫ — delete pages": "⌘L / ⌘R — iikot ang pahina, ⌥⌘⌫ — tanggalin ang mga pahina",
   "⌥⌘D — sign, ⌥⌘V — verify signatures": "⌥⌘D — lagdaan, ⌥⌘V — i-verify ang mga lagda",
-  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — pagsamahin ang mga file, ⌘E — i-edit ang teksto (i-click ang linya)"
+  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — pagsamahin ang mga file, ⌘E — i-edit ang teksto (i-click ang linya)",
+  "More Like This": "Kahawig",
+  "Keeps the chosen variant and shows close variations of it.": "Pinananatili ang napiling variant at ipinapakita ang mga kahawig nito.",
+  "Personal seal": "Personal na selyo",
+  "Written in Latin letters": "sa letrang Latin",
+  "Type this name in Latin letters to sign it.": "I-type ang pangalang ito sa letrang Latin para pumirma.",
+  "Paraph": "Inisyal",
+  "Shows the short mark for initialling each page, in the same hand as the chosen signature.": "Maikling inisyal para sa bawat pahina, sa parehong sulat-kamay ng napiling pirma."
 }

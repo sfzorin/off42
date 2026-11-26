@@ -205,6 +205,10 @@ lets you switch extensions off.
   Invalid ranges, dimensions and unsupported export formats fail explicitly. Missing/unreadable merge inputs do not
   produce a partial merged document. Output files are replaced atomically after successful generation; a set of split
   or batch outputs is not one atomic transaction.
+  Keys and certificate requests (Get a Certificate…): `--key-new enclave|keychain LABEL [p256|rsa2048|rsa3072] [no-presence]`,
+  `--key-list`, `--key-csr ID out.csr CN=… [O=… OU=… L=… ST=… C=… email=… serial=… given=… surname=…]`,
+  `--key-import ID|any certificate-file`, `--key-sign in out ID [tsa | tsa=URL] [level=…]`, `--key-delete ID`
+  (`SUITE42_KEY_DIR` overrides the key folder).
 - Signatures and stamps (⇧⌘K): a library of PNGs/scans, the white background is removed automatically; or create them
   (see Common › Signature and stamp generator). A picture is not a signature: for one that identifies you and
   detects changes, use Digital signature below.
@@ -230,12 +234,34 @@ lets you switch extensions off.
   RFC 3161 document timestamp (ETSI.RFC3161) over the whole file — B-LTA for a signed file (its DSS is extended
   afterwards), or a timestamp-only seal for an unsigned one. Validation data comes from the URLs in the certificates
   (AIA OCSP/caIssuers, CRL distribution points), so these steps need a connection.
+- Signature › Get a Certificate… (also in the Sign dialog): Suite42 cannot issue a trusted certificate — certification
+  authorities check identity first — so it prepares everything around that step. **1. New Key**: a non-exportable
+  P-256 key in the Mac's **Secure Enclave** (Touch ID or the login password before every signature, optional) or a
+  Keychain key (RSA 2048/3072 or P-256) for authorities that need RSA or an exportable key. **2. Create Request**: a
+  PKCS#10 request (.csr, PEM; also copied to the clipboard) with name, given name/surname, e-mail, organisation,
+  department, city, region, country and an ID (`serialNumber`, e.g. eIDAS `PNOTR-…`); it asks for key usage
+  digitalSignature + nonRepudiation and the e-mail as subjectAltName. **3. Import Certificate**: .cer/.crt/.pem/.p7b;
+  the certificate finds its key by the public key and keeps the bundled CA certificates as its chain (missing ones
+  are fetched from caIssuers at signing). Secure Enclave identities appear in the Sign dialog as "… — Secure Enclave"
+  and sign ECDSA P-256 / SHA-256 CAdES at every PAdES level (the Format menu's legacy choice also gets CAdES); Keychain keys become ordinary Keychain identities. Records
+  are in `~/Library/Application Support/Suite42/Signing Keys` (the Secure Enclave key only as its wrapped blob, which
+  works on this Mac alone). Guide tabs: **Russia** (КЭП from ФНС for directors/sole proprietors or accredited CAs,
+  in-person identification, GOST keys on a token — requests made here are not accepted for КЭП), **Türkiye** (NES from
+  BTK-authorised providers: Kamu SM, E-Tuğra, TÜRKTRUST…), **European Union** (QES from QTSPs on the EU Trusted List;
+  the Secure Enclave is not a QSCD, so it gives AdES; remote QES through CSC) and **Free Options** (self-signed, free
+  e-mail S/MIME certificates, an organisation's own CA).
 - Remote signing (Sign dialog › Remote (CSC)…): Cloud Signature Consortium API v2 with a configurable service URL.
   Sign-in by OAuth 2.0 in the browser (authorization code with PKCE and a loopback redirect
   `http://127.0.0.1:PORT/callback` that must be registered with the provider), client credentials, HTTP Basic or a
   pasted access token; credentials/list → credentials/authorize (PIN / one-time code, or credential-scoped OAuth for
   `oauth2code` credentials) → signatures/signHash. Only the SHA-256 hash of the signed attributes is sent; the document
   stays local. RSA (PKCS#1 v1.5) and ECDSA with SHA-256.
+- Smart cards (Sign dialog › Smart Card…): PAdES with a card through the PKCS#11 module its middleware installed —
+  Turkish e-imza (AKİS cards with Kamu SM, E-Tuğra or TÜRKTRUST qualified certificates), SafeNet, IDPrime, OpenSC.
+  Nothing is bundled; see Common › Smart cards and Turkish e-imza. The verification panel names qualified
+  certificates under Turkish Law 5070, the provider and a masked TC Kimlik No.
+  CLI: `--pkcs11-sign in.pdf out.pdf MODULE pin=… [level=B-B|B-T|B-LT|B-LTA] [tsa=URL] [slot=N] [key=HEX]`,
+  `--pkcs11-list MODULE`, `--verify-tr file.pdf`.
 - GOST signatures (ГОСТ Р 34.10-2012) through the user's own **CryptoPro CSP 5.0 for macOS**, which PDF42 does not
   include. Install CSP from cryptopro.ru (registration, administrator rights; 90-day trial licence, then a purchased
   serial number), the certificate with its key container (token or folder) and the CA root. PDF42 calls CSP's
@@ -262,6 +288,50 @@ lets you switch extensions off.
     `--gost-verify file.pdf`, `--gost-verify file --sig file.sig [--poa poa.xml]`,
     `--poa-check poa.xml [--sig document.sig] [--date YYYY-MM-DD]`. Unlike `--verify`, these return the verdict as the exit code:
     0 valid, 1 invalid, 2 intact but certificate not trusted, 3 not checked (no CSP), 4 power-of-attorney mismatch.
+- Page marks for paper copies (Signature menu). Every mark is an ordinary stamp annotation drawn like ink (multiply):
+  it can be moved, deleted or undone (each command is one Undo step) and is saved as an appearance stream other
+  viewers show. Marks sit upright and in the chosen corner on rotated pages too.
+  - **Electronic Signature Mark…** — the block for a printed copy of an e-signed document (GOST R 7.0.97 style):
+    "ДОКУМЕНТ ПОДПИСАН ЭЛЕКТРОННОЙ ПОДПИСЬЮ", certificate serial number, owner, validity dates and, when made from a
+    signature in the file, the signing time; English and Turkish wording too. Built from a digital signature already
+    in the PDF (including GOST signatures) or from a Keychain certificate; chosen corner of the current, all or
+    selected pages. Adding it changes a signed file, so print the copy or use Save As (saving over the file
+    invalidates the signature).
+  - **Initial Every Page…** — a signature or initials from the library in a chosen corner of every (or selected) page;
+    every copy is a new impression of a generated or imported mark.
+  - **Cross-Page Seal…** — one stamp impression cut into vertical strips along the right edges of all or selected
+    pages, the first page carrying the leftmost strip. Fanned out, each page a strip further right, the printed pages
+    show the whole seal (the Chinese 骑缝章 practice). Diameter and height are adjustable; needs at least two pages.
+  - **Certification Note…** — "Всего пронумеровано, прошнуровано и скреплено печатью N (N in words) листов" (or the
+    English/Turkish equivalent) at the bottom of the last page with the signatory line and date, a stamp over the
+    line and an optional signature. The sheet count defaults to the page count; enter sheets for two-sided printing.
+- Handwritten visible signature: the Sign dialog's **Handwritten** menu picks a signature from the shared signature
+  library (a generated signature, or a drawn/scanned one; seals are offered too). The visible signature shows a new
+  impression of it on the left (generated signatures differ slightly each time, like a pen) and the certificate details
+  on the right: signer, date, issuer, serial number and PAdES level. A placed signature image that is selected when you
+  sign is used instead.
+- Signature › Sign Multiple Files…: choose PDFs and/or folders (searched recursively), where to save (next to each
+  original or one folder), a file-name suffix and the page for a visible signature (first or last), then the usual
+  Sign dialog (one certificate and one PAdES level for all). A progress window with Cancel runs through the files;
+  each signed copy is a new file (`name (signed).pdf`, numbered if it exists; originals are never changed); files that
+  are already signed get an additional signature; damaged or encrypted files are listed as failures in the summary
+  (Show in Finder). CLI: `--batch-sign identity.p12 password OUTDIR FILE-OR-FOLDER… [level=…] [tsa | tsa=URL]
+  [visible | visible=first|last] [handwriting=LIBRARY.png | signature-name="Name"] [suffix=…] [reason=…] [location=…]
+  [completion]`; it exits 1 if any file failed.
+- Signature › Export Verification Report…: a PDF report of every signature and document timestamp — signer, email,
+  claimed signing time, trusted timestamp and its TSA, format/sub-filter, PAdES level, LTV status, reason, location,
+  the signed revision (byte range), integrity, certificate trust, and the certificate chain (subject, issuer, serial,
+  validity, key, SHA-256 fingerprint), plus the document's SHA-256 and the DSS contents. Built locally; trust is the
+  macOS trust store at the signing time. CLI: `--verify-report in.pdf report.pdf`.
+- Signature › Add Certificate of Completion…: appends a last page, as an incremental update, with the SHA-256 and
+  length of the document as it was (all bytes before the page), the signing history (signers, trusted or claimed
+  times, status, format) and a QR code holding the hash, length and signers. Nothing is sent anywhere. Because the
+  update is appended, existing signatures stay valid for their revision (viewers say the document was extended after
+  signing) and anyone can check the hash offline: `head -c LENGTH file.pdf | shasum -a 256`. Signature › Verify
+  Certificate of Completion reads the QR code (or the printed line under it) and checks the hash; the verification
+  report includes the result. CLI: `--completion in.pdf out.pdf`, `--verify-completion file.pdf` (exit 0 = match,
+  1 = mismatch, 2 = none found). The page records; it is not itself signed (add a document timestamp afterwards to
+  seal it).
 - Thumbnails: drag to reorder pages, multi-select, drop PDFs/images to insert.
 - OCR (⌥⌘T): Vision (ru/en/tr) adds an invisible searchable text layer to scans. It processes a captured document state,
   preserves the page's annotation appearance and avoids applying a stale result after intervening document changes.
@@ -869,6 +939,13 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   **Create Signature…**: one or more names (one per line), a form — full name, initial and surname, surname,
   initials and a scribble, capital and a scribble, or any — and three styles out of 1320 (plan × flourish × capital variant × how
   the initial joins), New Variants (⌘R) for three more, and a pen: ballpoint, gel, fountain or felt-tip.
+  The three offered styles are the best-scoring of a larger random pool (legible, no strike-through or oval around
+  the name, few tangles), mixing the full name, initial and surname, and surname forms. More Like This keeps the
+  chosen variant and fills the others with close variations of it. Paraph shows each variant as its short mark for
+  initialling pages: the same hand (slant, proportions, capital) writing the initial and a short scribble.
+  Chinese names are written in pinyin and also get a personal seal; Korean names get the customary Latin spelling
+  and two seals; Japanese names get three hanko seals and no guessed romanisation; Greek is transliterated
+  (UN/ELOT). Thai, Arabic and other scripts the pen cannot write ask for the name in Latin letters.
   Signatures are written by a model of a fast hand: hand-drawn centre lines for Latin, Cyrillic and Turkish letters
   with alternative forms of many lowercase letters, a smooth line through the letters, and the pen's speed along it
   from the sigma-lognormal model of rapid movements. Delayed strokes come after the word as real writers add them:
@@ -943,15 +1020,61 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   (needs an Apple Developer account and stored notarization credentials; see the script header).
   Pass the app names explicitly: the script's current no-argument fallback forms one combined name and is not usable.
 
+### Digital signatures in Word, Excel and OpenDocument files (DOC42, XLS42)
+
+- File › Sign Document… adds an XML digital signature to the saved file, the kind Word and Excel create on Windows
+  (Word for Mac cannot create them): Office Open XML signatures in `_xmlsignatures/` for .docx/.xlsx (.pptx is read
+  and signed by the shared code but not offered in PPT42), and ODF 1.2 signatures in
+  `META-INF/documentsignatures.xml` for .odt/.ods. XMLDSig with XAdES signed properties (signing time, signing
+  certificate), RSA or ECDSA with SHA-256, an optional purpose (Office's “purpose for signing”). An already signed file
+  gets an additional signature. Certificates come from the Keychain, an imported .p12/.pfx, or a smart card.
+- Opening a signed file shows a banner: valid, intact but not trusted (the certificate does not chain to a trusted
+  root), or invalid with the changed part. Details lists the signers, times, purposes and Turkish qualification.
+  The first edit turns the banner into a warning; ⌘S asks before writing the file without the signatures, which is
+  what saving any edit of a signed file does (use Save As to keep the signed original). Re-sign after saving.
+- Verification follows Office: all package parts reached through the signed relationship types, the relationship
+  transform for `.rels` parts and the XAdES certificate digest; parts or relationships added after signing make the
+  signature invalid. ODF signatures must cover every stream (the mimetype included, as LibreOffice requires).
+- CLI (DOC42 and XLS42): `--sign-document in out (--p12 file --password pw | --identity name | --pkcs11 module --pin pin)
+  [--comment text]`, `--verify-document file` (exit status 0 when all signatures are intact).
+
+### Smart cards and Turkish e-imza (PDF42, DOC42, XLS42)
+
+- The card's PKCS#11 module is loaded from where the middleware installed it (AKİS: `/usr/local/lib/libakisp11.dylib`;
+  also SafeNet, IDPrime, OpenSC, SoftHSM), or chosen with Choose Module…. It runs in a separate helper,
+  `Contents/Helpers/P11Bridge42`, built universal: an Intel-only module (current AKİS macOS builds ship x86_64 only)
+  runs under Rosetta, and a crashing vendor module cannot take the app down. Without Rosetta the app says so.
+- Certificates of all inserted cards are listed; the non-repudiation (qualified) one is placed first, the
+  authentication certificate of an e-imza card after it. PIN entry with the PIN-state warnings the card reports
+  (count low, final try, locked); PIN-pad readers ask on the reader. Wrong, locked or expired PINs get plain messages.
+- Turkish qualified certificates are recognised by the Law 5070 policy (BTK arc `2.16.792.1.61.0.1.5070`), Kamu SM's
+  policy arc, or ETSI QcCompliance from a Turkish provider; the provider (Kamu SM, E-Tuğra, TÜRKTRUST, E-İmzaTR,
+  E-Güven) comes from the issuer. Trust still comes from macOS: install the provider's root certificates (published by
+  the providers) to see a signature as valid rather than intact-but-untrusted. Intermediate certificates are fetched
+  from the certificates' caIssuers URLs for PAdES B-LT/B-LTA.
+- Mobile signature (mobil imza) is not supported: the operators' MSSP interface (ETSI TS 102 204) is available only
+  under a commercial application-provider agreement, not as a public API. See STATUS.md.
+
 ## Known limitations
 
 - PDF42 signatures: signing and LTV need a file with a classic cross-reference table (any file saved by PDF42; files
   with cross-reference streams are re-saved before the first signature, which is impossible once they are signed).
   The PAdES level is reported from the file's structure (attributes, timestamps, DSS order, revocation coverage); it is
   not an eIDAS qualification check: PDF42 does not consult the EU trusted lists, and its trust decision is the macOS
-  trust store. CSC remote signing has been tested only against a local mock service, not a real QTSP. RSA-PSS keys,
+  trust store. Batch signing runs one file at a time on the main thread (Cancel takes effect between
+  files; a timestamp or remote-signing request blocks the window while it runs); a remote (CSC) credential that needs a
+  PIN or one-time code asks for it for every file. The verification report does not fetch revocation data and does not
+  check certificate policies or key usage. The certificate of completion is not signed and its QR code holds at most
+  eight signers. CSC remote signing has been tested only against a local mock service, not a real QTSP. Get a Certificate…
+  has been tested against a local OpenSSL CA only; a Secure Enclave key cannot be backed up or moved to another Mac,
+  is P-256 only (some authorities accept only RSA), and is not a certified QSCD for eIDAS qualified signatures. RSA-PSS keys,
   OCSP nonces and asynchronous (multi-signature) CSC operations are not supported. Network calls block the window
   while they run (the OAuth wait keeps the run loop alive).
+- Office/ODF signatures: not yet checked against Microsoft Office (no Office installation was available); they were
+  verified with LibreOffice and an independent XMLDSig check (STATUS.md). Signatures created by LibreOffice 25.2 in
+  .docx files are reported as invalid by DOC42 (LibreOffice's relationship transform differs; its ODF signatures are
+  read correctly). XAdES timestamps (XAdES-T) and signature lines with images are not created. No real AKİS card or
+  Turkish qualified certificate was used in testing; smart-card signing was tested with SoftHSM.
 - GOST signatures need the user's own CryptoPro CSP. The GOST path has been exercised only against stand-in tools
   (`scripts/fake-cryptopro`), not against a real CSP install, so `cryptcp` option compatibility (`-cadesbes`,
   `-cadest`) and interoperability with CryptoPro PDF/Acrobat are not yet confirmed.
@@ -999,6 +1122,10 @@ python3 scripts/audit-spreadsheets-cli.py --binary .build/debug/XLS42
 python3 scripts/audit-presentations-cli.py --binary .build/debug/PPT42
 python3 scripts/audit-images-cli.py --binary .build/debug/IMG42
 python3 scripts/audit-scans-cli.py --binary .build/debug/SCN42
+# Office/ODF signatures: Suite42, an independent lxml+OpenSSL check, LibreOffice (if installed), Office/LibreOffice
+# fixtures (downloaded). Smart cards: needs `brew install softhsm opensc`.
+python3 scripts/audit-document-signatures.py
+python3 scripts/audit-eimza.py
 swiftc -module-cache-path .build/ModuleCache Sources/Kit42/Zip.swift Sources/Kit42/TextDecoding.swift \
   scripts/audit-documents-regressions.swift -o .build/audit-documents-regressions
 .build/audit-documents-regressions
@@ -1025,6 +1152,9 @@ description/DPI, checks GIF/TIFF counts and bounded decoding, verifies invalid i
 OCR on a generated text image. Fixtures, command output, binary SHA-256 and `result.json` are stored in
 `build/img-cli-audit`; `--output-dir` changes the destination and `--binary build/IMG42.app/Contents/MacOS/IMG42` checks
 a packaged binary. These fixtures do not certify every installed codec, camera RAW variant or third-party metadata field.
+`scripts/pades/run.sh WORKDIR` and `scripts/certificates/run.sh WORKDIR` (JDK 17+ for EU DSS) sign with a throw-away
+local PKI and validate offline with EU DSS. The second one creates a Secure Enclave key and a Keychain key (removed
+again at the end), issues certificates for their PDF42 requests with `openssl ca`, and signs at every PAdES level.
 
 These cover malformed PDF/ZIP input, attachment extraction, spreadsheet references and numeric precision,
 text encodings, CSV/ODS previews, scan save state, and preservation of existing files when exports fail.
@@ -1145,6 +1275,10 @@ scenario; the deterministic `--selftest` remains independent of model availabili
 a private native pasteboard and Print's save-to-PDF disposition; no job is sent to a physical printer. Run
 `IMG42 --selftest` and the independent image CLI suite alongside these native scenarios; observed results and limitations
 must accompany each tested build.
+PDF42 `page-marks` adds every page mark through the editor on a five-page file with a rotated page (a throwaway
+in-memory certificate signs a copy for the e-signature mark; a separate stamp library in `build/ui-audit/stamps`),
+checks placement, slices, fresh impressions, Undo/Redo, and the saved file reopened in PDFKit with multiply
+appearance streams; renders of live and saved pages and `page-marks-saved.pdf` go to the screenshots folder.
 PPT42 adds canvas manipulation, media-safe copy/paste, text/Find/table commands, document lifecycle, inspector
 controls with rendered fill/border checks, and slideshow navigation/builds.
 DOC42 checks dispatch native mouse events for ruler drags at 25–200% zoom, exercise section/column/header targeting,

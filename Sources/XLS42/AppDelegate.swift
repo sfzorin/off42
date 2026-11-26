@@ -29,7 +29,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate()
         // Debug hook: K42_OPEN=/path/file.xlsx opens a document at launch (snapshot checks of the unbundled binary).
         if let path = ProcessInfo.processInfo.environment["K42_OPEN"] {
-            NSDocumentController.shared.openDocument(withContentsOf: URL(fileURLWithPath: path), display: true) { _, _, _ in }
+            NSDocumentController.shared.openDocument(withContentsOf: URL(fileURLWithPath: path), display: true) { document, _, error in
+                if let error { FileHandle.standardError.write(Data("cannot open \(path): \(error)\n".utf8)) }
+                // K42_SIGNATURE_AUDIT=1: signed-document lifecycle regression on the opened file (Kit42).
+                guard ProcessInfo.processInfo.environment["K42_SIGNATURE_AUDIT"] != nil, let sheet = document as? SheetDocument else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    let ok = sheet.signatureState.audit(edit: {
+                        // A cell entry as one closed undo group, as after a key event.
+                        let undo = sheet.undoManager
+                        undo?.groupsByEvent = false
+                        undo?.beginUndoGrouping()
+                        _ = sheet.editor?.setInput("42", at: CellRef(row: 0, col: 0))
+                        undo?.endUndoGrouping()
+                        undo?.groupsByEvent = true
+                    })
+                    if !ok { exit(1) }
+                }
+            }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [self] in
             if NSDocumentController.shared.documents.isEmpty { welcome.showWindow(nil) }

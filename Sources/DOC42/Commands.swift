@@ -171,9 +171,13 @@ enum Cmd {
         return .item(item)
     }
 
+    static let signDocument = Command(L("Sign Document…"), #selector(TextDocument.signDocumentAction(_:)), symbol: "checkmark.seal",
+                                      toolTip: L("Add a digital signature (Keychain, .p12 or smart card)"), label: L("Sign"))
+    static let signatures = Command(L("Digital Signatures…"), #selector(TextDocument.showSignaturesAction(_:)))
+
     static var menuBar: MenuBarSpec {
         var spec = MenuBarSpec(appName: "DOC42")
-        spec.fileExtras = [.command(exportPDF), .command(exportAs), .command(createLabels), .separator, .command(properties)]
+        spec.fileExtras = [.command(exportPDF), .command(exportAs), .command(createLabels), .separator, .command(signDocument), .command(signatures), .separator, .command(properties)]
         spec.editExtras = [.command(trackChanges)]
         spec.find = [.command(find), .command(findReplace), .separator, .command(findNext), .command(findPrevious),
                      .command(useSelectionForFind), .separator, .command(replaceBar)]

@@ -3017,5 +3017,12 @@
   "⌘F / ⌘G — find, ⌥⌘G — go to page": "⌘F / ⌘G — procurar, ⌥⌘G — ir para a página",
   "⌘L / ⌘R — rotate page, ⌥⌘⌫ — delete pages": "⌘L / ⌘R — rodar página, ⌥⌘⌫ — eliminar páginas",
   "⌥⌘D — sign, ⌥⌘V — verify signatures": "⌥⌘D — assinar, ⌥⌘V — verificar assinaturas",
-  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — combinar ficheiros, ⌘E — editar texto (clique numa linha)"
+  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — combinar ficheiros, ⌘E — editar texto (clique numa linha)",
+  "More Like This": "Mais parecidas",
+  "Keeps the chosen variant and shows close variations of it.": "Mantém a variante escolhida e mostra variações próximas.",
+  "Personal seal": "Selo pessoal",
+  "Written in Latin letters": "em letras latinas",
+  "Type this name in Latin letters to sign it.": "Digite este nome em letras latinas para assinar.",
+  "Paraph": "Rubrica",
+  "Shows the short mark for initialling each page, in the same hand as the chosen signature.": "Rubrica curta para cada página, com a mesma mão da assinatura escolhida."
 }

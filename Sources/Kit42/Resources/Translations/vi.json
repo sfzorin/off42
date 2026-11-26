@@ -3017,5 +3017,12 @@
   "⌘F / ⌘G — find, ⌥⌘G — go to page": "⌘F / ⌘G — tìm, ⌥⌘G — đi đến trang",
   "⌘L / ⌘R — rotate page, ⌥⌘⌫ — delete pages": "⌘L / ⌘R — xoay trang, ⌥⌘⌫ — xóa trang",
   "⌥⌘D — sign, ⌥⌘V — verify signatures": "⌥⌘D — ký, ⌥⌘V — xác minh chữ ký",
-  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — gộp tệp, ⌘E — sửa văn bản (nhấp vào dòng)"
+  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — gộp tệp, ⌘E — sửa văn bản (nhấp vào dòng)",
+  "More Like This": "Tương tự",
+  "Keeps the chosen variant and shows close variations of it.": "Giữ biến thể đã chọn và hiển thị các biến thể gần giống.",
+  "Personal seal": "Con dấu cá nhân",
+  "Written in Latin letters": "bằng chữ Latinh",
+  "Type this name in Latin letters to sign it.": "Nhập tên này bằng chữ Latinh để ký.",
+  "Paraph": "Chữ ký tắt",
+  "Shows the short mark for initialling each page, in the same hand as the chosen signature.": "Chữ ký tắt cho từng trang, cùng nét tay với chữ ký đã chọn."
 }

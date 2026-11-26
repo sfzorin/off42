@@ -9,23 +9,30 @@ import Security
 /// or legacy adbe.pkcs7.detached, compatible with Adobe Acrobat and other validators. PAdES.swift adds the
 /// long-term levels (DSS, document timestamps).
 enum PDFSigner {
-    /// Where the key lives: the macOS Keychain (RSA/ECDSA), CryptoPro CSP (GOST) or a remote signing service (CSC).
+    /// Where the key lives: the macOS Keychain (RSA/ECDSA), the Secure Enclave (P-256, from Get a Certificate…),
+    /// CryptoPro CSP (GOST) or a remote signing service (CSC).
     enum Signer {
         case keychain(SigningIdentity)
+        case secureEnclave(StoredKey)
         case cryptoPro(CryptoPro.Certificate, CryptoPro.SignOptions)
         case remote(CMSRawSigner)
+        /// A smart card or token through its PKCS#11 module (Turkish e-imza and others), signing CAdES like `.remote`.
+        case smartCard(PKCS11CMSSigner)
         /// Not chosen yet (set `Options.remote` before signing).
         case none
 
         var name: String {
             switch self {
             case .keychain(let id): return id.name
+            case .secureEnclave(let key): return key.certificate.flatMap { X509(der: [UInt8]($0))?.name } ?? key.label
             case .cryptoPro(let cert, _): return cert.name
             case .remote(let r): return r.chain.first?.name ?? L("Unknown")
+            case .smartCard(let c): return c.chain.first?.name ?? L("Unknown")
             case .none: return L("Unknown")
             }
         }
         var isGOST: Bool { if case .cryptoPro = self { return true } else { return false } }
+        var isKeychain: Bool { if case .keychain = self { return true } else { return false } }
     }
 
     struct Options {
@@ -93,7 +100,7 @@ enum PDFSigner {
         if !options.location.isEmpty { tail += " /Location \(pdfTextString(options.location))" }
         tail += " /Prop_Build << /App << /Name /PDF42 >> >>"
         let capacity = gost ? gostSignatureCapacity
-            : options.level == .legacy && options.remote == nil ? signatureCapacity : 2 * signatureCapacity
+            : options.level == .legacy && options.signer.isKeychain ? signatureCapacity : 2 * signatureCapacity
         return try appendSignatureField(base, visible: options.visible, head: "/Type /Sig /Filter \(filter) /SubFilter /\(subFilter)",
                                         tail: tail, capacity: capacity) { signed in
             var cms: Data
@@ -104,6 +111,11 @@ enum PDFSigner {
                 return try CryptoPro.signDetached(signed, options: g)
             case .remote(let remote):
                 cms = try CAdES.sign(signed, signer: remote)
+            case .secureEnclave(let key):
+                // CAdES at every level (the legacy subfilter carries the same CMS).
+                cms = try CAdES.sign(signed, signer: try StoredKeySigner(key))
+            case .smartCard(let card):
+                cms = try CAdES.sign(signed, signer: card)
             case .keychain(let identity):
                 cms = options.level == .legacy ? try cmsSign(signed, identity: identity.identity)
                     : try CAdES.sign(signed, signer: try KeychainSigner(identity.identity))
@@ -360,6 +372,10 @@ struct SignatureInfo {
     /// Signer certificate as parsed from the CMS (for GOST signatures).
     var certificate: CertificateInfo?
     var filter: String?
+    /// The signer's certificate (serial number and validity for the printed e-signature mark).
+    var signerCertificate: SecCertificate?
+    /// DER of the signer's certificate, for provider/qualification details (Turkish e-imza).
+    var certificateDER: Data? { signerCertificate.map { SecCertificateCopyData($0) as Data } }
 
     var summary: String {
         switch status {
@@ -494,6 +510,8 @@ enum PDFSignatureVerifier {
         if let t = signer.signingTime { info.date = t }
         if let c = signer.certificate {
             info.certificate = c
+            // GOST certificates too: the printed e-signature mark reads serial, owner and validity from it.
+            if info.signerCertificate == nil { info.signerCertificate = SecCertificateCreateWithData(nil, c.der as CFData) }
             info.signer = c.displayName
             if let s = c.snils { info.details.append(L("SNILS %@", s)) }
             if let i = c.inn { info.details.append(L("INN %@", i)) }
@@ -545,7 +563,11 @@ enum PDFSignatureVerifier {
 
         var cert: SecCertificate?
         if CMSDecoderCopySignerCert(dec, 0, &cert) == errSecSuccess, let cert {
+            info.signerCertificate = cert
             info.signer = SecCertificateCopySubjectSummary(cert) as String? ?? info.signer
+            let der = SecCertificateCopyData(cert) as Data
+            // Turkish e-imza: qualified (Law 5070) status, provider, masked TC Kimlik No.
+            if let tr = TurkishESign.describe(der) { info.details.append(tr) }
             var emails: CFArray?
             SecCertificateCopyEmailAddresses(cert, &emails)
             info.email = (emails as? [String])?.first

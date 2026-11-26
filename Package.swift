@@ -16,6 +16,8 @@ let package = Package(
         .executable(name: "IMG42", targets: ["IMG42"]),
         .executable(name: "PPT42", targets: ["PPT42"]),
         .executable(name: "SCN42", targets: ["SCN42"]),
+        // PKCS#11 smart-card helper: runs the card's middleware module out of process (x86_64 under Rosetta if needed).
+        .executable(name: "P11Bridge42", targets: ["P11Bridge42"]),
         // Quick Look extension binaries, packaged as .appex bundles by build.sh.
         .executable(name: "QLPreview42", targets: ["QLPreview42"]),
         .executable(name: "QLThumbnail42", targets: ["QLThumbnail42"]),
@@ -31,6 +33,7 @@ let package = Package(
         .executableTarget(name: "IMG42", dependencies: ["Kit42"], path: "Sources/IMG42"),
         .executableTarget(name: "PPT42", dependencies: ["Kit42"], path: "Sources/PPT42"),
         .executableTarget(name: "SCN42", dependencies: ["Kit42"], path: "Sources/SCN42"),
+        .executableTarget(name: "P11Bridge42", path: "Sources/P11Bridge42"),
         // Quick Look for formats macOS shows as plain text or not at all: Markdown, OpenDocument spreadsheets, TSV.
         .target(name: "Previews42", dependencies: ["Kit42"], path: "Sources/Previews42"),
         .executableTarget(name: "QLPreview42", dependencies: ["Previews42"], path: "Sources/QLPreview42",

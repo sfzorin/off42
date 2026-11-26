@@ -38,6 +38,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(forName: NSWindow.didBecomeMainNotification, object: nil, queue: .main) { [weak self] note in
             if (note.object as? NSWindow)?.windowController is EditorWindowController { self?.welcome.close() }
         }
+        if ProcessInfo.processInfo.environment["K42_SIGNING_AUDIT"] != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { SigningUIAudit.run() }
+        }
         let prepareSnapshot: () -> Void = {
             let env = ProcessInfo.processInfo.environment
             let editor = NSApp.orderedWindows.compactMap { $0.windowController as? EditorWindowController }.first
@@ -50,6 +53,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 editor.showSidebarMode(["outline": .outline, "attachments": .attachments][mode] ?? .thumbnails)
             }
             if env["K42_LINK_BORDERS"] != nil { editor?.pdfView.showsLinkBorders = true }
+            // K42_CERT_WIZARD=0…4 opens Get a Certificate on that tab (keys, Russia, Türkiye, EU, free).
+            if let tab = env["K42_CERT_WIZARD"].flatMap(Int.init) { CertificateWizard.show(tab: tab) }
             for action in (env["K42_DO"] ?? "").split(separator: ",") {
                 let selector = NSSelectorFromString(action + ":")
                 if let editor, editor.responds(to: selector) { editor.perform(selector, with: nil) }
@@ -194,11 +199,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let view = sender as? NSView { popover.show(relativeTo: view.bounds, of: view, preferredEdge: .maxX) }
     }
 
+    @objc func batchSignAction(_ sender: Any?) { BatchSignUI.start() }
+
     @objc func importCertificateAction(_ sender: Any?) {
         if let identity = SignDialog.importCertificate() {
             info(L("Certificate added"), L("“%@” is saved in the Keychain and can be used for signing.", identity.displayName))
         }
     }
+
+    @objc func getCertificateAction(_ sender: Any?) { CertificateWizard.show() }
 
     @objc func createCertificateAction(_ sender: Any?) {
         if let identity = SignDialog.createCertificate() {

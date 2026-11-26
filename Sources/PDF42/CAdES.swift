@@ -280,7 +280,12 @@ struct KeychainSigner: CMSRawSigner {
                 if let x = X509(c), !chain.contains(x) { chain.append(x) }
             }
         }
-        // Complete the chain from the certificates' caIssuers URLs (a .p12 often holds only the signer).
+        self.chain = KeychainSigner.completed(chain)
+    }
+
+    /// Completes a chain from the certificates' caIssuers URLs (a .p12 often holds only the signer).
+    static func completed(_ start: [X509]) -> [X509] {
+        var chain = start
         while let last = chain.last, !last.isSelfIssued, chain.count < 8 {
             let found = last.caIssuerURLs.lazy.compactMap { URL(string: $0) }
                 .compactMap { try? Revocation.fetch($0, timeout: 10) }
@@ -288,7 +293,7 @@ struct KeychainSigner: CMSRawSigner {
             guard let issuer = found, !chain.contains(issuer) else { break }
             chain.append(issuer)
         }
-        self.chain = chain
+        return chain
     }
 
     func sign(attributes: [UInt8]) throws -> (signature: [UInt8], algorithm: [UInt8]) {
@@ -304,6 +309,34 @@ struct KeychainSigner: CMSRawSigner {
             throw CertificateError.failed(L("signature (access to the key denied?)") + " " + message)
         }
         return ([UInt8](sig), isEC ? DER.seq(DER.oid(OID.ecdsaWithSHA256)) : DER.seq(DER.oid(OID.sha256WithRSA), DER.null))
+    }
+}
+
+/// A key from "Get a Certificate…" (Secure Enclave P-256, or a Keychain key) with its issued certificate.
+/// A Secure Enclave key with user presence asks for Touch ID or the password at `sign`.
+struct StoredKeySigner: CMSRawSigner {
+    let key: StoredKey
+    let chain: [X509]
+    var reason = L("sign the document")
+
+    init(_ key: StoredKey) throws {
+        guard let der = key.certificate, let leaf = X509(der: [UInt8](der)) else { throw CertificateError.failed(L("no certificate")) }
+        self.key = key
+        var chain = [leaf]
+        for extra in key.chain.compactMap({ X509(der: [UInt8]($0)) }) where !chain.contains(extra) { chain.append(extra) }
+        // Order the bundled CA certificates issuer by issuer, then fetch what is missing.
+        var ordered = [leaf]
+        while let last = ordered.last, let next = Revocation.issuer(of: last, in: chain), !ordered.contains(next) { ordered.append(next) }
+        self.chain = KeychainSigner.completed(ordered)
+    }
+
+    func sign(attributes: [UInt8]) throws -> (signature: [UInt8], algorithm: [UInt8]) {
+        do {
+            let sig = try KeyVault.sign(Data(attributes), with: key, reason: reason)
+            return ([UInt8](sig), [UInt8](KeyVault.signatureAlgorithm(key)))
+        } catch {
+            throw CertificateError.failed(L("signature (access to the key denied?)") + " " + error.localizedDescription)
+        }
     }
 }
 

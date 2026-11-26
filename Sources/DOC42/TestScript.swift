@@ -64,6 +64,20 @@ extension DocWindowController {
             case "audittechnical": if !auditTechnicalElements() { exit(1) }
             case "auditrulers": if !auditRulers() { exit(1) }
             case "auditdocument": if !auditDocumentLifecycle() { exit(1) }
+            case "auditsignature":
+                // Opened from a signed .docx/.odt (see scripts/audit-ui.py).
+                guard let document = document as? TextDocument,
+                      document.signatureState.audit(edit: {
+                          // Typing as one closed undo group: the same path that marks a document edited.
+                          let undo = document.undoManager
+                          let byEvent = undo?.groupsByEvent ?? true
+                          undo?.groupsByEvent = false
+                          undo?.beginUndoGrouping()
+                          textView.insertText("Edit ", replacementRange: NSRange(location: 0, length: 0))
+                          undo?.endUndoGrouping()
+                          undo?.groupsByEvent = byEvent
+                      })
+                else { exit(1) }
             case "auditpagination": if !auditPagination() { exit(1) }
             case "editnote": if let n = Notes.all(in: storage).first?.1 { editNote(n) }
             case "findbar": finder.performAction(.showReplaceInterface)

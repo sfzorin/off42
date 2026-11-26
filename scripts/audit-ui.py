@@ -193,13 +193,59 @@ def fixture(app, arguments):
         raise RuntimeError(result.stderr.decode(errors='replace'))
 
 
+def simple_pdf(path, pages=3):
+    """A small text-only PDF written directly, so PDF42 checks need no other app."""
+    objects = ['<< /Type /Catalog /Pages 2 0 R >>',
+               '<< /Type /Pages /Kids [%s] /Count %d >>' % (' '.join(f'{4 + 2 * i} 0 R' for i in range(pages)), pages),
+               '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>']
+    for i in range(pages):
+        text = f'BT /F1 18 Tf 72 760 Td (Page marks audit, page {i + 1}) Tj ET ' + \
+               ''.join(f'BT /F1 11 Tf 72 {720 - 16 * k} Td (Line {k + 1} of the body text on this page.) Tj ET ' for k in range(30))
+        objects.append(f'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents {5 + 2 * i} 0 R >>')
+        objects.append(f'<< /Length {len(text)} >>\nstream\n{text}\nendstream')
+    out, offsets = b'%PDF-1.4\n', []
+    for n, body in enumerate(objects, 1):
+        offsets.append(len(out))
+        out += f'{n} 0 obj\n{body}\nendobj\n'.encode()
+    xref = len(out)
+    out += f'xref\n0 {len(objects) + 1}\n0000000000 65535 f \n'.encode()
+    out += b''.join(f'{o:010d} 00000 n \n'.encode() for o in offsets)
+    out += f'trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n'.encode()
+    path.write_bytes(out)
+def signed_fixtures():
+    """Test-CA .p12 and signed DOCX/XLSX copies for the signature lifecycle audits (regenerated each run)."""
+    pki = out / 'pki'
+    pki.mkdir(exist_ok=True)
+    ossl = ['/usr/bin/openssl']
+    def sh(*a):
+        subprocess.run(ossl + list(map(str, a)), check=True, capture_output=True, cwd=pki)
+    sh('req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', 'ca.key', '-out', 'ca.pem', '-days', '3650',
+       '-subj', '/C=TR/O=Suite42 Test/CN=Suite42 UI Audit Root', '-addext', 'basicConstraints=critical,CA:true')
+    sh('req', '-newkey', 'rsa:2048', '-nodes', '-keyout', 'user.key', '-out', 'user.csr', '-subj', '/CN=UI Audit Signer')
+    (pki / 'ext.cnf').write_text('keyUsage=critical,digitalSignature,nonRepudiation\n')
+    sh('x509', '-req', '-in', 'user.csr', '-CA', 'ca.pem', '-CAkey', 'ca.key', '-CAcreateserial', '-out', 'user.pem',
+       '-days', '30', '-extfile', 'ext.cnf')
+    sh('pkcs12', '-export', '-inkey', 'user.key', '-in', 'user.pem', '-out', 'user.p12', '-passout', 'pass:test')
+    p12 = ['--p12', pki / 'user.p12', '--password', 'test']
+    if 'DOC42' in binaries:
+        fixture('DOC42', ['--sign-document', out / 'sample.docx', out / 'signed.docx', *p12])
+    if 'XLS42' in binaries:
+        if not (out / 'sample.xlsx').exists(): fixture('XLS42', ['--feature-demo', out / 'sample.xlsx'])
+        fixture('XLS42', ['--sign-document', out / 'sample.xlsx', out / 'signed.xlsx', *p12])
+    return {'K42_P12': str(pki / 'user.p12'), 'K42_P12_PASSWORD': 'test'}
+
+
 results = []
 if args.mode in ('all', 'tests'):
+    if 'PDF42' in binaries:
+        simple_pdf(out / 'page-marks.pdf')
+        shutil.rmtree(out / 'stamps', ignore_errors=True)   # seeded afresh by the page-marks run
     if 'DOC42' in binaries and not (out / 'sample.docx').exists():
         fixture('DOC42', ['--demo', out / 'sample.docx'])
     if 'PDF42' in binaries and not (out / 'sample.pdf').exists():
         if not (out / 'sample.docx').exists(): fixture('DOC42', ['--demo', out / 'sample.docx'])
         fixture('DOC42', ['--pdf', out / 'sample.docx', out / 'sample.pdf'])
+    signing = signed_fixtures()
     tests = [
         ('XLS42', 'xls-ui', ('--uitest',), {'K42_PASTEBOARD': '1'}, 'ALL PASSED', False),
         ('IMG42', 'img-ui', ('--uitest',), {}, 'IMG42 UI: 0 failures', False),
@@ -228,8 +274,17 @@ if args.mode in ('all', 'tests'):
         ('PDF42', 'pdf-pages', (out / 'sample.pdf',), {'K42_AUDIT': 'pages'}, 'PDF pages UI regressions:', True),
         ('PDF42', 'pdf-core', (out / 'sample.pdf',), {'K42_AUDIT': 'core'}, 'PDF core UI regressions:', True),
         ('PDF42', 'pdf-files', (out / 'sample.pdf',), {'K42_AUDIT': 'files'}, 'PDF document lifecycle regressions:', True),
+        ('DOC42', 'doc-signature', (out / 'signed.docx',), {'K42_SCRIPT': 'auditsignature', 'K42_SNAPSHOT_DELAY': '8', **signing}, 'Signature UI regressions:', True),
+        ('XLS42', 'xls-signature', (), {'K42_OPEN': str(out / 'signed.xlsx'), 'K42_SIGNATURE_AUDIT': '1', 'K42_SNAPSHOT_DELAY': '8', **signing},
+         'Signature UI regressions:', True),
         ('PDF42', 'mark-samples', ('--mark-samples', out / 'marks'), {}, 'Mark samples: ', False),
         ('PDF42', 'signature-fidelity', ('--signature-fidelity-synthetic', out / 'signature-fidelity'), {}, 'Synthetic checks: passed', False),
+        ('PDF42', 'page-marks', (out / 'page-marks.pdf',), {'K42_DO': 'auditPageMarks', 'K42_SNAPSHOT_DELAY': '3', 'K42_SIZE': '1180x780',
+                                                              'K42_STAMP_LIBRARY': str(out / 'stamps')},
+         'PDF page marks UI regressions:', True),
+        ('PDF42', 'cert-wizard-keys', (out / 'sample.pdf',), {'K42_CERT_WIZARD': '0', 'SUITE42_KEY_DIR': str(out / 'keys')}, None, True),
+        ('PDF42', 'cert-wizard-guide', (out / 'sample.pdf',), {'K42_CERT_WIZARD': '3', 'SUITE42_KEY_DIR': str(out / 'keys')}, None, True),
+        ('PDF42', 'pdf-signing', (), {'K42_SIGNING_AUDIT': '1'}, 'PDF42 signing UI regressions:', False),
         ('PPT42', 'ppt-notes', (), {'K42_NEW': '1', 'K42_DO': 'auditnotes', 'K42_AUDIT_RECENT': '1'}, 'PPT notes UI regressions: 6/6 passed', True),
         ('PPT42', 'ppt-editing', (), {'K42_NEW': '1', 'K42_DO': 'auditediting', 'K42_PASTEBOARD': '1'}, 'PPT editing UI regressions:', True),
         ('PPT42', 'ppt-text', (), {'K42_NEW': '1', 'K42_DO': 'audittext', 'K42_PASTEBOARD': '1'}, 'PPT text/table/show UI regressions:', True),
@@ -278,7 +333,22 @@ if args.mode in ('all', 'screenshots'):
             results.append(run('PDF42', f'mark-signature-layout-{lang}', [out / 'sample.pdf', '-Suite42Language', lang],
                                {'K42_OPEN_GENERATOR': 'signature', 'K42_SNAPSHOT_SHEET': '1', 'K42_GENERATOR_LAYOUT_AUDIT': '1'},
                                f'Generator layout: PASS {lang}', snapshot=True))
+        # More Like This through its button; Latin, Chinese (pinyin + seal), Japanese (hanko) and Thai (type in Latin) names.
+        results.append(run('PDF42', 'mark-signature-more', [out / 'sample.pdf'],
+                           {'K42_OPEN_GENERATOR': 'signature', 'K42_SNAPSHOT_SHEET': '1', 'K42_GENERATOR_LAYOUT_AUDIT': '1',
+                            'K42_SNAPSHOT_DELAY': '4', 'K42_GENERATOR_NAME': 'Emma Clarke\n林佳穎\n中村 美咲\n김서연\nสมชาย ใจดี'},
+                           'Generator more-like-this: PASS', snapshot=True))
+        # Paraph through its checkbox (Russian UI: the checkbox shares the note row with More Like This).
+        results.append(run('PDF42', 'mark-signature-paraph-ru', [out / 'sample.pdf', '-Suite42Language', 'ru'],
+                           {'K42_OPEN_GENERATOR': 'signature', 'K42_SNAPSHOT_SHEET': '1', 'K42_GENERATOR_LAYOUT_AUDIT': '1',
+                            'K42_GENERATOR_NAME': 'Анна Соколова\nEmma Clarke'},
+                           'Generator paraph: PASS', snapshot=True))
         results.append(run('PDF42', 'pdf-properties', [out / 'sample.pdf'], {'K42_ACTION': 'propertiesAction'}, snapshot=True))
+        if not (out / 'page-marks.pdf').exists(): simple_pdf(out / 'page-marks.pdf')
+        for action in ('eSignatureMarkAction', 'crossPageSealAction', 'certificationNoteAction', 'initialPagesAction'):
+            results.append(run('PDF42', 'pdf-' + action, [out / 'page-marks.pdf'],
+                               {'K42_ACTION': action, 'K42_STAMP_LIBRARY': str(out / 'stamps')}, snapshot=True))
+        results.append(run('PDF42', 'pdf-sign-dialog', [out / 'sample.pdf'], {'K42_ACTION': 'signDocumentAction'}, snapshot=True))
     if 'DOC42' in binaries:
         for name, script, appearance in [('doc-book', 'viewmode 1', 'light'),
                                           ('doc-columns', 'cols 2', 'dark'),

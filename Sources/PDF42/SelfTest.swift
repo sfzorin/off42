@@ -1,4 +1,5 @@
 import Foundation
+import PDFKit
 
 /// Headless regressions for malformed PDFs and safe attachment extraction.
 enum PDFSelfTest {
@@ -148,6 +149,29 @@ enum PDFSelfTest {
         equal(try String(contentsOf: duplicate, encoding: .utf8), "second")
     }
 
+    static func testPageMarkHelpers() {
+        let forms = [1: "лист", 2: "листа", 4: "листа", 5: "листов", 11: "листов", 14: "листов", 21: "лист", 22: "листа", 111: "листов", 1001: "лист"]
+        for (n, form) in forms { equal(PageMarks.russianPlural(n, "лист", "листа", "листов"), form, "\(n)") }
+        check(PageMarks.certificationText(sheets: 12, signatory: "", date: Date(), language: .ru).joined(separator: " ").contains("12 (двенадцать) листов"))
+        check(PageMarks.certificationText(sheets: 3, signatory: "", date: Date(), language: .tr).joined(separator: " ").contains("3 (üç) yaprak"))
+        let slices = PageMarks.sliceColumns(width: 1000, count: 7)
+        equal(slices.map(\.count).reduce(0, +), 1000)
+        check(zip(slices, slices.dropFirst()).allSatisfy { $0.upperBound == $1.lowerBound })
+        equal(PageMarks.Corner.topLeft.rect(CGSize(width: 50, height: 20), in: CGSize(width: 600, height: 800), margin: 10),
+              CGRect(x: 10, y: 770, width: 50, height: 20))
+        // Displayed ↔ page space on every rotation.
+        for rotation in [0, 90, 180, 270] {
+            let page = PDFPage()
+            page.setBounds(CGRect(x: 0, y: 0, width: 595, height: 842), for: .mediaBox)
+            page.rotation = rotation
+            let display = CGRect(x: 20, y: 30, width: 100, height: 40)
+            let back = PageMarks.displayRect(PageMarks.pageRect(display, on: page), on: page)
+            check(abs(back.minX - display.minX) < 0.01 && abs(back.minY - display.minY) < 0.01 && abs(back.width - 100) < 0.01, "rotation \(rotation)")
+            let size = PageMarks.displaySize(page)
+            equal(size.width, rotation % 180 == 0 ? 595 : 842, "displayed width at \(rotation)")
+        }
+    }
+
     static func run() -> Int32 {
         failures = 0
         let checks: [(String, () throws -> Void)] = [
@@ -166,10 +190,16 @@ enum PDFSelfTest {
             ("testPAdESBaselineSignature", testPAdESBaselineSignature),
             ("testIncrementalStreamsRoundTrip", testIncrementalStreamsRoundTrip),
             ("testRevocationCoverageByCRL", testRevocationCoverageByCRL),
+            ("testCertificateRequestAndEnclaveSignature", testCertificateRequestAndEnclaveSignature),
             ("testGOSTReferenceCMSIsParsed", testGOSTReferenceCMSIsParsed),
             ("testGOSTSignatureInPDFWithoutCSPIsNotChecked", testGOSTSignatureInPDFWithoutCSPIsNotChecked),
             ("testCertmgrListIsParsed", testCertmgrListIsParsed),
             ("testPowerOfAttorneyIsParsed", testPowerOfAttorneyIsParsed),
+            ("testPageMarkHelpers", testPageMarkHelpers),
+            ("testSignatureAppearanceUsesFreshImpressions", testSignatureAppearanceUsesFreshImpressions),
+            ("testBatchSigningSignsEveryFileAndReportsFailures", testBatchSigningSignsEveryFileAndReportsFailures),
+            ("testVerificationReportListsSignatureDetails", testVerificationReportListsSignatureDetails),
+            ("testCompletionCertificateRoundTrip", testCompletionCertificateRoundTrip),
         ]
         for (name, run) in checks {
             let before = failures

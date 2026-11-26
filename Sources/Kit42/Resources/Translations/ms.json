@@ -3017,5 +3017,12 @@
   "⌘F / ⌘G — find, ⌥⌘G — go to page": "⌘F / ⌘G — cari, ⌥⌘G — pergi ke halaman",
   "⌘L / ⌘R — rotate page, ⌥⌘⌫ — delete pages": "⌘L / ⌘R — putar halaman, ⌥⌘⌫ — padam halaman",
   "⌥⌘D — sign, ⌥⌘V — verify signatures": "⌥⌘D — tandatangan, ⌥⌘V — sahkan tandatangan",
-  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — gabungkan fail, ⌘E — sunting teks (klik baris)"
+  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — gabungkan fail, ⌘E — sunting teks (klik baris)",
+  "More Like This": "Yang Serupa",
+  "Keeps the chosen variant and shows close variations of it.": "Mengekalkan varian yang dipilih dan menunjukkan variasi yang hampir sama.",
+  "Personal seal": "Cop peribadi",
+  "Written in Latin letters": "dalam huruf Rumi",
+  "Type this name in Latin letters to sign it.": "Taip nama ini dalam huruf Rumi untuk menandatangan.",
+  "Paraph": "Tandatangan ringkas",
+  "Shows the short mark for initialling each page, in the same hand as the chosen signature.": "Tandatangan ringkas untuk setiap halaman, dengan tulisan tangan yang sama seperti tandatangan yang dipilih."
 }

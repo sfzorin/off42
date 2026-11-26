@@ -10,6 +10,13 @@ import PDFKit
 //   PDF42 --csc-credentials SERVICE-URL [auth…]          (CSC API v2: list credentials)
 //   PDF42 --csc-sign in.pdf out.pdf SERVICE-URL CREDENTIAL-ID [auth…] [pin=…] [otp=…] [tsa=URL] [level=…]
 //   auth: token=… | user=… password=… | client-id=… [client-secret=…] [port=8765] [no-browser]
+// Keys and certificate requests ("Get a Certificate…"; SUITE42_KEY_DIR overrides the key folder):
+//   PDF42 --key-new enclave|keychain LABEL [p256|rsa2048|rsa3072] [no-presence]   (prints the key id)
+//   PDF42 --key-list
+//   PDF42 --key-csr ID out.csr CN=… [O=… OU=… L=… ST=… C=… email=… serial=… given=… surname=…]
+//   PDF42 --key-import ID|any certificate-file          (.cer/.crt/.pem/.p7b; pairs the certificate with its key)
+//   PDF42 --key-sign in.pdf ID out.pdf [tsa | tsa=URL] [level=…]
+//   PDF42 --key-delete ID
 Localization.register(rows: pdf42Strings)
 
 let args = CommandLine.arguments
@@ -56,6 +63,16 @@ if args.count >= 4, args[1] == "--signature-blindtest-score" {
     print(try SignatureBlindTest.score(key: URL(fileURLWithPath: args[2]), answers: URL(fileURLWithPath: args[3])))
     exit(0)
 }
+// PDF42 --signature-ranking "Name" OUT.png [pool]: random designs sorted by quality, the three offered outlined.
+if args.count >= 4, args[1] == "--signature-ranking" {
+    try SignatureRankingSheet.write(name: args[2], to: URL(fileURLWithPath: args[3]), pool: args.count > 4 ? Int(args[4]) ?? 30 : 30)
+    exit(0)
+}
+// PDF42 --signature-paraphs "Name" OUT.png: offered signatures, each with three copies of its paraph.
+if args.count >= 4, args[1] == "--signature-paraphs" {
+    try SignatureRankingSheet.writeParaphs(name: args[2], to: URL(fileURLWithPath: args[3]))
+    exit(0)
+}
 // PDF42 --signature-bench DIR [designs copies]: fluency, tremor, variability and legibility of generated signatures.
 if args.count >= 3, args[1] == "--signature-bench" {
     let numbers = args.dropFirst(3).compactMap { Int($0) }
@@ -86,7 +103,11 @@ if args.count >= 3, args[1] == "--mark-samples" {
 // GOST signatures and detached-file operations use the dedicated CSP command handler.
 if let code = GOSTCLI.run(args) { exit(code) }
 if let code = PDFMainCLI.run(args) { exit(code) }
+if let code = KeyCLI.run(args) { exit(code) }
+// Smart-card (PKCS#11) signing, Turkish qualified-signature report and Office/ODF signature checks (EImza.swift).
+if let code = EImzaCLI.run(args) { exit(code) }
 
+if let code = SigningWorkflowCLI.run(args) { exit(code) }
 if let code = ToolsCLI.run(args) { exit(code) }
 
 let app = NSApplication.shared

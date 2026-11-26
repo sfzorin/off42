@@ -8,7 +8,9 @@ public final class StampLibrary {
 
     public let folder: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let url = base.appendingPathComponent("Suite42/Stamps", isDirectory: true)
+        // K42_STAMP_LIBRARY=DIR: a separate library for UI audits, leaving the user's own library alone.
+        let url = ProcessInfo.processInfo.environment["K42_STAMP_LIBRARY"].map { URL(fileURLWithPath: $0, isDirectory: true) }
+            ?? base.appendingPathComponent("Suite42/Stamps", isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }()

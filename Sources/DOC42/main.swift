@@ -3,6 +3,9 @@ import Kit42
 
 Localization.register(rows: doc42Strings)
 
+// --sign-document / --verify-document: Office and OpenDocument digital signatures (Kit42/DocumentSignatureCLI.swift).
+if let code = DocumentSignatureCLI.run(CommandLine.arguments) { exit(code) }
+
 // DOC42 --flatten in.docx out.docx: write the style-flattened document (for testing).
 if let i = CommandLine.arguments.firstIndex(of: "--flatten"), CommandLine.arguments.count > i + 2 {
     let args = CommandLine.arguments

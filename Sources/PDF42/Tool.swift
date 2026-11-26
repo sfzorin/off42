@@ -105,12 +105,26 @@ extension PDFPage {
     }
 }
 
+extension PDFAnnotation {
+    /// PDFKit draws a custom annotation either in its appearance space (PDFView and saving: the CTM takes the bounds'
+    /// origin to the origin) or straight into a page render (`thumbnail(of:for:)`), where a rotated page gives the
+    /// annotation displayed, unrotated coordinates. Turns the second case back into page space.
+    func compensatePageRotation(_ context: CGContext) {
+        guard let page, ((page.rotation % 360) + 360) % 360 != 0 else { return }
+        let origin = bounds.origin.applying(context.ctm)
+        if abs(origin.x) < 0.5, abs(origin.y) < 0.5 { return }
+        context.concatenate(PageOverlay.displayTransform(box: page.bounds(for: .cropBox), rotation: page.rotation).0.inverted())
+    }
+}
+
 /// Stamp annotation that draws a raster image (signatures, seals). PDFKit writes the drawing
 /// into the annotation's appearance stream on save, so other viewers show it too.
 final class ImageStampAnnotation: PDFAnnotation {
     let image: CGImage
     /// Multiply (ink); `.normal` only for the before/after demo.
     var blendMode: CGBlendMode = .multiply
+    /// The page's /Rotate: the image is turned so that it reads upright as displayed (bounds stay in page space).
+    var rotation = 0
 
     init(image: CGImage, bounds: CGRect) {
         self.image = image
@@ -125,7 +139,16 @@ final class ImageStampAnnotation: PDFAnnotation {
         // Ink on paper multiplies with what is under it: text stays dark, overlapping inks darken each other.
         // Quartz writes this as /BM /Multiply in the saved appearance stream.
         context.setBlendMode(blendMode)
-        context.draw(image, in: bounds)
+        compensatePageRotation(context)
+        let turn = ((rotation % 360) + 360) % 360
+        if turn == 0 {
+            context.draw(image, in: bounds)
+        } else {
+            let upright = turn == 180 ? bounds.size : CGSize(width: bounds.height, height: bounds.width)
+            context.translateBy(x: bounds.midX, y: bounds.midY)
+            context.rotate(by: CGFloat(turn) * .pi / 180)
+            context.draw(image, in: CGRect(x: -upright.width / 2, y: -upright.height / 2, width: upright.width, height: upright.height))
+        }
         context.restoreGState()
     }
 }

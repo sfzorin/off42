@@ -47,10 +47,10 @@ public enum SignatureGenerator {
              initialsScribble, capitalScribble, monogram, enclosed
     }
 
-    private static let flourishes = 11, joins = 3, capitalVariants = 4
+    static let flourishes = 11, joins = 3, capitalVariants = 4
     public static var styleCount: Int { Archetype.allCases.count * flourishes * joins * capitalVariants }
 
-    private static func styleIndex(_ a: Archetype, flourish: Int, join: Int, capital: Int) -> Int {
+    static func styleIndex(_ a: Archetype, flourish: Int, join: Int, capital: Int) -> Int {
         ((a.rawValue * flourishes + flourish) * capitalVariants + capital) * joins + join
     }
 
@@ -74,11 +74,14 @@ public enum SignatureGenerator {
     }
 
     /// Style number (1-based) of a design seed.
-    public static func styleNumber(_ design: UInt64) -> Int { Int(design & 0xFFFF) % styleCount + 1 }
+    public static func styleNumber(_ design: UInt64) -> Int { Int(design & styleMask) % styleCount + 1 }
+
+    /// Low bits of a design: the style index (below `styleCount`) and, in the top bit, the paraph flag.
+    static let styleMask: UInt64 = 0x7FFF, paraphFlag: UInt64 = 0x8000
 
     // MARK: - Plan
 
-    private struct Style {
+    struct Style {
         var archetype: Archetype
         var flourish: Int      // 0 none, 1 underline →, 2 return under ←, 3 rising tail, 4 loop around capital,
                                // 5 strike through capital, 6 double dash, 7 spiral end
@@ -93,8 +96,8 @@ public enum SignatureGenerator {
         var bars = 1                 // 0 none, 1 short, 2 long (over the next letters)
     }
 
-    private static func style(_ design: UInt64) -> Style {
-        let index = Int(design & 0xFFFF) % styleCount
+    static func style(_ design: UInt64) -> Style {
+        let index = Int(design & styleMask) % styleCount
         var r = SeededRandom(design >> 16)
         let arche = Archetype(rawValue: index / (flourishes * joins * capitalVariants)) ?? .surname
         var s = Style(archetype: arche, flourish: (index / (joins * capitalVariants)) % flourishes, join: index % joins,
@@ -109,6 +112,11 @@ public enum SignatureGenerator {
         s.allographs = r.next()
         s.dots = r.weighted([0.8, 1.4, 1.0])
         s.bars = r.weighted([0.5, 1.4, 1.0])
+        if design & paraphFlag != 0 {
+            // A paraph: the initial, three humps of the surname and a short finish.
+            s.keep = 3
+            s.exitLength *= 0.6
+        }
         if arche == .monogram, s.flourish == 0 { s.flourish = 4 }
         if arche == .enclosed { s.flourish = 99 }   // loop around the whole signature
         return s
@@ -123,7 +131,7 @@ public enum SignatureGenerator {
     /// The pen paths (cap-height units) for a name in a style.
     /// `copy` varies this written copy: each letter shifts and scales a little as a whole, loops and flourishes
     /// change shape — the way one person's signatures differ from each other.
-    private static func plan(_ words: [String], _ s: Style, _ copy: inout SeededRandom) -> [[CGPoint]] {
+    static func plan(_ words: [String], _ s: Style, _ copy: inout SeededRandom) -> [[CGPoint]] {
         let surname = words.last!, given = words.dropLast()
         var strokes: [[CGPoint]] = []
         var current: [CGPoint] = []

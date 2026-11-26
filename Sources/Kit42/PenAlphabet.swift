@@ -189,6 +189,19 @@ enum PenAlphabet {
 
     static func lower(_ c: Character) -> (CGFloat, [CGPoint])? { lower(c, variant: 0) }
 
+    /// Whether the pen alphabet has a hand-drawn form for this letter (Latin, Cyrillic and their accented forms).
+    /// Other scripts fall back to placeholder shapes and must not be written as a signature.
+    static func supports(_ c: Character) -> Bool {
+        guard c.isLetter else { return true }
+        let up = Character(String(c).uppercased()), low = Character(String(c).lowercased())
+        if capitals[up] != nil || aliases[up].map { capitals[$0] != nil } == true || lower(low) != nil { return true }
+        // Accented and special Latin/Cyrillic letters are written on their base letter (Wójcik, Nguyễn, Łukasz, Yıldız).
+        let special: [Character: Character] = ["ł": "l", "ø": "o", "đ": "d", "ß": "s", "ı": "i", "ħ": "h", "ŧ": "t"]
+        let base = special[low] ?? String(low).applyingTransform(.stripDiacritics, reverse: false).flatMap { $0.count == 1 ? $0.first : nil }
+        guard let base, base != low else { return false }
+        return lower(base) != nil
+    }
+
     /// Variant 0 is the main form; others come from `lowerAlternates` (wrapping around).
     static func lower(_ c: Character, variant: Int) -> (CGFloat, [CGPoint])? {
         let low = Character(String(c).lowercased())

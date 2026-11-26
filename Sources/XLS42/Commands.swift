@@ -177,10 +177,14 @@ enum Cmd {
     static let welcome = Command(L("Welcome Window"), #selector(A.showWelcomeAction(_:)), shortcut: Shortcut("0", [.command, .shift]))
     static let functions = Command(L("Supported Functions"), #selector(A.showFunctionsAction(_:)))
 
+    static let signDocument = Command(L("Sign Document…"), #selector(SheetDocument.signDocumentAction(_:)), symbol: "checkmark.seal",
+                                      toolTip: L("Add a digital signature (Keychain, .p12 or smart card)"), label: L("Sign"))
+    static let signatures = Command(L("Digital Signatures…"), #selector(SheetDocument.showSignaturesAction(_:)))
+
     static var menuBar: MenuBarSpec {
         var spec = MenuBarSpec(appName: "XLS42")
         spec.fileExtras = [.command(exportPDF), .command(exportCSV), .command(createLabels), .separator, .command(importCSV), .separator,
-                           .command(setPrintArea), .command(clearPrintArea)]
+                           .command(setPrintArea), .command(clearPrintArea), .separator, .command(signDocument), .command(signatures)]
         spec.editExtras = [.command(pasteSpecial), .separator, .command(clear), .command(clearFormats), .separator, .command(arrayFormula), .separator,
                            .submenu(L("Fill"), [.command(fillDown), .command(fillRight), .command(fillUp), .command(fillLeft), .separator, .command(fillSeries)])]
         spec.find = [.command(find), .command(findNext), .command(replace), .command(goToCell)]
