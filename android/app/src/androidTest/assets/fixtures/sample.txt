@@ -1,0 +1,3 @@
+Plain text notes
+
+The OFF42 engine opens plain text too.

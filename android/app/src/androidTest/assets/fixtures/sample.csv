@@ -1,0 +1,5 @@
+Item,Qty,Price
+Tea,2,3.5
+Cake,1,4
+Jam,3,2.5
+Total,,=SUM(C2:C4)*B3+B2

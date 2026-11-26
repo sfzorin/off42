@@ -1,0 +1,12 @@
+Binubuksan at kino-convert ng OFF42 ang mga office file sa iyong phone o tablet. Lahat ay nangyayari sa device: walang network access ang app at nagbubukas o nagse-save lang ito ng file sa pamamagitan ng file picker ng system at ng pagbabahagi.
+
+• Mga dokumento: DOCX, ODT, RTF, Markdown, HTML at plain text, may bilang ng salita; i-save sa alinman sa mga format na ito.
+• Mga spreadsheet: XLSX, ODS, CSV at XLS (read-only) sa isang grid na may mga tab ng sheet; i-save bilang XLSX, ODS o CSV.
+• Mga presentasyon: PPTX at ODP bilang text outline ng bawat slide; i-convert sa pagitan ng dalawang format.
+• PDF: mga pahinang ipinapakita sa device, kasama ang metadata, bookmark, attachment at form field.
+• Mga label at code: QR, Data Matrix, Code 128 at Aztec, mga A4 label sheet mula sa sarili mong mga linya, at 97 marka ng produkto at conformity (larawan lang: walang pinapatunayan ang marka).
+• Mga pirma at tatak: pirmang parang sulat-kamay gamit ang iba't ibang pen at tinta, at mga tatak mula sa mga template, naka-save bilang transparent na PNG.
+
+Wala pa: pag-edit, pag-export ng dokumento sa PDF, mga larawan at layout ng slide, anotasyon ng PDF. Ang iginuhit na pirma ay larawan, hindi digital signature na batay sa certificate.
+
+Libre at open source ang OFF42 (MIT license). Kapareho ang engine nito ng mga OFF42 app para sa Mac, Windows at Linux at ng web app.

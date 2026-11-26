@@ -126,6 +126,10 @@ apps; page views, rich editing, printing, scanning and OCR are not on Linux yet.
 [the command line and Linux preview](rust/README.md#off42-command-line-and-the-linux-preview).
 [Download the Linux preview tar.gz](https://github.com/sfzorin/off42/releases/download/v1.0.0-linux-preview.1/off42-1.0.0-linux-preview.1-x86_64.tar.gz).
 
+An Android app for tablets and phones (`android/`, Kotlin and Compose over the same cores) opens and converts documents,
+spreadsheets, presentations and PDFs, renders PDF pages, and makes codes, label sheets, marks, signatures and stamps,
+offline and without permissions. It is not on Google Play yet; CI builds a debug APK. See [android/README.md](android/README.md).
+
 ## Build and install on macOS
 
 ```bash
@@ -1327,6 +1331,9 @@ The snapshots render AppKit views; native material layers may require checking t
   signatures & stamps) over the Rust cores compiled to WebAssembly (`rust/crates/off42-wasm`), run in a Web Worker. Files are processed in the browser and never uploaded. Published at
   https://off42.cc/app/ in the site's 20 languages; see [web/README.md](web/README.md) for what it does, its limits
   and build steps.
+- `android/` — the Android app (Kotlin, Jetpack Compose) over the cores through the UniFFI crate
+  `rust/crates/off42-mobile`, which also builds the Swift bindings for the planned iPad/iPhone app; see
+  [android/README.md](android/README.md).
 - `Sources/Kit42` — shared macOS components: commands, menu bar, toolbar, tool strip, banners, welcome window, localisation,
   signature library, certificates, ZIP.
 - `Sources/Previews42` — Quick Look rendering (Markdown → HTML/page, ODS/TSV → table); `Sources/QLPreview42` and

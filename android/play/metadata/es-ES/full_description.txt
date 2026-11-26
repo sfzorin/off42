@@ -1,0 +1,12 @@
+OFF42 abre y convierte archivos de oficina en tu teléfono o tableta. Todo ocurre en el dispositivo: la app no tiene acceso a la red y solo abre o guarda archivos mediante el selector de archivos del sistema y la opción Compartir.
+
+• Documentos: DOCX, ODT, RTF, Markdown, HTML y texto sin formato, con recuento de palabras; guarda en cualquiera de estos formatos.
+• Hojas de cálculo: XLSX, ODS, CSV y XLS (solo lectura) en una cuadrícula con pestañas de hojas; guarda como XLSX, ODS o CSV.
+• Presentaciones: PPTX y ODP como esquema de texto de cada diapositiva; conversión entre ambos formatos.
+• PDF: páginas renderizadas en el dispositivo, con metadatos, marcadores, adjuntos y campos de formulario.
+• Etiquetas y códigos: QR, Data Matrix, Code 128 y Aztec, hojas de etiquetas A4 a partir de tus líneas y 97 marcas de producto y conformidad (solo ilustración: una marca no certifica nada).
+• Firmas y sellos: firmas manuscritas con distintos bolígrafos y tintas, e impresiones de sello a partir de plantillas, guardadas como PNG transparente.
+
+Aún no disponible: edición, exportación de documentos a PDF, imágenes y diseños de diapositivas, anotación de PDF. Una firma dibujada es una imagen, no una firma digital basada en certificado.
+
+OFF42 es gratuito y de código abierto (licencia MIT). Comparte su motor con las apps OFF42 para Mac, Windows y Linux y con la app web.

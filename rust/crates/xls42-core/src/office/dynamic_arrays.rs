@@ -151,6 +151,10 @@ fn clear_children(sheet: &mut Sheet, spans: &[Span]) -> Result<(), Error> {
     Ok(())
 }
 pub(super) fn import(bytes: &[u8], kind: &str, state: &mut State) -> Result<(), Error> {
+    // Legacy XLS is a compound file, not a ZIP package, and has no dynamic arrays (as in solver and picture import).
+    if !matches!(kind, "xlsx" | "ods") {
+        return Ok(());
+    }
     let mut archive = zip::ZipArchive::new(Cursor::new(bytes))
         .map_err(|_| Error::Invalid("Invalid Office arrays"))?;
     if kind == "xlsx" {

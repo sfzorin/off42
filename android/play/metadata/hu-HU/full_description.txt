@@ -1,0 +1,12 @@
+Az OFF42 irodai fájlokat nyit meg és alakít át telefonon vagy táblagépen. Minden az eszközön történik: az alkalmazás nem fér hozzá a hálózathoz, és csak a rendszer fájlválasztóján és a megosztáson keresztül nyit meg vagy ment fájlokat.
+
+• Dokumentumok: DOCX, ODT, RTF, Markdown, HTML és egyszerű szöveg megtekintése szószámmal; mentés bármelyik formátumban.
+• Táblázatok: XLSX, ODS, CSV és XLS (csak olvasható) rácsban, munkalapfülekkel; mentés XLSX, ODS vagy CSV formátumban.
+• Bemutatók: PPTX és ODP az összes dia szöveges vázlataként; átalakítás a két formátum között.
+• PDF: az oldalak megjelenítése az eszközön, metaadatokkal, könyvjelzőkkel, mellékletekkel és űrlapmezőkkel.
+• Címkék és kódok: QR, Data Matrix, Code 128 és Aztec kódok, A4-es címkeívek saját sorokból, valamint 97 termék- és megfelelőségi jelölés (csak grafika: a jelölés semmit sem tanúsít).
+• Aláírások és bélyegzők: kézírásos hatású aláírások különböző tollakkal és tintákkal, bélyegzőlenyomatok beépített sablonokból, átlátszó PNG-ként mentve.
+
+Még nem érhető el: szerkesztés, dokumentumok exportálása PDF-be, diák képei és elrendezései, PDF-jegyzetelés. A rajzolt aláírás kép, nem tanúsítványalapú digitális aláírás.
+
+Az OFF42 ingyenes és nyílt forráskódú (MIT-licenc). Ugyanazt a motort használja, mint az OFF42 Mac, Windows és Linux alkalmazásai és a webes alkalmazás.

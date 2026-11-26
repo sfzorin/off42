@@ -1562,6 +1562,18 @@ impl Workbook {
 mod tests {
     use super::*;
     #[test]
+    fn legacy_xls_opens_read_only() {
+        // A BIFF8 workbook written by LibreOffice 25: XLS is a compound file, not a ZIP package, so the
+        // package-part importers (dynamic arrays, solver models, pictures) must skip it.
+        let bytes = include_bytes!("../fixtures/libreoffice-biff8.xls");
+        let mut book = Workbook::from_office_bytes(bytes, "xls").unwrap();
+        assert!(book.is_read_only());
+        let cells = book.display_cells();
+        assert_eq!(cells.get(&(0, 0)).map(String::as_str), Some("Item"));
+        assert_eq!(cells.get(&(1, 0)).map(String::as_str), Some("Tea"));
+        let _ = book.select_sheet(book.sheets()[0].0);
+    }
+    #[test]
     fn office_packages_and_safe_reopen() {
         let mut b = Workbook::new(4, 4).unwrap();
         b.set_content(0, 0, CellContent::Text(TextValue::from_raw("123".into())))
