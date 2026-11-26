@@ -15,6 +15,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
 import androidx.core.content.FileProvider
 import androidx.test.core.graphics.writeToTestStorage
@@ -227,6 +228,10 @@ class AppTest {
         waitFor("sig-name")
         node("sig-name").performTextReplacement("Anna Smith")
         node("sig-generate").performClick()
+        // The variants follow the form in a lazy grid: scroll to the first one (the keyboard may still be closing).
+        compose.waitUntil(30_000) {
+            runCatching { compose.onNodeWithTag("signatures").performScrollToNode(hasTestTag("signature-0")) }.isSuccess
+        }
         waitFor("signature-0")
         screenshot("6-signatures")
         node("marks-tab-1").performClick()

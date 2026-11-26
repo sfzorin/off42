@@ -120,6 +120,7 @@ private fun Signatures(viewModel: Off42ViewModel) {
     val designs = remember { mutableStateListOf<Design>() }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
     val share = rememberShare()
 
     LazyVerticalGrid(GridCells.Adaptive(300.dp), Modifier.fillMaxSize().testTag("signatures"), contentPadding = PaddingValues(16.dp),
@@ -136,6 +137,7 @@ private fun Signatures(viewModel: Off42ViewModel) {
                     Choice(stringResource(R.string.sig_ink), opts.inks.map { it.value }, ink, { inkTitle(it) }, { ink = it })
                 }
                 Button(onClick = {
+                    focus.clearFocus()
                     scope.launch {
                         error = null
                         try {
