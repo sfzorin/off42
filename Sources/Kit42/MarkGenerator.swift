@@ -105,8 +105,26 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
                        p.bounds.width + 1 < p.intrinsicContentSize.width { clipped.append("pop-up \(title)") }
                     else if let f = v as? NSTextField, !f.isEditable, f.cell?.wraps == false, !f.stringValue.isEmpty,
                             f.bounds.width + 1 < f.intrinsicContentSize.width { clipped.append("label \(f.stringValue)") }
+                    else if let b = v as? NSButton, !(b is NSPopUpButton), !b.title.isEmpty, b.bezelStyle != .smallSquare,
+                            b.bounds.width + 1 < b.intrinsicContentSize.width { clipped.append("button \(b.title)") }
                 }
                 print("Generator layout: \(clipped.isEmpty ? "PASS" : "FAIL") \(Language.current.rawValue) \(clipped.joined(separator: "; "))")
+                // More Like This through its button: the chosen variant stays, the others share its skeleton.
+                if mode == .signature, let row = c.designs.first, let chosen = row.first(where: { $0 >= sealSlots }),
+                   let button = all(window.contentView ?? NSView()).compactMap({ $0 as? NSButton }).first(where: { $0.title == L("More Like This") }) {
+                    c.selected[0] = row.firstIndex(of: chosen) ?? 0
+                    c.activeRow = 0
+                    button.performClick(nil)
+                    let after = c.designs[0].filter { $0 >= sealSlots }
+                    let ok = after.first == chosen && after.count >= 2 && after.dropFirst().allSatisfy { $0 & 0xFFFF == chosen & 0xFFFF && $0 != chosen }
+                    print("Generator more-like-this: \(ok ? "PASS" : "FAIL")")
+                    // Paraph through its checkbox: the chosen variant becomes its paraph (same seed), and back.
+                    c.paraphBox.performClick(nil)
+                    let on = c.mark(row: 0).map { UInt64($0.design) == SignatureGenerator.paraph(of: chosen) } ?? false
+                    c.paraphBox.performClick(nil)
+                    let off = c.mark(row: 0).map { UInt64($0.design) == chosen } ?? false
+                    print("Generator paraph: \(on && off ? "PASS" : "FAIL")")
+                }
             }
         }
     }
@@ -122,6 +140,8 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
     private let variantsStack = NSStackView()
     private var designs: [[UInt64]] = []            // per name, three design seeds
     private let formPopup = NSPopUpButton()
+    /// Shows (and inserts) the paraph of each variant instead of the signature.
+    private let paraphBox = NSButton(checkboxWithTitle: L("Paraph"), target: nil, action: nil)
     private var selected: [Int] = []                // per name, chosen variant
     private var activeRow = 0
     private var rowNames: [String] = []
@@ -254,6 +274,13 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
         tv.isRichText = false
         tv.font = .systemFont(ofSize: 13)
         tv.isAutomaticQuoteSubstitutionEnabled = false
+        // Names are not prose: no completion, prediction or correction (macOS inline predictions used to slip a
+        // suggested word into the name).
+        tv.isAutomaticTextReplacementEnabled = false
+        tv.isAutomaticSpellingCorrectionEnabled = false
+        tv.isContinuousSpellCheckingEnabled = false
+        tv.isAutomaticTextCompletionEnabled = false
+        if #available(macOS 14.0, *) { tv.inlinePredictionType = .no }
         // A text view made with a zero frame stays zero wide inside the scroll view: give it a real size.
         tv.frame = NSRect(x: 0, y: 0, width: 400, height: height)
         tv.minSize = NSSize(width: 0, height: height)
@@ -272,7 +299,7 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
     private func buildSignature() -> NSView {
         let hint = NSTextField(labelWithString: L("Names, one per line. Each line becomes its own signature."))
         hint.textColor = .secondaryLabelColor
-        // K42_GENERATOR_NAME: a fixed sample name for screenshots instead of the account name.
+        // K42_GENERATOR_NAME: fixed names for audits and screenshots instead of the account name.
         names.string = ProcessInfo.processInfo.environment["K42_GENERATOR_NAME"] ?? NSFullUserName()
         for form in SignatureForm.allCases { formPopup.addItem(withTitle: form.title); formPopup.lastItem?.tag = form.rawValue }
         formPopup.target = self
@@ -284,7 +311,20 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
         let note = NSTextField(wrappingLabelWithString: L("Click a variant to choose it. Every insertion is written slightly differently, like a real signature."))
         note.textColor = .secondaryLabelColor
         note.font = .systemFont(ofSize: 11)
-        return wrap([hint, textArea(names, height: 58), inkRow, variantsStack, note, buttonsRow(regenerate: L("New Variants"))])
+        let more = NSButton(title: L("More Like This"), target: self, action: #selector(moreLikeThis))
+        more.toolTip = L("Keeps the chosen variant and shows close variations of it.")
+        more.setContentCompressionResistancePriority(.required, for: .horizontal)
+        note.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        // K42_GENERATOR_PARAPH=1: open with paraphs shown (screenshots).
+        if ProcessInfo.processInfo.environment["K42_GENERATOR_PARAPH"] != nil { paraphBox.state = .on }
+        paraphBox.target = self
+        paraphBox.action = #selector(paraphChanged)
+        paraphBox.toolTip = L("Shows the short mark for initialling each page, in the same hand as the chosen signature.")
+        paraphBox.setContentCompressionResistancePriority(.required, for: .horizontal)
+        let noteRow = NSStackView(views: [note, paraphBox, more])
+        noteRow.alignment = .centerY
+        noteRow.spacing = 14
+        return wrap([hint, textArea(names, height: 58), inkRow, variantsStack, noteRow, buttonsRow(regenerate: L("New Variants"))])
     }
 
     private var pen: PenType { PenType(rawValue: penPopup.selectedTag()) ?? .ballpoint }
@@ -540,24 +580,32 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
         case .signature:
             let list = names.string.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.prefix(6)
             rowNames = Array(list)
-            while designs.count < rowNames.count {
-                // K42_GENERATOR_DESIGNS=a,b,c: fixed variants for screenshots.
-                let preset = (ProcessInfo.processInfo.environment["K42_GENERATOR_DESIGNS"] ?? "").split(separator: ",").compactMap { UInt64($0) }
-                designs.append(preset.count == 3 ? preset : SignatureGenerator.designSeeds(3, form: form)); selected.append(0)
+            while designs.count < rowNames.count { designs.append(freshDesigns(rowNames[designs.count])); selected.append(0) }
+            // A name that changes script (Latin ↔ Chinese, Japanese, Korean, Thai…) gets the right kind of variants.
+            while designScripts.count < designs.count { designScripts.append(SignatureGenerator.script(of: rowNames[designScripts.count])) }
+            for (r, name) in rowNames.enumerated() where r < designs.count && designScripts[r] != SignatureGenerator.script(of: name) {
+                designs[r] = freshDesigns(name); selected[r] = 0; designScripts[r] = SignatureGenerator.script(of: name)
             }
+            designScripts = Array(designScripts.prefix(rowNames.count))
             designs = Array(designs.prefix(rowNames.count))
             selected = Array(selected.prefix(rowNames.count))
             activeRow = min(activeRow, max(0, rowNames.count - 1))
             buildVariantRows()
             let pen = self.pen
-            let jobs = rowNames.enumerated().flatMap { r, name in designs[r].enumerated().map { (r, $0.offset, name, $0.element) } }
+            let jobs = rowNames.enumerated().flatMap { r, name in designs[r].enumerated().map { (r, $0.offset, name, shown($0.element)) } }
             DispatchQueue.global(qos: .userInitiated).async {
-                for (r, v, name, design) in jobs {
-                    let image = SignatureGenerator.render(name, design: design, impression: design &+ 1, ink: color, pen: pen)
+                // Tiles render in parallel: several names with personal seals made the dialog wait seconds for the last rows.
+                DispatchQueue.concurrentPerform(iterations: jobs.count) { i in
+                    let (r, v, name, design) = jobs[i]
+                    let seal = Self.seal(design, for: name)
+                    let image = seal.map { SealGenerator.render($0, impression: 1) }
+                        ?? Self.writtenName(name).flatMap { SignatureGenerator.render($0, design: design, impression: design &+ 1, ink: color, pen: pen) }
                     DispatchQueue.main.async { [weak self] in
                         guard let self, token == self.generation, let image else { return }
                         self.tile(r, v)?.image = Self.fitted(image, in: NSSize(width: 176, height: 72))
-                        self.tile(r, v)?.toolTip = L("Style %d of %d", SignatureGenerator.styleNumber(design), SignatureGenerator.styleCount)
+                        self.tile(r, v)?.toolTip = seal != nil ? L("Personal seal")
+                            : SignatureGenerator.isParaph(design) ? L("Paraph")
+                            : L("Style %d of %d", SignatureGenerator.styleNumber(design), SignatureGenerator.styleCount)
                     }
                 }
             }
@@ -567,7 +615,15 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
     private func buildVariantRows() {
         variantsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for (r, name) in rowNames.enumerated() {
-            let label = NSTextField(labelWithString: name)
+            let written = Self.writtenName(name)
+            let text: String
+            switch (written, SignatureGenerator.script(of: name)) {
+            case (nil, .japanese): text = name + " — " + L("Personal seal")
+            case (nil, _): text = name + " — " + L("Type this name in Latin letters to sign it.")
+            case (let w?, _) where w != name: text = name + " → " + w + " (" + L("Written in Latin letters") + ")"
+            default: text = name
+            }
+            let label = NSTextField(labelWithString: text)
             label.font = .systemFont(ofSize: 11, weight: .medium)
             label.textColor = .secondaryLabelColor
             let tiles = (0..<3).map { v -> NSButton in
@@ -582,6 +638,7 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
                 b.translatesAutoresizingMaskIntoConstraints = false
                 b.widthAnchor.constraint(equalToConstant: 190).isActive = true
                 b.heightAnchor.constraint(equalToConstant: 84).isActive = true
+                b.isEnabled = v < (designs[safe: r]?.count ?? 0)
                 return b
             }
             let row = NSStackView(views: tiles)
@@ -618,7 +675,7 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
     private func updateSelection() {
         for r in 0..<rowNames.count {
             for v in 0..<3 {
-                let on = selected[r] == v
+                let on = selected[r] == v && v < designs[r].count
                 tile(r, v)?.layer?.borderWidth = on ? (r == activeRow ? 3 : 2) : 0.5
                 tile(r, v)?.layer?.borderColor = on ? NSColor.controlAccentColor.cgColor : NSColor(white: 0.5, alpha: 0.5).cgColor
             }
@@ -626,6 +683,7 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
     }
 
     @objc private func tileClicked(_ sender: NSButton) {
+        guard sender.tag % 10 < designs[sender.tag / 10].count else { return }
         selected[sender.tag / 10] = sender.tag % 10
         activeRow = sender.tag / 10
         updateSelection()
@@ -657,7 +715,7 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
 
     @objc private func regenerateAction() {
         switch mode {
-        case .signature: designs = rowNames.map { _ in SignatureGenerator.designSeeds(3, form: form) }
+        case .signature: designs = rowNames.map(freshDesigns)
         case .seal: sealImpression = SeededRandom.freshSeed()
         case .learn: copySeeds = (0..<3).map { _ in SeededRandom.freshSeed() }
         }
@@ -666,8 +724,53 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
 
     private var form: SignatureForm { SignatureForm(rawValue: formPopup.selectedTag()) ?? .any }
 
+    /// Variant slots below this hold the n-th personal seal of the name instead of a signature design (real designs
+    /// carry a seed in the upper bits, so they are never this small).
+    private static let sealSlots: UInt64 = 16
+
+    private static func seal(_ design: UInt64, for name: String) -> SealSpec? {
+        design < sealSlots ? SignatureGenerator.personalSeals(for: name)[safe: Int(design)] : nil
+    }
+
+    /// The name as the pen writes it: itself, or Latin letters for Chinese, Korean, Greek…; nil when it must be typed.
+    private static func writtenName(_ name: String) -> String? { SignatureGenerator.writableName(name) }
+
+    /// Script of each row's name when its variants were made.
+    private var designScripts: [SignatureGenerator.NameScript] = []
+
+    /// Up to three variants: personal seals first (Chinese, Japanese, Korean), then the best of a pool of designs.
+    private func freshDesigns(_ name: String) -> [UInt64] {
+        // K42_GENERATOR_DESIGNS=a,b,c: fixed variants for screenshots.
+        let preset = (ProcessInfo.processInfo.environment["K42_GENERATOR_DESIGNS"] ?? "").split(separator: ",").compactMap { UInt64($0) }
+        if preset.count == 3 { return preset }
+        let seals = SignatureGenerator.personalSeals(for: name).indices.prefix(3).map(UInt64.init)
+        guard let written = Self.writtenName(name), seals.count < 3 else { return Array(seals) }
+        return seals + SignatureGenerator.bestDesigns(written, count: 3 - seals.count, form: form)
+    }
+
+    /// Keeps the chosen variant and replaces the others with close variations of it.
+    @objc private func moreLikeThis() {
+        guard mode == .signature, rowNames.indices.contains(activeRow) else { return }
+        let r = activeRow
+        guard let chosen = designs[r][safe: selected[r]], chosen >= Self.sealSlots, let written = Self.writtenName(rowNames[r]) else {
+            NSSound.beep(); return
+        }
+        let seals = designs[r].filter { $0 < Self.sealSlots }
+        let near = SignatureGenerator.bestDesigns(written, count: max(1, 2 - seals.count), form: form, around: chosen)
+        designs[r] = Array((seals + [chosen] + near).prefix(3))
+        selected[r] = seals.count
+        refresh()
+    }
+
+    /// The design a variant tile shows and inserts: the signature, or its paraph while Paraph is on.
+    private func shown(_ design: UInt64) -> UInt64 {
+        paraphBox.state == .on && design >= Self.sealSlots ? SignatureGenerator.paraph(of: design) : design
+    }
+
+    @objc private func paraphChanged() { refresh() }
+
     @objc private func formChanged() {
-        designs = rowNames.map { _ in SignatureGenerator.designSeeds(3, form: form) }
+        designs = rowNames.map(freshDesigns)
         refresh()
     }
 
@@ -681,8 +784,15 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
         case .seal: return [.seal(sealSpec)]
         case .learn: return learnedSignature.map { [.learned($0, ink: ink.color, pen: pen)] } ?? []
         case .signature:
-            return rowNames.enumerated().map { r, name in .signature(name, ink: ink.color, design: designs[r][selected[r]], pen: pen) }
+            return rowNames.indices.compactMap(mark(row:))
         }
+    }
+
+    /// The chosen mark of a signature row: a personal seal or a signature; nil when the name cannot be signed.
+    private func mark(row r: Int) -> GeneratedMark? {
+        guard let design = designs[safe: r]?[safe: selected[r]] else { return nil }
+        if let seal = Self.seal(design, for: rowNames[r]) { return .seal(seal) }
+        return Self.writtenName(rowNames[r]).map { .signature($0, ink: ink.color, design: shown(design), pen: pen) }
     }
 
     @objc private func addToLibrary() {
@@ -701,7 +811,7 @@ public final class MarkGeneratorController: NSWindowController, NSWindowDelegate
 
     @objc private func insertMark() {
         let all = marks()
-        let mark = mode == .signature ? all[safe: activeRow] : all.first
+        let mark = mode == .signature ? self.mark(row: activeRow) : all.first
         if let mark, let onInsertMark {
             close(nil)
             onInsertMark(mark)

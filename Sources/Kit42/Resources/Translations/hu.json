@@ -3017,5 +3017,12 @@
   "⌘F / ⌘G — find, ⌥⌘G — go to page": "⌘F / ⌘G — keresés, ⌥⌘G — ugrás oldalra",
   "⌘L / ⌘R — rotate page, ⌥⌘⌫ — delete pages": "⌘L / ⌘R — oldal forgatása, ⌥⌘⌫ — oldalak törlése",
   "⌥⌘D — sign, ⌥⌘V — verify signatures": "⌥⌘D — aláírás, ⌥⌘V — aláírások ellenőrzése",
-  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — fájlok egyesítése, ⌘E — szöveg szerkesztése (kattintson egy sorra)"
+  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — fájlok egyesítése, ⌘E — szöveg szerkesztése (kattintson egy sorra)",
+  "More Like This": "Hasonlók",
+  "Keeps the chosen variant and shows close variations of it.": "Megtartja a kiválasztott változatot, és hozzá közeli változatokat mutat.",
+  "Personal seal": "Személyes pecsét",
+  "Written in Latin letters": "latin betűkkel",
+  "Type this name in Latin letters to sign it.": "Az aláíráshoz írd be a nevet latin betűkkel.",
+  "Paraph": "Kézjegy",
+  "Shows the short mark for initialling each page, in the same hand as the chosen signature.": "Rövid kézjegy minden oldalra, ugyanazzal a kézírással, mint a választott aláírás."
 }

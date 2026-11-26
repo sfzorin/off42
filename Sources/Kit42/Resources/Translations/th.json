@@ -3017,5 +3017,12 @@
   "⌘F / ⌘G — find, ⌥⌘G — go to page": "⌘F / ⌘G — ค้นหา, ⌥⌘G — ไปที่หน้า",
   "⌘L / ⌘R — rotate page, ⌥⌘⌫ — delete pages": "⌘L / ⌘R — หมุนหน้า, ⌥⌘⌫ — ลบหน้า",
   "⌥⌘D — sign, ⌥⌘V — verify signatures": "⌥⌘D — ลงลายเซ็น, ⌥⌘V — ตรวจสอบลายเซ็น",
-  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — รวมไฟล์, ⌘E — แก้ไขข้อความ (คลิกบรรทัด)"
+  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — รวมไฟล์, ⌘E — แก้ไขข้อความ (คลิกบรรทัด)",
+  "More Like This": "แบบคล้ายกัน",
+  "Keeps the chosen variant and shows close variations of it.": "คงแบบที่เลือกไว้และแสดงแบบที่ใกล้เคียง",
+  "Personal seal": "ตราประทับส่วนตัว",
+  "Written in Latin letters": "เป็นอักษรละติน",
+  "Type this name in Latin letters to sign it.": "พิมพ์ชื่อนี้เป็นอักษรละตินเพื่อลงลายเซ็น",
+  "Paraph": "ลายมือชื่อย่อ",
+  "Shows the short mark for initialling each page, in the same hand as the chosen signature.": "ลายมือชื่อย่อสำหรับทุกหน้า ด้วยลายมือเดียวกับลายเซ็นที่เลือก"
 }

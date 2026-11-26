@@ -3017,5 +3017,12 @@
   "⌘F / ⌘G — find, ⌥⌘G — go to page": "⌘F / ⌘G — بحث، ⌥⌘G — الانتقال إلى صفحة",
   "⌘L / ⌘R — rotate page, ⌥⌘⌫ — delete pages": "⌘L / ⌘R — تدوير الصفحة، ⌥⌘⌫ — حذف الصفحات",
   "⌥⌘D — sign, ⌥⌘V — verify signatures": "⌥⌘D — توقيع، ⌥⌘V — التحقق من التوقيعات",
-  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — دمج الملفات، ⌘E — تحرير النص (انقر سطرًا)"
+  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — دمج الملفات، ⌘E — تحرير النص (انقر سطرًا)",
+  "More Like This": "مشابهة",
+  "Keeps the chosen variant and shows close variations of it.": "يحتفظ بالخيار المحدد ويعرض تنويعات قريبة منه.",
+  "Personal seal": "ختم شخصي",
+  "Written in Latin letters": "بالحروف اللاتينية",
+  "Type this name in Latin letters to sign it.": "اكتب هذا الاسم بالحروف اللاتينية للتوقيع.",
+  "Paraph": "الأحرف الأولى",
+  "Shows the short mark for initialling each page, in the same hand as the chosen signature.": "أحرف أولى قصيرة لكل صفحة، بخط اليد نفسه للتوقيع المختار."
 }

@@ -56,6 +56,16 @@ if args.count >= 4, args[1] == "--signature-blindtest-score" {
     print(try SignatureBlindTest.score(key: URL(fileURLWithPath: args[2]), answers: URL(fileURLWithPath: args[3])))
     exit(0)
 }
+// PDF42 --signature-ranking "Name" OUT.png [pool]: random designs sorted by quality, the three offered outlined.
+if args.count >= 4, args[1] == "--signature-ranking" {
+    try SignatureRankingSheet.write(name: args[2], to: URL(fileURLWithPath: args[3]), pool: args.count > 4 ? Int(args[4]) ?? 30 : 30)
+    exit(0)
+}
+// PDF42 --signature-paraphs "Name" OUT.png: offered signatures, each with three copies of its paraph.
+if args.count >= 4, args[1] == "--signature-paraphs" {
+    try SignatureRankingSheet.writeParaphs(name: args[2], to: URL(fileURLWithPath: args[3]))
+    exit(0)
+}
 // PDF42 --signature-bench DIR [designs copies]: fluency, tremor, variability and legibility of generated signatures.
 if args.count >= 3, args[1] == "--signature-bench" {
     let numbers = args.dropFirst(3).compactMap { Int($0) }

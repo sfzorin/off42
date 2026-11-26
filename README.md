@@ -869,6 +869,13 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   **Create Signature…**: one or more names (one per line), a form — full name, initial and surname, surname,
   initials and a scribble, capital and a scribble, or any — and three styles out of 1320 (plan × flourish × capital variant × how
   the initial joins), New Variants (⌘R) for three more, and a pen: ballpoint, gel, fountain or felt-tip.
+  The three offered styles are the best-scoring of a larger random pool (legible, no strike-through or oval around
+  the name, few tangles), mixing the full name, initial and surname, and surname forms. More Like This keeps the
+  chosen variant and fills the others with close variations of it. Paraph shows each variant as its short mark for
+  initialling pages: the same hand (slant, proportions, capital) writing the initial and a short scribble.
+  Chinese names are written in pinyin and also get a personal seal; Korean names get the customary Latin spelling
+  and two seals; Japanese names get three hanko seals and no guessed romanisation; Greek is transliterated
+  (UN/ELOT). Thai, Arabic and other scripts the pen cannot write ask for the name in Latin letters.
   Signatures are written by a model of a fast hand: hand-drawn centre lines for Latin, Cyrillic and Turkish letters
   with alternative forms of many lowercase letters, a smooth line through the letters, and the pen's speed along it
   from the sigma-lognormal model of rapid movements. Delayed strokes come after the word as real writers add them:

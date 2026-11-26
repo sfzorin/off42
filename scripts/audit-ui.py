@@ -278,6 +278,16 @@ if args.mode in ('all', 'screenshots'):
             results.append(run('PDF42', f'mark-signature-layout-{lang}', [out / 'sample.pdf', '-Suite42Language', lang],
                                {'K42_OPEN_GENERATOR': 'signature', 'K42_SNAPSHOT_SHEET': '1', 'K42_GENERATOR_LAYOUT_AUDIT': '1'},
                                f'Generator layout: PASS {lang}', snapshot=True))
+        # More Like This through its button; Latin, Chinese (pinyin + seal), Japanese (hanko) and Thai (type in Latin) names.
+        results.append(run('PDF42', 'mark-signature-more', [out / 'sample.pdf'],
+                           {'K42_OPEN_GENERATOR': 'signature', 'K42_SNAPSHOT_SHEET': '1', 'K42_GENERATOR_LAYOUT_AUDIT': '1',
+                            'K42_SNAPSHOT_DELAY': '4', 'K42_GENERATOR_NAME': 'Emma Clarke\n林佳穎\n中村 美咲\n김서연\nสมชาย ใจดี'},
+                           'Generator more-like-this: PASS', snapshot=True))
+        # Paraph through its checkbox (Russian UI: the checkbox shares the note row with More Like This).
+        results.append(run('PDF42', 'mark-signature-paraph-ru', [out / 'sample.pdf', '-Suite42Language', 'ru'],
+                           {'K42_OPEN_GENERATOR': 'signature', 'K42_SNAPSHOT_SHEET': '1', 'K42_GENERATOR_LAYOUT_AUDIT': '1',
+                            'K42_GENERATOR_NAME': 'Анна Соколова\nEmma Clarke'},
+                           'Generator paraph: PASS', snapshot=True))
         results.append(run('PDF42', 'pdf-properties', [out / 'sample.pdf'], {'K42_ACTION': 'propertiesAction'}, snapshot=True))
     if 'DOC42' in binaries:
         for name, script, appearance in [('doc-book', 'viewmode 1', 'light'),

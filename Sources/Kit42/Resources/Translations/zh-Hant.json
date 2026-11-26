@@ -3017,5 +3017,12 @@
   "⌘F / ⌘G — find, ⌥⌘G — go to page": "⌘F / ⌘G — 尋找，⌥⌘G — 前往頁面",
   "⌘L / ⌘R — rotate page, ⌥⌘⌫ — delete pages": "⌘L / ⌘R — 旋轉頁面，⌥⌘⌫ — 刪除頁面",
   "⌥⌘D — sign, ⌥⌘V — verify signatures": "⌥⌘D — 簽名，⌥⌘V — 驗證簽名",
-  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — 合併檔案，⌘E — 編輯文字（按一下一行）"
+  "⌥⌘M — merge files, ⌘E — edit text (click a line)": "⌥⌘M — 合併檔案，⌘E — 編輯文字（按一下一行）",
+  "More Like This": "更多相似",
+  "Keeps the chosen variant and shows close variations of it.": "保留所選樣式，並顯示與之相近的變體。",
+  "Personal seal": "個人印章",
+  "Written in Latin letters": "以拉丁字母書寫",
+  "Type this name in Latin letters to sign it.": "請以拉丁字母輸入此姓名以產生簽名。",
+  "Paraph": "簡簽",
+  "Shows the short mark for initialling each page, in the same hand as the chosen signature.": "用於逐頁簡簽的短簽名，與所選簽名同一筆跡。"
 }

@@ -140,6 +140,88 @@ public enum SignatureSelfTest {
                 }
             }
         } catch { check(false, "blind-test answer fixture: \(error)") }
+        // Which designs are offered (2026-11-06: people rejected crossed-out, oval-wrapped and tangled signatures).
+        func design(_ a: SignatureGenerator.Archetype, flourish: Int, seed: UInt64) -> UInt64 {
+            (seed << 16) | UInt64(SignatureGenerator.styleIndex(a, flourish: flourish, join: 0, capital: 0))
+        }
+        let names = ["Emma Clarke", "Анна Соколова", "Jonas Weber", "Дмитрий Орлов"]
+        var plainWins = 0, comparisons = 0
+        for name in names {
+            for seed: UInt64 in [11, 23, 37, 51] {
+                for a in [SignatureGenerator.Archetype.full, .initialSurname, .surname] {
+                    let plain = SignatureGenerator.quality(name, design: design(a, flourish: 1, seed: seed))
+                    for bad in [5, 4] {
+                        comparisons += 1
+                        if plain > SignatureGenerator.quality(name, design: design(a, flourish: bad, seed: seed)) { plainWins += 1 }
+                    }
+                }
+                comparisons += 1
+                if SignatureGenerator.quality(name, design: design(.initialSurname, flourish: 1, seed: seed))
+                    > SignatureGenerator.quality(name, design: design(.enclosed, flourish: 0, seed: seed)) { plainWins += 1 }
+            }
+        }
+        check(plainWins == comparisons, "a crossed-out or oval-wrapped design scores below the same plain design (\(plainWins)/\(comparisons))")
+        let pool = (0..<24).map { i -> UInt64 in
+            let archetypes = SignatureGenerator.Archetype.allCases
+            return design(archetypes[i % archetypes.count], flourish: (i * 7) % SignatureGenerator.flourishes, seed: UInt64(101 + i))
+        }
+        var offeredBad = 0
+        for name in names {
+            let offered = SignatureGenerator.bestDesigns(name, count: 3, form: .any, candidates: pool)
+            offeredBad += offered.filter { d in
+                let s = SignatureGenerator.style(d)
+                return [4, 5].contains(s.flourish) || s.archetype == .enclosed || SignatureGenerator.quality(name, design: d) < 0.6
+            }.count
+            check(offered.count == 3 && Set(offered).count == 3, "three different designs offered for \(name)")
+        }
+        check(offeredBad == 0, "best-of-pool never offers crossed-out, oval-wrapped or low-scoring designs (\(offeredBad) found)")
+        let chosen = design(.initialSurname, flourish: 3, seed: 77)
+        let near = SignatureGenerator.variations(of: chosen, count: 6)
+        check(near.count == 6 && near.allSatisfy { $0 & 0xFFFF == chosen & 0xFFFF && $0 != chosen },
+              "More Like This keeps the plan, flourish, capital and join and changes the hand")
+
+        // Paraph: same hand (seed, capital, join), initial and short scribble, plain finish; saved designs unchanged.
+        var shorter = 0
+        for (i, name) in names.enumerated() {
+            let d = pool[i * 3 % pool.count], p = SignatureGenerator.paraph(of: d)
+            let sd = SignatureGenerator.style(d), sp = SignatureGenerator.style(p)
+            check(p >> 16 == d >> 16 && sp.archetype == .initialsScribble && sp.capital == sd.capital && sp.join == sd.join
+                  && [1, 2, 3].contains(sp.flourish) && sp.slant == sd.slant && sp.xh == sd.xh
+                  && SignatureGenerator.isParaph(p) && !SignatureGenerator.isParaph(d) && SignatureGenerator.paraph(of: p) == p,
+                  "paraph of \(name) keeps the hand and capital and writes the initial and a short scribble")
+            if let full = SignatureGenerator.render(name, design: d, impression: 5, ink: .black),
+               let short = SignatureGenerator.render(name, design: p, impression: 5, ink: .black),
+               short.width < full.width || sd.archetype == .initialsScribble || sd.archetype == .capitalScribble || sd.archetype == .monogram {
+                shorter += 1
+            }
+        }
+        check(shorter == names.count, "paraphs are shorter than the full signatures (\(shorter)/\(names.count))")
+        check(SignatureGenerator.designSeeds(200, form: .any).allSatisfy { !SignatureGenerator.isParaph($0) },
+              "new signature designs never carry the paraph flag")
+        // Every insertion is a new copy: different pixels, the same size within a few per cent.
+        if let a = SignatureGenerator.render("Emma Clarke", design: chosen, impression: 1, ink: .black),
+           let b = SignatureGenerator.render("Emma Clarke", design: chosen, impression: 2, ink: .black) {
+            let same = a.dataProvider?.data as Data? == b.dataProvider?.data as Data?
+            check(!same && abs(Double(a.width) / Double(b.width) - 1) < 0.2, "two insertions of one signature differ slightly")
+        } else { check(false, "two insertions of one signature render") }
+
+        // Names in scripts the pen alphabet cannot write.
+        for name in ["Emma Clarke", "Анна Соколова", "Nguyễn Thu Hà", "Elif Yıldız", "Agnieszka Wójcik", "Kovács Eszter", "Łukasz Żak"] {
+            check(SignatureGenerator.script(of: name) == .writable && SignatureGenerator.writableName(name) == name, "\(name) is written as typed")
+        }
+        check(SignatureGenerator.writableName("林佳穎") == "Lin Jiaying" && SignatureGenerator.writableName("王伟") == "Wang Wei",
+              "Chinese names are written in pinyin, surname first and the given name as one word")
+        check(SignatureGenerator.personalSeals(for: "林佳穎").first?.values["chars"] == "林佳穎印"
+              && SignatureGenerator.personalSeals(for: "王伟").first?.values["chars"] == "王伟之印", "Chinese names get a personal seal")
+        check(SignatureGenerator.script(of: "中村 美咲") == .japanese && SignatureGenerator.writableName("中村 美咲") == nil
+              && SignatureGenerator.personalSeals(for: "中村 美咲").count == 3 && SignatureGenerator.script(of: "さくら") == .japanese,
+              "Japanese names get hanko seals and no guessed romanisation")
+        check(SignatureGenerator.writableName("김서연") == "Kim Seoyeon" && SignatureGenerator.writableName("박 지훈") == "Park Jihun"
+              && SignatureGenerator.personalSeals(for: "김서연").count == 2, "Korean names: customary surname spelling and personal seals")
+        check(SignatureGenerator.writableName("Ελένη Παππά") == "Eleni Pappa", "Greek names follow the UN/ELOT transliteration")
+        check(SignatureGenerator.writableName("สมชาย ใจดี") == nil && SignatureGenerator.writableName("محمد أحمد") == nil
+              && SignatureGenerator.personalSeals(for: "สมชาย ใจดี").isEmpty, "Thai and Arabic names are not guessed: the user types them in Latin")
+
         print("Signature regressions: \(checks - failures)/\(checks) passed")
         return failures == 0 ? 0 : 1
     }
