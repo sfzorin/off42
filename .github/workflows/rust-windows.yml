@@ -219,6 +219,7 @@ jobs:
           PDF42, DOC42 and XLS42 can export A4 label sheets and PNG barcodes in four formats.
           XLS42 can fill serial numbers with leading zeroes. All six apps share a local signature and stamp library and can
           generate handwritten signatures and stamp impressions. Insert Symbol or Code offers 97 product and conformity marks.
+          New in this preview: system-following dark mode, Learn Signature from Samples, and Print Layout with separate pages in DOC42.
 
           Extract the entire ZIP, including the \`ocr\` folder, and run the app you want. Keep \`pdfium.dll\` alongside \`PDF42.exe\`.
           The executables are unsigned. The Visual C++ runtime is linked into the apps; a separate
