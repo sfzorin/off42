@@ -8,10 +8,10 @@ use std::{
     },
 };
 
-pub(super) const COMMAND: u16 = 52;
+pub const COMMAND: u16 = 52;
 
 #[derive(Default)]
-pub(super) struct Removal {
+pub struct Removal {
     worker: Option<Worker>,
     message: String,
 }
@@ -29,14 +29,14 @@ impl Drop for Worker {
 }
 
 impl Removal {
-    pub(super) fn running(&self) -> bool {
+    pub fn running(&self) -> bool {
         self.worker.is_some()
     }
-    pub(super) fn status(&self) -> &str {
+    pub fn status(&self) -> &str {
         &self.message
     }
 
-    pub(super) fn start(&mut self, image: &ImageDocument, tolerance: u8) -> Result<(), String> {
+    pub fn start(&mut self, image: &ImageDocument, tolerance: u8) -> Result<(), String> {
         let source = image.capture_image();
         let snapshot = source.clone();
         let cancel = Arc::new(AtomicBool::new(false));
@@ -58,7 +58,7 @@ impl Removal {
         Ok(())
     }
 
-    pub(super) fn poll(&mut self, image: Option<&mut ImageDocument>) -> (bool, bool) {
+    pub fn poll(&mut self, image: Option<&mut ImageDocument>) -> (bool, bool) {
         let Some(worker) = self.worker.as_ref() else {
             return (false, false);
         };

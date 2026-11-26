@@ -7,6 +7,7 @@ edition = "2021"
 suite42-core = { path = "../../crates/suite42-core" }
 suite42-pdf-raster = { path = "../../crates/suite42-pdf-raster" }
 win42 = { path = "../../crates/win42" }
+suite42-app = { path = "../../crates/suite42-app" }
 img42-core = { path = "../../crates/img42-core" }
 image = { version = "0.25", default-features = false }
 tempfile = "3"

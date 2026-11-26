@@ -1,5 +1,5 @@
 use doc42_core::rich::{Block, FieldKind, Paragraph, Position, State};
-use win42::localization::text;
+use crate::localization::text;
 
 const LIMIT: usize = 1_000;
 const GROUPS: [&str; 8] = [
@@ -13,14 +13,14 @@ const GROUPS: [&str; 8] = [
     "Sections",
 ];
 
-pub(super) enum Target {
+pub enum Target {
     Text(Position, Position),
     Image(u64),
 }
 
-pub(super) struct Entry {
-    pub(super) label: String,
-    pub(super) target: Option<Target>,
+pub struct Entry {
+    pub label: String,
+    pub target: Option<Target>,
 }
 
 fn cleaned(value: &str) -> String {
@@ -80,7 +80,7 @@ fn add(group: &mut Vec<Entry>, label: String, target: Target) {
     }
 }
 
-pub(super) fn entries(state: &State) -> Vec<Entry> {
+pub fn entries(state: &State) -> Vec<Entry> {
     let mut groups: [Vec<Entry>; 8] = std::array::from_fn(|_| Vec::new());
     let (mut table_number, mut image_number) = (0, 0);
     for block in &state.blocks {

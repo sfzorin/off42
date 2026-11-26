@@ -5,7 +5,9 @@
 pub mod grid_axis;
 pub mod grid_geometry;
 pub mod host;
+pub mod image;
 pub mod clipboard_envelope;
+pub mod document;
 pub mod generator;
 pub mod input;
 pub mod label_preferences;

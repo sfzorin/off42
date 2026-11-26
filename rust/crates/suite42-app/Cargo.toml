@@ -13,6 +13,7 @@ doc42-core = { path = "../doc42-core" }
 xls42-core = { path = "../xls42-core" }
 scn42-core = { path = "../scn42-core" }
 ppt42-core = { path = "../ppt42-core" }
+img42-core = { path = "../img42-core" }
 chrono = "0.4"
 unicode-segmentation = "1"
 lopdf = "0.47"

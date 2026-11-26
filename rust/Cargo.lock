@@ -604,6 +604,7 @@ version = "0.1.0"
 dependencies = [
  "doc42-core",
  "image",
+ "suite42-app",
  "suite42-core",
  "win42",
 ]
@@ -1013,6 +1014,7 @@ version = "0.1.0"
 dependencies = [
  "image",
  "img42-core",
+ "suite42-app",
  "suite42-core",
  "suite42-pdf-raster",
  "tempfile",
@@ -2292,6 +2294,7 @@ dependencies = [
  "chrono",
  "doc42-core",
  "image",
+ "img42-core",
  "label42",
  "lopdf",
  "marks42",
