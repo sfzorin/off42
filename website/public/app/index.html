@@ -6,13 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="referrer" content="no-referrer" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#f7f6f2" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#161816" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1b1c1f" media="(prefers-color-scheme: dark)" />
     <title>OFF42</title>
     <link rel="icon" href="../favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
-    <script type="module" crossorigin src="./assets/index-CfLwPtys.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-IhM5srC3.css">
+    <script type="module" crossorigin src="./assets/index-A4UD3zvE.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BJA4SYh0.css">
   </head>
   <body>
     <!-- Language-neutral until the interface catalog is loaded: no English flashes before another language. -->
@@ -25,178 +25,166 @@
       </div>
     </div>
 
+    <!-- Every app is a screen: Documents, Spreadsheets, Presentations and PDF (home screen and editor) are built
+         by main.ts; the two tools below get their top bar from main.ts. -->
     <div id="app" class="app" hidden>
-      <aside class="sidebar">
-        <div class="sidebar-top">
-          <a class="brand" id="brand-link" href="../en/" dir="ltr" aria-label="OFF42"><span class="wordmark">off<span class="wm-n">42<svg class="wm-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1"/></svg></span></span><span class="brand-tag">web</span></a>
+      <section id="labels" class="screen tool-screen app-labels" hidden>
+        <div class="tabs" role="tablist" data-tabs="labels">
+          <button role="tab" data-pane="codes" data-i18n="labels.tab.codes">Codes</button>
+          <button role="tab" data-pane="sheets" data-i18n="labels.tab.sheets">Label sheets</button>
+          <button role="tab" data-pane="marks" data-i18n="marks.title">Product marks</button>
         </div>
-        <nav class="nav" id="nav" data-i18n-label="nav.label">
-          <button type="button" class="nav-item app-doc" data-section="documents"><span class="app-icon" data-icon="doc"></span><span data-i18n="nav.documents">Documents</span></button>
-          <button type="button" class="nav-item app-xls" data-section="spreadsheets"><span class="app-icon" data-icon="xls"></span><span data-i18n="nav.spreadsheets">Spreadsheets</span></button>
-          <button type="button" class="nav-item app-ppt" data-section="presentations"><span class="app-icon" data-icon="ppt"></span><span data-i18n="nav.presentations">Presentations</span></button>
-          <button type="button" class="nav-item app-pdf" data-section="pdf"><span class="app-icon" data-icon="pdf"></span><span>PDF</span></button>
-          <p class="nav-heading" data-i18n="nav.tools">Tools</p>
-          <button type="button" class="nav-item app-scn" data-section="labels"><span class="app-icon" data-icon="labels"></span><span data-i18n="tab.labels">Labels &amp; codes</span></button>
-          <button type="button" class="nav-item app-img" data-section="signatures"><span class="app-icon" data-icon="sign"></span><span data-i18n="tab.marks">Signatures &amp; stamps</span></button>
-        </nav>
-        <div class="recent" id="recent" hidden>
-          <p class="nav-heading" data-i18n="recent.title">Opened in this session</p>
-          <ul id="recent-list" class="recent-list"></ul>
-        </div>
-        <div class="sidebar-foot">
-          <p class="privacy-badge"><span data-icon="lock"></span><span data-i18n="app.local">Files stay on this device</span></p>
-          <label class="language"><span class="visually-hidden" data-i18n="app.language">Language</span>
-            <span class="lang-icon" data-icon="globe"></span><select id="language" data-i18n-label="app.language"></select></label>
-          <p class="foot-links"><a id="site-link" href="../en/" data-i18n="app.site">About OFF42</a> <span id="engine-version" class="engine-version"></span></p>
-        </div>
-      </aside>
 
-      <main class="main" id="main">
-        <!-- Document, spreadsheet, presentation and PDF sections are built by main.ts. -->
-
-        <section id="labels" class="section app-scn" hidden>
-          <header class="section-head">
-            <span class="app-icon large" data-icon="labels"></span>
-            <div class="section-title"><h1 data-i18n="tab.labels">Labels &amp; codes</h1><p data-i18n="labels.subtitle"></p></div>
-          </header>
-          <div class="segmented" role="tablist" data-tabs="labels">
-            <button role="tab" data-pane="codes" data-i18n="labels.tab.codes">Codes</button>
-            <button role="tab" data-pane="sheets" data-i18n="labels.tab.sheets">Label sheets</button>
-            <button role="tab" data-pane="marks" data-i18n="marks.title">Product marks</button>
-          </div>
-
-          <div class="pane" data-pane="codes">
-            <div class="workbench">
-              <div class="card form">
-                <div class="field"><span class="field-label" data-i18n="code.type">Type</span>
-                  <div class="chips" id="code-format" role="radiogroup">
-                    <button role="radio" data-value="qr" data-i18n="code.qr">QR code</button>
-                    <button role="radio" data-value="datamatrix">Data Matrix</button>
-                    <button role="radio" data-value="code128">Code 128</button>
-                    <button role="radio" data-value="aztec">Aztec</button>
-                  </div>
-                </div>
-                <label class="field"><span class="field-label" data-i18n="code.content">Content</span>
-                  <textarea id="code-value" rows="3">https://off42.cc</textarea></label>
-                <label class="field"><span class="field-label"><span data-i18n="common.widthMm">Width, mm</span> <output id="code-width-out"></output></span>
-                  <input id="code-width" type="range" min="10" max="120" step="1" value="40" /></label>
-                <label class="check"><input id="code-caption" type="checkbox" /> <span data-i18n="code.caption">Print the content underneath (SVG)</span></label>
-              </div>
-              <div class="card stage-card">
-                <div class="stage paper-stage" id="code-preview" aria-live="polite"></div>
-                <p class="stage-caption" id="code-size"></p>
-                <div class="actions">
-                  <button id="code-png" class="primary"><span data-icon="download"></span><span data-i18n="common.downloadPng">Download PNG</span></button>
-                  <button id="code-svg"><span data-icon="download"></span><span data-i18n="common.downloadSvg">Download SVG</span></button>
-                </div>
+        <div class="pane split" data-pane="codes">
+          <div class="settings">
+            <div class="field"><span class="field-label" data-i18n="code.type">Type</span>
+              <div class="chips" id="code-format" role="radiogroup">
+                <button role="radio" data-value="qr" data-i18n="code.qr">QR code</button>
+                <button role="radio" data-value="datamatrix">Data Matrix</button>
+                <button role="radio" data-value="code128">Code 128</button>
+                <button role="radio" data-value="aztec">Aztec</button>
               </div>
             </div>
+            <label class="field"><span class="field-label" data-i18n="code.content">Content</span>
+              <textarea id="code-value" rows="3">https://off42.cc</textarea></label>
+            <label class="field"><span class="field-label"><span data-i18n="common.widthMm">Width, mm</span> <output id="code-width-out"></output></span>
+              <input id="code-width" type="range" min="10" max="120" step="1" value="40" /></label>
+            <label class="check"><input id="code-caption" type="checkbox" /> <span data-i18n="code.caption">Print the content underneath (SVG)</span></label>
           </div>
+          <div class="canvas tool-canvas">
+            <div class="paper-stage" id="code-preview" aria-live="polite"></div>
+            <p class="stage-caption" id="code-size"></p>
+            <div class="actions center">
+              <button id="code-png" class="pill-button"><span data-icon="download"></span><span data-i18n="common.downloadPng">Download PNG</span></button>
+              <button id="code-svg" class="outline-button"><span data-icon="download"></span><span data-i18n="common.downloadSvg">Download SVG</span></button>
+            </div>
+          </div>
+        </div>
 
-          <div class="pane" data-pane="sheets" hidden>
-            <div class="workbench">
-              <div class="card form">
-                <label class="field"><span class="field-label" data-i18n="labels.stock">Label stock</span> <select id="sheet-stock"></select></label>
-                <div class="row" id="sheet-custom" hidden>
-                  <label class="field"><span class="field-label" data-i18n="common.widthMm">Width, mm</span> <input id="sheet-width" type="number" min="5" max="200" value="70" /></label>
-                  <label class="field"><span class="field-label" data-i18n="common.heightMm">Height, mm</span> <input id="sheet-height" type="number" min="5" max="280" value="37" /></label>
-                  <label class="field"><span class="field-label" data-i18n="labels.gapX">Gap X, mm</span> <input id="sheet-gapx" type="number" min="0" value="0" /></label>
-                  <label class="field"><span class="field-label" data-i18n="labels.gapY">Gap Y, mm</span> <input id="sheet-gapy" type="number" min="0" value="0" /></label>
-                </div>
-                <div class="row">
-                  <label class="field"><span class="field-label" data-i18n="labels.first">Start at label</span> <input id="sheet-first" type="number" min="1" value="1" /></label>
-                  <label class="field"><span class="field-label" data-i18n="labels.code">Code on each label</span>
-                    <select id="sheet-code">
-                      <option value="" data-i18n="labels.none">None</option>
-                      <option value="qr" selected data-i18n="code.qr">QR code</option>
-                      <option value="datamatrix">Data Matrix</option>
-                      <option value="code128">Code 128</option>
-                      <option value="aztec">Aztec</option>
-                    </select>
-                  </label>
-                </div>
-                <label class="field"><span class="field-label"><span data-i18n="labels.lines">Labels — one per line:</span> <code data-i18n="labels.linesFormat">text | code | copies</code></span>
-                  <textarea id="sheet-lines" rows="7">Box 1 | BOX-0001 | 2
+        <div class="pane split" data-pane="sheets" hidden>
+          <div class="settings">
+            <label class="field"><span class="field-label" data-i18n="labels.stock">Label stock</span> <select id="sheet-stock"></select></label>
+            <div class="row" id="sheet-custom" hidden>
+              <label class="field"><span class="field-label" data-i18n="common.widthMm">Width, mm</span> <input id="sheet-width" type="number" min="5" max="200" value="70" /></label>
+              <label class="field"><span class="field-label" data-i18n="common.heightMm">Height, mm</span> <input id="sheet-height" type="number" min="5" max="280" value="37" /></label>
+              <label class="field"><span class="field-label" data-i18n="labels.gapX">Gap X, mm</span> <input id="sheet-gapx" type="number" min="0" value="0" /></label>
+              <label class="field"><span class="field-label" data-i18n="labels.gapY">Gap Y, mm</span> <input id="sheet-gapy" type="number" min="0" value="0" /></label>
+            </div>
+            <div class="row">
+              <label class="field"><span class="field-label" data-i18n="labels.first">Start at label</span> <input id="sheet-first" type="number" min="1" value="1" /></label>
+              <label class="field"><span class="field-label" data-i18n="labels.code">Code on each label</span>
+                <select id="sheet-code">
+                  <option value="" data-i18n="labels.none">None</option>
+                  <option value="qr" selected data-i18n="code.qr">QR code</option>
+                  <option value="datamatrix">Data Matrix</option>
+                  <option value="code128">Code 128</option>
+                  <option value="aztec">Aztec</option>
+                </select>
+              </label>
+            </div>
+            <label class="field"><span class="field-label"><span data-i18n="labels.lines">Labels — one per line:</span> <code data-i18n="labels.linesFormat">text | code | copies</code></span>
+              <textarea id="sheet-lines" rows="7">Box 1 | BOX-0001 | 2
 Box 2 | BOX-0002
 Spare parts</textarea>
-                </label>
-              </div>
-              <div class="card stage-card">
-                <div class="stage sheet-stage"><div id="sheet-preview" class="sheet-preview" dir="ltr"></div></div>
-                <p class="stage-caption" id="sheet-summary"></p>
-                <div class="actions">
-                  <button id="sheet-pdf" class="primary"><span data-icon="download"></span><span data-i18n="labels.downloadSheet">Download PDF sheet</span></button>
-                </div>
-                <p class="status" id="sheet-status" role="status"></p>
-              </div>
-            </div>
+            </label>
           </div>
-
-          <div class="pane" data-pane="marks" hidden>
-            <p class="callout" data-i18n="marks.hint">Artwork only: placing a mark certifies nothing. Follow each mark's own rules of use.</p>
-            <div class="toolbar-row">
-              <label class="search"><span data-icon="search"></span><span class="visually-hidden" data-i18n="marks.search">Search</span>
-                <input id="marks-search" type="search" data-i18n-placeholder="marks.searchPlaceholder" /></label>
-              <span class="count" id="marks-count"></span>
+          <div class="canvas tool-canvas">
+            <div id="sheet-preview" class="sheet-preview" dir="ltr"></div>
+            <p class="stage-caption" id="sheet-summary"></p>
+            <div class="actions center">
+              <button id="sheet-pdf" class="pill-button"><span data-icon="download"></span><span data-i18n="labels.downloadSheet">Download PDF sheet</span></button>
             </div>
-            <div class="chips scroll" id="marks-category" role="radiogroup"></div>
-            <div class="marks-layout">
-              <div id="marks-grid" class="marks-grid"></div>
-              <aside id="marks-detail" class="card mark-detail" hidden></aside>
-            </div>
+            <p class="stage-caption" id="sheet-status" role="status"></p>
           </div>
-        </section>
+        </div>
 
-        <section id="signatures" class="section app-img" hidden>
-          <header class="section-head">
-            <span class="app-icon large" data-icon="sign"></span>
-            <div class="section-title"><h1 data-i18n="tab.marks">Signatures &amp; stamps</h1><p data-i18n="sig.subtitle"></p></div>
-          </header>
-          <div class="segmented" role="tablist" data-tabs="signatures">
-            <button role="tab" data-pane="signature" data-i18n="sig.title">Handwritten signature</button>
-            <button role="tab" data-pane="stamp" data-i18n="stamp.title">Stamp</button>
+        <div class="pane split" data-pane="marks" hidden>
+          <div class="settings">
+            <label class="search-field"><span data-icon="search"></span><span class="visually-hidden" data-i18n="marks.search">Search</span>
+              <input id="marks-search" type="search" data-i18n-placeholder="marks.searchPlaceholder" /></label>
+            <p class="count" id="marks-count"></p>
+            <div class="category-list" id="marks-category" role="radiogroup"></div>
+            <p class="note" data-i18n="marks.hint">Artwork only: placing a mark certifies nothing. Follow each mark's own rules of use.</p>
           </div>
+          <div class="canvas marks-canvas">
+            <div id="marks-grid" class="marks-grid"></div>
+          </div>
+          <aside id="marks-detail" class="side-panel mark-detail" hidden></aside>
+        </div>
+      </section>
 
-          <div class="pane" data-pane="signature">
-            <div class="card controls">
-              <label class="field grow"><span class="field-label" data-i18n="sig.name">Name</span> <input id="sig-name" value="Anna Smith" autocomplete="off" /></label>
-              <label class="field"><span class="field-label" data-i18n="sig.form">Form</span> <select id="sig-form"></select></label>
-              <div class="field"><span class="field-label" data-i18n="sig.pen">Pen</span><div class="chips" id="sig-pen" role="radiogroup"></div></div>
-              <div class="field"><span class="field-label" data-i18n="sig.ink">Ink</span><div class="swatches" id="sig-ink" role="radiogroup"></div></div>
-              <button id="sig-generate" class="primary"><span data-icon="refresh"></span><span data-i18n="sig.newVariants">New variants</span></button>
-            </div>
+      <section id="signatures" class="screen tool-screen app-signatures" hidden>
+        <div class="tabs" role="tablist" data-tabs="signatures">
+          <button role="tab" data-pane="signature" data-i18n="sig.title">Handwritten signature</button>
+          <button role="tab" data-pane="stamp" data-i18n="stamp.title">Stamp</button>
+        </div>
+
+        <div class="pane split" data-pane="signature">
+          <div class="settings">
+            <label class="field"><span class="field-label" data-i18n="sig.name">Name</span> <input id="sig-name" value="Anna Smith" autocomplete="off" /></label>
+            <label class="field"><span class="field-label" data-i18n="sig.form">Form</span> <select id="sig-form"></select></label>
+            <div class="field"><span class="field-label" data-i18n="sig.pen">Pen</span><div class="chips" id="sig-pen" role="radiogroup"></div></div>
+            <div class="field"><span class="field-label" data-i18n="sig.ink">Ink</span><div class="swatches" id="sig-ink" role="radiogroup"></div></div>
+            <div class="actions"><button id="sig-generate" class="pill-button"><span data-icon="refresh"></span><span data-i18n="sig.newVariants">New variants</span></button></div>
+          </div>
+          <div class="canvas variants-canvas">
             <div id="sig-results" class="variants" aria-live="polite"></div>
           </div>
+        </div>
 
-          <div class="pane" data-pane="stamp" hidden>
-            <div class="workbench">
-              <div class="card form">
-                <label class="field"><span class="field-label" data-i18n="stamp.template">Template</span> <select id="stamp-template"></select></label>
-                <div id="stamp-fields" class="form"></div>
-                <label class="field"><span class="field-label" data-i18n="sig.ink">Ink</span> <select id="stamp-ink"></select></label>
-                <p class="hint" data-i18n="stamp.fonts"></p>
-              </div>
-              <div class="card stage-card">
-                <div class="stage checker" id="stamp-preview" aria-live="polite"></div>
-                <div class="actions">
-                  <button id="stamp-again"><span data-icon="refresh"></span><span data-i18n="common.newImpression">New impression</span></button>
-                  <button id="stamp-download" class="primary"><span data-icon="download"></span><span data-i18n="common.downloadPng">Download PNG</span></button>
-                </div>
-              </div>
+        <div class="pane split" data-pane="stamp" hidden>
+          <div class="settings">
+            <label class="field"><span class="field-label" data-i18n="stamp.template">Template</span> <select id="stamp-template"></select></label>
+            <div id="stamp-fields" class="fields-stack"></div>
+            <label class="field"><span class="field-label" data-i18n="sig.ink">Ink</span> <select id="stamp-ink"></select></label>
+            <p class="note" data-i18n="stamp.fonts"></p>
+          </div>
+          <div class="canvas tool-canvas">
+            <div class="paper-stage checker" id="stamp-preview" aria-live="polite"></div>
+            <div class="actions center">
+              <button id="stamp-again" class="outline-button"><span data-icon="refresh"></span><span data-i18n="common.newImpression">New impression</span></button>
+              <button id="stamp-download" class="pill-button"><span data-icon="download"></span><span data-i18n="common.downloadPng">Download PNG</span></button>
             </div>
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
     </div>
 
-    <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
-    <dialog id="confirm" class="confirm">
-      <p id="confirm-text"></p>
-      <div class="actions end">
-        <button id="confirm-cancel" data-i18n="common.cancel">Cancel</button>
-        <button class="primary" id="confirm-ok" data-i18n="common.convertAnyway">Convert anyway</button>
+    <dialog id="drawer" class="drawer" data-i18n-label="drawer.label">
+      <div class="drawer-head"><span class="wordmark" dir="ltr" aria-label="OFF42">off<span class="wm-n">42<svg class="wm-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1"/></svg></span></span></div>
+      <nav class="drawer-apps" id="drawer-apps"></nav>
+      <div class="drawer-sep"></div>
+      <a class="drawer-link" id="drawer-download" href="../en/download/"><span data-icon="download"></span><span data-i18n="drawer.download">Download for Mac, Windows, Linux</span></a>
+      <div class="drawer-foot">
+        <p><a id="drawer-about" href="../en/about/" data-i18n="app.site">About OFF42</a> · <a id="drawer-privacy" href="../en/privacy/" data-i18n="drawer.privacy">Privacy</a></p>
+        <p id="engine-version" class="engine-version"></p>
       </div>
     </dialog>
+
+    <dialog id="about" class="dialog">
+      <div class="dialog-head"><span class="wordmark" dir="ltr" aria-label="OFF42">off<span class="wm-n">42<svg class="wm-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1"/></svg></span></span></div>
+      <p id="about-version" class="muted"></p>
+      <p class="about-privacy"><span data-icon="lock"></span><span data-i18n="home.privacy"></span></p>
+      <p class="about-links"><a id="about-site" href="../en/" target="_blank" rel="noopener" data-i18n="menu.website">OFF42 website</a> · <a id="about-privacy-link" href="../en/privacy/" target="_blank" rel="noopener" data-i18n="drawer.privacy">Privacy</a> · <a id="about-download" href="../en/download/" target="_blank" rel="noopener" data-i18n="drawer.download">Download for Mac, Windows, Linux</a></p>
+      <div class="actions end"><button class="text-button" data-close data-i18n="files.close">Close</button></div>
+    </dialog>
+
+    <dialog id="stats" class="dialog">
+      <h2 data-i18n="stats.title">Document statistics</h2>
+      <dl id="stats-list" class="stats-list"></dl>
+      <div class="actions end"><button class="text-button" data-close data-i18n="files.close">Close</button></div>
+    </dialog>
+
+    <dialog id="confirm" class="dialog">
+      <p id="confirm-text"></p>
+      <div class="actions end">
+        <button id="confirm-cancel" class="text-button" data-i18n="common.cancel">Cancel</button>
+        <button class="pill-button" id="confirm-ok" data-i18n="common.convertAnyway">Convert anyway</button>
+      </div>
+    </dialog>
+
+    <div id="snackbar" class="snackbar" role="status" aria-live="polite" hidden></div>
+    <div id="print-root" class="print-root"></div>
     <div id="drop-overlay" class="drop-overlay" hidden><div><span data-icon="open"></span><p data-i18n="files.dropAnywhere">Drop to open</p></div></div>
     <noscript><p class="noscript">OFF42 needs JavaScript and WebAssembly.</p></noscript>
   </body>
