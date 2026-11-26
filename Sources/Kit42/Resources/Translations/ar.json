@@ -3492,5 +3492,11 @@
   "“%@” is saved and also copied to the clipboard (some authorities ask you to paste it). When the certificate is issued, click Import Certificate.": "حُفظ «%@» ونُسخ أيضًا إلى الحافظة (تطلب بعض الجهات لصقه). عند إصدار الشهادة، انقر «استيراد شهادة».",
   "“%@” was changed after signing": "تغيّر «%@» بعد التوقيع",
   "“Numbered, bound and sealed: N sheets” at the bottom of the last page, with a stamp over the signature line. For two-sided printing, enter the number of sheets rather than pages.": "«مرقّم ومُخاط ومختوم: N ورقة» أسفل الصفحة الأخيرة، مع ختم فوق سطر التوقيع. للطباعة على الوجهين، أدخل عدد الأوراق بدلًا من عدد الصفحات.",
-  "“Numbered, bound and sealed” with a stamp on the last page": "«مرقّم ومُخاط ومختوم» مع ختم على الصفحة الأخيرة"
+  "“Numbered, bound and sealed” with a stamp on the last page": "«مرقّم ومُخاط ومختوم» مع ختم على الصفحة الأخيرة",
+  "%@ quit while you had unsaved changes. Restore them?": "تم إنهاء %@ مع وجود تغييرات غير محفوظة. هل تريد استعادتها؟",
+  "Discard": "تجاهل",
+  "Recovered": "مُستعاد",
+  "Recovered Changes": "التغييرات المستعادة",
+  "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "يُفتح العمل المستعاد على أنه غير محفوظ. إذا تجاهلته، فلن يمكن استعادته لاحقًا.",
+  "Restore": "استعادة"
 }

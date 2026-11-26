@@ -36,7 +36,7 @@ public final class RecoveryJournal {
     static let fileExtension = "k42recovery"
 
     public let directory: URL
-    let queue = DispatchQueue(label: "Kit42.RecoveryJournal", qos: .utility)
+    let queue = DispatchQueue(label: "kit42.recoveryjournal", qos: .utility)
     /// Called on the main thread when a write or clear fails (the previous record stays intact).
     public var onError: ((Error) -> Void)?
 

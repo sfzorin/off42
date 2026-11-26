@@ -130,7 +130,7 @@ enum ImageRecoverySelfTest {
 
         // A restored record is adopted: the next write replaces it, saving removes it.
         let previous = UUID()
-        try? journal.write(id: previous, RecoveryPayload(title: "previous", manifest: Data("{}".utf8)))
+        try? journal.write(id: previous, RecoveryPayload(title: String("previous"), manifest: Data("{}".utf8)))
         saver.adopt(previous)
         saver.flush(); journal.waitUntilIdle()
         check(recordFiles() == ["\(previous.uuidString).k42recovery"] && journal.scan().records.first?.payload.title == "photo.tiff",

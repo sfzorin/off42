@@ -3492,5 +3492,11 @@
   "“%@” is saved and also copied to the clipboard (some authorities ask you to paste it). When the certificate is issued, click Import Certificate.": "“%@” telah disimpan dan juga disalin ke papan klip (beberapa otoritas meminta Anda menempelkannya). Setelah sertifikat diterbitkan, klik Impor Sertifikat.",
   "“%@” was changed after signing": "“%@” diubah setelah ditandatangani",
   "“Numbered, bound and sealed: N sheets” at the bottom of the last page, with a stamp over the signature line. For two-sided printing, enter the number of sheets rather than pages.": "“Diberi nomor, dijilid, dan dicap: N lembar” di bagian bawah halaman terakhir, dengan cap di atas garis tanda tangan. Untuk pencetakan dua sisi, masukkan jumlah lembar, bukan halaman.",
-  "“Numbered, bound and sealed” with a stamp on the last page": "“Diberi nomor, dijilid, dan dicap” dengan cap di halaman terakhir"
+  "“Numbered, bound and sealed” with a stamp on the last page": "“Diberi nomor, dijilid, dan dicap” dengan cap di halaman terakhir",
+  "%@ quit while you had unsaved changes. Restore them?": "%@ keluar saat ada perubahan yang belum disimpan. Pulihkan?",
+  "Discard": "Buang",
+  "Recovered": "Dipulihkan",
+  "Recovered Changes": "Perubahan yang Dipulihkan",
+  "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "Pekerjaan yang dipulihkan dibuka sebagai belum disimpan. Jika Anda membuangnya, pekerjaan itu tidak dapat dipulihkan nanti.",
+  "Restore": "Pulihkan"
 }

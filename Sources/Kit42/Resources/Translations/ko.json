@@ -3492,5 +3492,11 @@
   "“%@” is saved and also copied to the clipboard (some authorities ask you to paste it). When the certificate is issued, click Import Certificate.": "“%@”을(를) 저장하고 클립보드에도 복사했습니다(일부 인증 기관은 붙여넣기를 요구합니다). 인증서가 발급되면 인증서 가져오기를 클릭하세요.",
   "“%@” was changed after signing": "서명 후 “%@”이(가) 변경됨",
   "“Numbered, bound and sealed: N sheets” at the bottom of the last page, with a stamp over the signature line. For two-sided printing, enter the number of sheets rather than pages.": "마지막 페이지 하단에 '번호 매김, 철함 및 날인: N매'를 넣고 서명란 위에 도장을 찍습니다. 양면 인쇄 시에는 페이지 수가 아닌 매수를 입력하세요.",
-  "“Numbered, bound and sealed” with a stamp on the last page": "마지막 페이지에 도장과 함께 '번호 매김, 철함 및 날인' 넣기"
+  "“Numbered, bound and sealed” with a stamp on the last page": "마지막 페이지에 도장과 함께 '번호 매김, 철함 및 날인' 넣기",
+  "%@ quit while you had unsaved changes. Restore them?": "%@이(가) 저장되지 않은 변경 사항이 있는 상태로 종료되었습니다. 복원하시겠습니까?",
+  "Discard": "버리기",
+  "Recovered": "복구됨",
+  "Recovered Changes": "복구된 변경 사항",
+  "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "복구된 작업은 저장되지 않은 상태로 열립니다. 버리면 나중에 복구할 수 없습니다.",
+  "Restore": "복원"
 }

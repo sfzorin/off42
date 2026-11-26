@@ -3492,5 +3492,11 @@
   "“%@” is saved and also copied to the clipboard (some authorities ask you to paste it). When the certificate is issued, click Import Certificate.": "A(z) „%@” mentve, és a vágólapra is másolva (egyes szolgáltatók beillesztést kérnek). A tanúsítvány kiadása után kattintson a Tanúsítvány importálása gombra.",
   "“%@” was changed after signing": "A(z) „%@” aláírás után módosult",
   "“Numbered, bound and sealed: N sheets” at the bottom of the last page, with a stamp over the signature line. For two-sided printing, enter the number of sheets rather than pages.": "„Számozva, összefűzve és lepecsételve: N lap” az utolsó oldal alján, az aláírási sorra helyezett bélyegzővel. Kétoldalas nyomtatásnál a lapok számát adja meg, ne az oldalakét.",
-  "“Numbered, bound and sealed” with a stamp on the last page": "„Számozva, összefűzve és lepecsételve” bélyegzővel az utolsó oldalon"
+  "“Numbered, bound and sealed” with a stamp on the last page": "„Számozva, összefűzve és lepecsételve” bélyegzővel az utolsó oldalon",
+  "%@ quit while you had unsaved changes. Restore them?": "A(z) %@ mentetlen módosításokkal lépett ki. Visszaállítja őket?",
+  "Discard": "Elvetés",
+  "Recovered": "Helyreállítva",
+  "Recovered Changes": "Helyreállított módosítások",
+  "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "A helyreállított munka mentetlenként nyílik meg. Ha elveti, később nem állítható helyre.",
+  "Restore": "Visszaállítás"
 }

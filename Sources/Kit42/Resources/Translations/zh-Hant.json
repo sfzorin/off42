@@ -3492,5 +3492,11 @@
   "“%@” is saved and also copied to the clipboard (some authorities ask you to paste it). When the certificate is issued, click Import Certificate.": "“%@”已儲存，並已複製到剪貼板（部分憑證授權單位要求貼上）。憑證簽發後，請按一下“匯入憑證”。",
   "“%@” was changed after signing": "“%@”在簽名後被變更",
   "“Numbered, bound and sealed: N sheets” at the bottom of the last page, with a stamp over the signature line. For two-sided printing, enter the number of sheets rather than pages.": "在最後一頁底部加入“已編號、裝訂並蓋章：共 N 張”，並在簽名行上加蓋印章。雙面列印時，請輸入張數而非頁數。",
-  "“Numbered, bound and sealed” with a stamp on the last page": "最後一頁上帶印章的“已編號、裝訂並蓋章”"
+  "“Numbered, bound and sealed” with a stamp on the last page": "最後一頁上帶印章的“已編號、裝訂並蓋章”",
+  "%@ quit while you had unsaved changes. Restore them?": "%@ 結束時有未儲存的變更。要回復嗎？",
+  "Discard": "丟棄",
+  "Recovered": "已回復",
+  "Recovered Changes": "已回復的變更",
+  "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "回復的內容會以未儲存狀態開啟。若丟棄，之後將無法回復。",
+  "Restore": "回復"
 }

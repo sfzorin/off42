@@ -3492,5 +3492,11 @@
   "“%@” is saved and also copied to the clipboard (some authorities ask you to paste it). When the certificate is issued, click Import Certificate.": "「%@」を保存し、クリップボードにもコピーしました（貼り付けを求める認証局もあります）。証明書が発行されたら「証明書を読み込む」をクリックしてください。",
   "“%@” was changed after signing": "「%@」は署名後に変更されました",
   "“Numbered, bound and sealed: N sheets” at the bottom of the last page, with a stamp over the signature line. For two-sided printing, enter the number of sheets rather than pages.": "最後のページの下部に「番号付け・綴じ・押印済み：N 枚」を入れ、署名欄に印影を重ねます。両面印刷の場合は、ページ数ではなく用紙の枚数を入力してください。",
-  "“Numbered, bound and sealed” with a stamp on the last page": "最後のページに印影付きの「番号付け・綴じ・押印済み」"
+  "“Numbered, bound and sealed” with a stamp on the last page": "最後のページに印影付きの「番号付け・綴じ・押印済み」",
+  "%@ quit while you had unsaved changes. Restore them?": "%@は未保存の変更がある状態で終了しました。復元しますか？",
+  "Discard": "破棄",
+  "Recovered": "復元済み",
+  "Recovered Changes": "復元された変更",
+  "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "復元した作業は未保存として開きます。破棄すると、後で復元することはできません。",
+  "Restore": "復元"
 }

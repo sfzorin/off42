@@ -3492,5 +3492,11 @@
   "“%@” is saved and also copied to the clipboard (some authorities ask you to paste it). When the certificate is issued, click Import Certificate.": "« %@ » est enregistré et également copié dans le presse-papiers (certaines autorités demandent de la coller). Une fois le certificat délivré, cliquez sur « Importer un certificat ».",
   "“%@” was changed after signing": "« %@ » a été modifié après la signature",
   "“Numbered, bound and sealed: N sheets” at the bottom of the last page, with a stamp over the signature line. For two-sided printing, enter the number of sheets rather than pages.": "« Numéroté, relié et scellé : N feuillets » en bas de la dernière page, avec un tampon sur la ligne de signature. Pour une impression recto verso, indiquez le nombre de feuillets plutôt que de pages.",
-  "“Numbered, bound and sealed” with a stamp on the last page": "« Numéroté, relié et scellé » avec un tampon sur la dernière page"
+  "“Numbered, bound and sealed” with a stamp on the last page": "« Numéroté, relié et scellé » avec un tampon sur la dernière page",
+  "%@ quit while you had unsaved changes. Restore them?": "%@ a été quitté alors que des modifications n’étaient pas enregistrées. Les restaurer ?",
+  "Discard": "Supprimer",
+  "Recovered": "Récupéré",
+  "Recovered Changes": "Modifications récupérées",
+  "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "Le travail récupéré s’ouvre comme non enregistré. Si vous le supprimez, il ne pourra plus être récupéré.",
+  "Restore": "Restaurer"
 }

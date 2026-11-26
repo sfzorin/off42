@@ -3492,5 +3492,11 @@
   "“%@” is saved and also copied to the clipboard (some authorities ask you to paste it). When the certificate is issued, click Import Certificate.": "Plik „%@” został zapisany i skopiowany do schowka (niektóre urzędy proszą o jego wklejenie). Gdy certyfikat zostanie wydany, kliknij Importuj certyfikat.",
   "“%@” was changed after signing": "„%@” zmieniono po podpisaniu",
   "“Numbered, bound and sealed: N sheets” at the bottom of the last page, with a stamp over the signature line. For two-sided printing, enter the number of sheets rather than pages.": "„Ponumerowano, zszyto i opieczętowano: N arkuszy” u dołu ostatniej strony, z pieczęcią na linii podpisu. Przy druku dwustronnym podaj liczbę arkuszy, a nie stron.",
-  "“Numbered, bound and sealed” with a stamp on the last page": "„Ponumerowano, zszyto i opieczętowano” z pieczęcią na ostatniej stronie"
+  "“Numbered, bound and sealed” with a stamp on the last page": "„Ponumerowano, zszyto i opieczętowano” z pieczęcią na ostatniej stronie",
+  "%@ quit while you had unsaved changes. Restore them?": "Aplikacja %@ została zamknięta z niezapisanymi zmianami. Przywrócić je?",
+  "Discard": "Odrzuć",
+  "Recovered": "Odzyskane",
+  "Recovered Changes": "Odzyskane zmiany",
+  "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "Odzyskana praca otworzy się jako niezapisana. Jeśli ją odrzucisz, nie będzie można jej później odzyskać.",
+  "Restore": "Przywróć"
 }
