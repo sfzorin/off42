@@ -625,8 +625,8 @@ mod label_preferences;
 #[cfg(any(windows, test))]
 mod marks;
 pub mod generator;
-#[cfg(any(windows, test))]
-mod recents;
+#[cfg(windows)]
+use suite42_app::recents;
 #[cfg(any(windows, test))]
 mod window_layout;
 #[cfg(windows)]

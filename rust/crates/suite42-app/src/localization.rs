@@ -185,12 +185,7 @@ struct Settings {
     language: String,
 }
 fn settings_path() -> Option<PathBuf> {
-    std::env::var_os("LOCALAPPDATA").map(|path| {
-        PathBuf::from(path)
-            .join("off42")
-            .join("Preferences")
-            .join("language.json")
-    })
+    crate::storage::local_data().map(|path| path.join("Preferences").join("language.json"))
 }
 fn read_settings() -> Option<Language> {
     read_settings_at(&settings_path()?)

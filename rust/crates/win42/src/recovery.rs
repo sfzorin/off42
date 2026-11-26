@@ -2,9 +2,5 @@
 pub use suite42_app::recovery::*;
 use std::path::PathBuf;
 pub fn directory() -> Option<PathBuf> {
-    Some(
-        PathBuf::from(std::env::var_os("LOCALAPPDATA")?)
-            .join("off42")
-            .join("Recovery"),
-    )
+    Some(suite42_app::storage::local_data()?.join("Recovery"))
 }

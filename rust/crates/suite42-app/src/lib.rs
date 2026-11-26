@@ -5,7 +5,9 @@
 pub mod grid_axis;
 pub mod grid_geometry;
 pub mod localization;
+pub mod recents;
 pub mod recovery;
+pub mod storage;
 pub mod sparse_table;
 pub use grid_axis::GridAxis;
 pub use grid_geometry::GridRange;

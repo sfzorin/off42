@@ -4,7 +4,7 @@ use std::{
     io::Read,
     path::{Path, PathBuf},
 };
-pub(crate) const LIMIT: usize = 10;
+pub const LIMIT: usize = 10;
 const MAX_BYTES: u64 = 512 * 1024;
 #[derive(Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -17,8 +17,7 @@ fn location(app: &str) -> Option<PathBuf> {
         return None;
     }
     Some(
-        PathBuf::from(std::env::var_os("LOCALAPPDATA")?)
-            .join("off42")
+        crate::storage::local_data()?
             .join("Recent Documents")
             .join(format!("{app}.json")),
     )
@@ -46,7 +45,7 @@ fn read_at(location: &Path) -> Vec<PathBuf> {
     }
     data.paths
 }
-pub(crate) fn load(app: &str) -> Vec<PathBuf> {
+pub fn load(app: &str) -> Vec<PathBuf> {
     location(app).map(|p| read_at(&p)).unwrap_or_default()
 }
 fn write_at(location: &Path, paths: Vec<PathBuf>) -> Result<(), String> {
@@ -97,13 +96,13 @@ fn remember_at(location: &Path, path: &Path) -> Result<(), String> {
     paths.truncate(LIMIT);
     write_at(location, paths)
 }
-pub(crate) fn remember(app: &str, path: &Path) -> Result<(), String> {
+pub fn remember(app: &str, path: &Path) -> Result<(), String> {
     remember_at(
         &location(app).ok_or("Recent documents directory unavailable")?,
         path,
     )
 }
-pub(crate) fn clear(app: &str) -> Result<(), String> {
+pub fn clear(app: &str) -> Result<(), String> {
     write_at(
         &location(app).ok_or("Recent documents directory unavailable")?,
         vec![],
