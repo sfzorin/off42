@@ -17,7 +17,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.core.content.FileProvider
-import androidx.test.core.app.takeScreenshot
 import androidx.test.core.graphics.writeToTestStorage
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.intent.Intents.intending
@@ -93,7 +92,8 @@ class AppTest {
     private fun screenshot(name: String) {
         compose.waitForIdle()
         Thread.sleep(600)
-        takeScreenshot().writeToTestStorage("$device-$name")
+        // The system screenshot (SurfaceFlinger), so nothing in the app is drawn on the test thread.
+        instrumentation.uiAutomation.takeScreenshot()?.writeToTestStorage("$device-$name")
     }
 
     /** Answers the next ACTION_CREATE_DOCUMENT with a file in the app's cache and returns that file. */
