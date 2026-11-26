@@ -51,13 +51,13 @@ impl SlideOutput {
         Ok(Self { layout, hidden: hidden == "Yes" })
     }
 
-    fn request(self, title: &'static str) -> win42::InputRequest {
+    fn request(self, title: &'static str) -> suite42_app::InputRequest {
         let (layout, count) = match self.layout {
             SlideLayout::Slides => (PDF_LAYOUTS[0], 6),
             SlideLayout::Notes => (PDF_LAYOUTS[1], 6),
             SlideLayout::Handouts(count) => (PDF_LAYOUTS[2], count),
         };
-        win42::InputRequest {
+        suite42_app::InputRequest {
             title,
             fields: vec![
                 ("Layout", layout.into()),
@@ -78,27 +78,27 @@ fn decode_image(bytes: &[u8]) -> Result<image::DynamicImage, String> {
     reader.limits(limits);
     reader.decode().map_err(|e| e.to_string())
 }
-fn object_point(o: &ppt42_core::SlideObject, x: f64, y: f64) -> win42::Point {
+fn object_point(o: &ppt42_core::SlideObject, x: f64, y: f64) -> suite42_app::Point {
     let cx = o.x + o.width / 2.0;
     let cy = o.y + o.height / 2.0;
     let (sin, cos) = o.rotation_degrees.rem_euclid(360.0).to_radians().sin_cos();
-    win42::Point {
+    suite42_app::Point {
         x: cx + cos * (x - cx) - sin * (y - cy),
         y: cy + sin * (x - cx) + cos * (y - cy),
     }
 }
 
-fn object_local_point(o: &ppt42_core::SlideObject, p: win42::Point) -> win42::Point {
+fn object_local_point(o: &ppt42_core::SlideObject, p: suite42_app::Point) -> suite42_app::Point {
     let cx = o.x + o.width / 2.0;
     let cy = o.y + o.height / 2.0;
     let (sin, cos) = o.rotation_degrees.rem_euclid(360.0).to_radians().sin_cos();
-    win42::Point {
+    suite42_app::Point {
         x: cx + cos * (p.x - cx) + sin * (p.y - cy),
         y: cy - sin * (p.x - cx) + cos * (p.y - cy),
     }
 }
 
-fn resize_object(o: &mut ppt42_core::SlideObject, start: win42::Point, end: win42::Point) {
+fn resize_object(o: &mut ppt42_core::SlideObject, start: suite42_app::Point, end: suite42_app::Point) {
     let (sin, cos) = o.rotation_degrees.rem_euclid(360.0).to_radians().sin_cos();
     let (dx, dy) = (end.x - start.x, end.y - start.y);
     let width = (o.width + cos * dx + sin * dy).max(1.0);
@@ -109,7 +109,7 @@ fn resize_object(o: &mut ppt42_core::SlideObject, start: win42::Point, end: win4
     o.width = width;
     o.height = height;
 }
-fn adjust_shape_handle(object: &mut ppt42_core::SlideObject, index: usize, point: win42::Point) {
+fn adjust_shape_handle(object: &mut ppt42_core::SlideObject, index: usize, point: suite42_app::Point) {
     let point = object_local_point(object, point);
     if let Some(preset) = &object.preset {
         object.preset = Some(preset.drag_handle(
@@ -132,7 +132,7 @@ struct Ppt {
     selected_object: Option<u64>,
     selected_objects: Vec<u64>,
     drag: Option<Drag>,
-    rubber_band: Option<(win42::Point, win42::Point, bool)>,
+    rubber_band: Option<(suite42_app::Point, suite42_app::Point, bool)>,
     presenting: bool,
     show: Option<Show>,
     print_layout: SlideOutput,
@@ -194,8 +194,8 @@ impl Show {
     }
 }
 enum Drag {
-    Move(win42::Point, Vec<ppt42_core::SlideObject>),
-    Resize(win42::Point, ppt42_core::SlideObject),
+    Move(suite42_app::Point, Vec<ppt42_core::SlideObject>),
+    Resize(suite42_app::Point, ppt42_core::SlideObject),
     ShapeHandle(usize, ppt42_core::SlideObject),
 }
 impl Ppt {
@@ -276,7 +276,7 @@ impl Ppt {
             .map_err(|e| e.to_string())?;
         self.save_rich_document(&doc)
     }
-    fn format_rich_font(&mut self, font: win42::FontChoice) -> Result<(), String> {
+    fn format_rich_font(&mut self, font: suite42_app::FontChoice) -> Result<(), String> {
         let object = self.rich_object()?;
         let mut doc = rich::document(&object)?;
         let (p, range, mut style, selection) = rich::selection_style(&doc, self.rich_selection)?;
@@ -428,10 +428,10 @@ impl Ppt {
     }
     fn show_event(
         &mut self,
-        event: win42::CanvasEvent,
+        event: suite42_app::CanvasEvent,
         now: std::time::Instant,
     ) -> Result<(), String> {
-        use win42::CanvasEvent::*;
+        use suite42_app::CanvasEvent::*;
         if let Some(overview) = self.show.as_mut().and_then(|show| show.overview.take()) {
             return self.overview_event(overview, event, now);
         }
@@ -548,7 +548,7 @@ impl Ppt {
         })
     }
     fn overview_event(
-        &mut self, mut overview: show_overview::Overview, event: win42::CanvasEvent,
+        &mut self, mut overview: show_overview::Overview, event: suite42_app::CanvasEvent,
         now: std::time::Instant,
     ) -> Result<(), String> {
         use show_overview::Outcome;
@@ -592,7 +592,7 @@ impl Ppt {
         }
         ids
     }
-    fn pointer_down(&mut self, p: win42::Point, add: bool) {
+    fn pointer_down(&mut self, p: suite42_app::Point, add: bool) {
         let selected = self.selection();
         if !add && selected.len() == 1 {
             if let Some(object) = self.deck.slides()[self.deck.current()]
@@ -694,7 +694,7 @@ impl Ppt {
             Some(self.pptx_source.as_ref().map(|source| source.size_points()).unwrap_or((720.0, 405.0)))
         }
     }
-    fn scene_for(&self, index: usize, show_selection: bool) -> Option<win42::CanvasScene> {
+    fn scene_for(&self, index: usize, show_selection: bool) -> Option<suite42_app::CanvasScene> {
         self.scene_with(index, show_selection, None)
     }
     /// Animation states of the current slide while presenting.
@@ -716,8 +716,8 @@ impl Ppt {
         index: usize,
         show_selection: bool,
         visuals: Option<&std::collections::HashMap<u64, ppt42_core::animation::Visual>>,
-    ) -> Option<win42::CanvasScene> {
-        use win42::{CanvasScene, Point, SceneItem};
+    ) -> Option<suite42_app::CanvasScene> {
+        use suite42_app::{CanvasScene, Point, SceneItem};
         let slide = &self.deck.slides()[index];
         let theme = self.deck.theme();
         let background = theme
@@ -748,14 +748,14 @@ impl Ppt {
                 height: 40.0,
                 text: slide.title.clone(),
                 color: text_color,
-                font: win42::SceneFont {
+                font: suite42_app::SceneFont {
                     family: title_font.into(),
                     points: 28.0,
                     bold: true,
                     italic: false,
                     underline: false,
                 },
-                align: win42::TextAlign::Left,
+                align: suite42_app::TextAlign::Left,
                 wrap: true,
             },
             SceneItem::TextBox {
@@ -765,14 +765,14 @@ impl Ppt {
                 height: 290.0,
                 text: slide.body.clone(),
                 color: text_color,
-                font: win42::SceneFont {
+                font: suite42_app::SceneFont {
                     family: body_font.into(),
                     points: 18.0,
                     bold: false,
                     italic: false,
                     underline: false,
                 },
-                align: win42::TextAlign::Left,
+                align: suite42_app::TextAlign::Left,
                 wrap: true,
             },
         ];
@@ -846,16 +846,16 @@ impl Ppt {
                                     .iter()
                                     .map(|s| match *s {
                                         ppt42_core::geometry::Segment::Move(a) => {
-                                            win42::PathSegment::Move(p(a))
+                                            suite42_app::PathSegment::Move(p(a))
                                         }
                                         ppt42_core::geometry::Segment::Line(a) => {
-                                            win42::PathSegment::Line(p(a))
+                                            suite42_app::PathSegment::Line(p(a))
                                         }
                                         ppt42_core::geometry::Segment::Cubic(a, b, c) => {
-                                            win42::PathSegment::Cubic(p(a), p(b), p(c))
+                                            suite42_app::PathSegment::Cubic(p(a), p(b), p(c))
                                         }
                                         ppt42_core::geometry::Segment::Close => {
-                                            win42::PathSegment::Close
+                                            suite42_app::PathSegment::Close
                                         }
                                     })
                                     .collect(),
@@ -1011,14 +1011,14 @@ impl Ppt {
                                         height: (h - 8.0).max(1.0),
                                         text: value.clone(),
                                         color: [0, 0, 0],
-                                        font: win42::SceneFont {
+                                        font: suite42_app::SceneFont {
                                             family: "Arial".into(),
                                             points: 12.0,
                                             bold: false,
                                             italic: false,
                                             underline: false,
                                         },
-                                        align: win42::TextAlign::Left,
+                                        align: suite42_app::TextAlign::Left,
                                         wrap: true,
                                     });
                                 }
@@ -1042,7 +1042,7 @@ impl Ppt {
                         height: (rect[3] - 10.0).max(1.0),
                         text: o.text.clone(),
                         color: style.color,
-                        font: win42::SceneFont {
+                        font: suite42_app::SceneFont {
                             family: style.family.clone(),
                             points: style.points,
                             bold: style.bold,
@@ -1050,9 +1050,9 @@ impl Ppt {
                             underline: style.underline,
                         },
                         align: match style.align {
-                            ppt42_core::TextAlign::Left => win42::TextAlign::Left,
-                            ppt42_core::TextAlign::Center => win42::TextAlign::Center,
-                            ppt42_core::TextAlign::Right => win42::TextAlign::Right,
+                            ppt42_core::TextAlign::Left => suite42_app::TextAlign::Left,
+                            ppt42_core::TextAlign::Center => suite42_app::TextAlign::Center,
+                            ppt42_core::TextAlign::Right => suite42_app::TextAlign::Right,
                         },
                         wrap: true,
                     });
@@ -1065,19 +1065,19 @@ impl Ppt {
                         paragraphs: o
                             .paragraphs
                             .iter()
-                            .map(|p| win42::SceneParagraph {
+                            .map(|p| suite42_app::SceneParagraph {
                                 align: match p.align {
-                                    ppt42_core::TextAlign::Left => win42::TextAlign::Left,
-                                    ppt42_core::TextAlign::Center => win42::TextAlign::Center,
-                                    ppt42_core::TextAlign::Right => win42::TextAlign::Right,
+                                    ppt42_core::TextAlign::Left => suite42_app::TextAlign::Left,
+                                    ppt42_core::TextAlign::Center => suite42_app::TextAlign::Center,
+                                    ppt42_core::TextAlign::Right => suite42_app::TextAlign::Right,
                                 },
                                 bullet: p.bullet,
                                 runs: p
                                     .runs
                                     .iter()
-                                    .map(|r| win42::SceneRun {
+                                    .map(|r| suite42_app::SceneRun {
                                         text: r.text.clone(),
-                                        font: win42::SceneFont {
+                                        font: suite42_app::SceneFont {
                                             family: r.style.family.clone(),
                                             points: r.style.points,
                                             bold: r.style.bold,
@@ -1132,7 +1132,7 @@ impl Ppt {
             if let Some(opacity) = visual.map(|v| v.opacity).filter(|v| *v < 1.0) {
                 let children = items.split_off(object_start);
                 items.push(SceneItem::OpacityLayer {
-                    bounds: win42::CanvasRect { x: 0.0, y: 0.0, width: 720.0, height: 405.0 },
+                    bounds: suite42_app::CanvasRect { x: 0.0, y: 0.0, width: 720.0, height: 405.0 },
                     opacity: (opacity * 255.0).round().clamp(0.0, 255.0) as u8,
                     items: children,
                 });
@@ -1153,12 +1153,12 @@ impl Ppt {
             }
         }
         Some(CanvasScene {
-            viewport: win42::Viewport::default(),
+            viewport: suite42_app::Viewport::default(),
             items,
         })
     }
 }
-impl win42::App for Ppt {
+impl suite42_app::App for Ppt {
     fn supports_new(&self) -> bool {
         true
     }
@@ -1169,15 +1169,15 @@ impl win42::App for Ppt {
     fn supports_technical_elements(&self) -> bool {
         true
     }
-    fn technical_targets(&self) -> Vec<win42::TechnicalTarget> {
+    fn technical_targets(&self) -> Vec<suite42_app::TechnicalTarget> {
         self.deck.slides()[self.deck.current()]
             .objects
             .iter()
             .filter(|object| object.kind == ppt42_core::ObjectKind::Picture)
             .filter_map(|object| {
-                win42::TechnicalElement::from_png(&object.media).map(|mut element| {
+                suite42_app::TechnicalElement::from_png(&object.media).map(|mut element| {
                     element.width_mm = object.width * 25.4 / 72.0;
-                    win42::TechnicalTarget::new(object.id, element)
+                    suite42_app::TechnicalTarget::new(object.id, element)
                 })
             })
             .collect()
@@ -1188,7 +1188,7 @@ impl win42::App for Ppt {
     fn apply_technical_element(
         &mut self,
         id: Option<u64>,
-        raster: win42::TechnicalRaster,
+        raster: suite42_app::TechnicalRaster,
     ) -> Result<(), String> {
         let id = if let Some(id) = id {
             let mut object = self.deck.slides()[self.deck.current()]
@@ -1197,7 +1197,7 @@ impl win42::App for Ppt {
                 .find(|object| object.id == id)
                 .cloned()
                 .ok_or("The technical object no longer exists")?;
-            if win42::TechnicalElement::from_png(&object.media).is_none() {
+            if suite42_app::TechnicalElement::from_png(&object.media).is_none() {
                 return Err("Choose a technical object".into());
             }
             object.media = raster.png;
@@ -1213,9 +1213,9 @@ impl win42::App for Ppt {
         self.selected_objects.clear();
         Ok(())
     }
-    fn inline_rich_rect(&self) -> Option<win42::CanvasRect> {
+    fn inline_rich_rect(&self) -> Option<suite42_app::CanvasRect> {
         let o = self.rich_draft.as_ref()?;
-        Some(win42::CanvasRect {
+        Some(suite42_app::CanvasRect {
             x: o.x + 5.0,
             y: o.y + 5.0,
             width: (o.width - 10.0).max(1.0),
@@ -1263,15 +1263,15 @@ impl win42::App for Ppt {
     fn canvas_pointer_modifiers(&self) -> bool {
         true
     }
-    fn clipboard_request(&self, id: u16) -> Option<win42::ClipboardRequest> {
+    fn clipboard_request(&self, id: u16) -> Option<suite42_app::ClipboardRequest> {
         match id {
             56 => self.deck.copy_objects(&self.selection()).ok().map(|bytes| {
-                win42::ClipboardRequest::WriteData {
+                suite42_app::ClipboardRequest::WriteData {
                     format: "Suite42.Presentation.Objects.v1".into(),
                     bytes,
                 }
             }),
-            57 => Some(win42::ClipboardRequest::ReadData(
+            57 => Some(suite42_app::ClipboardRequest::ReadData(
                 "Suite42.Presentation.Objects.v1".into(),
             )),
             _ => None,
@@ -1303,10 +1303,10 @@ impl win42::App for Ppt {
     fn presentation_white_background(&self) -> bool {
         self.show.as_ref().and_then(|show| show.blank).is_some_and(|(white, _)| white)
     }
-    fn presenter_view(&self) -> Option<win42::PresenterView<'_>> {
+    fn presenter_view(&self) -> Option<suite42_app::PresenterView<'_>> {
         let show = self.show.as_ref().filter(|show| show.rehearsal)?;
         let current = self.deck.current();
-        Some(win42::PresenterView {
+        Some(suite42_app::PresenterView {
             position: self.shown_slides(show.settings).take_while(|&index| index <= current).count(),
             total: self.shown_slides(show.settings).count(),
             elapsed_seconds: show.started.elapsed().as_secs(),
@@ -1314,20 +1314,20 @@ impl win42::App for Ppt {
             next: self.next_shown_slide(show.settings),
         })
     }
-    fn presenter_preview(&self, index: usize) -> Option<win42::CanvasScene> {
+    fn presenter_preview(&self, index: usize) -> Option<suite42_app::CanvasScene> {
         self.scene_for(index, false)
     }
     fn end_presentation(&mut self) {
         self.stop_show();
     }
-    fn print_job(&self, id: u16) -> Option<win42::PrintJob> {
+    fn print_job(&self, id: u16) -> Option<suite42_app::PrintJob> {
         if id != 40 {
             return None;
         }
         #[cfg(windows)]
         if self.print_layout.layout != SlideLayout::Slides {
             let bytes = slide_pdf::build(self, self.print_layout).ok()?;
-            return Some(win42::PrintJob::FitPdf(bytes.into()));
+            return Some(suite42_app::PrintJob::FitPdf(bytes.into()));
         }
         let (width, height) = self.slide_size_points()?;
         if !width.is_finite()
@@ -1339,7 +1339,7 @@ impl win42::App for Ppt {
         {
             return None;
         }
-        let geometry = win42::PrintGeometry {
+        let geometry = suite42_app::PrintGeometry {
             width_twips: (width * 20.0).round() as i32,
             height_twips: (height * 20.0).round() as i32,
             margin_left_twips: 0,
@@ -1356,17 +1356,17 @@ impl win42::App for Ppt {
                 continue;
             }
             let mut scene = self.scene_for(index, false)?;
-            fn scale_items(items: &mut [win42::SceneItem], sx: f64, sy: f64) -> Option<()> {
+            fn scale_items(items: &mut [suite42_app::SceneItem], sx: f64, sy: f64) -> Option<()> {
                 for item in items {
                     match item {
-                        win42::SceneItem::OpacityLayer { bounds, items, .. } => {
+                        suite42_app::SceneItem::OpacityLayer { bounds, items, .. } => {
                             bounds.x *= sx;
                             bounds.y *= sy;
                             bounds.width *= sx;
                             bounds.height *= sy;
                             scale_items(items, sx, sy)?;
                         }
-                        win42::SceneItem::ClippedOffset {
+                        suite42_app::SceneItem::ClippedOffset {
                             clip,
                             offset,
                             items,
@@ -1379,7 +1379,7 @@ impl win42::App for Ppt {
                             offset.y *= sy;
                             scale_items(items, sx, sy)?;
                         }
-                        win42::SceneItem::Transform { center, items, .. } => {
+                        suite42_app::SceneItem::Transform { center, items, .. } => {
                             if (sx - sy).abs() > 1e-9 {
                                 return None;
                             }
@@ -1387,7 +1387,7 @@ impl win42::App for Ppt {
                             center.y *= sy;
                             scale_items(items, sx, sy)?;
                         }
-                        win42::SceneItem::Rect {
+                        suite42_app::SceneItem::Rect {
                             x,
                             y,
                             width,
@@ -1399,7 +1399,7 @@ impl win42::App for Ppt {
                             *width *= sx;
                             *height *= sy;
                         }
-                        win42::SceneItem::Ellipse {
+                        suite42_app::SceneItem::Ellipse {
                             x,
                             y,
                             width,
@@ -1411,11 +1411,11 @@ impl win42::App for Ppt {
                             *width *= sx;
                             *height *= sy;
                         }
-                        win42::SceneItem::Text { x, y, .. } => {
+                        suite42_app::SceneItem::Text { x, y, .. } => {
                             *x *= sx;
                             *y *= sy;
                         }
-                        win42::SceneItem::TextBox {
+                        suite42_app::SceneItem::TextBox {
                             x,
                             y,
                             width,
@@ -1429,7 +1429,7 @@ impl win42::App for Ppt {
                             *height *= sy;
                             font.points *= sy;
                         }
-                        win42::SceneItem::RichText {
+                        suite42_app::SceneItem::RichText {
                             x,
                             y,
                             width,
@@ -1446,21 +1446,21 @@ impl win42::App for Ppt {
                                 }
                             }
                         }
-                        win42::SceneItem::VectorPath { segments, .. } => {
+                        suite42_app::SceneItem::VectorPath { segments, .. } => {
                             for segment in segments {
-                                segment.map_points(|p| win42::Point {
+                                segment.map_points(|p| suite42_app::Point {
                                     x: p.x * sx,
                                     y: p.y * sy,
                                 });
                             }
                         }
-                        win42::SceneItem::Path { points, .. } => {
+                        suite42_app::SceneItem::Path { points, .. } => {
                             for p in points {
                                 p.x *= sx;
                                 p.y *= sy;
                             }
                         }
-                        win42::SceneItem::Image {
+                        suite42_app::SceneItem::Image {
                             x,
                             y,
                             width,
@@ -1483,7 +1483,7 @@ impl win42::App for Ppt {
                             *width = nw;
                             *height = nh;
                         }
-                        win42::SceneItem::ImageScaled {
+                        suite42_app::SceneItem::ImageScaled {
                             x,
                             y,
                             width,
@@ -1500,23 +1500,23 @@ impl win42::App for Ppt {
                 Some(())
             }
             scale_items(&mut scene.items, sx, sy)?;
-            pages.push(win42::PrintPage { geometry, scene });
+            pages.push(suite42_app::PrintPage { geometry, scene });
         }
-        Some(win42::PrintJob::Scenes(pages))
+        Some(suite42_app::PrintJob::Scenes(pages))
     }
-    fn open_formats(&self) -> Vec<win42::FileFormat> {
+    fn open_formats(&self) -> Vec<suite42_app::FileFormat> {
         vec![
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "pptx",
                 title: "PowerPoint presentation",
                 extensions: &["pptx"],
             },
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "odp",
                 title: "OpenDocument presentation",
                 extensions: &["odp"],
             },
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "json",
                 title: "off42 slides JSON",
                 extensions: &["json"],
@@ -1526,29 +1526,29 @@ impl win42::App for Ppt {
     fn mark_file_action(&self) -> Option<u16> {
         Some(32)
     }
-    fn file_actions(&self) -> &'static [win42::FileAction] {
-        &[win42::FileAction {
+    fn file_actions(&self) -> &'static [suite42_app::FileAction] {
+        &[suite42_app::FileAction {
             id: 32,
             title: "Insert Image…",
             save: false,
             extension: "png",
             format: "Images",
             pattern: "*.png;*.jpg;*.jpeg",
-        }, win42::FileAction {
+        }, suite42_app::FileAction {
             id: 76,
             title: "Export Outline…",
             save: true,
             extension: "rtf",
             format: "Rich Text Format",
             pattern: "*.rtf",
-        }, win42::FileAction {
+        }, suite42_app::FileAction {
             id: slide_images::COMMAND,
             title: "Export Slide Images…",
             save: true,
             extension: "png",
             format: "PNG filename prefix",
             pattern: "*.png",
-        }, win42::FileAction {
+        }, suite42_app::FileAction {
             id: EXPORT_PDF,
             title: "Export as PDF…",
             save: true,
@@ -1557,13 +1557,13 @@ impl win42::App for Ppt {
             pattern: "*.pdf",
         }]
     }
-    fn file_input_request(&self, id: u16) -> Option<win42::InputRequest> {
+    fn file_input_request(&self, id: u16) -> Option<suite42_app::InputRequest> {
         match id {
-            76 => Some(win42::InputRequest {
+            76 => Some(suite42_app::InputRequest {
                 title: "Export Outline",
                 fields: vec![("Format", outline::Output::CHOICES[0].into())],
             }),
-            slide_images::COMMAND => Some(win42::InputRequest {
+            slide_images::COMMAND => Some(suite42_app::InputRequest {
                 title: "Export Slide Images",
                 fields: vec![("Format", "PNG".into()), ("Width in pixels", "1920".into()),
                     ("Include hidden slides", "No".into())],
@@ -1572,14 +1572,14 @@ impl win42::App for Ppt {
             _ => None,
         }
     }
-    fn configured_file_action(&self, id: u16, values: &[String]) -> Result<win42::FileAction, String> {
+    fn configured_file_action(&self, id: u16, values: &[String]) -> Result<suite42_app::FileAction, String> {
         let action = self.file_actions().iter().find(|action| action.id == id).copied()
             .ok_or("Unknown file action")?;
         if id == 76 && matches!(outline::Output::from_choice(values)?, outline::Output::Markdown) {
-            return Ok(win42::FileAction { extension: "md", format: "Markdown", pattern: "*.md", ..action });
+            return Ok(suite42_app::FileAction { extension: "md", format: "Markdown", pattern: "*.md", ..action });
         }
         if id == slide_images::COMMAND && slide_images::Options::parse(values)?.extension() == "jpg" {
-            return Ok(win42::FileAction { extension: "jpg", format: "JPEG filename prefix", pattern: "*.jpg", ..action });
+            return Ok(suite42_app::FileAction { extension: "jpg", format: "JPEG filename prefix", pattern: "*.jpg", ..action });
         }
         Ok(action)
     }
@@ -1635,9 +1635,9 @@ impl win42::App for Ppt {
         self.selected_objects.clear();
         Ok(())
     }
-    fn dialog_request(&self, id: u16) -> Option<win42::DialogRequest> {
+    fn dialog_request(&self, id: u16) -> Option<suite42_app::DialogRequest> {
         if id == 40 {
-            return Some(win42::DialogRequest::Information {
+            return Some(suite42_app::DialogRequest::Information {
                 title: "Print",
                 text: "Could not prepare the presentation for printing with the current layout.".into(),
             });
@@ -1649,16 +1649,16 @@ impl win42::App for Ppt {
                 .find(|o| o.id == id)
         })?;
         match id {
-            30 => Some(win42::DialogRequest::Color(object.fill)),
-            31 => Some(win42::DialogRequest::Color(object.stroke)),
-            42 => Some(win42::DialogRequest::Font),
+            30 => Some(suite42_app::DialogRequest::Color(object.fill)),
+            31 => Some(suite42_app::DialogRequest::Color(object.stroke)),
+            42 => Some(suite42_app::DialogRequest::Font),
             _ => None,
         }
     }
-    fn dialog_result(&mut self, id: u16, result: win42::DialogResult) -> Result<(), String> {
+    fn dialog_result(&mut self, id: u16, result: suite42_app::DialogResult) -> Result<(), String> {
         if id == 42 && self.rich_edit_object.is_some() {
             return match result {
-                win42::DialogResult::Font(font) => self.format_rich_font(font),
+                suite42_app::DialogResult::Font(font) => self.format_rich_font(font),
                 _ => Err("Expected a font".into()),
             };
         }
@@ -1670,9 +1670,9 @@ impl win42::App for Ppt {
             .cloned()
             .ok_or("Object no longer exists")?;
         match (id, result) {
-            (30, win42::DialogResult::Color(color)) => object.fill = color,
-            (31, win42::DialogResult::Color(color)) => object.stroke = color,
-            (42, win42::DialogResult::Font(font)) => {
+            (30, suite42_app::DialogResult::Color(color)) => object.fill = color,
+            (31, suite42_app::DialogResult::Color(color)) => object.stroke = color,
+            (42, suite42_app::DialogResult::Font(font)) => {
                 let style = &mut object.text_style;
                 style.family = font.family;
                 style.points = font.points;
@@ -1690,18 +1690,18 @@ impl win42::App for Ppt {
         }
         self.deck.update_object(object)
     }
-    fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+    fn input_request(&self, id: u16) -> Option<suite42_app::InputRequest> {
         let slide = &self.deck.slides()[self.deck.current()];
         match id {
             PRINT_LAYOUT => Some(self.print_layout.request("Print Layout")),
-            74 => Some(win42::InputRequest {
+            74 => Some(suite42_app::InputRequest {
                 title: "Speaker Notes",
-                fields: vec![("Notes", win42::to_native_text(&slide.notes))],
+                fields: vec![("Notes", suite42_app::to_native_text(&slide.notes))],
             }),
             72 => {
                 let settings = ShowSettings::load();
                 let yes_no = |value| if value { "Yes".into() } else { "No".into() };
-                Some(win42::InputRequest {
+                Some(suite42_app::InputRequest {
                     title: "Slide Show Settings",
                     fields: vec![
                         ("Loop", yes_no(settings.looped)),
@@ -1709,7 +1709,7 @@ impl win42::App for Ppt {
                     ],
                 })
             }
-            68 | 69 => Some(win42::InputRequest {
+            68 | 69 => Some(suite42_app::InputRequest {
                 title: if id == 68 {
                     "Insert shape"
                 } else {
@@ -1731,7 +1731,7 @@ impl win42::App for Ppt {
                 .and_then(|p| {
                     let def = ppt42_core::geometry::definition(&p.name)?;
                     let values = def.adjustment_values(p);
-                    Some(win42::InputRequest {
+                    Some(suite42_app::InputRequest {
                         title: "Shape adjustments",
                         fields: def
                             .adjustments
@@ -1742,7 +1742,7 @@ impl win42::App for Ppt {
                             .collect(),
                     })
                 }),
-            66 => Some(win42::InputRequest {
+            66 => Some(suite42_app::InputRequest {
                 title: "Slide timing and transition",
                 fields: vec![
                     (
@@ -1768,21 +1768,21 @@ impl win42::App for Ppt {
                     ),
                 ],
             }),
-            24 => Some(win42::InputRequest {
+            24 => Some(suite42_app::InputRequest {
                 title: "Edit slide text",
                 fields: vec![("Title", slide.title.clone()), ("Body", slide.body.clone())],
             }),
             25 => self
                 .selected_object
                 .and_then(|id| slide.objects.iter().find(|o| o.id == id))
-                .map(|o| win42::InputRequest {
+                .map(|o| suite42_app::InputRequest {
                     title: "Edit object text",
                     fields: vec![("Text", o.text.clone())],
                 }),
             26 => self
                 .selected_object
                 .and_then(|id| slide.objects.iter().find(|o| o.id == id))
-                .map(|o| win42::InputRequest {
+                .map(|o| suite42_app::InputRequest {
                     title: "Object geometry",
                     fields: vec![
                         ("X", o.x.to_string()),
@@ -1794,7 +1794,7 @@ impl win42::App for Ppt {
                 }),
             ANIMATION => self.selected_object.filter(|id| slide.objects.iter().any(|o| o.id == *id)).map(|id| {
                 let current = slide.animations.iter().find(|a| a.object == id);
-                win42::InputRequest {
+                suite42_app::InputRequest {
                     title: "Object Animation",
                     fields: vec![
                         ("Effect", current.map_or("None", |a| a.effect.label()).into()),
@@ -1804,7 +1804,7 @@ impl win42::App for Ppt {
                     ],
                 }
             }),
-            THEME => Some(win42::InputRequest {
+            THEME => Some(suite42_app::InputRequest {
                 title: "Slide Theme",
                 fields: vec![("Theme", self.deck.theme().map_or_else(|| "None".into(), |t| t.name.clone()))],
             }),
@@ -1812,11 +1812,11 @@ impl win42::App for Ppt {
             chart_ui::EDIT => self
                 .selected_chart()
                 .map(|chart| chart_ui::request(id, chart)),
-            33 => Some(win42::InputRequest {
+            33 => Some(suite42_app::InputRequest {
                 title: "Insert table",
                 fields: vec![("Rows", "3".into()), ("Columns", "3".into())],
             }),
-            65 => Some(win42::InputRequest {
+            65 => Some(suite42_app::InputRequest {
                 title: "Rotate selected objects",
                 fields: vec![("Clockwise degrees", "90".into())],
             }),
@@ -1828,7 +1828,7 @@ impl win42::App for Ppt {
                         .iter()
                         .find(|o| o.id == id && matches!(o.kind, ppt42_core::ObjectKind::Table))
                 })
-                .map(|_| win42::InputRequest {
+                .map(|_| suite42_app::InputRequest {
                     title: "Edit table cell",
                     fields: vec![
                         ("Row (1-based)", "1".into()),
@@ -2189,12 +2189,12 @@ impl win42::App for Ppt {
             _ => Err("Invalid text input".into()),
         }
     }
-    fn canvas_scene(&self) -> Option<win42::CanvasScene> {
+    fn canvas_scene(&self) -> Option<suite42_app::CanvasScene> {
         if let Some(overview) = self.show.as_ref().and_then(|show| show.overview.as_ref()) {
             return Some(overview.scene());
         }
         if self.show.as_ref().is_some_and(|show| show.blank.is_some()) {
-            return Some(win42::CanvasScene::default());
+            return Some(suite42_app::CanvasScene::default());
         }
         let visuals = self.show_visuals();
         let mut current = self.scene_with(self.deck.current(), !self.presenting, visuals.as_ref())?;
@@ -2206,7 +2206,7 @@ impl win42::App for Ppt {
                     self.deck.slides()[self.deck.current()].timing.duration_ms as f64 / 1000.0;
                 let fraction = (elapsed / duration).clamp(0.0, 1.0);
                 let old = self.scene_for(previous, false)?;
-                let clip = win42::CanvasRect {
+                let clip = suite42_app::CanvasRect {
                     x: 0.0,
                     y: 0.0,
                     width: 720.0,
@@ -2216,7 +2216,7 @@ impl win42::App for Ppt {
                     == ppt42_core::Transition::Fade
                 {
                     let mut layers = old.items;
-                    layers.push(win42::SceneItem::OpacityLayer {
+                    layers.push(suite42_app::SceneItem::OpacityLayer {
                         bounds: clip,
                         opacity: (fraction * 255.0).round() as u8,
                         items: current.items,
@@ -2224,17 +2224,17 @@ impl win42::App for Ppt {
                     layers
                 } else {
                     vec![
-                        win42::SceneItem::ClippedOffset {
+                        suite42_app::SceneItem::ClippedOffset {
                             clip,
-                            offset: win42::Point {
+                            offset: suite42_app::Point {
                                 x: -720.0 * fraction,
                                 y: 0.0,
                             },
                             items: old.items,
                         },
-                        win42::SceneItem::ClippedOffset {
+                        suite42_app::SceneItem::ClippedOffset {
                             clip,
-                            offset: win42::Point {
+                            offset: suite42_app::Point {
                                 x: 720.0 * (1.0 - fraction),
                                 y: 0.0,
                             },
@@ -2270,8 +2270,8 @@ impl win42::App for Ppt {
             100
         }
     }
-    fn canvas_event(&mut self, event: win42::CanvasEvent) -> Result<(), String> {
-        use win42::CanvasEvent::*;
+    fn canvas_event(&mut self, event: suite42_app::CanvasEvent) -> Result<(), String> {
+        use suite42_app::CanvasEvent::*;
         if self.presenting {
             return self.show_event(event, std::time::Instant::now());
         }
@@ -2380,40 +2380,40 @@ impl win42::App for Ppt {
         Ok(())
     }
     fn supports_recovery(&self)->bool{true}
-    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
+    fn recovery_snapshot(&self)->Result<Option<suite42_app::recovery::Snapshot>,String>{
         let mut copy=self.deck.snapshot_copy();
         if let Some(draft)=&self.rich_draft{copy.update_object(draft.clone())?;}
         let(extension,bytes)=if let Some(source)=&self.pptx_source{("pptx",ppt42_core::pptx::export(&copy,source)?)}
         else if let Some(source)=&self.odp_source{("odp",ppt42_core::odp::export_overlay(&copy,source)?)}else{("json",copy.save_snapshot()?.0)};
-        Ok(Some(win42::recovery::Snapshot::new(extension,bytes)))
+        Ok(Some(suite42_app::recovery::Snapshot::new(extension,bytes)))
     }
-    fn save_formats(&self) -> Vec<win42::FileFormat> {
+    fn save_formats(&self) -> Vec<suite42_app::FileFormat> {
         if self.odp_source.is_some() {
-            return vec![win42::FileFormat {
+            return vec![suite42_app::FileFormat {
                 id: "odp",
                 title: "OpenDocument presentation",
                 extensions: &["odp"],
             }];
         }
         if self.pptx_source.is_some() {
-            return vec![win42::FileFormat {
+            return vec![suite42_app::FileFormat {
                 id: "pptx",
                 title: "PowerPoint presentation",
                 extensions: &["pptx"],
             }];
         }
         vec![
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "json",
                 title: "off42 slides JSON",
                 extensions: &["json"],
             },
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "odp",
                 title: "OpenDocument presentation",
                 extensions: &["odp"],
             },
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "pptx",
                 title: "PowerPoint presentation",
                 extensions: &["pptx"],
@@ -2553,7 +2553,7 @@ impl win42::App for Ppt {
     }
     fn text(&self) -> String {
         let s = &self.deck.slides()[self.deck.current()];
-        format!("{}\r\n{}", s.title, win42::to_native_text(&s.body))
+        format!("{}\r\n{}", s.title, suite42_app::to_native_text(&s.body))
     }
     fn status(&self) -> String {
         if self.presenting {
@@ -2609,8 +2609,8 @@ impl win42::App for Ppt {
     fn selected(&self) -> usize {
         self.deck.current()
     }
-    fn command_state(&self, id: u16) -> win42::CommandState {
-        win42::CommandState {
+    fn command_state(&self, id: u16) -> suite42_app::CommandState {
+        suite42_app::CommandState {
             enabled: self.enabled(id),
             checked: id == 73 && self.deck.slides()[self.deck.current()].hidden,
         }
@@ -2638,8 +2638,8 @@ impl win42::App for Ppt {
         }
         let presentation = Presentation::open(p)?;
         for slide in presentation.slides() {
-            win42::validate_editable(&slide.title)?;
-            win42::validate_editable(&slide.body)?;
+            suite42_app::validate_editable(&slide.title)?;
+            suite42_app::validate_editable(&slide.body)?;
             if slide.title.contains('\n') {
                 return Err("Slide titles containing line breaks cannot be preserved by this editor. File was not opened.".into());
             }
@@ -2676,7 +2676,7 @@ impl win42::App for Ppt {
         self.deck.save_as(p)
     }
     fn edit(&mut self, s: String) -> Result<(), String> {
-        let text = win42::from_native_text(&s);
+        let text = suite42_app::from_native_text(&s);
         let (title, body) = text.split_once('\n').unwrap_or((&text, ""));
         self.deck.edit(title.into(), body.into())
     }
@@ -3099,13 +3099,18 @@ fn shape_label(name: &str) -> String {
     }
     label
 }
+/// Win32 host on Windows; the experimental egui host elsewhere.
+#[cfg(windows)]
+use win42::run as run_host;
+#[cfg(not(windows))]
+use egui42::run as run_host;
 fn main() {
-    win42::run(Box::new(Ppt::new(Presentation::new())))
+    run_host(Box::new(Ppt::new(Presentation::new())))
 }
 #[cfg(test)]
 mod tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
 
     #[test]
     fn show_visibility_jump_blank_and_loop_keep_navigation_out_of_history() {
@@ -3125,7 +3130,7 @@ mod tests {
         app.presenting = true;
         app.show = Some(Show::new(now, true));
         app.show.as_mut().unwrap().settings.looped = true;
-        let key = |code| win42::CanvasEvent::Key { code, modifiers: 0 };
+        let key = |code| suite42_app::CanvasEvent::Key { code, modifiers: 0 };
         app.show_event(key(66), now + Duration::from_millis(100)).unwrap();
         assert!(app.canvas_scene().unwrap().items.is_empty());
         assert!(!app.presentation_white_background());
@@ -3170,7 +3175,7 @@ mod tests {
         let start = Instant::now();
         app.presenting = true;
         app.show = Some(Show::new(start, false));
-        let key = |code| win42::CanvasEvent::Key { code, modifiers: 0 };
+        let key = |code| suite42_app::CanvasEvent::Key { code, modifiers: 0 };
         app.show_event(key(19), start + Duration::from_millis(50))
             .unwrap();
         app.show_event(key(39), start + Duration::from_millis(100))
@@ -3182,7 +3187,7 @@ mod tests {
             .unwrap();
         assert_eq!(app.deck.current(), 0);
         app.show_event(
-            win42::CanvasEvent::PointerUp(win42::Point { x: 0.0, y: 0.0 }),
+            suite42_app::CanvasEvent::PointerUp(suite42_app::Point { x: 0.0, y: 0.0 }),
             start + Duration::from_millis(300),
         )
         .unwrap();
@@ -3226,7 +3231,7 @@ mod tests {
         assert!(app.show_tick(start + Duration::from_millis(400)));
         app.show.as_mut().unwrap().paused = Some(start + Duration::from_millis(400));
         assert!(!app.show_tick(start + Duration::from_secs(5)));
-        app.canvas_event(win42::CanvasEvent::Key {
+        app.canvas_event(suite42_app::CanvasEvent::Key {
             code: 27,
             modifiers: 0,
         })
@@ -3246,7 +3251,7 @@ mod tests {
         app.show_move(1, Instant::now()).unwrap();
         let scene = app.canvas_scene().unwrap();
         assert!(scene.items.iter().any(
-            |item| matches!(item, win42::SceneItem::OpacityLayer { items, .. } if !items.is_empty())
+            |item| matches!(item, suite42_app::SceneItem::OpacityLayer { items, .. } if !items.is_empty())
         ));
     }
 
@@ -3286,7 +3291,7 @@ mod tests {
         resize_object(
             &mut object,
             end,
-            win42::Point {
+            suite42_app::Point {
                 x: end.x - 10.0,
                 y: end.y + 20.0,
             },
@@ -3430,33 +3435,33 @@ mod tests {
         let mut second = a.deck.slides()[0].objects[1].clone();
         second.x = 350.0;
         a.deck.update_object(second).unwrap();
-        a.canvas_event(win42::CanvasEvent::PointerDown(win42::Point {
+        a.canvas_event(suite42_app::CanvasEvent::PointerDown(suite42_app::Point {
             x: 120.0,
             y: 140.0,
         }))
         .unwrap();
-        a.canvas_event(win42::CanvasEvent::PointerUp(win42::Point {
+        a.canvas_event(suite42_app::CanvasEvent::PointerUp(suite42_app::Point {
             x: 120.0,
             y: 140.0,
         }))
         .unwrap();
-        a.canvas_event(win42::CanvasEvent::PointerDownModified {
-            point: win42::Point { x: 370.0, y: 140.0 },
+        a.canvas_event(suite42_app::CanvasEvent::PointerDownModified {
+            point: suite42_app::Point { x: 370.0, y: 140.0 },
             modifiers: 1,
         })
         .unwrap();
-        a.canvas_event(win42::CanvasEvent::PointerUp(win42::Point {
+        a.canvas_event(suite42_app::CanvasEvent::PointerUp(suite42_app::Point {
             x: 370.0,
             y: 140.0,
         }))
         .unwrap();
         assert_eq!(a.selection().len(), 2);
-        a.canvas_event(win42::CanvasEvent::PointerDown(win42::Point {
+        a.canvas_event(suite42_app::CanvasEvent::PointerDown(suite42_app::Point {
             x: 120.0,
             y: 140.0,
         }))
         .unwrap();
-        a.canvas_event(win42::CanvasEvent::PointerUp(win42::Point {
+        a.canvas_event(suite42_app::CanvasEvent::PointerUp(suite42_app::Point {
             x: 140.0,
             y: 150.0,
         }))
@@ -3478,12 +3483,12 @@ mod tests {
         a.selected_object = Some(one);
         let before = a.deck.slides()[0].objects[0].width;
         let o = a.deck.slides()[0].objects[0].clone();
-        a.canvas_event(win42::CanvasEvent::PointerDown(win42::Point {
+        a.canvas_event(suite42_app::CanvasEvent::PointerDown(suite42_app::Point {
             x: o.x + o.width,
             y: o.y + o.height,
         }))
         .unwrap();
-        a.canvas_event(win42::CanvasEvent::PointerUp(win42::Point {
+        a.canvas_event(suite42_app::CanvasEvent::PointerUp(suite42_app::Point {
             x: o.x + o.width + 25.0,
             y: o.y + o.height + 10.0,
         }))
@@ -3522,7 +3527,7 @@ mod tests {
 #[cfg(test)]
 mod regression {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn policy_survives_reorder_undo_redo_and_context_switch() {
         let mut d = Presentation::new();
@@ -3610,7 +3615,7 @@ mod regression {
 #[cfg(test)]
 mod identity_regression {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn identical_visible_slides_keep_identity_and_newlines_through_reorder_history_and_save() {
         let mut deck = Presentation::new();
@@ -3667,18 +3672,18 @@ mod identity_regression {
 #[cfg(test)]
 mod technical_regression {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn technical_insert_edit_and_office_round_trip() {
         let mut app = Ppt::new(Presentation::new());
-        let first = win42::TechnicalElement {
+        let first = suite42_app::TechnicalElement {
             symbol_id: None,
-            code_type: win42::BarcodeFormat::Qr,
+            code_type: suite42_app::BarcodeFormat::Qr,
             value: "PCB-0007".into(),
             width_mm: 20.0,
             caption: false,
         };
-        app.apply_technical_element(None, win42::TechnicalRaster::render(first.clone()).unwrap())
+        app.apply_technical_element(None, suite42_app::TechnicalRaster::render(first.clone()).unwrap())
             .unwrap();
         let id = app.technical_targets()[0].id;
         let mut second = first.clone();
@@ -3686,7 +3691,7 @@ mod technical_regression {
         second.width_mm = 25.0;
         app.apply_technical_element(
             Some(id),
-            win42::TechnicalRaster::render(second.clone()).unwrap(),
+            suite42_app::TechnicalRaster::render(second.clone()).unwrap(),
         )
         .unwrap();
         app.action(4).unwrap();
@@ -3715,7 +3720,7 @@ mod technical_regression {
 #[cfg(test)]
 mod preset_ui_tests {
     use super::*;
-    use win42::{App, CanvasEvent, Point};
+    use suite42_app::{App, CanvasEvent, Point};
     #[test]
     fn preset_picker_handle_drag_cancel_history_and_rotation() {
         let mut app = Ppt::new(Presentation::new());
@@ -3786,27 +3791,27 @@ mod preset_ui_tests {
         app.input_action(68, &["Round Rect".into()]).unwrap();
         app.input_action(25, &["Rounded shape".into()]).unwrap();
         let scene = app.canvas_scene().unwrap();
-        let curved=scene.items.iter().filter(|i|matches!(i,win42::SceneItem::VectorPath{segments,..} if segments.iter().any(|s|matches!(s,win42::PathSegment::Cubic(..))))).count();
+        let curved=scene.items.iter().filter(|i|matches!(i,suite42_app::SceneItem::VectorPath{segments,..} if segments.iter().any(|s|matches!(s,suite42_app::PathSegment::Cubic(..))))).count();
         assert!(curved >= 2);
         assert!(scene.items.iter().any(|i| matches!(
             i,
-            win42::SceneItem::VectorPath {
+            suite42_app::SceneItem::VectorPath {
                 fill: Some(_),
                 stroke: None,
                 ..
             }
         )));
-        let win42::PrintJob::Scenes(pages) = app.print_job(40).unwrap() else {
+        let suite42_app::PrintJob::Scenes(pages) = app.print_job(40).unwrap() else {
             panic!("Expected vector print pages")
         };
         let print = &pages[0].scene;
         assert!(print
             .items
             .iter()
-            .any(|i| matches!(i, win42::SceneItem::VectorPath { fill: Some(_), .. })));
+            .any(|i| matches!(i, suite42_app::SceneItem::VectorPath { fill: Some(_), .. })));
         assert!(!print.items.iter().any(|i| matches!(
             i,
-            win42::SceneItem::Image { .. } | win42::SceneItem::ImageScaled { .. }
+            suite42_app::SceneItem::Image { .. } | suite42_app::SceneItem::ImageScaled { .. }
         )));
     }
 }
@@ -3814,7 +3819,7 @@ mod preset_ui_tests {
 #[cfg(test)]
 mod recovery_tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn recovery_includes_inline_draft_without_committing_or_losing_cancel() {
         let mut app = Ppt::new(Presentation::new());
@@ -3831,18 +3836,18 @@ mod recovery_tests {
         let original = app.deck.save_snapshot().unwrap().0;
         let draft = app.rich_draft.clone();
         assert!(app.enabled(40));
-        fn has_bold(items: &[win42::SceneItem]) -> bool {
+        fn has_bold(items: &[suite42_app::SceneItem]) -> bool {
             items.iter().any(|item| match item {
-                win42::SceneItem::RichText { paragraphs, .. } => paragraphs
+                suite42_app::SceneItem::RichText { paragraphs, .. } => paragraphs
                     .iter()
                     .any(|p| p.runs.iter().any(|r| r.text == "hello" && r.font.bold)),
-                win42::SceneItem::Transform { items, .. }
-                | win42::SceneItem::OpacityLayer { items, .. }
-                | win42::SceneItem::ClippedOffset { items, .. } => has_bold(items),
+                suite42_app::SceneItem::Transform { items, .. }
+                | suite42_app::SceneItem::OpacityLayer { items, .. }
+                | suite42_app::SceneItem::ClippedOffset { items, .. } => has_bold(items),
                 _ => false,
             })
         }
-        let win42::PrintJob::Scenes(pages) = app.print_job(40).unwrap() else {
+        let suite42_app::PrintJob::Scenes(pages) = app.print_job(40).unwrap() else {
             panic!("Expected presentation scenes")
         };
         assert!(pages.iter().any(|page| has_bold(&page.scene.items)));
@@ -3872,7 +3877,7 @@ mod recovery_tests {
 #[cfg(test)]
 mod word_edit_regression {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn word_edit_retains_exact_slide_style_precision_geometry_cancel_and_history(){
         let mut app=Ppt::new(Presentation::new());let id=app.deck.insert_object(ppt42_core::ObjectKind::Text,"😀 speling world".into()).unwrap();let mut object=app.deck.slides()[0].objects.iter().find(|o|o.id==id).unwrap().clone();object.text_style.points=16.3;object.text_style.family="Arial".into();object.text_style.bold=true;app.deck.update_object(object.clone()).unwrap();app.selected_object=Some(id);app.action(58).unwrap();let original=app.rich_object().unwrap();let native:Vec<_>="😀 speling world\r".encode_utf16().collect();
@@ -3883,8 +3888,8 @@ mod word_edit_regression {
 #[cfg(test)]
 mod chart_ui_tests {
     use super::*;
-    use win42::App;
-    fn values(request: &win42::InputRequest) -> Vec<String> {
+    use suite42_app::App;
+    fn values(request: &suite42_app::InputRequest) -> Vec<String> {
         request.fields.iter().map(|f| f.1.clone()).collect()
     }
     #[test]
@@ -3899,7 +3904,7 @@ mod chart_ui_tests {
         app.input_action(chart_ui::INSERT, &form).unwrap();
         assert!(app.enabled(chart_ui::EDIT) && !app.enabled(25) && !app.enabled(58));
         let scene = app.canvas_scene().unwrap();
-        assert!(scene.items.iter().any(|i| matches!(i, win42::SceneItem::TextBox { text, .. } if text == "Revenue")));
+        assert!(scene.items.iter().any(|i| matches!(i, suite42_app::SceneItem::TextBox { text, .. } if text == "Revenue")));
         let mut edit = values(&app.input_request(chart_ui::EDIT).unwrap());
         assert!(edit[3].contains("\r\nQ1\t4.3"));
         edit[0] = "Pie".into();
@@ -3910,7 +3915,7 @@ mod chart_ui_tests {
         assert_eq!(chart.type_label(), "Pie");
         assert_eq!(chart.categories, vec!["A", "B"]);
         assert!(!chart.legend);
-        let wedges = app.canvas_scene().unwrap().items.iter().filter(|i| matches!(i, win42::SceneItem::VectorPath { .. })).count();
+        let wedges = app.canvas_scene().unwrap().items.iter().filter(|i| matches!(i, suite42_app::SceneItem::VectorPath { .. })).count();
         assert_eq!(wedges, 2);
         edit[3] = "\tShare\r\nA\tx".into();
         assert!(app.input_action(chart_ui::EDIT, &edit).is_err());
@@ -3919,7 +3924,7 @@ mod chart_ui_tests {
         app.action(5).unwrap();
         // Double-click opens the chart editor through the pending command.
         let object = app.deck.slides()[0].objects[0].clone();
-        app.canvas_event(win42::CanvasEvent::DoubleClick(win42::Point { x: object.x + 5.0, y: object.y + 5.0 })).unwrap();
+        app.canvas_event(suite42_app::CanvasEvent::DoubleClick(suite42_app::Point { x: object.x + 5.0, y: object.y + 5.0 })).unwrap();
         assert_eq!(app.take_pending_command(), Some(chart_ui::EDIT));
         for format in ["pptx", "odp"] {
             let (_, bytes) = app.save_snapshot(format).unwrap().unwrap();
@@ -3942,8 +3947,8 @@ mod chart_ui_tests {
         assert_eq!(app.input_choices(THEME)[0].1.len(), 7);
         app.input_action(THEME, &["Forest".into()]).unwrap();
         let scene = app.canvas_scene().unwrap();
-        assert!(matches!(scene.items[0], win42::SceneItem::Rect { fill: [0xF6, 0xF8, 0xF3], .. }));
-        assert!(scene.items.iter().any(|i| matches!(i, win42::SceneItem::TextBox { text, color: [0x1E, 0x2B, 0x22], font, .. } if text == "Title" && font.family == "Georgia")));
+        assert!(matches!(scene.items[0], suite42_app::SceneItem::Rect { fill: [0xF6, 0xF8, 0xF3], .. }));
+        assert!(scene.items.iter().any(|i| matches!(i, suite42_app::SceneItem::TextBox { text, color: [0x1E, 0x2B, 0x22], font, .. } if text == "Title" && font.family == "Georgia")));
         assert!(app.input_action(THEME, &["Missing".into()]).is_err());
         app.action(4).unwrap();
         assert!(app.deck.theme().is_none());
@@ -3973,28 +3978,28 @@ mod chart_ui_tests {
         let edit = app.input_request(ANIMATION).unwrap();
         assert_eq!(edit.fields.iter().map(|f| f.1.as_str()).collect::<Vec<_>>(), ["Fly in", "After previous", "300", "100"]);
 
-        let shapes = |app: &Ppt| app.canvas_scene().unwrap().items.iter().filter(|i| matches!(i, win42::SceneItem::Rect { fill: [220, 230, 245], .. } | win42::SceneItem::Ellipse { .. } | win42::SceneItem::OpacityLayer { .. })).count();
+        let shapes = |app: &Ppt| app.canvas_scene().unwrap().items.iter().filter(|i| matches!(i, suite42_app::SceneItem::Rect { fill: [220, 230, 245], .. } | suite42_app::SceneItem::Ellipse { .. } | suite42_app::SceneItem::OpacityLayer { .. })).count();
         assert_eq!(shapes(&app), 2);
         let start = Instant::now();
         app.presenting = true;
         app.show = Some(Show::new(start, false));
         assert_eq!(shapes(&app), 0, "entrance effects hide their objects until their click");
-        app.show_event(win42::CanvasEvent::Key { code: 39, modifiers: 0 }, start).unwrap();
+        app.show_event(suite42_app::CanvasEvent::Key { code: 39, modifiers: 0 }, start).unwrap();
         assert_eq!(app.deck.current(), 0);
         assert_eq!(app.show.as_ref().unwrap().step, 1);
         assert!(app.show_tick(start + Duration::from_millis(100)));
         app.show.as_mut().unwrap().step_since = Instant::now() - Duration::from_millis(200);
         let partial = app.canvas_scene().unwrap();
-        assert!(partial.items.iter().any(|i| matches!(i, win42::SceneItem::OpacityLayer { opacity, .. } if *opacity > 60 && *opacity < 200)));
+        assert!(partial.items.iter().any(|i| matches!(i, suite42_app::SceneItem::OpacityLayer { opacity, .. } if *opacity > 60 && *opacity < 200)));
         app.show.as_mut().unwrap().step_since = Instant::now() - Duration::from_secs(5);
         assert_eq!(shapes(&app), 2);
-        app.show_event(win42::CanvasEvent::Key { code: 37, modifiers: 0 }, start).unwrap();
+        app.show_event(suite42_app::CanvasEvent::Key { code: 37, modifiers: 0 }, start).unwrap();
         assert_eq!((app.deck.current(), app.show.as_ref().unwrap().step), (0, 0));
         assert_eq!(shapes(&app), 0);
-        app.show_event(win42::CanvasEvent::Key { code: 39, modifiers: 0 }, start).unwrap();
-        app.show_event(win42::CanvasEvent::Key { code: 39, modifiers: 0 }, start).unwrap();
+        app.show_event(suite42_app::CanvasEvent::Key { code: 39, modifiers: 0 }, start).unwrap();
+        app.show_event(suite42_app::CanvasEvent::Key { code: 39, modifiers: 0 }, start).unwrap();
         assert_eq!((app.deck.current(), app.show.as_ref().unwrap().step), (1, 0));
-        app.show_event(win42::CanvasEvent::Key { code: 37, modifiers: 0 }, start).unwrap();
+        app.show_event(suite42_app::CanvasEvent::Key { code: 37, modifiers: 0 }, start).unwrap();
         assert_eq!((app.deck.current(), app.show.as_ref().unwrap().step), (0, 1));
         assert_eq!(shapes(&app), 2, "a revisited slide shows its finished animations");
     }

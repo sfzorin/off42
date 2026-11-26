@@ -138,7 +138,7 @@ instructions on the download page.
 | --- | --- | --- | --- |
 | 0 | Finish the current release work on the current architecture: Windows dark mode, signature learning, DOC42 pages; macOS preview 2 DMG | — | — |
 | 1 | Create `suite42-app`; move portable logic out of `win42` and `rust/apps/*`; Windows keeps working at every step (Windows CI green) | D3 | Moved on branch `phase1-suite42-app` (pull request, not merged); see below |
-| 2 | `off42` CLI and the Linux preview on top of phase 1 (rebase PR #4 onto it) | D4, D6 | — |
+| 2 | `off42` CLI and the Linux preview on top of phase 1 (rebase PR #4 onto it) | D4, D6 | On PR #4 (not merged); see below |
 | 3 | WebAssembly build of the core and the web UI | D5, D7 | — |
 | 4 | Move the Mac apps onto the core, one app at a time, behind the existing AppKit UI | phases 1–3, owner's go-ahead | — |
 
@@ -149,9 +149,17 @@ OCR render/recognize callbacks, the filename order for batches. Still in the she
 WinRT rendering, the Tesseract/Windows OCR engines, CryptoAPI signing, WIA scanning and spelling. The per-user data
 root (`storage::local_data`) is still `%LOCALAPPDATA%/off42`; phase 2 adds the Linux location.
 
+Phase 2 result (PR #4): the egui host is its own crate, `crates/egui42`, which depends on `suite42-app` and not on
+`win42`; each app's `main` picks `win42::run` on Windows and `egui42::run` elsewhere, and `win42` has no eframe
+dependency. App models import the moved contract from `suite42_app` directly. `storage::local_data` has a Linux root
+(`$XDG_DATA_HOME/off42`, else `~/.local/share/off42`) and a macOS one (`~/Library/Application Support/off42`); the
+Windows path is unchanged. The `off42` CLI calls `suite42_app` for PDF merge, page export, text export and comparison,
+label sheets, codes, marks, signatures and stamps. Its `PdfText` is `suite42_app::pdf::lopdf_text` (plain text, no
+styles or glyph boxes) on every platform; PDFium for Linux/macOS (D7) and Tesseract outside Windows are not done, so
+OCR and PDF rendering stay Windows-only, and the PDF42 window off Windows still has no text export.
+
 ## 6. Work in flight
 
-- **PR #4 (Linux)**: paused, not merged. It contains the egui host and the CLI; it is rebased onto phase 1
-  (portable logic in `suite42-app`) and merged as phase 2.
+- **PR #4 (Linux)**: rebased onto phase 1 and reworked as phase 2 (above); not merged.
 - **Windows dark mode, signature learning, DOC42 pages**: Win32 features within the current Windows shell;
   compatible with D1–D2. Portable parts (for example signature learning in `marks42`) already sit in a core crate.

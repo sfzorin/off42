@@ -17,9 +17,6 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg"]
 suite42-core = { path = "../suite42-core" }
 suite42-app = { path = "../suite42-app" }
 
-[target.'cfg(not(windows))'.dependencies]
-# Experimental Linux/macOS host; the Win32 host is used on Windows.
-eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
 
 [dev-dependencies]
 doc42-core = { path = "../doc42-core" }

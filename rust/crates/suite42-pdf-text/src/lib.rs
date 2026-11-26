@@ -385,7 +385,7 @@ pub fn text_outline(text: &str, points: f64) -> Result<(String, f64), String> {
 }
 
 /// A4 PDF of plain text in the bundled font: lines wrap at the page width and pages break
-/// at the bottom margin. Characters the font lacks become `?`. Bytes out, no file system access.
+/// at the bottom margin and at each form feed (U+000C). Characters the font lacks become `?`. Bytes out, no file system access.
 pub fn plain_text_pdf(title: &str, text: &str, font_size: f64) -> Result<Vec<u8>, String> {
     let font_data = include_bytes!("../../doc42-layout-probe/fixtures/NotoSans.ttf");
     let face = ttf_parser::Face::parse(font_data, 0).map_err(|e| format!("Invalid bundled font: {e:?}"))?;
@@ -395,7 +395,7 @@ pub fn plain_text_pdf(title: &str, text: &str, font_size: f64) -> Result<Vec<u8>
         .chars()
         .map(|c| match c {
             '\t' => ' ',
-            '\n' => '\n',
+            '\n' | '\u{c}' => c,
             c if c.is_control() => ' ',
             c if face.glyph_index(c).is_some() => c,
             _ => '?',
@@ -411,8 +411,11 @@ pub fn plain_text_pdf(title: &str, text: &str, font_size: f64) -> Result<Vec<u8>
     let (width, height, margin) = (595.276, 841.89, 56.0);
     let leading = font_size * 1.35;
     let usable = width - 2.0 * margin;
+    let mut sections = Vec::new();
+    for section in clean.split('\u{c}') {
+    let section = section.strip_prefix('\n').unwrap_or(section);
     let mut lines = Vec::new();
-    for paragraph in clean.split('\n') {
+    for paragraph in section.split('\n') {
         let mut line = String::new();
         let mut used = 0.0;
         for word in paragraph.split_inclusive(' ') {
@@ -433,14 +436,16 @@ pub fn plain_text_pdf(title: &str, text: &str, font_size: f64) -> Result<Vec<u8>
         }
         lines.push(line.trim_end().to_owned());
     }
+    sections.push(lines);
+    }
     let per_page = (((height - 2.0 * margin) / leading).floor() as usize).max(1);
     let mut doc = Document::with_version("1.7");
-    let mut glyphs: String = clean.chars().filter(|c| *c != '\n').collect();
+    let mut glyphs: String = clean.chars().filter(|c| !matches!(c, '\n' | '\u{c}')).collect();
     glyphs.push(' ');
     let font = PdfFont::embed_subset(&mut doc, &glyphs)?;
     let pages_id = doc.new_object_id();
     let mut kids = Vec::new();
-    for chunk in lines.chunks(per_page) {
+    for chunk in sections.iter().flat_map(|lines| lines.chunks(per_page)) {
         let mut content = format!("BT /F1 {font_size:.2} Tf {leading:.2} TL {margin:.2} {:.2} Td\n", height - margin - font_size);
         for line in chunk {
             content.push_str(&format!("<{}> Tj T*\n", font.encode(line)?));
@@ -477,5 +482,9 @@ mod plain_text_tests {
         let doc = lopdf::Document::load_mem(&bytes).unwrap();
         assert!(doc.get_pages().len() >= 3);
         assert!(doc.extract_text(&[1]).unwrap().contains("off42"));
+        let bytes = super::plain_text_pdf("t", "one\u{c}two\n\u{c}three", 11.0).unwrap();
+        let doc = lopdf::Document::load_mem(&bytes).unwrap();
+        assert_eq!(doc.get_pages().len(), 3);
+        assert!(doc.extract_text(&[3]).unwrap().contains("three"));
     }
 }

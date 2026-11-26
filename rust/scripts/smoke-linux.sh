@@ -54,6 +54,11 @@ cli="$bin_dir/off42"
 "$cli" info "$work/merged.pdf" | expect "pages: 4" "off42 pdf merge"
 "$cli" pdf extract "$work/merged.pdf" "4" "$work/last.pdf"
 "$cli" text "$work/last.pdf" | expect "Heading" "off42 pdf extract"
+"$cli" convert "$work/merged.pdf" "$work/merged.txt"
+expect "Heading" "off42 PDF text export" < "$work/merged.txt"
+"$cli" pdf compare "$work/cli.pdf" "$work/last.pdf" | expect "No differences" "off42 pdf compare"
+"$cli" pdf extract "$work/merged.pdf" "1-2" "$work/split.zip" --split
+test -s "$work/split.zip" || { echo "FAIL: off42 split ZIP"; exit 1; }
 "$cli" barcode datamatrix "SN-0001" "$work/code.png"
 "$cli" labels "$work/labels.pdf" --code code128 ITEM-0001 ITEM-0002
 "$cli" info "$work/labels.pdf" | expect "pages: 1" "off42 labels"

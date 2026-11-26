@@ -10,3 +10,6 @@ suite42-app = { path = "../../crates/suite42-app" }
 xls42-core = { path = "../../crates/xls42-core" }
 [dev-dependencies]
 serde_json = "1"
+
+[target.'cfg(not(windows))'.dependencies]
+egui42 = { path = "../../crates/egui42" }

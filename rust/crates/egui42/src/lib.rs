@@ -4,7 +4,7 @@
 //! their portable surface: item list, plain text, table cells, RGBA image,
 //! commands and Save As formats. Native canvases, rich text pages, printing,
 //! scanners and Windows dialogs are not available here.
-use crate::{App, FileFormat};
+use suite42_app::{App, FileFormat};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use suite42_core::session::{publish_bundle, FileIdentity};
@@ -76,7 +76,7 @@ fn cli(mut app: Box<dyn App>, args: &[String]) -> Result<(), String> {
         }
         Some("--text") => {
             open_blocking(app.as_mut(), Path::new(arg(1)?))?;
-            println!("{}", crate::from_native_text(&app.text()));
+            println!("{}", suite42_app::from_native_text(&app.text()));
             Ok(())
         }
         Some("--items") => {
@@ -294,7 +294,7 @@ impl Host {
         self.reload();
     }
     fn reload(&mut self) {
-        self.text = crate::from_native_text(&self.app.text());
+        self.text = suite42_app::from_native_text(&self.app.text());
         self.image_stamp += 1;
         self.texture = None;
     }
@@ -455,7 +455,7 @@ impl eframe::App for Host {
                     ui.label("Cell:");
                     let changed = ui.text_edit_singleline(&mut self.text).lost_focus();
                     if changed && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                        let result = self.app.edit(crate::to_native_text(&self.text));
+                        let result = self.app.edit(suite42_app::to_native_text(&self.text));
                         self.report(result, "Cell updated");
                     }
                 });
@@ -480,7 +480,7 @@ impl eframe::App for Host {
             }
             ui.horizontal(|ui| {
                 if ui.button("Apply text changes").clicked() {
-                    let result = self.app.edit(crate::to_native_text(&self.text));
+                    let result = self.app.edit(suite42_app::to_native_text(&self.text));
                     self.report(result, "Text updated");
                 }
             });

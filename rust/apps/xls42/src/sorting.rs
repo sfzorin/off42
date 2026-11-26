@@ -1,14 +1,14 @@
 //! Advanced Sort command wiring; the form and option parsing live in `suite42_app::sheet::sorting`.
 use super::*;
 pub(super) use suite42_app::sheet::sorting::{choices, parse, COMMAND};
-pub(super) fn request(app: &Xls) -> win42::InputRequest {
+pub(super) fn request(app: &Xls) -> suite42_app::InputRequest {
     suite42_app::sheet::sorting::request(app.col)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     fn app() -> Xls {
         Xls {
             book: Workbook::new(10, 5).unwrap(),

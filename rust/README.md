@@ -44,31 +44,39 @@ Windows runtime behavior. The Windows CI workflow also builds with MSVC.
 | `crates/*-core`, `label42`, `marks42`, `suite42-core`, `suite42-pdf-text` | Formats and document engines |
 | `crates/suite42-app` | Portable app services shared by every shell: the `App` host contract, recovery, recents, preferences, localization catalogs, labels, signature generators and per-app helpers (PDF comparison and export, Goal Seek/Solver, scan naming, slide outlines, image batches). See [its README](crates/suite42-app/README.md) |
 | `crates/win42` | Win32 host: windows, menus, dialogs, drawing, clipboard, printing, PDFium loading, OCR engine, spelling, dark mode. Re-exports the `suite42-app` contract |
+| `crates/egui42` | Experimental egui host used instead of `win42::run` on Linux and macOS (see [Linux preview](#linux-preview)) |
 | `crates/suite42-pdf-raster` | WinRT PDF rendering (Windows only) |
-| `apps/*` | One executable per app: the document model implementing `App`, plus Windows-only engines (PDFium editing, CryptoAPI signing, WIA, Windows OCR) |
+| `apps/*` | One executable per app: the document model implementing `App`, plus Windows-only engines (PDFium editing, CryptoAPI signing, WIA, Windows OCR). Each `main` picks `win42::run` on Windows and `egui42::run` elsewhere |
+| `apps/off42-cli` | The `off42` command line over the cores and `suite42-app` services |
 
 `cargo test -p suite42-app` runs on any host, and `cargo check -p suite42-app --target wasm32-unknown-unknown`
 checks the WebAssembly build. Stored preference, history and recovery formats are pinned by its tests.
 
 ## off42 command line and the Linux preview
 
-`apps/off42-cli` builds one `off42` executable on Windows, Linux and macOS from the platform-free core crates
-(`doc42-core`, `xls42-core`, `ppt42-core`, `pdf42-core`, `img42-core`, `label42`, `marks42`, `suite42-pdf-text`). It reads
-bytes, calls a core and writes bytes; no window system is involved.
+`apps/off42-cli` builds one `off42` executable on Windows, Linux and macOS. File formats come from the core crates; PDF
+merge, page export, text export and comparison, label sheets, codes, marks, signatures and stamps are the same
+`suite42-app` services the apps call. No window system is involved. PDF text uses
+`suite42_app::pdf::lopdf_text` (lopdf) on every platform: plain text in content-stream order, without character styles
+or glyph positions. PDFium for Linux and macOS (architecture decision D7) is not wired in yet.
 
 | Command | What it does |
 | --- | --- |
 | `off42 convert IN OUT` | Documents doc42/DOCX/RTF/ODT/HTML/Markdown/TXT; sheets XLSX/ODS/CSV/xls42 (XLS read-only); slides PPTX/ODP/JSON; images PNG/JPEG/TIFF/GIF/WebP/BMP. Any document, sheet or slide deck to `.pdf` as plain text layout (A4, bundled Noto Sans). Package parts a target cannot hold are left out with a note. |
-| `off42 text IN` / `off42 info IN` | Text of documents, all sheets (calculated values, tab-separated), slide titles and bodies, PDF text (lopdf extraction, no layout); summary counts. |
-| `off42 pdf merge OUT IN...`, `off42 pdf extract IN PAGES OUT` | PDF42 merge and page extraction (`1,3-5`, reverse `5-3`). |
+| `off42 text IN` / `off42 info IN` | Text of documents, all sheets (calculated values, tab-separated), slide titles and bodies, PDF text; summary counts. |
+| `off42 convert IN.pdf OUT.txt\|rtf\|html\|docx` | PDF42 text export (all pages; text only). |
+| `off42 pdf merge OUT IN...`, `off42 pdf extract IN PAGES OUT [--split]` | PDF42 merge and page export (`1,3-5`, reverse `5-3`; `--split` writes a ZIP with one PDF per page). |
+| `off42 pdf compare OLD NEW` | PDF42 text comparison: words removed and added per page. |
 | `off42 barcode FORMAT VALUE OUT.png [--width MM]` | QR, Data Matrix, Code 128, Aztec. |
-| `off42 labels OUT.pdf ...`, `off42 labels stocks` | A4 label sheets from arguments or `--from FILE` with built-in stocks or `--size WxH`, optional codes. |
+| `off42 labels OUT.pdf ...`, `off42 labels stocks` | A4 label sheets from arguments, `--from FILE` or `--artwork` (one-page PDF, PNG or JPEG at 300 dpi) with built-in stocks or `--size WxH`, optional codes. |
 | `off42 marks list`, `off42 marks render ID OUT.png` | The 97 product and conformity marks. |
 | `off42 signature NAME OUT`, `off42 stamp list`, `off42 stamp ID OUT --set KEY=VALUE` | Handwritten signature and stamp variants (`OUT-1.png`...), `--seed` for repeatable output. |
 
-Not in the CLI: OCR, scanning, printing, PDF rendering to images, PDF signing and verification, PDF form filling,
+PDF merge, page export and text export never replace an existing file. Not in the CLI: OCR (Tesseract is not built
+for Linux or macOS yet), scanning, printing, PDF rendering to images, PDF signing and verification, form filling,
 watermarks/numbering, image editing, faithful (laid-out) document/slide/sheet PDF. `cargo test -p off42-cli` covers
-the conversions, PDF merge/extract, codes, labels, marks, signatures and stamps. The Windows ZIP includes `off42.exe`.
+the conversions, PDF merge/extract/split, text export and comparison, codes, labels (text and artwork), marks,
+signatures and stamps. The Windows ZIP includes `off42.exe`.
 
 ### Linux preview
 
@@ -76,13 +84,15 @@ Experimental. `.github/workflows/rust-linux.yml` runs `cargo test --locked --wor
 `off42` plus the six apps, runs `scripts/smoke-linux.sh` headlessly and packages `off42-linux-x86_64.tar.gz`; tags
 `v*-linux-preview.*` publish it as a prerelease. A macOS job builds and tests the same CLI.
 
-Besides the CLI, the tarball has PDF42, DOC42, XLS42, PPT42, IMG42 and SCN42 as rough windows: off Windows,
-`win42::run` uses `crates/win42/src/portable.rs`, a simple egui window (X11 or Wayland) with the item list, document text
+Besides the CLI, the tarball has PDF42, DOC42, XLS42, PPT42, IMG42 and SCN42 as rough windows: off Windows, each app
+runs in `crates/egui42`, a simple egui window (X11 or Wayland) with the item list, document text
 (editable), the cell table, the image, Undo/Redo, a Commands menu, Export and Save As by file extension, plus app
 options `--convert`, `--text`, `--items`, `--table`, `--export ID`, `--formats`. Page canvases, WYSIWYG rich text,
-rulers, slide shows, printing, scanning, OCR, PDFium rendering/search/text editing, system-certificate signing,
-clipboard, recents, recovery, localized UI, file pickers and most settings dialogs are missing; such commands report
-"requires Windows". The windows have not been exercised on a real Linux desktop (CI has no display).
+rulers, slide shows, printing, scanning, OCR, PDFium rendering/search/text extraction/editing, system-certificate
+signing, clipboard, recents and recovery in the window, localized UI, file pickers and most settings dialogs are
+missing; such commands report "requires Windows". Shared stores (`suite42_app::storage::local_data`) use
+`$XDG_DATA_HOME/off42` or `~/.local/share/off42` on Linux and `~/Library/Application Support/off42` on macOS. The
+windows have not been exercised on a real Linux desktop (CI has no display).
 
 ```bash
 sudo apt-get install build-essential pkg-config libx11-dev libxcursor-dev libxrandr-dev libxi-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev libfontconfig1-dev

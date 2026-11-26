@@ -61,7 +61,7 @@ struct Scn {
     tesseract_path: String,
     ocr_language: String,
     language_discovery: Option<std::sync::mpsc::Receiver<Result<String, String>>>,
-    print_pending: Option<std::sync::mpsc::Receiver<(u64, Result<win42::PrintJob, String>)>>,
+    print_pending: Option<std::sync::mpsc::Receiver<(u64, Result<suite42_app::PrintJob, String>)>>,
     ocr_displayed: usize,
     ocr: Option<(
         ocr_batch::Receiver,
@@ -85,30 +85,30 @@ impl Scn {
         }
     }
 }
-impl win42::App for Scn {
+impl suite42_app::App for Scn {
     fn take_pending_new_window(&mut self) -> Option<std::path::PathBuf> {
         self.pending_history_open.take()
     }
     fn view_actions(&self) -> &'static [(u16, &'static str)] {
         &[(SCAN_HISTORY, "Scan History…"), (CLEAR_SCAN_HISTORY, "Clear Scan History…")]
     }
-    fn dialog_request(&self, id: u16) -> Option<win42::DialogRequest> {
+    fn dialog_request(&self, id: u16) -> Option<suite42_app::DialogRequest> {
         match id {
-            SCAN_HISTORY if history::load().is_empty() => Some(win42::DialogRequest::Information {
+            SCAN_HISTORY if history::load().is_empty() => Some(suite42_app::DialogRequest::Information {
                 title: "Scan History",
-                text: win42::localization::text("Saved scans appear here."),
+                text: suite42_app::localization::text("Saved scans appear here."),
             }),
-            CLEAR_SCAN_HISTORY => Some(win42::DialogRequest::Confirmation {
+            CLEAR_SCAN_HISTORY => Some(suite42_app::DialogRequest::Confirmation {
                 title: "Clear Scan History",
-                text: win42::localization::text("Clear the scan history? Exported files will be kept."),
+                text: suite42_app::localization::text("Clear the scan history? Exported files will be kept."),
             }),
             _ => None,
         }
     }
-    fn dialog_result(&mut self, id: u16, result: win42::DialogResult) -> Result<(), String> {
+    fn dialog_result(&mut self, id: u16, result: suite42_app::DialogResult) -> Result<(), String> {
         match (id, result) {
-            (CLEAR_SCAN_HISTORY, win42::DialogResult::Confirmed(true)) => history::clear(),
-            (CLEAR_SCAN_HISTORY, win42::DialogResult::Confirmed(false)) => Ok(()),
+            (CLEAR_SCAN_HISTORY, suite42_app::DialogResult::Confirmed(true)) => history::clear(),
+            (CLEAR_SCAN_HISTORY, suite42_app::DialogResult::Confirmed(false)) => Ok(()),
             _ => Err("Unknown scan history action".into()),
         }
     }
@@ -133,7 +133,7 @@ impl win42::App for Scn {
         self.generation = self.generation.wrapping_add(1);
         Ok(())
     }
-    fn take_pending_print_job(&mut self) -> Option<Result<win42::PrintJob, String>> {
+    fn take_pending_print_job(&mut self) -> Option<Result<suite42_app::PrintJob, String>> {
         let result = self
             .print_pending
             .as_ref()
@@ -255,11 +255,11 @@ impl win42::App for Scn {
         true
     }
     fn supports_recovery(&self)->bool{true}
-    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
-        Ok(Some(win42::recovery::Snapshot::new("scn42",(&self.doc).save_snapshot().0)))
+    fn recovery_snapshot(&self)->Result<Option<suite42_app::recovery::Snapshot>,String>{
+        Ok(Some(suite42_app::recovery::Snapshot::new("scn42",(&self.doc).save_snapshot().0)))
     }
-    fn save_formats(&self) -> Vec<win42::FileFormat> {
-        vec![win42::FileFormat {
+    fn save_formats(&self) -> Vec<suite42_app::FileFormat> {
+        vec![suite42_app::FileFormat {
             id: "scn42",
             title: "SCN42 project",
             extensions: &["scn42"],
@@ -326,9 +326,9 @@ impl win42::App for Scn {
         self.index = 0;
         Ok(())
     }
-    fn file_actions(&self) -> &'static [win42::FileAction] {
+    fn file_actions(&self) -> &'static [suite42_app::FileAction] {
         &[
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 33,
                 title: "Import PDF pages...",
                 save: false,
@@ -336,7 +336,7 @@ impl win42::App for Scn {
                 format: "PDF",
                 pattern: "*.pdf",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 20,
                 title: "&Import Image (convert to 8-bit)...",
                 save: false,
@@ -344,7 +344,7 @@ impl win42::App for Scn {
                 format: "PNG / JPEG / BMP / TIFF / GIF / WebP / SVG image",
                 pattern: "*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp;*.svg",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 22,
                 title: "Export &Recognized Text...",
                 save: true,
@@ -352,7 +352,7 @@ impl win42::App for Scn {
                 format: "UTF-8 recognized text",
                 pattern: "*.txt",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 30,
                 title: "Export all pages as TIFF...",
                 save: true,
@@ -360,7 +360,7 @@ impl win42::App for Scn {
                 format: "Multi-page TIFF",
                 pattern: "*.tif;*.tiff",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 31,
                 title: "Export current page as PNG...",
                 save: true,
@@ -368,7 +368,7 @@ impl win42::App for Scn {
                 format: "PNG image",
                 pattern: "*.png",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 32,
                 title: "Export current page as JPEG...",
                 save: true,
@@ -376,7 +376,7 @@ impl win42::App for Scn {
                 format: "JPEG image",
                 pattern: "*.jpg;*.jpeg",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: EXPORT_PAGE_IMAGES,
                 title: "Export Pages as Images…",
                 save: true,
@@ -384,7 +384,7 @@ impl win42::App for Scn {
                 format: "PNG filename prefix",
                 pattern: "*.png",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: EXPORT_PDF_PAGES,
                 title: "Export one PDF per page…",
                 save: true,
@@ -392,7 +392,7 @@ impl win42::App for Scn {
                 format: "PDF filename prefix",
                 pattern: "*.pdf",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 21,
                 title: "&Export PDF...",
                 save: true,
@@ -402,8 +402,8 @@ impl win42::App for Scn {
             },
         ]
     }
-    fn file_input_request(&self, id: u16) -> Option<win42::InputRequest> {
-        (id == EXPORT_PAGE_IMAGES).then(|| win42::InputRequest {
+    fn file_input_request(&self, id: u16) -> Option<suite42_app::InputRequest> {
+        (id == EXPORT_PAGE_IMAGES).then(|| suite42_app::InputRequest {
             title: "Export Pages as Images",
             fields: vec![("Format", IMAGE_FORMATS[0].into())],
         })
@@ -416,11 +416,11 @@ impl win42::App for Scn {
         };
         Some(export_naming::load().suggest(self.doc.pages().get(index)))
     }
-    fn configured_file_action(&self, id: u16, values: &[String]) -> Result<win42::FileAction, String> {
+    fn configured_file_action(&self, id: u16, values: &[String]) -> Result<suite42_app::FileAction, String> {
         let action = self.file_actions().iter().find(|action| action.id == id)
             .copied().ok_or("Unsupported file action")?;
         if id == EXPORT_PAGE_IMAGES && image_extension(values)? == "jpg" {
-            return Ok(win42::FileAction {
+            return Ok(suite42_app::FileAction {
                 extension: "jpg", format: "JPEG filename prefix", pattern: "*.jpg", ..action
             });
         }
@@ -582,22 +582,22 @@ impl win42::App for Scn {
             (EXPORT_NAMING, "Export Name Template…"),
         ]
     }
-    fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+    fn input_request(&self, id: u16) -> Option<suite42_app::InputRequest> {
         if id == EXPORT_NAMING {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "File Name",
                 fields: vec![("Template (YYYY-MM-DD, HH-mm, {n}, {title})", export_naming::load().template)],
             });
         }
         if id == SCAN_HISTORY {
             let entries = history::load();
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Scan History",
                 fields: vec![("Saved scan", entries.first()?.label(0)), ("Action", HISTORY_ACTIONS[0].into())],
             });
         }
         if id == 36 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Export quality and compression",
                 fields: vec![
                     ("JPEG quality (1–100)", self.jpeg_quality.to_string()),
@@ -613,7 +613,7 @@ impl win42::App for Scn {
             });
         }
         if id == 34 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "PDF import page range and DPI",
                 fields: vec![
                     ("First page (1-based)", self.pdf_first.to_string()),
@@ -623,13 +623,13 @@ impl win42::App for Scn {
             });
         }
         if id == 25 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Find installed Tesseract languages",
                 fields: vec![("Tesseract executable path", self.tesseract_path.clone())],
             });
         }
         if id == 38 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Built-in OCR (offline; up to 3 languages)",
                 fields: vec![
                     ("Language (auto, en-US, eng+rus...)", "auto".into()),
@@ -639,7 +639,7 @@ impl win42::App for Scn {
             });
         }
         if id == 37 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Recognize page range (all-or-nothing)",
                 fields: vec![
                     ("Tesseract executable", self.tesseract_path.clone()),
@@ -650,7 +650,7 @@ impl win42::App for Scn {
             });
         }
         if id == 23 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Recognize text (Tesseract language codes)",
                 fields: vec![
                     (
@@ -666,14 +666,14 @@ impl win42::App for Scn {
         }
         let p = self.doc.pages().get(self.index)?;
         if id == 28 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Deskew page (-45 to 45 degrees)",
                 fields: vec![("Angle (degrees)", "0".into())],
             });
         }
         if id == 29 {
             let (w, h) = (p.width.saturating_sub(1), p.height.saturating_sub(1));
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Perspective: clockwise source corners",
                 fields: vec![
                     ("Top left X", "0".into()),
@@ -690,7 +690,7 @@ impl win42::App for Scn {
             });
         }
         if id == 26 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Physical page resolution (default 150 DPI)",
                 fields: vec![
                     ("Horizontal DPI", p.dpi_x.to_string()),
@@ -698,7 +698,7 @@ impl win42::App for Scn {
                 ],
             });
         }
-        (id == 18).then(|| win42::InputRequest {
+        (id == 18).then(|| suite42_app::InputRequest {
             title: "Crop page",
             fields: vec![
                 ("Left", "0".into()),
@@ -1071,7 +1071,7 @@ impl win42::App for Scn {
                 let generation = self.generation;
                 let (tx, rx) = std::sync::mpsc::channel();
                 std::thread::spawn(move || {
-                    let result = (|| -> Result<win42::PrintJob, String> {
+                    let result = (|| -> Result<suite42_app::PrintJob, String> {
                         let mut out = Vec::new();
                         for page in pages {
                             let width = page.width as f64 * 72.0 / page.dpi_x as f64;
@@ -1079,7 +1079,7 @@ impl win42::App for Scn {
                             if width < 1.0 || height < 1.0 || width > 4096.0 || height > 4096.0 {
                                 return Err("Page size is outside printable limits".into());
                             }
-                            let geometry = win42::PrintGeometry {
+                            let geometry = suite42_app::PrintGeometry {
                                 width_twips: (width * 20.0) as i32,
                                 height_twips: (height * 20.0) as i32,
                                 margin_left_twips: 0,
@@ -1087,9 +1087,9 @@ impl win42::App for Scn {
                                 margin_right_twips: 0,
                                 margin_bottom_twips: 0,
                             };
-                            let scene = win42::CanvasScene {
-                                viewport: win42::Viewport::default(),
-                                items: vec![win42::SceneItem::ImageScaled {
+                            let scene = suite42_app::CanvasScene {
+                                viewport: suite42_app::Viewport::default(),
+                                items: vec![suite42_app::SceneItem::ImageScaled {
                                     x: 0.0,
                                     y: 0.0,
                                     width,
@@ -1099,9 +1099,9 @@ impl win42::App for Scn {
                                     rgba: page.pixels.to_vec(),
                                 }],
                             };
-                            out.push(win42::PrintPage { geometry, scene });
+                            out.push(suite42_app::PrintPage { geometry, scene });
                         }
-                        Ok(win42::PrintJob::Scenes(out))
+                        Ok(suite42_app::PrintJob::Scenes(out))
                     })();
                     let _ = tx.send((generation, result));
                 });
@@ -1146,9 +1146,14 @@ impl win42::App for Scn {
         Ok(())
     }
 }
+/// Win32 host on Windows; the experimental egui host elsewhere.
+#[cfg(windows)]
+use win42::run as run_host;
+#[cfg(not(windows))]
+use egui42::run as run_host;
 fn main() {
     let settings = ocr_settings::load();
-    win42::run(Box::new(Scn {
+    run_host(Box::new(Scn {
         pending: None,
         pending_history_open: None,
         next_save: 0,
@@ -1176,7 +1181,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn new_and_open_cancel_stale_batch() {
         for reopen in [false, true] {
@@ -1458,7 +1463,7 @@ mod tests {
 #[cfg(test)]
 mod rescan_tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     fn app() -> Scn {
         let mut app = Scn {
             pending: None,

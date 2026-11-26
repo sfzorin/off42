@@ -121,20 +121,20 @@ struct Pdf {
     operation_error: Option<String>,
     ocr_language:String,
     ocr_dpi:u32,
-    ocr_report:Option<win42::ReportRequest>,
+    ocr_report:Option<suite42_app::report::ReportRequest>,
     #[cfg(windows)]
     signature_worker: Option<signatures::Worker>,
     #[cfg(windows)]
     signing_worker: Option<signatures::SignWorker>,
     native_window: usize,
-    signature_report: Option<win42::ReportRequest>,
+    signature_report: Option<suite42_app::report::ReportRequest>,
     #[cfg(windows)]
     ocr_worker:Option<ocr::Worker>,
     #[cfg(windows)]
     ocr_languages:Option<std::sync::mpsc::Receiver<Result<Vec<(String,String)>,String>>>,
     merge:Option<merge::Worker>,
     batch_headers: Option<batch_headers::Worker>,
-    batch_report: Option<win42::ReportRequest>,
+    batch_report: Option<suite42_app::report::ReportRequest>,
     pending_command: Option<u16>,
     merged_window:Option<std::path::PathBuf>,
     page_export: Option<page_export::Worker>,
@@ -142,13 +142,13 @@ struct Pdf {
     text_export: Option<text_export::Worker>,
     #[cfg(windows)]
     print_pending: Option<(
-        std::sync::mpsc::Receiver<Result<win42::PrintJob, String>>,
+        std::sync::mpsc::Receiver<Result<suite42_app::PrintJob, String>>,
         std::sync::Arc<std::sync::atomic::AtomicUsize>,
         std::sync::Arc<std::sync::atomic::AtomicBool>,
         usize,
     )>,
     #[cfg(windows)]
-    print_ready: Option<Result<win42::PrintJob, String>>,
+    print_ready: Option<Result<suite42_app::PrintJob, String>>,
     #[cfg(windows)]
     export_pending: Option<(
         std::sync::mpsc::Receiver<Result<(), String>>,
@@ -161,14 +161,14 @@ struct Pdf {
     export_last: usize,
     export_dpi: u32,
     zoom: f64,
-    pan: win42::Point,
-    pan_drag: Option<(win42::Point, win42::Point)>,
+    pan: suite42_app::Point,
+    pan_drag: Option<(suite42_app::Point, suite42_app::Point)>,
     tool: Option<pdf42_core::AnnotationKind>,
-    annotation_drag: Option<win42::Point>,
+    annotation_drag: Option<suite42_app::Point>,
     label_region_tool: bool,
-    label_region_drag: Option<(win42::Point,win42::Point)>,
+    label_region_drag: Option<(suite42_app::Point,suite42_app::Point)>,
     pending_label_region: Option<(u64,pdf42_core::SaveState,usize,[f64;4])>,
-    ink_points: Vec<win42::Point>,
+    ink_points: Vec<suite42_app::Point>,
     annotation_contents: String,
     stamp_image: Option<pdf42_core::ImageStamp>,
     signature_asset: Option<Vec<[f64; 2]>>,
@@ -217,7 +217,7 @@ impl Pdf {
     fn start_signing(&mut self, path: &Path, visible: bool, reason: &str) -> Result<(), String> {
         #[cfg(windows)]
         {
-            if !win42::App::enabled(self, SIGN_PDF_COPY) {
+            if !suite42_app::App::enabled(self, SIGN_PDF_COPY) {
                 return Err("Certificate signing is unavailable for this PDF".into());
             }
             let input = self.doc.as_ref().ok_or("Open a PDF first")?.capture_signature(visible, reason)?;
@@ -232,7 +232,7 @@ impl Pdf {
         }
     }
     #[cfg(windows)]
-    fn page_point(&self, p: win42::Point) -> Result<[f64; 2], String> {
+    fn page_point(&self, p: suite42_app::Point) -> Result<[f64; 2], String> {
         let (width, height, _) = self
             .rendered
             .as_ref()
@@ -270,7 +270,7 @@ impl Pdf {
         self.ink_points.clear();
         self.capture_signature = false;
         self.place_signature = false;
-        self.pan = win42::Point::default();
+        self.pan = suite42_app::Point::default();
         Ok(())
     }
     #[cfg(windows)]
@@ -347,7 +347,7 @@ impl Pdf {
         self.label_region_tool=false;
         self.label_region_drag=None;
         self.pending_label_region=None;
-        if self.pending_command==Some(win42::CREATE_LABEL_SHEET_COMMAND){self.pending_command=None;}
+        if self.pending_command==Some(suite42_app::CREATE_LABEL_SHEET_COMMAND){self.pending_command=None;}
         #[cfg(windows)]
         {
             if self.ocr_worker.as_ref().is_some_and(|w|w.epoch!=self.current_epoch||!self.doc.as_ref().is_some_and(|d|d.matches_snapshot(&w.source))){
@@ -410,23 +410,23 @@ fn technical_id(selection: pdf42_core::AnnotationSelection) -> u64 {
         }
     }
 }
-impl win42::App for Pdf {
+impl suite42_app::App for Pdf {
     fn supports_technical_elements(&self) -> bool {
         true
     }
     fn can_insert_technical_element(&self) -> bool {
         self.doc.as_ref().is_some_and(PdfDocument::allows_changes)
     }
-    fn technical_targets(&self) -> Vec<win42::TechnicalTarget> {
+    fn technical_targets(&self) -> Vec<suite42_app::TechnicalTarget> {
         let Some(doc) = &self.doc else {
             return Vec::new();
         };
         doc.technical_stamps(doc.current())
             .into_iter()
             .filter_map(|(selection, rect, recipe)| {
-                win42::TechnicalElement::from_description(&recipe).map(|mut element| {
+                suite42_app::TechnicalElement::from_description(&recipe).map(|mut element| {
                     element.width_mm = (rect[2] - rect[0]).abs() * 25.4 / 72.0;
-                    win42::TechnicalTarget::new(technical_id(selection), element)
+                    suite42_app::TechnicalTarget::new(technical_id(selection), element)
                 })
             })
             .collect()
@@ -437,7 +437,7 @@ impl win42::App for Pdf {
     fn apply_technical_element(
         &mut self,
         target: Option<u64>,
-        raster: win42::TechnicalRaster,
+        raster: suite42_app::TechnicalRaster,
     ) -> Result<(), String> {
         let doc = self.doc.as_mut().ok_or("Open a PDF first")?;
         if !doc.allows_changes() {
@@ -494,7 +494,7 @@ impl win42::App for Pdf {
     fn supports_production(&self) -> bool {
         true
     }
-    fn take_label_source_override(&mut self)->Result<Option<win42::LabelSource>,String>{
+    fn take_label_source_override(&mut self)->Result<Option<suite42_app::LabelSource>,String>{
         let Some((epoch,source,page,region))=self.pending_label_region.take() else{return Ok(None)};
         let doc=self.doc.as_ref().ok_or("Open a PDF first")?;
         if epoch!=self.current_epoch||page!=doc.current()||!doc.matches_snapshot(&source){
@@ -502,9 +502,9 @@ impl win42::App for Pdf {
         }
         let bytes=doc.prepare_page_extraction()?.extract(&[page])?;
         #[cfg(windows)] let bytes=pdfium_edit::flatten_for_artwork(&bytes)?;
-        Ok(Some(win42::LabelSource::PdfArtwork{bytes,region:Some(region)}))
+        Ok(Some(suite42_app::LabelSource::PdfArtwork{bytes,region:Some(region)}))
     }
-    fn label_sources(&self)->Result<Vec<(String,win42::LabelSource)>,String>{
+    fn label_sources(&self)->Result<Vec<(String,suite42_app::LabelSource)>,String>{
         let mut sources=vec![("Custom Text".into(),self.label_source()?)];
         let doc=self.doc.as_ref().ok_or("Open a PDF first")?;
         let captured=(||->Result<Vec<u8>,String>{
@@ -514,11 +514,11 @@ impl win42::App for Pdf {
         })();
         #[cfg(windows)] if let Some(selection)=self.selected_text.as_ref().filter(|s|s.page==doc.current()&&!s.boxes.is_empty()) {
             let area=selection.boxes.iter().fold([f64::INFINITY,f64::INFINITY,f64::NEG_INFINITY,f64::NEG_INFINITY],|mut area,b|{area[0]=area[0].min(b[0]);area[1]=area[1].min(b[1]);area[2]=area[2].max(b[2]);area[3]=area[3].max(b[3]);area});
-            sources.push(("Selected Text Area Artwork".into(),match &captured {Ok(bytes)=>win42::LabelSource::PdfArtwork{bytes:bytes.clone(),region:Some(area)},Err(error)=>win42::LabelSource::Unavailable(error.clone())}));
+            sources.push(("Selected Text Area Artwork".into(),match &captured {Ok(bytes)=>suite42_app::LabelSource::PdfArtwork{bytes:bytes.clone(),region:Some(area)},Err(error)=>suite42_app::LabelSource::Unavailable(error.clone())}));
         }
-        sources.push((format!("Page {} Artwork",doc.current()+1),match captured {Ok(bytes)=>win42::LabelSource::PdfArtwork{bytes,region:None},Err(error)=>win42::LabelSource::Unavailable(error)}));Ok(sources)
+        sources.push((format!("Page {} Artwork",doc.current()+1),match captured {Ok(bytes)=>suite42_app::LabelSource::PdfArtwork{bytes,region:None},Err(error)=>suite42_app::LabelSource::Unavailable(error)}));Ok(sources)
     }
-    fn label_source(&self) -> Result<win42::LabelSource, String> {
+    fn label_source(&self) -> Result<suite42_app::LabelSource, String> {
         #[cfg(windows)]
         let text = self
             .selected_text
@@ -532,7 +532,7 @@ impl win42::App for Pdf {
             .unwrap_or_default();
         #[cfg(not(windows))]
         let text = String::new();
-        Ok(win42::LabelSource::Text(text))
+        Ok(suite42_app::LabelSource::Text(text))
     }
     fn begin_async_open(&mut self, path: &Path) -> Result<bool, String> {
         self.cancel_async_open();
@@ -604,13 +604,13 @@ impl win42::App for Pdf {
             }
         }
     }
-    fn take_async_open_password_request(&mut self) -> Option<win42::InputRequest> {
+    fn take_async_open_password_request(&mut self) -> Option<suite42_app::InputRequest> {
         let challenge = self.open_challenge.as_mut()?;
         if !challenge.prompt_pending {
             return None;
         }
         challenge.prompt_pending = false;
-        Some(win42::InputRequest {
+        Some(suite42_app::InputRequest {
             title: if challenge.incorrect {
                 "Incorrect password — try again"
             } else {
@@ -690,7 +690,7 @@ impl win42::App for Pdf {
         self.ink_points.clear();
         self.capture_signature = false;
         self.place_signature = false;
-        self.pan = win42::Point::default();
+        self.pan = suite42_app::Point::default();
         #[cfg(windows)]
         {
             if let Some((_, _, _, cancel)) = self.object_inspect.take() {
@@ -977,7 +977,7 @@ impl win42::App for Pdf {
             page_changed
         }
     }
-    fn take_pending_print_job(&mut self) -> Option<Result<win42::PrintJob, String>> {
+    fn take_pending_print_job(&mut self) -> Option<Result<suite42_app::PrintJob, String>> {
         #[cfg(windows)]
         {
             self.print_ready.take()
@@ -993,10 +993,10 @@ impl win42::App for Pdf {
     fn take_pending_new_window(&mut self) -> Option<std::path::PathBuf> {
         self.merged_window.take()
     }
-    fn dialog_request(&self, id: u16) -> Option<win42::DialogRequest> {
+    fn dialog_request(&self, id: u16) -> Option<suite42_app::DialogRequest> {
         if id == 112 && self.batch_headers.is_none() && self.doc.is_some() {
-            Some(win42::DialogRequest::BatchFolder {
-                input: win42::FileAction {
+            Some(suite42_app::DialogRequest::BatchFolder {
+                input: suite42_app::FileAction {
                     id: 112,
                     title: "Apply Headers to Other PDFs…",
                     save: false,
@@ -1007,8 +1007,8 @@ impl win42::App for Pdf {
                 title: "Choose a Folder for PDF Copies",
             })
         } else if id == 110 && self.merge.is_none() {
-            Some(win42::DialogRequest::CombineFiles {
-                input: win42::FileAction {
+            Some(suite42_app::DialogRequest::CombineFiles {
+                input: suite42_app::FileAction {
                     id: 110,
                     title: "Merge Files…",
                     save: false,
@@ -1016,7 +1016,7 @@ impl win42::App for Pdf {
                     format: "PDF document",
                     pattern: "*.pdf",
                 },
-                output: win42::FileAction {
+                output: suite42_app::FileAction {
                     id: 110,
                     title: "Save Merged PDF…",
                     save: true,
@@ -1029,9 +1029,9 @@ impl win42::App for Pdf {
             None
         }
     }
-    fn dialog_result(&mut self, id: u16, result: win42::DialogResult) -> Result<(), String> {
+    fn dialog_result(&mut self, id: u16, result: suite42_app::DialogResult) -> Result<(), String> {
         if id == 112 {
-            if let win42::DialogResult::Files { inputs, output } = result {
+            if let suite42_app::DialogResult::Files { inputs, output } = result {
                 if self.batch_headers.is_some() {
                     return Err("A PDF header batch is already running".into());
                 }
@@ -1047,7 +1047,7 @@ impl win42::App for Pdf {
             return Err("Unsupported PDF batch dialog".into());
         }
         if id == 110 {
-            if let win42::DialogResult::Files { inputs, output } = result {
+            if let suite42_app::DialogResult::Files { inputs, output } = result {
                 if self.merge.is_some() {
                     return Err("A PDF merge is already running".into());
                 }
@@ -1058,7 +1058,7 @@ impl win42::App for Pdf {
         }
         Err("Unsupported PDF dialog".into())
     }
-    fn take_pending_report(&mut self) -> Option<(u16, win42::ReportRequest)> {
+    fn take_pending_report(&mut self) -> Option<(u16, suite42_app::report::ReportRequest)> {
         if let Some(report) = self.signature_report.take() {
             return Some((VERIFY_SIGNATURES, report));
         }
@@ -1073,7 +1073,7 @@ impl win42::App for Pdf {
         }
         None
     }
-    fn report_event(&mut self, id: u16, event: win42::ReportEvent) -> Result<(), String> {
+    fn report_event(&mut self, id: u16, event: suite42_app::report::ReportEvent) -> Result<(), String> {
         if matches!(id,112|116|VERIFY_SIGNATURES) {
             return Ok(());
         }
@@ -1087,7 +1087,7 @@ impl win42::App for Pdf {
                 .as_ref()
                 .ok_or("Comparison is unavailable")?;
             match event {
-                win42::ReportEvent::Select(index) => {
+                suite42_app::report::ReportEvent::Select(index) => {
                     if session.epoch != self.current_epoch
                         || !self
                             .doc
@@ -1119,7 +1119,7 @@ impl win42::App for Pdf {
                         self.selected_text = Some(selection);
                     }
                 }
-                win42::ReportEvent::Keep(keep) => {
+                suite42_app::report::ReportEvent::Keep(keep) => {
                     if self.protected_readonly {
                         return Err("Document permissions do not allow annotations".into());
                     }
@@ -1143,11 +1143,11 @@ impl win42::App for Pdf {
                     self.future_documents.clear();
                     self.request_render()?;
                 }
-                win42::ReportEvent::Clear => {
+                suite42_app::report::ReportEvent::Clear => {
                     self.clear_comparison()?;
                     self.request_render()?;
                 }
-                win42::ReportEvent::Closed { keep } => {
+                suite42_app::report::ReportEvent::Closed { keep } => {
                     if !keep {
                         self.clear_comparison()?;
                         self.comparison = None;
@@ -1163,11 +1163,11 @@ impl win42::App for Pdf {
             Err("PDF comparison requires Windows".into())
         }
     }
-    fn canvas_scene(&self) -> Option<win42::CanvasScene> {
+    fn canvas_scene(&self) -> Option<suite42_app::CanvasScene> {
         #[cfg(windows)]
         {
             let (width, height, rgba) = self.rendered.as_ref()?;
-            let mut items = vec![win42::SceneItem::Image {
+            let mut items = vec![suite42_app::SceneItem::Image {
                 x: 0.,
                 y: 0.,
                 width: *width,
@@ -1189,7 +1189,7 @@ impl win42::App for Pdf {
                             doc.current(),
                             &session.changes,
                         );
-                        if let win42::SceneItem::Image { rgba, .. } = &mut items[0] {
+                        if let suite42_app::SceneItem::Image { rgba, .. } = &mut items[0] {
                             *rgba = pixels.into();
                         }
                     }
@@ -1210,13 +1210,13 @@ impl win42::App for Pdf {
                                 270 => (1. - y, 1. - x),
                                 _ => (x, 1. - y),
                             };
-                            win42::Point {
+                            suite42_app::Point {
                                 x: u * *width as f64,
                                 y: v * *height as f64,
                             }
                         };
                         for rect in &hit.boxes {
-                            items.push(win42::SceneItem::Path {
+                            items.push(suite42_app::SceneItem::Path {
                                 points: vec![
                                     convert(rect[0], rect[1]),
                                     convert(rect[2], rect[1]),
@@ -1244,13 +1244,13 @@ impl win42::App for Pdf {
                                 270 => (1. - y, 1. - x),
                                 _ => (x, 1. - y),
                             };
-                            win42::Point {
+                            suite42_app::Point {
                                 x: u * *width as f64,
                                 y: v * *height as f64,
                             }
                         };
                         for q in &selection.boxes {
-                            items.push(win42::SceneItem::Path {
+                            items.push(suite42_app::SceneItem::Path {
                                 points: vec![
                                     cv(q[0], q[1]),
                                     cv(q[2], q[1]),
@@ -1265,17 +1265,17 @@ impl win42::App for Pdf {
                 }
             }
             if let Some((a,b))=self.label_region_drag {
-                items.push(win42::SceneItem::Path{points:vec![a,win42::Point{x:b.x,y:a.y},b,win42::Point{x:a.x,y:b.y}],color:[0,100,220],closed:true});
+                items.push(suite42_app::SceneItem::Path{points:vec![a,suite42_app::Point{x:b.x,y:a.y},b,suite42_app::Point{x:a.x,y:b.y}],color:[0,100,220],closed:true});
             }
             if self.ink_points.len() > 1 {
-                items.push(win42::SceneItem::Path {
+                items.push(suite42_app::SceneItem::Path {
                     points: self.ink_points.clone(),
                     color: [255, 0, 0],
                     closed: false,
                 });
             }
-            Some(win42::CanvasScene {
-                viewport: win42::Viewport {
+            Some(suite42_app::CanvasScene {
+                viewport: suite42_app::Viewport {
                     zoom: 1.0,
                     pan: self.pan,
                 },
@@ -1287,9 +1287,9 @@ impl win42::App for Pdf {
             None
         }
     }
-    fn canvas_event(&mut self, event: win42::CanvasEvent) -> Result<(), String> {
+    fn canvas_event(&mut self, event: suite42_app::CanvasEvent) -> Result<(), String> {
         match event {
-            win42::CanvasEvent::PointerDown(p) => {
+            suite42_app::CanvasEvent::PointerDown(p) => {
                 if self.label_region_tool {
                     self.label_region_drag=Some((p,p));
                     return Ok(());
@@ -1314,7 +1314,7 @@ impl win42::App for Pdf {
                     self.pan_drag = Some((p, self.pan));
                 }
             }
-            win42::CanvasEvent::PointerMove(p) => {
+            suite42_app::CanvasEvent::PointerMove(p) => {
                 if let Some((_,end))=self.label_region_drag.as_mut(){*end=p;return Ok(());}
                 if self.annotation_drag.is_some()
                     && self.tool == Some(pdf42_core::AnnotationKind::Ink)
@@ -1327,7 +1327,7 @@ impl win42::App for Pdf {
                     self.pan.y += p.y - anchor.y;
                 }
             }
-            win42::CanvasEvent::PointerUp(p) => {
+            suite42_app::CanvasEvent::PointerUp(p) => {
                 if let Some((anchor,_))=self.label_region_drag.take(){
                     self.label_region_tool=false;
                     self.operation_error=None;
@@ -1338,7 +1338,7 @@ impl win42::App for Pdf {
                         let doc=self.doc.as_ref().ok_or("Open a PDF first")?;
                         let source=doc.save_snapshot()?.1;
                         self.pending_label_region=Some((self.current_epoch,source,doc.current(),region));
-                        self.pending_command=Some(win42::CREATE_LABEL_SHEET_COMMAND);
+                        self.pending_command=Some(suite42_app::CREATE_LABEL_SHEET_COMMAND);
                     }
                     #[cfg(not(windows))] let _=(anchor,p);
                     return Ok(());
@@ -1535,12 +1535,12 @@ impl win42::App for Pdf {
                 }
                 self.pan_drag = None;
             }
-            win42::CanvasEvent::Cancel|win42::CanvasEvent::Key{code:27,..} => {
+            suite42_app::CanvasEvent::Cancel|suite42_app::CanvasEvent::Key{code:27,..} => {
                 if self.label_region_tool||self.label_region_drag.is_some(){self.operation_error=None;}
                 self.label_region_tool=false;
                 self.label_region_drag=None;
                 self.pending_label_region=None;
-                if self.pending_command==Some(win42::CREATE_LABEL_SHEET_COMMAND){self.pending_command=None;}
+                if self.pending_command==Some(suite42_app::CREATE_LABEL_SHEET_COMMAND){self.pending_command=None;}
                 self.annotation_drag = None;
                 self.ink_points.clear();
                 if let Some((_, original)) = self.pan_drag.take() {
@@ -1597,14 +1597,14 @@ impl win42::App for Pdf {
             vec![]
         }
     }
-    fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+    fn input_request(&self, id: u16) -> Option<suite42_app::InputRequest> {
         if id==114{return self.ocr_request();}
         if (90..=93).contains(&id) {
             return self.decoration_request(id);
         }
         if id == 83 {
             let doc = self.doc.as_ref()?;
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Page Labels",
                 fields: vec![
                     ("First page", "1".into()),
@@ -1622,7 +1622,7 @@ impl win42::App for Pdf {
                 .ok()
                 .flatten()
                 .and_then(|labels| labels.get(doc.current()).cloned());
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Go to Page",
                 fields: vec![(
                     "Page number or label",
@@ -1631,7 +1631,7 @@ impl win42::App for Pdf {
             });
         }
         if id == 76 && self.doc.is_some() {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Set password for encrypted PDF copy (AES-128)",
                 fields: vec![("Password (1–32 printable ASCII characters)", String::new())],
             });
@@ -1640,7 +1640,7 @@ impl win42::App for Pdf {
         #[cfg(windows)]
         if id == 71 || id == 75 {
             let (object, _) = self.selected_object.as_ref()?;
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: if id == 75 {
                     "Replace object text with Noto (font appearance changes)"
                 } else {
@@ -1650,7 +1650,7 @@ impl win42::App for Pdf {
             });
         }
         if id == 59 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Image export range",
                 fields: vec![
                     ("First page", self.export_first.max(1).to_string()),
@@ -1701,7 +1701,7 @@ impl win42::App for Pdf {
                         .join("; "),
                 ));
             }
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: match id {
                     54 => "Add bookmark",
                     55 => "Go to bookmark",
@@ -1714,7 +1714,7 @@ impl win42::App for Pdf {
             });
         }
         if id == 118 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Print PDF as Image",
                 fields: vec![
                     ("First page", "1".into()),
@@ -1736,7 +1736,7 @@ impl win42::App for Pdf {
                 fields.push(("Export path", selected));
             }
             fields.push(("Available attachments", names.join(", ")));
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: if id == 49 {
                     "Export attachment"
                 } else {
@@ -1746,7 +1746,7 @@ impl win42::App for Pdf {
             });
         }
         if id == 36 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Find PDF text",
                 fields: vec![("Search text", self.search_query.clone())],
             });
@@ -1759,7 +1759,7 @@ impl win42::App for Pdf {
                 .map(|(n, k, _)| format!("{n} ({k})"))
                 .collect::<Vec<_>>()
                 .join(", ");
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Edit form field",
                 fields: vec![
                     ("Field name", name),
@@ -1769,7 +1769,7 @@ impl win42::App for Pdf {
             });
         }
         if id == 31 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Edit note or text",
                 fields: vec![(
                     "Text",
@@ -1780,7 +1780,7 @@ impl win42::App for Pdf {
             });
         }
         if matches!(id, 25 | 26 | 29 | 30) {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: match id {
                     25 => "Note text",
                     26 => "Link destination",
@@ -1795,7 +1795,7 @@ impl win42::App for Pdf {
         }
         if id == 21 {
             let b = doc.page_box(doc.current()).ok()?;
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Crop page (PDF points)",
                 fields: vec![
                     ("Left", b[0].to_string()),
@@ -1808,7 +1808,7 @@ impl win42::App for Pdf {
         if id != 14 {
             return None;
         }
-        Some(win42::InputRequest {
+        Some(suite42_app::InputRequest {
             title: "Document properties",
             fields: vec![
                 (
@@ -2136,19 +2136,19 @@ impl win42::App for Pdf {
     fn mark_file_action(&self) -> Option<u16> {
         Some(74)
     }
-    fn file_input_request(&self, id: u16) -> Option<win42::InputRequest> {
+    fn file_input_request(&self, id: u16) -> Option<suite42_app::InputRequest> {
         if id == 94 {
             return self.decoration_request(id);
         }
         let doc = self.doc.as_ref()?;
         if id == SIGN_PDF_COPY {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Certificate Signature",
                 fields: vec![("Visible on current page", "No".into()), ("Reason (optional)", String::new())],
             });
         }
         if id == 86 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Export PDF Text",
                 fields: vec![
                     (
@@ -2162,7 +2162,7 @@ impl win42::App for Pdf {
         if id != 80 && id != 81 {
             return None;
         }
-        Some(win42::InputRequest {
+        Some(suite42_app::InputRequest {
             title: if id == 80 {
                 "Extract PDF Pages"
             } else {
@@ -2182,7 +2182,7 @@ impl win42::App for Pdf {
         &self,
         id: u16,
         values: &[String],
-    ) -> Result<win42::FileAction, String> {
+    ) -> Result<suite42_app::FileAction, String> {
         if id == 94 {
             self.validate_image_watermark(values)?;
         }
@@ -2206,7 +2206,7 @@ impl win42::App for Pdf {
             "Word document (DOCX)" => ("docx", "Word document", "*.docx"),
             _ => return Err("Choose a supported text export format".into()),
         };
-        Ok(win42::FileAction {
+        Ok(suite42_app::FileAction {
             id,
             title: "Export Text…",
             save: true,
@@ -2279,9 +2279,9 @@ impl win42::App for Pdf {
         self.operation_error = None;
         Ok(())
     }
-    fn file_actions(&self) -> &'static [win42::FileAction] {
+    fn file_actions(&self) -> &'static [suite42_app::FileAction] {
         &[
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: VERIFY_SIGNATURES,
                 title: "Verify PDF Signatures…",
                 save: false,
@@ -2289,7 +2289,7 @@ impl win42::App for Pdf {
                 format: "PDF document",
                 pattern: "*.pdf",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: COPY_SIGNED_PDF,
                 title: "Save Signed PDF Copy…",
                 save: true,
@@ -2297,7 +2297,7 @@ impl win42::App for Pdf {
                 format: "PDF document",
                 pattern: "*.pdf",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: SIGN_PDF_COPY,
                 title: "Sign PDF Copy with Certificate…",
                 save: true,
@@ -2305,7 +2305,7 @@ impl win42::App for Pdf {
                 format: "PDF document",
                 pattern: "*.pdf",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 97,
                 title: "Compare With…",
                 save: false,
@@ -2313,7 +2313,7 @@ impl win42::App for Pdf {
                 format: "PDF document",
                 pattern: "*.pdf",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 94,
                 title: "Image Watermark…",
                 save: false,
@@ -2321,7 +2321,7 @@ impl win42::App for Pdf {
                 format: "PNG or JPEG image",
                 pattern: "*.png;*.jpg;*.jpeg",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 86,
                 title: "Export Text…",
                 save: true,
@@ -2329,7 +2329,7 @@ impl win42::App for Pdf {
                 format: "Plain text",
                 pattern: "*.txt",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 80,
                 title: "Extract PDF Pages…",
                 save: true,
@@ -2337,7 +2337,7 @@ impl win42::App for Pdf {
                 format: "PDF document",
                 pattern: "*.pdf",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 81,
                 title: "Split PDF Pages to ZIP…",
                 save: true,
@@ -2345,7 +2345,7 @@ impl win42::App for Pdf {
                 format: "ZIP archive",
                 pattern: "*.zip",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 74,
                 title: "Choose Image Stamp…",
                 save: false,
@@ -2353,7 +2353,7 @@ impl win42::App for Pdf {
                 format: "PNG or JPEG image",
                 pattern: "*.png;*.jpg;*.jpeg",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 60,
                 title: "Export PNG Pages to ZIP…",
                 save: true,
@@ -2361,7 +2361,7 @@ impl win42::App for Pdf {
                 format: "ZIP archive",
                 pattern: "*.zip",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 61,
                 title: "Export JPEG Pages to ZIP…",
                 save: true,
@@ -2369,7 +2369,7 @@ impl win42::App for Pdf {
                 format: "ZIP archive",
                 pattern: "*.zip",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 48,
                 title: "Add Attachment…",
                 save: false,
@@ -2377,7 +2377,7 @@ impl win42::App for Pdf {
                 format: "All files",
                 pattern: "*.*",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 33,
                 title: "Extract Current Page…",
                 save: true,
@@ -2385,7 +2385,7 @@ impl win42::App for Pdf {
                 format: "PDF document",
                 pattern: "*.pdf",
             },
-            win42::FileAction {
+            suite42_app::FileAction {
                 id: 35,
                 title: "Insert PDF Pages…",
                 save: false,
@@ -2531,33 +2531,33 @@ impl win42::App for Pdf {
             _ => Err("Unsupported file action".into()),
         }
     }
-    fn clipboard_request(&self, id: u16) -> Option<win42::ClipboardRequest> {
+    fn clipboard_request(&self, id: u16) -> Option<suite42_app::ClipboardRequest> {
         #[cfg(windows)]
         if id == 44 {
             return self
                 .selected_text
                 .as_ref()
-                .map(|s| win42::ClipboardRequest::WriteText(s.text.clone()));
+                .map(|s| suite42_app::ClipboardRequest::WriteText(s.text.clone()));
         }
         let _ = id;
         None
     }
-    fn open_formats(&self) -> Vec<win42::FileFormat> {
-        vec![win42::FileFormat {
+    fn open_formats(&self) -> Vec<suite42_app::FileFormat> {
+        vec![suite42_app::FileFormat {
             id: "pdf",
             title: "PDF document",
             extensions: &["pdf"],
         }]
     }
     fn supports_recovery(&self)->bool{true}
-    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
+    fn recovery_snapshot(&self)->Result<Option<suite42_app::recovery::Snapshot>,String>{
         // An encrypted/protected session must never leave an automatic plaintext copy.
         if self.protected_session||self.encrypted_session||self.protected_readonly{return Ok(None);}
-        self.doc.as_ref().map(|doc|doc.save_snapshot().map(|(bytes,_)|Some(win42::recovery::Snapshot::new("pdf",bytes)))).unwrap_or(Ok(None))
+        self.doc.as_ref().map(|doc|doc.save_snapshot().map(|(bytes,_)|Some(suite42_app::recovery::Snapshot::new("pdf",bytes)))).unwrap_or(Ok(None))
     }
-    fn save_formats(&self) -> Vec<win42::FileFormat> {
+    fn save_formats(&self) -> Vec<suite42_app::FileFormat> {
         vec![
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "pdf",
                 title: if self.protected_session || self.encrypted_session {
                     "Decrypted PDF copy (password removed)"
@@ -2566,7 +2566,7 @@ impl win42::App for Pdf {
                 },
                 extensions: &["pdf"],
             },
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "pdf-encrypted",
                 title: "Password-protected PDF (AES-128; all permissions; set password first)",
                 extensions: &["pdf"],
@@ -3177,7 +3177,7 @@ impl win42::App for Pdf {
         self.export_first = 0;
         self.export_last = 0;
         self.export_dpi = 0;
-        self.pan = win42::Point::default();
+        self.pan = suite42_app::Point::default();
         self.request_render()
     }
     fn save(&mut self, p: &Path) -> Result<(), String> {
@@ -3225,7 +3225,7 @@ impl win42::App for Pdf {
         if id==52{
             #[cfg(windows)]{
                 let(bytes,_)=self.doc.as_ref().ok_or("Open a PDF first")?.save_snapshot()?;
-                self.print_ready=Some(Ok(win42::PrintJob::FitPdf(bytes.into())));return Ok(());
+                self.print_ready=Some(Ok(suite42_app::PrintJob::FitPdf(bytes.into())));return Ok(());
             }
             #[cfg(not(windows))]return Err("PDF printing requires Windows".into());
         }
@@ -3448,7 +3448,7 @@ impl win42::App for Pdf {
                 current / 1.25
             })
             .clamp(0.25, 3.0);
-            self.pan = win42::Point::default();
+            self.pan = suite42_app::Point::default();
             return self.request_render();
         }
         self.selected_annotation = None;
@@ -3479,13 +3479,18 @@ impl win42::App for Pdf {
         self.request_render()
     }
 }
+/// Win32 host on Windows; the experimental egui host elsewhere.
+#[cfg(windows)]
+use win42::run as run_host;
+#[cfg(not(windows))]
+use egui42::run as run_host;
 fn main() {
-    win42::run(Box::new(Pdf::default()))
+    run_host(Box::new(Pdf::default()))
 }
 #[cfg(test)]
 mod tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn repeated_async_open_commits_three_text_pages() {
         let directory = tempfile::tempdir().unwrap();
@@ -3515,7 +3520,7 @@ mod tests {
     }
     #[test]
     fn normal_open_password_retry_cancel_and_source_identity() {
-        fn wait_challenge(app: &mut Pdf) -> win42::InputRequest {
+        fn wait_challenge(app: &mut Pdf) -> suite42_app::InputRequest {
             let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
             loop {
                 if let Some(result) = app.take_async_open_result() {
@@ -3787,7 +3792,7 @@ mod tests {
         let bounds=doc.page_box(0).unwrap();
         app.pending_label_region=Some((app.current_epoch,doc.save_snapshot().unwrap().1,0,bounds));
         let source=app.take_label_source_override().unwrap().unwrap();
-        let win42::LabelSource::PdfArtwork{bytes,region}=source else{panic!("Expected PDF artwork")};
+        let suite42_app::LabelSource::PdfArtwork{bytes,region}=source else{panic!("Expected PDF artwork")};
         assert_eq!(region,Some(bounds));assert_eq!(lopdf::Document::load_mem(&bytes).unwrap().get_pages().len(),1);
         assert!(app.take_label_source_override().unwrap().is_none());
         assert!(app.doc.as_ref().unwrap().matches_snapshot(&before.1));assert!(!app.dirty());assert!(!app.can_undo());
@@ -3853,7 +3858,7 @@ mod tests {
 #[cfg(test)]
 mod technical_regression {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn technical_recipe_survives_pdf_reopen_and_atomic_replacement() {
         let dir = std::env::temp_dir().join(format!("pdf42-technical-{}", std::process::id()));
@@ -3865,14 +3870,14 @@ mod technical_regression {
         scan.export_pdf(&input).unwrap();
         let mut app = Pdf::default();
         app.doc = Some(PdfDocument::open(&input).unwrap());
-        let first = win42::TechnicalElement {
+        let first = suite42_app::TechnicalElement {
             symbol_id: None,
-            code_type: win42::BarcodeFormat::Qr,
+            code_type: suite42_app::BarcodeFormat::Qr,
             value: "PCB-0007".into(),
             width_mm: 20.0,
             caption: false,
         };
-        app.apply_technical_element(None, win42::TechnicalRaster::render(first.clone()).unwrap())
+        app.apply_technical_element(None, suite42_app::TechnicalRaster::render(first.clone()).unwrap())
             .unwrap();
         let id = app.technical_targets()[0].id;
         let mut second = first.clone();
@@ -3880,7 +3885,7 @@ mod technical_regression {
         second.width_mm = 25.0;
         app.apply_technical_element(
             Some(id),
-            win42::TechnicalRaster::render(second.clone()).unwrap(),
+            suite42_app::TechnicalRaster::render(second.clone()).unwrap(),
         )
         .unwrap();
         app.action(4).unwrap();
@@ -3939,7 +3944,7 @@ mod technical_regression {
         assert_eq!(target.element.value, "PCB-0008");
         app.apply_technical_element(
             Some(target.id),
-            win42::TechnicalRaster::render(first.clone()).unwrap(),
+            suite42_app::TechnicalRaster::render(first.clone()).unwrap(),
         )
         .unwrap();
         assert_eq!(app.technical_targets().len(), 1);
@@ -3957,7 +3962,7 @@ mod technical_regression {
 }
 
 #[cfg(test)]mod recovery_tests{
-    use super::*;use win42::App;
+    use super::*;use suite42_app::App;
     #[test]fn recovery_keeps_unsaved_rotation_and_never_writes_plaintext_for_protected_sessions(){
         let path=std::env::temp_dir().join(format!("pdf42-recovery-{}.pdf",std::process::id()));
         let mut scan=scn42_core::ScanDocument::new();scan.add_rgba(1,1,vec![255,0,0,255]).unwrap();scan.export_pdf(&path).unwrap();
@@ -3973,7 +3978,7 @@ mod technical_regression {
 #[cfg(all(test, windows))]
 mod vector_print_tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn default_print_queues_the_current_vector_snapshot_without_a_history_step() {
         let directory = tempfile::tempdir().unwrap();
@@ -3990,7 +3995,7 @@ mod vector_print_tests {
         assert!(app.input_request(118).is_some());
         app.action(52).unwrap();
         assert!(!app.enabled(52));
-        let win42::PrintJob::FitPdf(bytes) = app.take_pending_print_job().unwrap().unwrap() else {
+        let suite42_app::PrintJob::FitPdf(bytes) = app.take_pending_print_job().unwrap().unwrap() else {
             panic!("Expected vector PDF print job")
         };
         assert_eq!(bytes.as_ref(), snapshot.0);

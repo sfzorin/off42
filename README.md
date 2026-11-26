@@ -120,7 +120,7 @@ for runtime requirements.
 [Download the Windows preview ZIP](https://github.com/sfzorin/off42/releases/download/v1.0.0-windows-preview.5/off42-1.0.0-windows-preview.5-x64.zip).
 
 The `off42` command line builds from the shared Rust cores on Windows, Linux and macOS: it converts documents,
-spreadsheets and presentations, exports plain-layout PDF, merges and extracts PDF pages, and makes barcodes, label
+spreadsheets and presentations, exports plain-layout PDF, merges, extracts and compares PDF pages, exports PDF text, and makes barcodes, label
 sheets, product marks, signatures and stamps. An experimental Linux x86_64 tarball adds rough windows for the six
 apps; page views, rich editing, printing, scanning and OCR are not on Linux yet. See
 [the command line and Linux preview](rust/README.md#off42-command-line-and-the-linux-preview).

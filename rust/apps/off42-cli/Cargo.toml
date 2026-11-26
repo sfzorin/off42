@@ -17,7 +17,7 @@ img42-core = { path = "../../crates/img42-core" }
 label42 = { path = "../../crates/label42" }
 marks42 = { path = "../../crates/marks42" }
 suite42-pdf-text = { path = "../../crates/suite42-pdf-text" }
-lopdf = "0.47"
+suite42-app = { path = "../../crates/suite42-app" }
 image = { version = "0.25", default-features = false, features = ["png"] }
 
 [dev-dependencies]

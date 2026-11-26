@@ -17,3 +17,6 @@ tempfile = "3"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = ["Win32_Devices_ImageAcquisition", "Win32_Foundation", "Win32_System_Com", "Win32_Graphics_Imaging", "Media_Ocr", "Globalization", "Graphics_Imaging", "Storage_Streams", "Foundation", "Win32_System_WinRT"] }
+
+[target.'cfg(not(windows))'.dependencies]
+egui42 = { path = "../../crates/egui42" }

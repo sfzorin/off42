@@ -30,6 +30,11 @@ jobs:
           restore-keys: linux-${{ hashFiles('rust/Cargo.lock') }}-
       - name: Test portable crates and apps
         run: cargo test --locked --workspace
+      - name: Check that the Win32 host does not pull in the egui host
+        run: |
+          if cargo tree --locked --target x86_64-pc-windows-msvc -p win42 -p doc42 -e normal -i eframe 2>/dev/null | grep -q eframe; then
+            echo "eframe is in the Windows dependency tree"; exit 1
+          fi
       - name: Build the off42 CLI and six experimental app windows
         run: cargo build --locked --release -p off42-cli -p img42 -p doc42 -p xls42 -p ppt42 -p pdf42 -p scn42
       - name: Stage the Linux bundle

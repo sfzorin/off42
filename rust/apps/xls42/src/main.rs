@@ -81,7 +81,7 @@ impl Xls {
         }
     }
 }
-impl win42::App for Xls {
+impl suite42_app::App for Xls {
     fn poll_background(&mut self)->bool{let goal=self.goal_seek.poll();let solver=self.solver.poll(&mut self.book);goal||solver}
     fn take_pending_command(&mut self)->Option<u16>{self.goal_seek.take_command().or_else(||self.solver.take_command())}
     fn toolbar_command_visible(&self,id:u16)->bool{matches!(id,25|31|34|38|39|40|50)}
@@ -91,14 +91,14 @@ impl win42::App for Xls {
     fn can_insert_technical_element(&self) -> bool {
         !self.book.is_read_only() && !self.book.is_protected()
     }
-    fn technical_targets(&self) -> Vec<win42::TechnicalTarget> {
+    fn technical_targets(&self) -> Vec<suite42_app::TechnicalTarget> {
         self.book
             .images()
             .iter()
             .filter_map(|picture| {
-                win42::TechnicalElement::from_png(&picture.data).map(|mut element| {
+                suite42_app::TechnicalElement::from_png(&picture.data).map(|mut element| {
                     element.width_mm = picture.width_points * 25.4 / 72.0;
-                    win42::TechnicalTarget::new(picture.id, element)
+                    suite42_app::TechnicalTarget::new(picture.id, element)
                 })
             })
             .collect()
@@ -109,7 +109,7 @@ impl win42::App for Xls {
     fn apply_technical_element(
         &mut self,
         id: Option<u64>,
-        raster: win42::TechnicalRaster,
+        raster: suite42_app::TechnicalRaster,
     ) -> Result<(), String> {
         let description = raster.element.description()?;
         if let Some(id) = id {
@@ -120,7 +120,7 @@ impl win42::App for Xls {
                 .find(|picture| picture.id == id)
                 .cloned()
                 .ok_or("The technical object no longer exists")?;
-            if win42::TechnicalElement::from_png(&picture.data).is_none() {
+            if suite42_app::TechnicalElement::from_png(&picture.data).is_none() {
                 return Err("Choose a technical object".into());
             }
             picture.data = raster.png.into();
@@ -141,8 +141,8 @@ impl win42::App for Xls {
     fn mark_file_action(&self) -> Option<u16> {
         Some(76)
     }
-    fn file_actions(&self) -> &'static [win42::FileAction] {
-        &[win42::FileAction {
+    fn file_actions(&self) -> &'static [suite42_app::FileAction] {
+        &[suite42_app::FileAction {
             id: 76,
             title: "Insert picture…",
             save: false,
@@ -206,7 +206,7 @@ impl win42::App for Xls {
     fn supports_production(&self) -> bool {
         true
     }
-    fn label_source(&self) -> Result<win42::LabelSource, String> {
+    fn label_source(&self) -> Result<suite42_app::LabelSource, String> {
         let range = self.selection_range();
         if range.right - range.left >= 200 || range.bottom - range.top >= 5000 {
             return Err("Select up to 5,000 rows and 200 columns.".into());
@@ -231,31 +231,31 @@ impl win42::App for Xls {
         if rows.is_empty() {
             return Err("Select visible cells to create labels.".into());
         }
-        Ok(win42::LabelSource::Rows(rows))
+        Ok(suite42_app::LabelSource::Rows(rows))
     }
     fn supports_recovery(&self)->bool{true}
-    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
+    fn recovery_snapshot(&self)->Result<Option<suite42_app::recovery::Snapshot>,String>{
         let(extension,bytes)=self.book.recovery_bytes().map_err(|e|e.to_string())?;
-        Ok(Some(win42::recovery::Snapshot::new(&extension,bytes)))
+        Ok(Some(suite42_app::recovery::Snapshot::new(&extension,bytes)))
     }
-    fn save_formats(&self) -> Vec<win42::FileFormat> {
+    fn save_formats(&self) -> Vec<suite42_app::FileFormat> {
         vec![
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "xls42",
                 title: "XLS42 workbook",
                 extensions: &["xls42"],
             },
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "csv",
                 title: "CSV",
                 extensions: &["csv"],
             },
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "xlsx",
                 title: "Excel workbook",
                 extensions: &["xlsx"],
             },
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "ods",
                 title: "OpenDocument spreadsheet",
                 extensions: &["ods"],
@@ -289,7 +289,7 @@ impl win42::App for Xls {
     fn open_filter(&self) -> String {
         "*.xls42;*.csv;*.xlsx;*.xls;*.ods".into()
     }
-    fn command_specs(&self) -> Vec<win42::CommandSpec> {
+    fn command_specs(&self) -> Vec<suite42_app::CommandSpec> {
         [
             (20, "Add sheet"),
             (21, "Rename sheet"),
@@ -353,7 +353,7 @@ impl win42::App for Xls {
             (83,"Cancel Solver"),
         ]
         .into_iter()
-        .map(|(id, title)| win42::CommandSpec {
+        .map(|(id, title)| suite42_app::CommandSpec {
             id,
             title,
             accelerator: None,
@@ -367,7 +367,7 @@ impl win42::App for Xls {
         })
         .collect()
     }
-    fn clipboard_request(&self, id: u16) -> Option<win42::ClipboardRequest> {
+    fn clipboard_request(&self, id: u16) -> Option<suite42_app::ClipboardRequest> {
         match id {
             39 => {
                 let range = self.selection_range();
@@ -382,13 +382,13 @@ impl win42::App for Xls {
                 self.book
                     .copy_clipboard_mapped(&rows, &cols)
                     .ok()
-                    .map(|(text, bytes)| win42::ClipboardRequest::WriteDataAndText {
+                    .map(|(text, bytes)| suite42_app::ClipboardRequest::WriteDataAndText {
                         format: "Suite42.Spreadsheet.Cells.v1".into(),
                         bytes,
                         text,
                     })
             }
-            40 if !self.book.is_read_only() => Some(win42::ClipboardRequest::ReadDataOrText(
+            40 if !self.book.is_read_only() => Some(suite42_app::ClipboardRequest::ReadDataOrText(
                 "Suite42.Spreadsheet.Cells.v1".into(),
             )),
             _ => None,
@@ -432,13 +432,13 @@ impl win42::App for Xls {
         self.clear_visible_cache();
         Ok(())
     }
-    fn dialog_request(&self, id: u16) -> Option<win42::DialogRequest> {
+    fn dialog_request(&self, id: u16) -> Option<suite42_app::DialogRequest> {
         if id==goal_seek::RESULT{return self.goal_seek.dialog();}
         if id==solver::RESULT{return self.solver.dialog();}
         if id == 60 {
             let p = self.book.print_settings();
             let mm = |v: i32| ((v as i64 * 2540 + 720) / 1440) as i32;
-            return Some(win42::DialogRequest::PageSetup(win42::PageMargins {
+            return Some(suite42_app::DialogRequest::PageSetup(suite42_app::PageMargins {
                 left: mm(p.margin_left_twips),
                 top: mm(p.margin_top_twips),
                 right: mm(p.margin_right_twips),
@@ -455,14 +455,14 @@ impl win42::App for Xls {
                 }
                 let current = self.book.cell(self.row, self.col).unwrap_or_default();
                 let checked = values.iter().position(|value| value == current);
-                Some(win42::DialogRequest::GridChoices { values, checked })
+                Some(suite42_app::DialogRequest::GridChoices { values, checked })
             }
-            34 => Some(win42::DialogRequest::Font),
+            34 => Some(suite42_app::DialogRequest::Font),
             35 | 36 => {
                 let s = self.book.style(self.row, self.col).cloned().unwrap_or_default();
                 let color = if id == 35 { s.foreground } else { s.background }
                     .unwrap_or(if id == 35 { 0 } else { 0xffffff });
-                Some(win42::DialogRequest::Color([
+                Some(suite42_app::DialogRequest::Color([
                     (color >> 16) as u8,
                     (color >> 8) as u8,
                     color as u8,
@@ -471,8 +471,8 @@ impl win42::App for Xls {
             _ => None,
         }
     }
-    fn dialog_result(&mut self, id: u16, result: win42::DialogResult) -> Result<(), String> {
-        if let (VALIDATION_CHOICE, win42::DialogResult::GridChoice(value)) = (id, &result) {
+    fn dialog_result(&mut self, id: u16, result: suite42_app::DialogResult) -> Result<(), String> {
+        if let (VALIDATION_CHOICE, suite42_app::DialogResult::GridChoice(value)) = (id, &result) {
             if !self.enabled(id) {
                 return Err("This value is no longer available".into());
             }
@@ -481,9 +481,9 @@ impl win42::App for Xls {
             }
             return Ok(());
         }
-        if let (solver::RESULT,win42::DialogResult::Confirmed(keep))=(id,&result){self.solver.accept(&mut self.book,*keep)?;self.clear_visible_cache();return Ok(());}
-        if let (goal_seek::RESULT,win42::DialogResult::Confirmed(keep))=(id,&result){self.goal_seek.accept(&mut self.book,*keep)?;self.clear_visible_cache();return Ok(());}
-        if let (60, win42::DialogResult::PageSetup(p)) = (id, &result) {
+        if let (solver::RESULT,suite42_app::DialogResult::Confirmed(keep))=(id,&result){self.solver.accept(&mut self.book,*keep)?;self.clear_visible_cache();return Ok(());}
+        if let (goal_seek::RESULT,suite42_app::DialogResult::Confirmed(keep))=(id,&result){self.goal_seek.accept(&mut self.book,*keep)?;self.clear_visible_cache();return Ok(());}
+        if let (60, suite42_app::DialogResult::PageSetup(p)) = (id, &result) {
             let twips = |v: i32| ((v as i64 * 1440 + 1270) / 2540) as i32;
             let mut s = self.book.print_settings().clone();
             s.paper_width_twips = twips(p.paper_width);
@@ -497,7 +497,7 @@ impl win42::App for Xls {
         }
         let mut style=self.book.style(self.row,self.col).cloned().unwrap_or_default();
         match (id, result) {
-            (34, win42::DialogResult::Font(f)) => {
+            (34, suite42_app::DialogResult::Font(f)) => {
                 style.font = f.family;
                 style.font_size = f.points.round().clamp(1.0, u16::MAX as f64) as u16;
                 style.bold = f.bold;
@@ -506,10 +506,10 @@ impl win42::App for Xls {
                 style.foreground =
                     Some((f.color[0] as u32) << 16 | (f.color[1] as u32) << 8 | f.color[2] as u32)
             }
-            (35, win42::DialogResult::Color(c)) => {
+            (35, suite42_app::DialogResult::Color(c)) => {
                 style.foreground = Some((c[0] as u32) << 16 | (c[1] as u32) << 8 | c[2] as u32)
             }
-            (36, win42::DialogResult::Color(c)) => {
+            (36, suite42_app::DialogResult::Color(c)) => {
                 style.background = Some((c[0] as u32) << 16 | (c[1] as u32) << 8 | c[2] as u32)
             }
             _ => return Err("Unexpected dialog result".into()),
@@ -519,17 +519,17 @@ impl win42::App for Xls {
     }
     fn input_multiline_fields(&self,id:u16)->Vec<usize>{if id==solver::START{vec![4]}else if id==sorting::COMMAND{vec![0]}else{vec![]}}
     fn input_choices(&self,id:u16)->Vec<(usize,Vec<String>)>{if id==solver::START{solver::choices()}else if id==sorting::COMMAND{sorting::choices()}else{vec![]}}
-    fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+    fn input_request(&self, id: u16) -> Option<suite42_app::InputRequest> {
         if id==sorting::COMMAND{return Some(sorting::request(self));}
         if id==solver::START{return Some(solver::request(&self.book,(self.row,self.col)));}
-        if id==goal_seek::START{return Some(win42::InputRequest{title:"Goal Seek",fields:vec![("Formula cell:",goal_seek::reference((self.row,self.col))),("Target value:","0".into()),("Variable cell:",String::new())]});}
+        if id==goal_seek::START{return Some(suite42_app::InputRequest{title:"Goal Seek",fields:vec![("Formula cell:",goal_seek::reference((self.row,self.col))),("Target value:","0".into()),("Variable cell:",String::new())]});}
         if id == 77 {
             let picture = self
                 .book
                 .images()
                 .iter()
                 .find(|image| Some(image.id) == self.selected_picture)?;
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Picture Position and Size",
                 fields: vec![
                     ("Row (1-based)", (picture.row + 1).to_string()),
@@ -740,7 +740,7 @@ impl win42::App for Xls {
             ),
             _ => return None,
         };
-        Some(win42::InputRequest { title, fields })
+        Some(suite42_app::InputRequest { title, fields })
     }
     fn input_action(&mut self, id: u16, v: &[String]) -> Result<(), String> {
         if id==sorting::COMMAND{
@@ -1127,12 +1127,12 @@ impl win42::App for Xls {
         let visible = self.visible_rows().partition_point(|row|*row<rows);
         (visible, self.book.sheet_view().frozen_columns)
     }
-    fn grid_axes(&self)->Option<(win42::GridAxis,win42::GridAxis)> {
+    fn grid_axes(&self)->Option<(suite42_app::GridAxis,suite42_app::GridAxis)> {
         let rows=self.visible_rows();
         let mut widths=self.book.column_width_overrides().collect::<std::collections::BTreeMap<_,_>>();
         for &c in &self.book.sheet_view().hidden_columns {widths.insert(c,0);}
         let heights=self.book.row_height_overrides().filter_map(|(r,h)|rows.binary_search(&r).ok().map(|i|(i,h))).collect();
-        Some((win42::GridAxis::new(self.view_bounds().1,80,widths)?,win42::GridAxis::new(rows.len(),20,heights)?))
+        Some((suite42_app::GridAxis::new(self.view_bounds().1,80,widths)?,suite42_app::GridAxis::new(rows.len(),20,heights)?))
     }
     fn grid_column_width(&self, column: usize) -> u16 {
         if self.book.sheet_view().hidden_columns.contains(&column) {
@@ -1192,21 +1192,21 @@ impl win42::App for Xls {
             self.normalize_focus();
         }
     }
-    fn grid_selection(&self) -> Option<win42::GridRange> {
+    fn grid_selection(&self) -> Option<suite42_app::GridRange> {
         let r = self.selection_range();
         let rows = self.visible_rows();
         let top=rows.partition_point(|row|*row<r.top);
         let end=rows.partition_point(|row|*row<=r.bottom);
         if top>=end{return None}
         let bottom=end-1;
-        Some(win42::GridRange {
+        Some(suite42_app::GridRange {
             top,
             left: r.left,
             bottom,
             right: r.right,
         })
     }
-    fn select_grid_range(&mut self, r: win42::GridRange) {
+    fn select_grid_range(&mut self, r: suite42_app::GridRange) {
         let rows = self.visible_rows();
         let Some(&top) = rows.get(r.top) else { return };
         let Some(&bottom) = rows.get(r.bottom) else {
@@ -1220,7 +1220,7 @@ impl win42::App for Xls {
         };
         let _=self.choose_range(range,(range.top,range.left));
     }
-    fn select_grid_range_with_focus(&mut self, r: win42::GridRange, focus: (usize, usize)) {
+    fn select_grid_range_with_focus(&mut self, r: suite42_app::GridRange, focus: (usize, usize)) {
         let Some(top) = self.visible_at(r.top) else {
             return;
         };
@@ -1269,7 +1269,7 @@ impl win42::App for Xls {
         let range=Range{top:picture.row,left:picture.column,bottom:picture.row,right:picture.column};self.edit_range(range,|book|book.update_image(picture))?;
         Ok(())
     }
-    fn grid_pictures(&self) -> Vec<win42::GridPicture> {
+    fn grid_pictures(&self) -> Vec<suite42_app::GridPicture> {
         let images = self.book.images();
         let mut cache = self.picture_cache.borrow_mut();
         cache.retain(|id, _| images.iter().any(|image| image.id == *id));
@@ -1297,7 +1297,7 @@ impl win42::App for Xls {
                     cache.insert(picture.id, (picture.data.clone(), rgba.clone()));
                     rgba
                 };
-                Some(win42::GridPicture {
+                Some(suite42_app::GridPicture {
                     selected: self.selected_picture == Some(picture.id),
                     id: picture.id,
                     row,
@@ -1313,7 +1313,7 @@ impl win42::App for Xls {
             })
             .collect()
     }
-    fn grid_cell_style(&self, row: usize, column: usize) -> Option<win42::GridCellStyle> {
+    fn grid_cell_style(&self, row: usize, column: usize) -> Option<suite42_app::GridCellStyle> {
         let row = self.visible_at(row)?;
         let s = self.book.effective_style(row, column).or_else(||(row<self.view_bounds().0&&column<self.view_bounds().1).then(Default::default))?;
         let rgb = |c: u32| [(c >> 16) as u8, (c >> 8) as u8, c as u8];
@@ -1324,14 +1324,14 @@ impl win42::App for Xls {
             .find(|m| row >= m.top && row <= m.bottom && column >= m.left && column <= m.right)
             .filter(|_| self.book.sheet_filter().is_none())
             .and_then(|m| {
-                Some(win42::GridRange {
+                Some(suite42_app::GridRange {
                     top: self.visible_position(m.top)?,
                     left: m.left,
                     bottom: self.visible_position(m.bottom)?,
                     right: m.right,
                 })
             });
-        Some(win42::GridCellStyle {
+        Some(suite42_app::GridCellStyle {
             foreground: s.foreground.map(rgb),
             background: s.background.map(rgb),
             bold: s.bold,
@@ -1340,27 +1340,27 @@ impl win42::App for Xls {
             merged,
         })
     }
-    fn sparse_table(&self)->Option<win42::SparseTable>{
+    fn sparse_table(&self)->Option<suite42_app::SparseTable>{
         if self.preview.is_some(){return None}
         let cells=self.book.display_cells();let rows=self.compute_sparse_rows(&cells);let count=rows.len();
         let projected=cells.into_iter().filter_map(|((r,c),text)|rows.binary_search(&r).ok().map(|index|((index,c),text))).collect();self.visible_cache.replace(rows.into());
-        win42::SparseTable::new(count,self.view_bounds().1,projected).ok()
+        suite42_app::SparseTable::new(count,self.view_bounds().1,projected).ok()
     }
     #[cfg(test)]
     fn table(&self)->Option<Vec<Vec<String>>>{
         let data=self.sparse_table()?;assert!(data.len().saturating_mul(data.columns())<=100_000);
         Some((0..data.len()).map(|r|(0..data.columns()).map(|c|data.cell(r,c).to_owned()).collect()).collect())
     }
-    fn print_job(&self, id: u16) -> Option<win42::PrintJob> {
+    fn print_job(&self, id: u16) -> Option<suite42_app::PrintJob> {
         if id != 62 {
             return None;
         }
         let mut pages = match print::pages(&self.book, &self.book.visible_rows()) {
             Ok(p) => p,
-            Err(_) => return Some(win42::PrintJob::Scenes(Vec::new())),
+            Err(_) => return Some(suite42_app::PrintJob::Scenes(Vec::new())),
         };
         let p = self.book.print_settings();
-        let geometry = win42::PrintGeometry {
+        let geometry = suite42_app::PrintGeometry {
             width_twips: p.paper_width_twips,
             height_twips: p.paper_height_twips,
             margin_left_twips: p.margin_left_twips,
@@ -1374,15 +1374,15 @@ impl win42::App for Xls {
             (p.paper_height_twips - p.margin_top_twips - p.margin_bottom_twips) as f64 / 20.0;
         for chart in self.book.charts() {
             if let Ok(data) = self.book.chart_data(chart.id) {
-                pages.push(win42::PrintPage {
+                pages.push(suite42_app::PrintPage {
                     geometry,
                     scene: charts::print_scene(&data, width, height),
                 })
             }
         }
-        Some(win42::PrintJob::Scenes(pages))
+        Some(suite42_app::PrintJob::Scenes(pages))
     }
-    fn canvas_scene(&self) -> Option<win42::CanvasScene> {
+    fn canvas_scene(&self) -> Option<suite42_app::CanvasScene> {
         self.preview
             .and_then(|id| self.book.chart_data(id).ok())
             .map(|data| charts::scene(&data))
@@ -1401,12 +1401,12 @@ impl win42::App for Xls {
     fn text(&self) -> String {
         self.book
             .cell(self.row, self.col)
-            .map(win42::to_native_text)
+            .map(suite42_app::to_native_text)
             .unwrap_or_default()
     }
     fn status(&self) -> String {
-        if self.solver.running(){return format!("{}…",win42::localization::text("Solver"));}
-        if self.goal_seek.running(){return format!("{}…",win42::localization::text("Goal Seek"));}
+        if self.solver.running(){return format!("{}…",suite42_app::localization::text("Solver"));}
+        if self.goal_seek.running(){return format!("{}…",suite42_app::localization::text("Goal Seek"));}
         let sheet = self
             .book
             .sheets()
@@ -1484,7 +1484,7 @@ impl win42::App for Xls {
             _ => return Err("Unsupported workbook format".into()),
         }
         .map_err(|e| e.to_string())?;
-        for (_,_,_,text) in book.cell_inputs(){win42::validate_editable(text)?;}
+        for (_,_,_,text) in book.cell_inputs(){suite42_app::validate_editable(text)?;}
         self.book = book;
         self.viewport.borrow_mut().reset();
         self.goal_seek.cancel();
@@ -1513,7 +1513,7 @@ impl win42::App for Xls {
     }
     fn edit(&mut self, s: String) -> Result<(), String> {
         let (row,col)=(self.row,self.col);let range=self.selection_range();
-        self.edit_range(range,|book|book.set_cell_editor_text(row,col,win42::from_native_text(&s)))?;
+        self.edit_range(range,|book|book.set_cell_editor_text(row,col,suite42_app::from_native_text(&s)))?;
         self.clear_visible_cache();
         Ok(())
     }
@@ -1684,8 +1684,13 @@ impl win42::App for Xls {
         Ok(())
     }
 }
+/// Win32 host on Windows; the experimental egui host elsewhere.
+#[cfg(windows)]
+use win42::run as run_host;
+#[cfg(not(windows))]
+use egui42::run as run_host;
 fn main() {
-    win42::run(Box::new(Xls {
+    run_host(Box::new(Xls {
         goal_seek:Default::default(),
             solver:Default::default(),
         book: Workbook::new(20, 8).unwrap(),
@@ -1701,7 +1706,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn cell_editor_preserves_crlf() {
         let mut b = Workbook::new(1, 1).unwrap();
@@ -1728,7 +1733,7 @@ mod tests {
 #[cfg(test)]
 mod regression {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn typed_copy_translates_formula_while_external_text_keeps_its_reference() {
         let mut app = Xls {
@@ -1745,7 +1750,7 @@ mod regression {
         };
         app.book.set_cell(0, 1, "=A1".into()).unwrap();
         let bytes = match app.clipboard_request(39).unwrap() {
-            win42::ClipboardRequest::WriteDataAndText { bytes, text, .. } => {
+            suite42_app::ClipboardRequest::WriteDataAndText { bytes, text, .. } => {
                 assert_eq!(text, "0");
                 let payload: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
                 assert_eq!(payload["cells"][0]["content"]["type"], "Formula");
@@ -1825,7 +1830,7 @@ mod regression {
             ["hit1", "hit3", "hit4", "hit6"]
         );
         app.select_grid_range_with_focus(
-            win42::GridRange {
+            suite42_app::GridRange {
                 top: 0,
                 left: 1,
                 bottom: 1,
@@ -1834,7 +1839,7 @@ mod regression {
             (0, 1),
         );
         let (text, bytes) = match app.clipboard_request(39).unwrap() {
-            win42::ClipboardRequest::WriteDataAndText { text, bytes, .. } => (text, bytes),
+            suite42_app::ClipboardRequest::WriteDataAndText { text, bytes, .. } => (text, bytes),
             _ => panic!("missing typed copy"),
         };
         assert_eq!(text, "hit1\t\n\t#VALUE!");
@@ -1848,7 +1853,7 @@ mod regression {
         );
         assert!(matches!(
             app.clipboard_request(40),
-            Some(win42::ClipboardRequest::ReadDataOrText(_))
+            Some(suite42_app::ClipboardRequest::ReadDataOrText(_))
         ));
         app.select_cell(2, 1);
         assert_eq!(app.row, 4);
@@ -1907,7 +1912,7 @@ mod regression {
             viewport: Default::default(),
             selected_picture: None,
         };
-        let win42::LabelSource::Rows(rows) = app.label_source().unwrap() else {
+        let suite42_app::LabelSource::Rows(rows) = app.label_source().unwrap() else {
             panic!("expected rows")
         };
         assert_eq!(
@@ -1984,7 +1989,7 @@ mod regression {
         assert_eq!(app.book.cell(3, 1), Some(""));
         assert_eq!(app.book.cell(4, 1), Some(""));
         assert_eq!(app.book.cell(2, 0), Some("row2"));
-        if let Some(win42::ClipboardRequest::WriteDataAndText { text, .. }) =
+        if let Some(suite42_app::ClipboardRequest::WriteDataAndText { text, .. }) =
             app.clipboard_request(39)
         {
             assert!(text.contains("a\tb"));
@@ -2056,7 +2061,7 @@ mod regression {
         assert_eq!(app.grid_row_label(1), "4");
         assert_eq!(app.grid_frozen_panes(), (2, 0));
         app.select_grid_range_with_focus(
-            win42::GridRange {
+            suite42_app::GridRange {
                 top: 0,
                 left: 1,
                 bottom: 1,
@@ -2190,16 +2195,16 @@ mod regression {
         app.open(&input).unwrap();
         let after = app.table().unwrap();
         assert!(matches!(
-            win42::grid_transition(Some(&prior), &after, app.selected_cell()),
-            win42::GridTransition::Update { .. }
+            suite42_app::grid_transition(Some(&prior), &after, app.selected_cell()),
+            suite42_app::GridTransition::Update { .. }
         ));
         assert_eq!(app.selected_cell(), Some((0, 0)));
         app.edit("opened".into()).unwrap();
         let selected =
-            win42::grid_selection_event(app.selected_cell(), Some(1), None, false).unwrap();
+            suite42_app::grid_selection_event(app.selected_cell(), Some(1), None, false).unwrap();
         app.select_cell(selected.0, selected.1);
         app.edit("keyboard".into()).unwrap();
-        assert!(win42::grid_selection_event(app.selected_cell(), Some(1), None, true).is_none());
+        assert!(suite42_app::grid_selection_event(app.selected_cell(), Some(1), None, true).is_none());
         let output = root.join("out.csv");
         app.save(&output).unwrap();
         let saved = Workbook::open_csv(&output).unwrap();
@@ -2309,7 +2314,7 @@ mod regression {
 #[cfg(test)]
 mod policy_regression {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn rejection_undo_branch_and_context_preserve_cell_policy() {
         let mut b = Workbook::new(1, 2).unwrap();
@@ -2352,7 +2357,7 @@ fn parse_chart_kind(s: &str) -> Result<ChartKind, String> {
 #[cfg(test)]
 mod filter_ui_regression {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn visible_selection_edits_actual_filtered_row() {
         let mut b = Workbook::new(5, 2).unwrap();
@@ -2396,7 +2401,7 @@ mod filter_ui_regression {
 #[cfg(test)]
 mod custom_grid_regression {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn visible_row_resize_selection_and_history_use_real_destination() {
         let mut b = Workbook::new(5, 3).unwrap();
@@ -2440,7 +2445,7 @@ mod custom_grid_regression {
         app.book.redo();
         assert_eq!(app.book.row_height(3), Some(45));
         app.select_grid_range_with_focus(
-            win42::GridRange {
+            suite42_app::GridRange {
                 top: 1,
                 left: 1,
                 bottom: 2,
@@ -2458,7 +2463,7 @@ mod custom_grid_regression {
 #[cfg(test)]
 mod picture_regression {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn technical_picture_keeps_recipe_size_and_moves_over_visible_cells_only() {
         let mut app = Xls {
@@ -2538,7 +2543,7 @@ mod picture_regression {
 #[cfg(test)]
 mod technical_edit_regression {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn editing_a_code_is_one_transaction_and_keeps_its_anchor() {
         let mut app = Xls {
@@ -2553,14 +2558,14 @@ mod technical_edit_regression {
             viewport: Default::default(),
             selected_picture: None,
         };
-        let first = win42::TechnicalElement {
+        let first = suite42_app::TechnicalElement {
             symbol_id: None,
-            code_type: win42::BarcodeFormat::Qr,
+            code_type: suite42_app::BarcodeFormat::Qr,
             value: "PCB-0007".into(),
             width_mm: 20.0,
             caption: false,
         };
-        app.apply_technical_element(None, win42::TechnicalRaster::render(first.clone()).unwrap())
+        app.apply_technical_element(None, suite42_app::TechnicalRaster::render(first.clone()).unwrap())
             .unwrap();
         let id = app.technical_targets()[0].id;
         let original = app.book.images()[0].clone();
@@ -2569,7 +2574,7 @@ mod technical_edit_regression {
         next.width_mm = 25.0;
         app.apply_technical_element(
             Some(id),
-            win42::TechnicalRaster::render(next.clone()).unwrap(),
+            suite42_app::TechnicalRaster::render(next.clone()).unwrap(),
         )
         .unwrap();
         assert_eq!(
@@ -2589,7 +2594,7 @@ mod technical_edit_regression {
             };
             let restored = Workbook::from_office_bytes(&bytes, kind).unwrap();
             assert_eq!(
-                win42::TechnicalElement::from_png(&restored.images()[0].data),
+                suite42_app::TechnicalElement::from_png(&restored.images()[0].data),
                 Some(next.clone())
             );
         }
@@ -2598,7 +2603,7 @@ mod technical_edit_regression {
 
 #[cfg(test)]
 mod sparse_open_regression {
-    use super::*;use win42::App;
+    use super::*;use suite42_app::App;
     #[test]
     fn actual_open_validates_sparse_inputs_and_refuses_bad_far_text_without_replacing_the_live_book(){
         let mut source=Workbook::new(xls42_core::MAX_ROWS,xls42_core::MAX_COLS).unwrap();
@@ -2619,7 +2624,7 @@ mod sparse_open_regression {
 
 #[cfg(test)]
 mod far_picture_geometry_regression {
-    use super::*;use win42::App;
+    use super::*;use suite42_app::App;
     #[test]
     fn far_picture_move_uses_visible_axes_and_one_history_step(){
         let mut book=Workbook::new(xls42_core::MAX_ROWS,xls42_core::MAX_COLS).unwrap();

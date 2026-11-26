@@ -76,9 +76,9 @@ impl Worker {
     }
 }
 impl super::Pdf {
-    pub(super) fn ocr_request(&self) -> Option<win42::InputRequest> {
+    pub(super) fn ocr_request(&self) -> Option<suite42_app::InputRequest> {
         let doc = self.doc.as_ref()?;
-        Some(win42::InputRequest {
+        Some(suite42_app::InputRequest {
             title: "Recognize PDF Text",
             fields: vec![
                 (
@@ -107,7 +107,7 @@ impl super::Pdf {
     pub(super) fn start_ocr(&mut self, values: &[String]) -> Result<(), String> {
         #[cfg(windows)]
         {
-            use win42::App as _;
+            use suite42_app::App as _;
             if !self.enabled(114) {
                 return Err("Text recognition is unavailable".into());
             }
@@ -202,7 +202,7 @@ impl super::Pdf {
             self.ocr_languages = None;
             match result {
                 Ok(languages) => {
-                    self.ocr_report = Some(win42::ReportRequest {
+                    self.ocr_report = Some(suite42_app::report::ReportRequest {
                         title: "Built-in OCR Languages".into(),
                         summary: format!(
                             "{} recognition languages are bundled with OFF42.",

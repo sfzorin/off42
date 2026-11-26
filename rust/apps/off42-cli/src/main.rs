@@ -1,7 +1,15 @@
-//! `off42`: one command line for Windows, Linux and macOS over the shared document cores.
-//! Everything here reads bytes, calls a core crate and writes bytes; no window system is involved.
+//! `off42`: one command line for Windows, Linux and macOS over the shared document cores and the
+//! `suite42_app` services the apps use (PDF merge, page and text export, comparison, label sheets, codes,
+//! signatures and stamps). No window system is involved.
+//!
+//! PDF text comes from `suite42_app::pdf::lopdf_text` on every platform, so the CLI behaves the same everywhere;
+//! the Windows apps use PDFium for the same services.
 use doc42_core::rich::{Format as DocFormat, RichDocument};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicUsize};
+use suite42_app::pdf::{comparison, lopdf_text::LOPDF, merge, page_export, text_export};
+use suite42_app::platform::PdfText;
+use suite42_app::{generator, production, LabelSource};
 use xls42_core::Workbook;
 
 type Result<T> = std::result::Result<T, String>;
@@ -17,14 +25,18 @@ macro_rules! out {
 const USAGE: &str = "off42 — documents, spreadsheets, presentations, PDF, images, labels and marks
 
 Usage:
-  off42 convert IN OUT              convert within a family, or to .pdf (plain-text layout)
+  off42 convert IN OUT              convert within a family, documents/sheets/slides to .pdf (plain-text
+                                    layout), or PDF to .txt/.rtf/.html/.docx (text only)
   off42 text IN                     print text (documents, sheets, slides, PDF)
   off42 info IN                     summary: kind, pages/sheets/slides, size
   off42 pdf merge OUT IN...         merge PDF files
-  off42 pdf extract IN PAGES OUT    copy pages, e.g. \"1,3-5\" (reverse: \"5-3\")
+  off42 pdf extract IN PAGES OUT [--split]   copy pages, e.g. \"1,3-5\" (reverse: \"5-3\");
+                                    --split writes one PDF per page into a ZIP
+  off42 pdf compare OLD NEW         list words removed and added, page by page
   off42 barcode FORMAT VALUE OUT.png [--width MM]   FORMAT: qr, datamatrix, code128, aztec
   off42 labels OUT.pdf [--stock ID | --size WxH] [--gap X,Y] [--code FORMAT] [--copies N] [--first SLOT]
-               (TEXT... | --from FILE)   one label per line; with --code, \"text<TAB>code\"
+               (TEXT... | --from FILE | --artwork FILE)   artwork: one-page PDF, PNG or JPEG
+                                    one label per line; with --code, \"text<TAB>code\"
   off42 labels stocks               list built-in label sheets
   off42 marks list                  list product and conformity marks
   off42 marks render ID OUT.png [--width MM]
@@ -35,7 +47,8 @@ Usage:
 
 Families: documents doc42 docx rtf odt html md txt; sheets xls42 xlsx xls ods csv (xls and xls42 read-only);
 slides pptx odp json; images png jpg tif gif webp bmp; pdf. OUT for signature/stamp is a file
-name prefix: OUT-1.png, OUT-2.png...
+name prefix: OUT-1.png, OUT-2.png... PDF merge, page extraction and PDF text export never replace an
+existing file. OCR is not available in the CLI.
 ";
 
 fn main() {
@@ -77,18 +90,22 @@ fn run(args: &[String]) -> Result<()> {
         }
         ["pdf", "merge", output, inputs @ ..] if !inputs.is_empty() => {
             let paths: Vec<PathBuf> = inputs.iter().map(PathBuf::from).collect();
-            let bytes = pdf42_core::merge::merge_files(&paths, &Default::default(), &Default::default())?;
-            write(Path::new(output), &bytes)
+            let worker = merge::Worker::start(paths, PathBuf::from(output))?;
+            wait(|| worker.poll())?;
+            wrote(Path::new(output))
         }
-        ["pdf", "extract", input, pages, output] => {
+        ["pdf", "extract", input, pages, output, rest @ ..] if rest.iter().all(|a| *a == "--split") => {
             let doc = pdf42_core::PdfDocument::open_bytes(&read(Path::new(input))?)?;
-            let indices = page_list(pages, doc.page_count())?;
-            let bytes = doc.prepare_page_extraction()?.extract(&indices)?;
-            write(Path::new(output), &bytes)
+            let indices = page_export::parse_pages(pages, doc.page_count())?;
+            let worker =
+                page_export::Worker::start(doc.prepare_page_extraction()?, indices, PathBuf::from(output), !rest.is_empty())?;
+            wait(|| worker.poll())?;
+            wrote(Path::new(output))
         }
+        ["pdf", "compare", old, new] => compare(Path::new(old), Path::new(new)),
         ["barcode", format, value, output, rest @ ..] => {
-            let width = option(rest, "--width")?.map_or(Ok(40.0), |w| number(w))?;
-            let png = label42::barcode_png(label42::Format::parse(format)?, value, width)?;
+            let width = option(rest, "--width")?.unwrap_or("40");
+            let png = production::barcode_output(&[value.to_string(), format.to_string(), width.to_string()])?;
             write(Path::new(output), &png)
         }
         ["labels", "stocks"] => {
@@ -105,14 +122,11 @@ fn run(args: &[String]) -> Result<()> {
             Ok(())
         }
         ["marks", "render", id, output, rest @ ..] => {
-            let width = option(rest, "--width")?.map_or(Ok(30.0), |w| number(w))?;
-            let element = label42::TechnicalElement {
-                symbol_id: Some(id.to_string()),
-                code_type: label42::Format::Qr,
-                value: String::new(),
-                width_mm: width,
-                caption: false,
-            };
+            if production::find_mark(id).is_none() {
+                return Err(format!("unknown mark {id}; see `off42 marks list`"));
+            }
+            let width = option(rest, "--width")?.unwrap_or("30");
+            let element = production::technical_element(&[id.to_string(), String::new(), width.to_string(), "no".into()])?;
             write(Path::new(output), &element.png()?)
         }
         ["signature", name, output, rest @ ..] => signature(name, output, rest),
@@ -146,7 +160,52 @@ fn read(path: &Path) -> Result<Vec<u8>> {
 
 fn write(path: &Path, bytes: &[u8]) -> Result<()> {
     std::fs::write(path, bytes).map_err(|e| format!("{}: {e}", path.display()))?;
-    eprintln!("wrote {} ({} bytes)", path.display(), bytes.len());
+    wrote(path)
+}
+
+fn wrote(path: &Path) -> Result<()> {
+    let size = std::fs::metadata(path).map_err(|e| format!("{}: {e}", path.display()))?.len();
+    eprintln!("wrote {} ({size} bytes)", path.display());
+    Ok(())
+}
+
+/// Run one of the apps' background workers to completion.
+fn wait<T>(poll: impl Fn() -> Option<Result<T>>) -> Result<T> {
+    loop {
+        if let Some(result) = poll() {
+            return result;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+}
+
+fn pdf_page_count(bytes: &[u8]) -> Result<usize> {
+    Ok(pdf42_core::PdfDocument::open_bytes(bytes)?.page_count())
+}
+
+/// PDF text of every page, through the same text export service as PDF42.
+fn pdf_text(bytes: &[u8]) -> Result<String> {
+    let pages: Vec<usize> = (0..pdf_page_count(bytes)?).collect();
+    let document = LOPDF.rich_text(bytes, &pages, &AtomicUsize::new(0), &AtomicBool::new(false))?;
+    String::from_utf8(text_export::encode(&document, text_export::Output::Text)?).map_err(|e| e.to_string())
+}
+
+fn compare(old: &Path, new: &Path) -> Result<()> {
+    let (progress, cancel) = (AtomicUsize::new(0), AtomicBool::new(false));
+    let mut texts = Vec::new();
+    for path in [old, new] {
+        let bytes = read(path)?;
+        texts.push(LOPDF.positioned(&bytes, pdf_page_count(&bytes)?, &progress, &cancel)?);
+    }
+    let changes = comparison::compare(&texts[0], &texts[1], &cancel)?;
+    if changes.is_empty() {
+        out!("No differences in the text");
+    } else {
+        out!("page\tremoved\tadded");
+        for change in &changes {
+            out!("{}\t{}\t{}", change.page + 1, change.removed_text(), change.added_text());
+        }
+    }
     Ok(())
 }
 
@@ -234,15 +293,7 @@ fn text(loaded: &mut Loaded) -> Result<String> {
             .map(|(i, s)| format!("--- Slide {}: {}\n{}\n", i + 1, s.title, s.body))
             .collect(),
         Loaded::Image(_) => return Err("images have no text (OCR is not part of the CLI)".into()),
-        Loaded::Pdf(bytes) => {
-            let doc = lopdf::Document::load_mem(bytes).map_err(|e| e.to_string())?;
-            let pages: Vec<u32> = doc.get_pages().keys().copied().collect();
-            pages
-                .iter()
-                .map(|p| doc.extract_text(&[*p]).unwrap_or_default())
-                .collect::<Vec<_>>()
-                .join("\n\u{c}\n")
-        }
+        Loaded::Pdf(bytes) => pdf_text(bytes)?,
     })
 }
 
@@ -315,34 +366,21 @@ fn convert(input: &Path, output: &Path) -> Result<()> {
             };
             image.save_snapshot_format(format).map_err(|e| e.to_string())?.0
         }
-        (Loaded::Pdf(_), _) => return Err(format!("PDF cannot be converted to .{ext}; try `off42 text`")),
+        (Loaded::Pdf(bytes), _) => {
+            let format = match ext.as_str() {
+                "txt" => text_export::Output::Text,
+                "rtf" => text_export::Output::Rtf,
+                "html" | "htm" => text_export::Output::Html,
+                "docx" => text_export::Output::Docx,
+                _ => return Err(format!("PDF cannot be converted to .{ext}; choose .txt, .rtf, .html or .docx")),
+            };
+            let pages = (0..pdf_page_count(bytes)?).collect();
+            let worker = text_export::Worker::start(bytes.clone(), pages, output.to_path_buf(), format, &LOPDF)?;
+            wait(|| worker.poll())?;
+            return wrote(output);
+        }
     };
     write(output, &bytes)
-}
-
-/// One-based list such as "1, 3-5" or "5-3" into zero-based page indices.
-fn page_list(spec: &str, count: usize) -> Result<Vec<usize>> {
-    let mut out = Vec::new();
-    for part in spec.split(',').map(str::trim).filter(|p| !p.is_empty()) {
-        let (a, b) = part.split_once('-').unwrap_or((part, part));
-        let parse = |s: &str| -> Result<usize> {
-            let n: usize = s.trim().parse().map_err(|_| format!("bad page number {s:?}"))?;
-            if n == 0 || n > count {
-                return Err(format!("page {n} is outside 1-{count}"));
-            }
-            Ok(n - 1)
-        };
-        let (a, b) = (parse(a)?, parse(b)?);
-        if a <= b {
-            out.extend(a..=b);
-        } else {
-            out.extend((b..=a).rev());
-        }
-    }
-    if out.is_empty() {
-        return Err("choose at least one page".into());
-    }
-    Ok(out)
 }
 
 fn option<'a>(rest: &[&'a str], name: &str) -> Result<Option<&'a str>> {
@@ -377,22 +415,39 @@ fn number(s: &str) -> Result<f64> {
 }
 
 fn labels(output: &Path, rest: &[&str]) -> Result<()> {
-    let code = option(rest, "--code")?.map(label42::Format::parse).transpose()?;
-    let copies = option(rest, "--copies")?.map_or(Ok(1), |c| c.parse().map_err(|_| "bad --copies".to_string()))?;
-    let first = option(rest, "--first")?.map_or(Ok(1), |c| c.parse().map_err(|_| "bad --first".to_string()))?;
-    let stock = if let Some(id) = option(rest, "--stock")? {
-        label42::Stock::catalog()?
-            .iter()
-            .find(|s| s.id == id)
-            .cloned()
-            .ok_or_else(|| format!("unknown stock {id}; see `off42 labels stocks`"))?
-    } else {
-        let size = option(rest, "--size")?.unwrap_or("70x37");
-        let (w, h) = size.split_once(['x', 'X']).ok_or("--size is WIDTHxHEIGHT in mm")?;
-        let gap = option(rest, "--gap")?.unwrap_or("0,0");
-        let (gx, gy) = gap.split_once(',').ok_or("--gap is X,Y in mm")?;
-        label42::Stock::custom(number(w)?, number(h)?, number(gx)?, number(gy)?)?
+    let code = option(rest, "--code")?;
+    let copies = option(rest, "--copies")?.unwrap_or("1");
+    let first = option(rest, "--first")?.unwrap_or("1");
+    // Stock and size as the apps' Create Label Sheet dialog takes them.
+    let stock = match option(rest, "--stock")? {
+        Some(id) => id.to_owned(),
+        None => {
+            let size = option(rest, "--size")?.unwrap_or("70x37");
+            let (w, h) = size.split_once(['x', 'X']).ok_or("--size is WIDTHxHEIGHT in mm")?;
+            let gap = option(rest, "--gap")?.unwrap_or("0,0");
+            let (gx, gy) = gap.split_once(',').ok_or("--gap is X,Y in mm")?;
+            format!("{}, {}, {}, {}", number(w)?, number(h)?, number(gx)?, number(gy)?)
+        }
     };
+    let print = format!("{copies}, {first}");
+    if let Some(file) = option(rest, "--artwork")? {
+        let bytes = read(Path::new(file))?;
+        let source = match extension(Path::new(file)).as_str() {
+            "pdf" => LabelSource::PdfArtwork { bytes, region: None },
+            "png" | "jpg" | "jpeg" => {
+                let image = img42_core::ImageDocument::open(Path::new(file)).map_err(|e| e.to_string())?;
+                // Pictures are placed at 300 dpi.
+                let points = |pixels: u32| f64::from(pixels) * 72.0 / 300.0;
+                LabelSource::PictureArtwork {
+                    bytes,
+                    width_points: points(image.width()),
+                    height_points: points(image.height()),
+                }
+            }
+            other => return Err(format!("artwork must be PDF, PNG or JPEG, not .{other}")),
+        };
+        return write(output, &production::sheet_output(&source, &[String::new(), stock, print])?);
+    }
     let lines: Vec<String> = match option(rest, "--from")? {
         Some(file) => String::from_utf8(read(Path::new(file))?)
             .map_err(|_| "label file must be UTF-8".to_string())?
@@ -403,28 +458,37 @@ fn labels(output: &Path, rest: &[&str]) -> Result<()> {
         None => positional(rest).into_iter().map(str::to_owned).collect(),
     };
     if lines.is_empty() {
-        return Err("give label texts or --from FILE".into());
+        return Err("give label texts, --from FILE or --artwork FILE".into());
     }
-    let labels: Vec<label42::Label> = lines
+    // One row per label: text, then the code (the text itself when no tab gives one).
+    let rows: Vec<(usize, Vec<String>)> = lines
         .into_iter()
-        .map(|line| {
-            let (text, code_value) = match (code, line.split_once('\t')) {
-                (Some(_), Some((t, c))) => (t.to_owned(), Some(c.to_owned())),
-                (Some(_), None) => (line.clone(), Some(line.clone())),
-                (None, _) => (line.replace('\t', " "), None),
+        .enumerate()
+        .map(|(i, line)| {
+            let values = match (code, line.split_once('\t')) {
+                (Some(_), Some((text, value))) => vec![text.to_owned(), value.to_owned()],
+                (Some(_), None) => vec![line.clone(), line],
+                (None, _) => vec![line.replace('\t', " ")],
             };
-            label42::Label { text, code: code_value, copies }
+            (i + 1, values)
         })
         .collect();
-    write(output, &label42::sheet_pdf_stock(&stock, first, code, &labels)?)
+    let fields = [
+        "1".to_owned(),
+        if code.is_some() { "2, 0, 0" } else { "0, 0, 0" }.to_owned(),
+        code.unwrap_or("QR").to_owned(),
+        stock,
+        print,
+    ];
+    write(output, &production::sheet_output(&LabelSource::Rows(rows), &fields)?)
 }
 
-fn pick<T: Copy>(all: &[T], title: impl Fn(T) -> &'static str, value: Option<&str>, what: &str) -> Result<T> {
-    let Some(value) = value else { return Ok(all[0]) };
+/// The title in `all` that starts with `value` (any case), or the first one.
+fn pick(all: Vec<String>, value: Option<&str>, what: &str) -> Result<String> {
+    let Some(value) = value else { return Ok(all[0].clone()) };
     let wanted = value.trim().to_lowercase();
-    all.iter().copied().find(|item| title(*item).to_lowercase().starts_with(&wanted)).ok_or_else(|| {
-        let names: Vec<&str> = all.iter().map(|i| title(*i)).collect();
-        format!("unknown {what} {value:?}; choose one of: {}", names.join(", "))
+    all.iter().find(|title| title.to_lowercase().starts_with(&wanted)).cloned().ok_or_else(|| {
+        format!("unknown {what} {value:?}; choose one of: {}", all.join(", "))
     })
 }
 
@@ -452,46 +516,34 @@ fn write_variants(output: &str, images: &[image::RgbaImage]) -> Result<()> {
 }
 
 fn signature(name: &str, output: &str, rest: &[&str]) -> Result<()> {
-    use marks42::signature::{Pen, SignatureForm};
-    let name = name.split_whitespace().collect::<Vec<_>>().join(" ");
-    if name.is_empty() || name.chars().count() > 80 {
-        return Err("the name must have 1 to 80 characters".into());
-    }
-    let form = pick(&SignatureForm::ALL, |f| f.title(), option(rest, "--form")?, "form")?;
-    let pen = pick(&Pen::ALL, |p| p.title(), option(rest, "--pen")?, "pen")?;
-    let ink = pick(&marks42::InkColor::ALL, |i| i.title(), option(rest, "--ink")?, "ink")?;
-    let mut rng = rng(rest)?;
-    let images = marks42::signature::design_seeds_with(count(rest)?, form, &mut rng)
-        .into_iter()
-        .map(|design| {
-            marks42::signature::render(&name, design, rng.next_u64(), ink.pen(), pen, 260.0)
-                .ok_or_else(|| "this name could not be written as a signature".to_string())
-        })
-        .collect::<Result<Vec<_>>>()?;
-    write_variants(output, &images)
+    let request = generator::SignatureRequest::parse(&[
+        name.to_owned(),
+        pick(generator::form_titles(), option(rest, "--form")?, "form")?,
+        pick(generator::pen_titles(), option(rest, "--pen")?, "pen")?,
+        pick(generator::ink_titles(), option(rest, "--ink")?, "ink")?,
+    ])?;
+    write_variants(output, &request.variants(count(rest)?, &mut rng(rest)?)?)
 }
 
 fn stamp(template: &str, output: &str, rest: &[&str]) -> Result<()> {
-    let template = marks42::seal::templates()
-        .iter()
-        .find(|t| t.id == template)
-        .ok_or_else(|| format!("unknown stamp {template}; see `off42 stamp list`"))?;
-    let mut spec = marks42::seal::SealSpec::example(template);
-    if let Some(ink) = option(rest, "--ink")? {
-        spec.ink = pick(&marks42::InkColor::ALL, |i| i.title(), Some(ink), "ink")?.stamp_pad();
-    }
+    let template = generator::stamp_template(template, "en")
+        .map_err(|_| format!("unknown stamp {template}; see `off42 stamp list`"))?;
+    let mut values: Vec<String> = template.fields().iter().map(|f| f.example.to_owned()).collect();
     for pair in options(rest, "--set") {
         let (key, value) = pair.split_once('=').ok_or("--set is KEY=VALUE")?;
-        if !template.fields().iter().any(|f| f.key == key) {
-            return Err(format!("stamp {} has no field {key}", template.id));
-        }
-        spec.values.insert(key.to_owned(), value.replace("\\n", "\n"));
+        let index = template
+            .fields()
+            .iter()
+            .position(|f| f.key == key)
+            .ok_or_else(|| format!("stamp {} has no field {key}", template.id))?;
+        values[index] = value.replace("\\n", "\n");
     }
-    let mut rng = rng(rest)?;
-    let images = (0..count(rest)?)
-        .map(|_| marks42::seal::render(&spec, rng.next_u64(), 2.0).ok_or_else(|| "this stamp could not be drawn".to_string()))
-        .collect::<Result<Vec<_>>>()?;
-    write_variants(output, &images)
+    let ink = match option(rest, "--ink")? {
+        Some(ink) => pick(generator::ink_titles(), Some(ink), "ink")?,
+        None => generator::OWN_INK.to_owned(),
+    };
+    let spec = generator::stamp_spec(template, &ink, &values)?;
+    write_variants(output, &generator::stamp_impressions(&spec, count(rest)?, &mut rng(rest)?)?)
 }
 
 #[cfg(test)]
@@ -548,9 +600,24 @@ mod tests {
     }
 
     #[test]
-    fn parses_page_lists() {
-        assert_eq!(page_list("1, 3-4", 5).unwrap(), vec![0, 2, 3]);
-        assert_eq!(page_list("3-1", 3).unwrap(), vec![2, 1, 0]);
-        assert!(page_list("6", 5).is_err());
+    fn exports_compares_and_splits_pdf_through_the_shared_services() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = |n: &str| dir.path().join(n).to_string_lossy().into_owned();
+        std::fs::write(p("a.txt"), "Alpha beta\u{c}Gamma delta\n").unwrap();
+        std::fs::write(p("b.txt"), "Alpha beta\u{c}Gamma epsilon\n").unwrap();
+        run_ok(&["convert", &p("a.txt"), &p("a.pdf")]);
+        run_ok(&["convert", &p("b.txt"), &p("b.pdf")]);
+        assert!(info(&load(Path::new(&p("a.pdf"))).unwrap()).unwrap().contains("pages: 2"));
+        run_ok(&["convert", &p("a.pdf"), &p("a.docx")]);
+        let text = text(&mut load(Path::new(&p("a.docx"))).unwrap()).unwrap();
+        assert!(text.contains("Alpha beta") && text.contains("Gamma delta"), "{text}");
+        assert!(run(&["convert".into(), p("a.pdf"), p("a.docx")]).is_err(), "text export must not replace a file");
+        run_ok(&["pdf", "compare", &p("a.pdf"), &p("b.pdf")]);
+        run_ok(&["pdf", "extract", &p("a.pdf"), "2-1", &p("pages.zip"), "--split"]);
+        assert!(std::fs::metadata(p("pages.zip")).unwrap().len() > 100);
+        assert!(run(&["pdf".into(), "extract".into(), p("a.pdf"), "3".into(), p("x.pdf")]).is_err());
+        run_ok(&["pdf", "extract", &p("a.pdf"), "1", &p("one.pdf")]);
+        run_ok(&["labels", &p("art.pdf"), "--artwork", &p("one.pdf"), "--stock", &label42::Stock::catalog().unwrap()[0].id]);
+        assert!(info(&load(Path::new(&p("art.pdf"))).unwrap()).unwrap().contains("pages: 1"));
     }
 }

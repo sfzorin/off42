@@ -871,6 +871,7 @@ name = "doc42"
 version = "0.1.0"
 dependencies = [
  "doc42-core",
+ "egui42",
  "image",
  "suite42-app",
  "suite42-core",
@@ -1040,6 +1041,15 @@ dependencies = [
  "web-time",
  "windows-sys 0.61.2",
  "winit",
+]
+
+[[package]]
+name = "egui42"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "suite42-app",
+ "suite42-core",
 ]
 
 [[package]]
@@ -1675,6 +1685,7 @@ checksum = "edcd27d72f2f071c64249075f42e205ff93c9a4c5f6c6da53e79ed9f9832c285"
 name = "img42"
 version = "0.1.0"
 dependencies = [
+ "egui42",
  "image",
  "img42-core",
  "suite42-app",
@@ -2667,10 +2678,10 @@ dependencies = [
  "image",
  "img42-core",
  "label42",
- "lopdf",
  "marks42",
  "pdf42-core",
  "ppt42-core",
+ "suite42-app",
  "suite42-pdf-text",
  "tempfile",
  "xls42-core",
@@ -2746,6 +2757,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "doc42-core",
+ "egui42",
  "flate2",
  "image",
  "lopdf",
@@ -2972,6 +2984,7 @@ name = "ppt42"
 version = "0.1.0"
 dependencies = [
  "doc42-core",
+ "egui42",
  "image",
  "lopdf",
  "ppt42-core",
@@ -3446,6 +3459,7 @@ name = "scn42"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "egui42",
  "img42-core",
  "scn42-core",
  "serde",
@@ -3774,6 +3788,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "suite42-core",
+ "suite42-pdf-text",
  "tempfile",
  "unicode-segmentation",
  "xls42-core",
@@ -4612,7 +4627,6 @@ name = "win42"
 version = "0.1.0"
 dependencies = [
  "doc42-core",
- "eframe",
  "image",
  "label42",
  "marks42",
@@ -4981,6 +4995,7 @@ checksum = "b9cc00251562a284751c9973bace760d86c0276c471b4be569fe6b068ee97a56"
 name = "xls42"
 version = "0.1.0"
 dependencies = [
+ "egui42",
  "image",
  "label42",
  "serde_json",

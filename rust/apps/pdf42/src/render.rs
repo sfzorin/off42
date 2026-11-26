@@ -85,7 +85,7 @@ pub fn print_async(
     dpi: u32,
     progress: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
-) -> std::sync::mpsc::Receiver<Result<win42::PrintJob, String>> {
+) -> std::sync::mpsc::Receiver<Result<suite42_app::PrintJob, String>> {
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         let result = (|| {
@@ -127,7 +127,7 @@ pub fn print_async(
                 if total > 256 * 1024 * 1024 {
                     return Err("Print preparation exceeds the 256 MB raster limit; select fewer pages or lower DPI".into());
                 }
-                let geometry = win42::PrintGeometry {
+                let geometry = suite42_app::PrintGeometry {
                     width_twips: (pw * 20.).round() as i32,
                     height_twips: (ph * 20.).round() as i32,
                     margin_left_twips: 0,
@@ -138,11 +138,11 @@ pub fn print_async(
                 if !geometry.valid() {
                     return Err("Invalid print page geometry".into());
                 }
-                out.push(win42::PrintPage {
+                out.push(suite42_app::PrintPage {
                     geometry,
-                    scene: win42::CanvasScene {
-                        viewport: win42::Viewport::default(),
-                        items: vec![win42::SceneItem::ImageScaled {
+                    scene: suite42_app::CanvasScene {
+                        viewport: suite42_app::Viewport::default(),
+                        items: vec![suite42_app::SceneItem::ImageScaled {
                             x: 0.,
                             y: 0.,
                             width: pw,
@@ -155,7 +155,7 @@ pub fn print_async(
                 });
                 progress.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             }
-            Ok(win42::PrintJob::ActualSizeScenes(out))
+            Ok(suite42_app::PrintJob::ActualSizeScenes(out))
         })();
         let _ = tx.send(result);
     });

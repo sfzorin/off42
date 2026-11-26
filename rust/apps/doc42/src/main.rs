@@ -9,7 +9,7 @@ use std::{
     io::{Read, Write},
     path::Path,
 };
-use win42::{App, CommandSpec, CommandState, DialogRequest, DialogResult, FileFormat};
+use suite42_app::{App, CommandSpec, CommandState, DialogRequest, DialogResult, FileFormat};
 const NAVIGATOR: u16 = 361;
 struct Doc {
     doc: RichDocument,
@@ -300,9 +300,9 @@ impl Doc {
             .map_err(|e| e.to_string())?;
         Ok(())
     }
-    fn print_decoration(&self, paragraphs: &[Paragraph]) -> Option<Vec<win42::PrintParagraph>> {
-        fn font(style: &TextStyle) -> win42::SceneFont {
-            win42::SceneFont {
+    fn print_decoration(&self, paragraphs: &[Paragraph]) -> Option<Vec<suite42_app::PrintParagraph>> {
+        fn font(style: &TextStyle) -> suite42_app::SceneFont {
+            suite42_app::SceneFont {
                 family: style.font.clone(),
                 points: style.size_half_points as f64 / 2.0,
                 bold: style.bold,
@@ -310,9 +310,9 @@ impl Doc {
                 underline: style.underline,
             }
         }
-        fn fragment(text: win42::PrintText, style: &TextStyle) -> win42::PrintFragment {
+        fn fragment(text: suite42_app::PrintText, style: &TextStyle) -> suite42_app::PrintFragment {
             let c = style.color.unwrap_or(0);
-            win42::PrintFragment {
+            suite42_app::PrintFragment {
                 text,
                 font: font(style),
                 color: [(c >> 16) as u8, (c >> 8) as u8, c as u8],
@@ -333,7 +333,7 @@ impl Doc {
             let mut cursor = 0usize;
             let add_range = |from: usize,
                              to: usize,
-                             out: &mut Vec<win42::PrintFragment>|
+                             out: &mut Vec<suite42_app::PrintFragment>|
              -> Option<()> {
                 let mut base = 0;
                 for run in &p.runs {
@@ -342,7 +342,7 @@ impl Doc {
                     let b = to.min(end);
                     if a < b {
                         out.push(fragment(
-                            win42::PrintText::Literal(run.text.get(a - base..b - base)?.to_owned()),
+                            suite42_app::PrintText::Literal(run.text.get(a - base..b - base)?.to_owned()),
                             &run.style,
                         ));
                     }
@@ -369,8 +369,8 @@ impl Doc {
                     .cloned()
                     .unwrap_or_default();
                 let value = match field.kind {
-                    FieldKind::PageNumber => win42::PrintText::PageNumber,
-                    FieldKind::PageCount => win42::PrintText::PageCount,
+                    FieldKind::PageNumber => suite42_app::PrintText::PageNumber,
+                    FieldKind::PageCount => suite42_app::PrintText::PageCount,
                     _ => return None,
                 };
                 fragments.push(fragment(value, &style));
@@ -378,12 +378,12 @@ impl Doc {
             }
             add_range(cursor, text.len(), &mut fragments)?;
             let align = match p.style.alignment {
-                Alignment::Left => win42::TextAlign::Left,
-                Alignment::Center => win42::TextAlign::Center,
-                Alignment::Right => win42::TextAlign::Right,
+                Alignment::Left => suite42_app::TextAlign::Left,
+                Alignment::Center => suite42_app::TextAlign::Center,
+                Alignment::Right => suite42_app::TextAlign::Right,
                 Alignment::Justify => return None,
             };
-            output.push(win42::PrintParagraph { align, fragments });
+            output.push(suite42_app::PrintParagraph { align, fragments });
         }
         Some(output)
     }
@@ -412,7 +412,7 @@ impl Doc {
                         .all(|r| !r.style.strike && r.style.highlight.is_none())
             })
     }
-    fn rich_print(&self) -> Option<win42::RichPrint> {
+    fn rich_print(&self) -> Option<suite42_app::RichPrint> {
         let s = self.doc.state();
         if s.sections.len() != 1
             || (!s.footnotes.is_empty() && !self.note_layout_supported())
@@ -422,7 +422,7 @@ impl Doc {
         }
         let section = &s.sections[0];
         let p = &section.page;
-        let geometry = win42::PrintGeometry {
+        let geometry = suite42_app::PrintGeometry {
             width_twips: p.width_twips.try_into().ok()?,
             height_twips: p.height_twips.try_into().ok()?,
             margin_left_twips: p.margin_left.try_into().ok()?,
@@ -439,7 +439,7 @@ impl Doc {
             let (rtf, projected) = self.doc.note_print_projection().ok()?;
             let mut notes = Vec::new();
             for note in projected {
-                notes.push(win42::RichPrintNote {
+                notes.push(suite42_app::RichPrintNote {
                     marker: note.marker,
                     label: note.label,
                     endnote: note.endnote,
@@ -448,7 +448,7 @@ impl Doc {
             }
             (Some(rtf), notes)
         };
-        Some(win42::RichPrint {
+        Some(suite42_app::RichPrint {
             geometry,
             header_distance_twips: p.header_distance_twips.try_into().ok()?,
             footer_distance_twips: p.footer_distance_twips.try_into().ok()?,
@@ -497,7 +497,7 @@ fn review_author() -> String {
         .unwrap_or_else(|| "DOC42".into())
 }
 fn statistics_text(stats: doc42_core::rich::TextStatistics) -> String {
-    let label = win42::localization::text;
+    let label = suite42_app::localization::text;
     format!(
         "{}: {}\n{}: {}\n{}: {}\n{}: {}",
         label("Words"), stats.words,
@@ -511,16 +511,16 @@ impl App for Doc {
     fn supports_technical_elements(&self) -> bool {
         true
     }
-    fn technical_targets(&self) -> Vec<win42::TechnicalTarget> {
+    fn technical_targets(&self) -> Vec<suite42_app::TechnicalTarget> {
         self.doc
             .state()
             .blocks
             .iter()
             .filter_map(|block| match block {
                 Block::Image(image) => {
-                    win42::TechnicalElement::from_png(&image.data).map(|mut element| {
+                    suite42_app::TechnicalElement::from_png(&image.data).map(|mut element| {
                         element.width_mm = f64::from(image.width_twips) * 25.4 / 1440.0;
-                        win42::TechnicalTarget::new(image.id, element)
+                        suite42_app::TechnicalTarget::new(image.id, element)
                     })
                 }
                 _ => None,
@@ -530,7 +530,7 @@ impl App for Doc {
     fn apply_technical_element(
         &mut self,
         target: Option<u64>,
-        raster: win42::TechnicalRaster,
+        raster: suite42_app::TechnicalRaster,
     ) -> Result<(), String> {
         let paragraph = self
             .doc
@@ -552,7 +552,7 @@ impl App for Doc {
                         .ok_or(doc42_core::rich::Error::Invalid(
                             "The technical object no longer exists".into(),
                         ))?;
-                    if win42::TechnicalElement::from_png(&image.data).is_none() {
+                    if suite42_app::TechnicalElement::from_png(&image.data).is_none() {
                         return Err(doc42_core::rich::Error::Invalid(
                             "Choose a technical object".into(),
                         ));
@@ -597,7 +597,7 @@ impl App for Doc {
     fn supports_production(&self) -> bool {
         true
     }
-    fn label_sources(&self) -> Result<Vec<(String, win42::LabelSource)>, String> {
+    fn label_sources(&self) -> Result<Vec<(String, suite42_app::LabelSource)>, String> {
         let mut sources = Vec::new();
         for table in self.doc.state().blocks.iter().filter_map(|block| {
             if let Block::Table(table) = block {
@@ -638,11 +638,11 @@ impl App for Doc {
                 .collect();
             sources.push((
                 format!("Table {}", sources.len() + 1),
-                win42::LabelSource::Rows(rows),
+                suite42_app::LabelSource::Rows(rows),
             ));
         }
         for (index,image) in self.doc.state().blocks.iter().filter_map(|block|if let Block::Image(image)=block{Some(image)}else{None}).enumerate() {
-            sources.push((format!("Picture {} Artwork",index+1),win42::LabelSource::PictureArtwork{bytes:image.data.clone(),width_points:f64::from(image.width_twips)/20.,height_points:f64::from(image.height_twips)/20.}));
+            sources.push((format!("Picture {} Artwork",index+1),suite42_app::LabelSource::PictureArtwork{bytes:image.data.clone(),width_points:f64::from(image.width_twips)/20.,height_points:f64::from(image.height_twips)/20.}));
         }
         sources.push((
             if self.selection.0 != self.selection.1 {
@@ -659,7 +659,7 @@ impl App for Doc {
         let page=&self.doc.state().sections.first()?.page;
         page.width_twips.checked_sub(page.margin_left)?.checked_sub(page.margin_right)
     }
-    fn label_source(&self) -> Result<win42::LabelSource, String> {
+    fn label_source(&self) -> Result<suite42_app::LabelSource, String> {
         let (start, end) = self.selection;
         let text = if end > start {
             let units: Vec<u16> = self
@@ -672,12 +672,12 @@ impl App for Doc {
         } else {
             String::new()
         };
-        Ok(win42::LabelSource::Text(text))
+        Ok(suite42_app::LabelSource::Text(text))
     }
     fn default_print_command(&self)->Option<u16>{Some(315)}
     fn toolbar_command_visible(&self,id:u16)->bool{matches!(id,300..=303|305|306|313)}
-    fn rich_format_command(&self,id:u16)->Option<win42::RichFormatCommand>{
-        use win42::RichFormatCommand::*;
+    fn rich_format_command(&self,id:u16)->Option<suite42_app::RichFormatCommand>{
+        use suite42_app::RichFormatCommand::*;
         Some(match id{300=>Bold,301=>Italic,302=>Underline,303=>Font,304=>Color,305=>AlignLeft,306=>AlignCenter,307=>AlignRight,308=>Justify,_=>return None})
     }
     fn name(&self) -> &'static str {
@@ -695,8 +695,8 @@ impl App for Doc {
     fn mark_file_action(&self) -> Option<u16> {
         Some(310)
     }
-    fn file_actions(&self) -> &'static [win42::FileAction] {
-        &[win42::FileAction {
+    fn file_actions(&self) -> &'static [suite42_app::FileAction] {
+        &[suite42_app::FileAction {
             id: 310,
             title: "Insert image…",
             save: false,
@@ -785,10 +785,10 @@ impl App for Doc {
         self.snapshots.clear();
         Ok(())
     }
-    fn rich_ruler(&self) -> Option<win42::RichRuler> {
+    fn rich_ruler(&self) -> Option<suite42_app::RichRuler> {
         let (section, context) = self.ruler_context();
         let p = &self.doc.state().sections.get(section)?.page;
-        let page = win42::PrintGeometry {
+        let page = suite42_app::PrintGeometry {
             width_twips: p.width_twips.try_into().ok()?,
             height_twips: p.height_twips.try_into().ok()?,
             margin_left_twips: p.margin_left.try_into().ok()?,
@@ -796,20 +796,20 @@ impl App for Doc {
             margin_right_twips: p.margin_right.try_into().ok()?,
             margin_bottom_twips: p.margin_bottom.try_into().ok()?,
         };
-        let paragraph = context.map(|(_, p, _)| win42::ParagraphRuler {
+        let paragraph = context.map(|(_, p, _)| suite42_app::ParagraphRuler {
             left_twips: p.left_twips,
             right_twips: p.right_twips,
             first_line_twips: p.first_line_twips,
             tabs_twips: p.tabs_twips,
         });
-        Some(win42::RichRuler {
+        Some(suite42_app::RichRuler {
             page,
             zoom_percent: self.zoom_percent,
             paragraph,
         })
     }
-    fn rich_ruler_action(&mut self, action: win42::RichRulerAction) -> Result<(), String> {
-        use win42::RichRulerAction::*;
+    fn rich_ruler_action(&mut self, action: suite42_app::RichRulerAction) -> Result<(), String> {
+        use suite42_app::RichRulerAction::*;
         let (section, context) = self.ruler_context();
         let page = self.doc.state().sections[section].page.clone();
         match action {
@@ -974,8 +974,8 @@ impl App for Doc {
         self.save_formats()
     }
     fn supports_recovery(&self)->bool{true}
-    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
-        Ok(Some(win42::recovery::Snapshot::new("doc42",self.doc.encode(Format::Project).map_err(|e|e.to_string())?)))
+    fn recovery_snapshot(&self)->Result<Option<suite42_app::recovery::Snapshot>,String>{
+        Ok(Some(suite42_app::recovery::Snapshot::new("doc42",self.doc.encode(Format::Project).map_err(|e|e.to_string())?)))
     }
     fn save_formats(&self) -> Vec<FileFormat> {
         vec![
@@ -1288,9 +1288,9 @@ impl App for Doc {
     fn multiline_input(&self, id: u16) -> bool {
         matches!(id, 335 | 336 | 338 | 340 | 341 | 342 | 344)
     }
-    fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+    fn input_request(&self, id: u16) -> Option<suite42_app::InputRequest> {
         if id == 350 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Insert or edit link",
                 fields: vec![(
                     "Address (https://, http://, mailto:, or #bookmark)",
@@ -1299,7 +1299,7 @@ impl App for Doc {
             });
         }
         if matches!(id, 352 | 353 | 355) {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: match id {
                     352 => "Add bookmark",
                     353 => "Go to bookmark",
@@ -1309,7 +1309,7 @@ impl App for Doc {
             });
         }
         if id == 340 || id == 341 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: if id == 340 {
                     "Insert footnote"
                 } else {
@@ -1326,13 +1326,13 @@ impl App for Doc {
                 .map(|p| p.runs.iter().map(|r| r.text.as_str()).collect::<String>())
                 .collect::<Vec<_>>()
                 .join("\r\n");
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Edit note",
                 fields: vec![("Note text", text), ("Note number", "1".into())],
             });
         }
         if id == 343 || id == 345 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: if id == 343 {
                     "Delete note"
                 } else {
@@ -1361,20 +1361,20 @@ impl App for Doc {
                 })
                 .collect::<Vec<_>>()
                 .join("\r\n");
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Notes",
                 fields: vec![("Notes", list)],
             });
         }
         if id == 335 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Add comment to selection",
                 fields: vec![("Comment", String::new()), ("Author", String::new())],
             });
         }
         if id == 336 {
             let first = self.doc.state().comments.first()?;
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Edit comment",
                 fields: vec![
                     ("Text", first.text.clone()),
@@ -1387,7 +1387,7 @@ impl App for Doc {
             });
         }
         if id == 337 || id == 339 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: if id == 337 {
                     "Delete comment"
                 } else {
@@ -1414,13 +1414,13 @@ impl App for Doc {
                 })
                 .collect::<Vec<_>>()
                 .join("\r\n");
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Comments",
                 fields: vec![("Comments", list)],
             });
         }
         if id == 319 || id == 320 {
-            Some(win42::InputRequest {
+            Some(suite42_app::InputRequest {
                 title: if id == 319 {
                     "Header ({PAGE}, {PAGES})"
                 } else {
@@ -1429,7 +1429,7 @@ impl App for Doc {
                 fields: vec![("Text", self.header_input(id == 320).ok()?)],
             })
         } else if (321..=322).contains(&id) || (324..=325).contains(&id) {
-            Some(win42::InputRequest {
+            Some(suite42_app::InputRequest {
                 title: match id {
                     321 => "Add table row",
                     322 => "Add table column",
@@ -1442,7 +1442,7 @@ impl App for Doc {
                 ],
             })
         } else if id == 323 {
-            Some(win42::InputRequest {
+            Some(suite42_app::InputRequest {
                 title: "Image size (points)",
                 fields: vec![
                     ("Image number", "1".into()),
@@ -1452,12 +1452,12 @@ impl App for Doc {
                 ],
             })
         } else if id == 313 {
-            Some(win42::InputRequest {
+            Some(suite42_app::InputRequest {
                 title: "Insert table",
                 fields: vec![("Rows", "2".into()), ("Columns", "2".into())],
             })
         } else if id == 334 {
-            Some(win42::InputRequest {
+            Some(suite42_app::InputRequest {
                 title: "Merge cells (uses top-left cell style)",
                 fields: vec![
                     ("Table number", "1".into()),
@@ -1468,7 +1468,7 @@ impl App for Doc {
                 ],
             })
         } else if id == 333 {
-            Some(win42::InputRequest {
+            Some(suite42_app::InputRequest {
                 title: "Table column width (points)",
                 fields: vec![
                     ("Table number", "1".into()),
@@ -1477,7 +1477,7 @@ impl App for Doc {
                 ],
             })
         } else if id == 332 {
-            Some(win42::InputRequest {
+            Some(suite42_app::InputRequest {
                 title: "Cell border (0 removes; width in points)",
                 fields: vec![
                     ("Table number", "1".into()),
@@ -1488,7 +1488,7 @@ impl App for Doc {
                 ],
             })
         } else if id == 331 {
-            Some(win42::InputRequest {
+            Some(suite42_app::InputRequest {
                 title: "Cell background (#RRGGBB or none)",
                 fields: vec![
                     ("Table number", "1".into()),
@@ -1513,7 +1513,7 @@ impl App for Doc {
             if id == 329 {
                 fields.push(("Last column", "2".into()));
             }
-            Some(win42::InputRequest {
+            Some(suite42_app::InputRequest {
                 title: if id == 329 {
                     "Merge cells (uses first cell's background and border)"
                 } else {
@@ -1522,12 +1522,12 @@ impl App for Doc {
                 fields,
             })
         } else if id == 328 {
-            Some(win42::InputRequest {
+            Some(suite42_app::InputRequest {
                 title: "Delete table",
                 fields: vec![("Table number", "1".into())],
             })
         } else if id == 327 {
-            Some(win42::InputRequest {
+            Some(suite42_app::InputRequest {
                 title: "Cell alignment (left, center, right, justify)",
                 fields: vec![
                     ("Table number", "1".into()),
@@ -1542,7 +1542,7 @@ impl App for Doc {
                 Block::Paragraph(p) if p.id == pos.paragraph => Some(p),
                 _ => None,
             })?;
-            Some(win42::InputRequest {
+            Some(suite42_app::InputRequest {
                 title: "Heading level (0 = body, 1–9 = heading)",
                 fields: vec![(
                     "Level",
@@ -1555,7 +1555,7 @@ impl App for Doc {
                 Block::Paragraph(p) if p.id == pos.paragraph => Some(p),
                 _ => None,
             })?;
-            Some(win42::InputRequest {
+            Some(suite42_app::InputRequest {
                 title: "Paragraph spacing (points)",
                 fields: vec![
                     ("Before", format!("{}", p.style.before_twips as f64 / 20.0)),
@@ -2277,19 +2277,19 @@ impl App for Doc {
             .map_err(|e| e.to_string())?;
         Ok(())
     }
-    fn page_layout(&self) -> Option<win42::RichPrint> {
+    fn page_layout(&self) -> Option<suite42_app::RichPrint> {
         self.rich_print()
     }
-    fn rich_preview(&self, id: u16) -> Option<win42::RichPrint> {
+    fn rich_preview(&self, id: u16) -> Option<suite42_app::RichPrint> {
         if id == 316 {
             self.rich_print()
         } else {
             None
         }
     }
-    fn print_job(&self, id: u16) -> Option<win42::PrintJob> {
+    fn print_job(&self, id: u16) -> Option<suite42_app::PrintJob> {
         if id == 315 {
-            self.rich_print().map(win42::PrintJob::RichText)
+            self.rich_print().map(suite42_app::PrintJob::RichText)
         } else {
             None
         }
@@ -2298,10 +2298,10 @@ impl App for Doc {
         match id {
             360 => Some(DialogRequest::RichTextStatistics {
                 title: "Statistics",
-                text: format!("{}\n{}", win42::localization::text("Document"), statistics_text(self.doc.statistics())),
+                text: format!("{}\n{}", suite42_app::localization::text("Document"), statistics_text(self.doc.statistics())),
                 describe: |units| {
                     let stats = doc42_core::rich::TextStatistics::from_native_selection(units)?;
-                    Some(format!("{}\n{}", win42::localization::text("Selection"), statistics_text(stats)))
+                    Some(format!("{}\n{}", suite42_app::localization::text("Selection"), statistics_text(stats)))
                 },
             }),
             303 => Some(DialogRequest::Font),
@@ -2311,7 +2311,7 @@ impl App for Doc {
                 let hmm = |v: u32| -> i32 {
                     ((u64::from(v) * 127 + 36) / 72).min(i32::MAX as u64) as i32
                 };
-                Some(DialogRequest::PageSetup(win42::PageMargins {
+                Some(DialogRequest::PageSetup(suite42_app::PageMargins {
                     left: hmm(p.margin_left),
                     top: hmm(p.margin_top),
                     right: hmm(p.margin_right),
@@ -2413,7 +2413,7 @@ impl App for Doc {
         self.navigator_open
     }
     fn text(&self) -> String {
-        win42::to_native_text(&self.visible_text())
+        suite42_app::to_native_text(&self.visible_text())
     }
     fn status(&self) -> String {
         let headers = self
@@ -2570,7 +2570,7 @@ impl App for Doc {
     }
     fn edit(&mut self, s: String) -> Result<(), String> {
         self.doc
-            .set_plain_editor_text(&win42::from_native_text(&s))
+            .set_plain_editor_text(&suite42_app::from_native_text(&s))
             .map(|_| ())
             .map_err(|e| e.to_string())
     }
@@ -2857,8 +2857,13 @@ impl App for Doc {
         self.doc.replace_matches(search, replacement).map_err(|e| e.to_string())
     }
 }
+/// Win32 host on Windows; the experimental egui host elsewhere.
+#[cfg(windows)]
+use win42::run as run_host;
+#[cfg(not(windows))]
+use egui42::run as run_host;
 fn main() {
-    win42::run(Box::new(Doc::new()))
+    run_host(Box::new(Doc::new()))
 }
 #[cfg(test)]
 mod tests {
@@ -2968,7 +2973,7 @@ mod tests {
         assert!(print.header[0]
             .fragments
             .iter()
-            .any(|f| matches!(f.text, win42::PrintText::PageCount)));
+            .any(|f| matches!(f.text, suite42_app::PrintText::PageCount)));
     }
     #[test]
     fn heading_level_survives_formats_and_undo() {
@@ -2999,7 +3004,7 @@ mod tests {
         imported.doc = RichDocument::decode(&bytes, Format::Odt).unwrap();
         imported.set_header_input(false, "New {PAGES}").unwrap();
         imported
-            .rich_ruler_action(win42::RichRulerAction::LeftMargin(1200))
+            .rich_ruler_action(suite42_app::RichRulerAction::LeftMargin(1200))
             .unwrap();
         let updated = imported.doc.encode(Format::Odt).unwrap();
         let mut reopened = Doc::new();
@@ -3486,7 +3491,7 @@ mod tests {
     }
     #[test]
     fn ruler_geometry_indents_and_tabs_survive_history_and_formats() {
-        use win42::RichRulerAction::*;
+        use suite42_app::RichRulerAction::*;
         let mut app = Doc::new();
         app.edit("one\ttwo".into()).unwrap();
         app.rich_ruler_action(LeftMargin(1200)).unwrap();
@@ -3673,7 +3678,7 @@ mod tests {
 #[cfg(test)]
 mod original_tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn editor_preserves_crlf_during_edit_and_save() {
         let d = RichDocument::decode(b"one\r\ntwo", Format::Text).unwrap();
@@ -3701,7 +3706,7 @@ mod original_tests {
 #[cfg(test)]
 mod policy_regression {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn rejection_undo_and_branch_keep_core_policy() {
         let d = RichDocument::decode(b"a\r\nb", Format::Text).unwrap();
@@ -3723,10 +3728,10 @@ mod policy_regression {
 #[cfg(test)]
 mod technical_regression {
     use super::*;
-    fn element(value: &str, width: f64) -> win42::TechnicalElement {
-        win42::TechnicalElement {
+    fn element(value: &str, width: f64) -> suite42_app::TechnicalElement {
+        suite42_app::TechnicalElement {
             symbol_id: None,
-            code_type: win42::BarcodeFormat::Qr,
+            code_type: suite42_app::BarcodeFormat::Qr,
             value: value.into(),
             width_mm: width,
             caption: false,
@@ -3736,13 +3741,13 @@ mod technical_regression {
     fn technical_insert_edit_undo_and_word_round_trip() {
         let mut app = Doc::new();
         let first = element("PCB-0007", 20.0);
-        app.apply_technical_element(None, win42::TechnicalRaster::render(first.clone()).unwrap())
+        app.apply_technical_element(None, suite42_app::TechnicalRaster::render(first.clone()).unwrap())
             .unwrap();
         let id = app.technical_targets()[0].id;
         let second = element("PCB-0008", 25.0);
         app.apply_technical_element(
             Some(id),
-            win42::TechnicalRaster::render(second.clone()).unwrap(),
+            suite42_app::TechnicalRaster::render(second.clone()).unwrap(),
         )
         .unwrap();
         assert_eq!(app.technical_targets()[0].element.value, "PCB-0008");
@@ -3765,7 +3770,7 @@ mod technical_regression {
                 })
                 .unwrap();
             assert_eq!(
-                win42::TechnicalElement::from_png(&image.data),
+                suite42_app::TechnicalElement::from_png(&image.data),
                 Some(second.clone())
             );
             assert!((f64::from(image.width_twips) * 25.4 / 1440.0 - 25.0).abs() < 0.02);
@@ -3779,19 +3784,19 @@ mod command_dispatch_regression {
     #[test]
     fn collapsed_caret_does_not_disable_history_or_table_commands() {
         let mut app = Doc::new();
-        let first = win42::TechnicalElement {
+        let first = suite42_app::TechnicalElement {
             symbol_id: None,
-            code_type: win42::BarcodeFormat::Qr,
+            code_type: suite42_app::BarcodeFormat::Qr,
             value: "PCB-0007".into(),
             width_mm: 20.0,
             caption: false,
         };
-        app.apply_technical_element(None, win42::TechnicalRaster::render(first.clone()).unwrap())
+        app.apply_technical_element(None, suite42_app::TechnicalRaster::render(first.clone()).unwrap())
             .unwrap();
         let id = app.technical_targets()[0].id;
         let mut second = first.clone();
         second.value = "PCB-0008".into();
-        app.apply_technical_element(Some(id), win42::TechnicalRaster::render(second).unwrap())
+        app.apply_technical_element(Some(id), suite42_app::TechnicalRaster::render(second).unwrap())
             .unwrap();
         let (revision, _) = app.save_snapshot("doc42").unwrap().unwrap();
         app.saved_snapshot(revision);
@@ -3846,7 +3851,7 @@ mod table_label_regression {
             })
             .unwrap();
         let original = app.doc.snapshot();
-        let (_, win42::LabelSource::Rows(rows)) = app.label_sources().unwrap().remove(0) else {
+        let (_, suite42_app::LabelSource::Rows(rows)) = app.label_sources().unwrap().remove(0) else {
             panic!("table source expected");
         };
         assert_eq!(
@@ -3856,12 +3861,12 @@ mod table_label_regression {
         assert_eq!(rows[2].1[1], "PCB-0008");
         assert_eq!(app.doc.snapshot(), original);
         app.doc.merge_table_cells(table_id, 1, 0, 2).unwrap();
-        let (_, win42::LabelSource::Rows(rows)) = app.label_sources().unwrap().remove(0) else {
+        let (_, suite42_app::LabelSource::Rows(rows)) = app.label_sources().unwrap().remove(0) else {
             panic!("table source expected");
         };
         assert!(rows[1].1[1].is_empty());
         app.doc.undo();
-        let (_, win42::LabelSource::Rows(rows)) = app.label_sources().unwrap().remove(0) else {
+        let (_, suite42_app::LabelSource::Rows(rows)) = app.label_sources().unwrap().remove(0) else {
             panic!("table source expected");
         };
         assert_eq!(rows[1].1[1], "PCB-0007");
@@ -3899,7 +3904,7 @@ mod picture_label_source_tests {
         let mut bytes=Vec::new();image::codecs::png::PngEncoder::new(&mut bytes).write_image(&[255,0,0,255,0,0,255,128],2,1,image::ExtendedColorType::Rgba8).unwrap();
         let mut app=Doc::new();app.doc.transact(|state|{let id=state.next_id;state.next_id+=1;state.blocks.push(Block::Image(Image{id,mime:"image/png".into(),data:bytes.clone(),width_twips:30,height_twips:15,alt:"private alternate text".into()}));Ok(())}).unwrap();let before=app.doc.state().clone();let dirty=app.dirty();
         let sources=app.label_sources().unwrap();let source=&sources.iter().find(|(name,_)|name=="Picture 1 Artwork").unwrap().1;
-        let win42::LabelSource::PictureArtwork{bytes:encoded,width_points,height_points}=source else{panic!("Missing picture artwork")};assert_eq!(encoded,&bytes);assert_eq!((*width_points,*height_points),(1.5,0.75));
+        let suite42_app::LabelSource::PictureArtwork{bytes:encoded,width_points,height_points}=source else{panic!("Missing picture artwork")};assert_eq!(encoded,&bytes);assert_eq!((*width_points,*height_points),(1.5,0.75));
         assert_eq!(app.doc.state(),&before);assert_eq!(app.dirty(),dirty);
     }
 }

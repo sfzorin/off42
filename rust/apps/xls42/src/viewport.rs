@@ -18,7 +18,7 @@ pub(super) struct Viewport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn ordinary_range_commands_edit_virtual_destinations_with_complete_history() {
         for id in [26, 27, 75, 41, 44, 29, 58, 70, 71] {
@@ -157,16 +157,16 @@ mod tests {
             right: 30,
         };
         app.choose_range(range, (399, 30)).unwrap();
-        let element = win42::TechnicalElement {
+        let element = suite42_app::TechnicalElement {
             symbol_id: None,
-            code_type: win42::BarcodeFormat::Qr,
+            code_type: suite42_app::BarcodeFormat::Qr,
             value: "PCB-0042".into(),
             width_mm: 20.0,
             caption: false,
         };
         app.apply_technical_element(
             None,
-            win42::TechnicalRaster::render(element.clone()).unwrap(),
+            suite42_app::TechnicalRaster::render(element.clone()).unwrap(),
         )
         .unwrap();
         let changed = app.book.project_bytes().unwrap();
@@ -186,7 +186,7 @@ mod tests {
             let image = &opened.images()[0];
             assert_eq!((image.row, image.column), (399, 30));
             assert_eq!(
-                win42::TechnicalElement::from_png(&image.data),
+                suite42_app::TechnicalElement::from_png(&image.data),
                 Some(element.clone())
             );
         }
