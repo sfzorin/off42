@@ -236,6 +236,11 @@ enum Store {
 
     static var defaultDestination: URL {
         if let t = testDirectory { return t }
+        #if APP_STORE
+        // Inside the sandbox ~/Documents is the container's own folder; Downloads is reachable through an entitlement.
+        return FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0].appendingPathComponent("Scans", isDirectory: true)
+        #else
         return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("Scans", isDirectory: true)
+        #endif
     }
 }

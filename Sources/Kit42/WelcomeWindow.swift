@@ -113,6 +113,9 @@ public final class WelcomeWindowController: NSWindowController {
     private func reloadRecent() {
         recentStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         let urls = NSDocumentController.shared.recentDocumentURLs.prefix(8)
+        #if APP_STORE
+        SecurityScopedRecents.remember(NSDocumentController.shared.recentDocumentURLs)
+        #endif
         if urls.isEmpty {
             let empty = NSTextField(labelWithString: L("No recent documents"))
             empty.textColor = .tertiaryLabelColor
@@ -120,6 +123,9 @@ public final class WelcomeWindowController: NSWindowController {
         }
         for url in urls {
             let row = RecentRow(url: url) { [weak self] in
+                #if APP_STORE
+                SecurityScopedRecents.beginAccess(url)
+                #endif
                 NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, error in
                     if let error { NSApp.presentError(error) } else { self?.close() }
                 }

@@ -1,0 +1,58 @@
+{
+  "siteLanguage": "en",
+  "appStoreLocale": "en-US",
+  "note": null,
+  "privacyPolicyURL": "https://off42.cc/en/privacy/",
+  "supportURL": "https://off42.cc/en/support/",
+  "marketingURL": "https://off42.cc/en/",
+  "apps": {
+    "PDF42": {
+      "name": "PDF42",
+      "subtitle": "PDFs, with possibilities.",
+      "promotionalText": "No subscription, no trial period, no ads. MIT-licensed and free, today and tomorrow.",
+      "keywords": "pdf,editor,annotate,sign,signature,stamp,compress,merge,pages,form,highlight,reader",
+      "description": "Read, annotate, organise, compress and sign your PDFs.\n\nMake the PDF your working document. Edit page text, add notes, highlight the important parts, fill forms and put pages in the right order with PDF42.\n\n• Edit page text and annotate with highlights, text boxes, shapes and freehand marks.\n• Insert, extract, rotate, delete and reorder pages.\n• Fill supported PDF forms and save your changes.\n\nPage-text edits flatten on save. Complex PDF layouts and forms can vary; review a saved copy before sharing.\n\nKeep signatures and stamps close to your work. Add a visual signature, reuse a stamp or work with certificate-based digital signatures in PDF42.\n\n• Keep reusable signatures and stamps in the shared library.\n• Place and adjust a visual mark on the page.\n• Use certificate-based signing when your workflow requires it.\n\nA visual signature is not a certificate-backed digital signature. Certificate trust and timestamp interoperability depend on the certificate, service and receiving software.\n\nCore editing runs locally on your computer without uploading files. Optional online features need a connection; availability varies by platform.\n\nNo subscription, no trial period, no ads. MIT-licensed and free, today and tomorrow.",
+      "check": []
+    },
+    "DOC42": {
+      "name": "DOC42",
+      "subtitle": "From thought to document.",
+      "promotionalText": "No subscription, no trial period, no ads. MIT-licensed and free, today and tomorrow.",
+      "keywords": "word processor,docx,odt,rtf,markdown,writer,letter,document,text,office",
+      "description": "Write and lay out documents in DOCX, ODT, RTF and Markdown.\n\nWrite letters, reports and the next draft with DOC42. Combine rich text and page layout with familiar document formats.\n\n• Open and save DOCX, ODT, RTF, Markdown and other text formats.\n• Work with formatting, tables, images and page layout.\n• Export to PDF when the document is ready to share.\n\nComplex Office documents can render differently. Check imported layout and the exported file before relying on exact fidelity.\n\nCore editing runs locally on your computer without uploading files. Optional online features need a connection; availability varies by platform.\n\nNo subscription, no trial period, no ads. MIT-licensed and free, today and tomorrow.",
+      "check": []
+    },
+    "XLS42": {
+      "name": "XLS42",
+      "subtitle": "Give your numbers a story.",
+      "promotionalText": "No subscription, no trial period, no ads. MIT-licensed and free, today and tomorrow.",
+      "keywords": "spreadsheet,xlsx,ods,csv,formula,chart,table,budget,calc,labels,qr code,barcode",
+      "description": "Work with spreadsheets, formulas and charts in XLSX, ODS and CSV.\n\nFrom a simple list to a calculated report, XLS42 brings cells, formulas and charts into your everyday office.\n\n• Open XLSX, legacy XLS, ODS and delimited text files.\n• Use formulas, formatting and charts to explain your data.\n• Save XLSX, ODS or CSV, or export a PDF.\n\nFormula and formatting support varies by file. CSV stores a single table of values, not a complete workbook with formatting and multiple sheets.\n\nPut a scannable code or a conformity mark into a PDF, document or spreadsheet, then print a full sheet of labels from your data. Sizes are set in millimetres.\n\n• Insert QR, Data Matrix, Code 128 and Aztec codes that stay editable after saving.\n• Add 97 product marks — conformity (CE, UKCA, EAC, FCC, UL, CCC), environmental (WEEE, RoHS), GHS hazard pictograms and IEC safety symbols — with their conditions of use.\n• Print label sheets from spreadsheet rows, document tables or a PDF region on 559 stock formats or your own grid.\n\nMarks are artwork: inserting one does not certify the product. Use conformity marks and trademarks only when your product is certified or you hold the licence; the app shows each mark's conditions. Check paper and printer tolerances with a test print. On macOS; the dialog is translated into English, Russian and Turkish, mark names into 11 languages.\n\nCore editing runs locally on your computer without uploading files. Optional online features need a connection; availability varies by platform.\n\nNo subscription, no trial period, no ads. MIT-licensed and free, today and tomorrow.",
+      "check": []
+    },
+    "PPT42": {
+      "name": "PPT42",
+      "subtitle": "Ideas worth presenting.",
+      "promotionalText": "No subscription, no trial period, no ads. MIT-licensed and free, today and tomorrow.",
+      "keywords": "presentation,slides,pptx,odp,slideshow,deck,speaker notes,pitch,office",
+      "description": "Build slides, work with tables and shapes, and present your story.\n\nBuild a clear visual story with PPT42. Arrange text, images, shapes and tables, then move from editing to a slide show.\n\n• Work with PPTX and OpenDocument presentation files.\n• Arrange slide objects, tables and speaker notes.\n• Export slides to PDF and images for easy sharing.\n\nLegacy PPT files need conversion first. Complex imported layouts can differ; review the full deck before presenting.\n\nCore editing runs locally on your computer without uploading files. Optional online features need a connection; availability varies by platform.\n\nNo subscription, no trial period, no ads. MIT-licensed and free, today and tomorrow.",
+      "check": []
+    },
+    "IMG42": {
+      "name": "IMG42",
+      "subtitle": "A little edit. A better image.",
+      "promotionalText": "No subscription, no trial period, no ads. MIT-licensed and free, today and tomorrow.",
+      "keywords": "image editor,photo,crop,resize,annotate,markup,heic,jpeg,png,convert,viewer",
+      "description": "View, crop, resize, annotate and adjust your images.\n\nOpen a photo, crop a distraction, adjust the image or add a clear annotation. IMG42 keeps everyday image tasks close at hand.\n\n• View common image formats, including JPEG, PNG, HEIC and TIFF.\n• Crop, resize, rotate and adjust images.\n• Add markup and export to supported image formats.\n\nReading and writing support varies by format and macOS codec availability. Some formats can be opened but cannot be saved in their original form.\n\nCore editing runs locally on your computer without uploading files. Optional online features need a connection; availability varies by platform.\n\nNo subscription, no trial period, no ads. MIT-licensed and free, today and tomorrow.",
+      "check": []
+    },
+    "SCN42": {
+      "name": "SCN42",
+      "subtitle": "Paper, meet possibility.",
+      "promotionalText": "No subscription, no trial period, no ads. MIT-licensed and free, today and tomorrow.",
+      "keywords": "scanner,scan,ocr,document scanner,pdf,text recognition,continuity camera,deskew,receipt",
+      "description": "Scan, clean up pages and recognise text with on-device OCR.\n\nBring paper into your digital office with SCN42. Acquire pages, straighten and clean them up, then recognise text on your Mac.\n\n• Acquire from supported scanners or import images and PDFs.\n• Crop, deskew and adjust pages before recognition.\n• Export searchable PDFs or recognised text.\n\nScanner and Continuity support depends on your hardware. OCR languages and accuracy depend on Apple Vision and the source image; the 20 interface languages are a separate feature.\n\nCore editing runs locally on your computer without uploading files. Optional online features need a connection; availability varies by platform.\n\nNo subscription, no trial period, no ads. MIT-licensed and free, today and tomorrow.",
+      "check": []
+    }
+  }
+}

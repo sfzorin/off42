@@ -14,7 +14,12 @@ enum CryptoPro {
 
     static func tool(_ name: String) -> URL { binDirectory.appendingPathComponent(name) }
 
+    #if APP_STORE
+    /// The sandbox cannot run the CryptoPro command-line tools (nor reach its key containers).
+    static var isInstalled: Bool { false }
+    #else
     static var isInstalled: Bool { FileManager.default.isExecutableFile(atPath: tool("cryptcp").path) }
+    #endif
 
     static let downloadURL = URL(string: "https://www.cryptopro.ru/products/csp/downloads")!
     static let testCAURL = URL(string: "https://testgost2012.cryptopro.ru/certsrv/")!
@@ -237,7 +242,11 @@ enum CryptoPro {
     }
 
     static func run(_ name: String, _ args: [String], allowFailure: Bool = false, timeout: TimeInterval = 120) throws -> Result {
+        #if APP_STORE
+        throw Failure.notInstalled
+        #else
         try run(tool(name), args, allowFailure: allowFailure, timeout: timeout)
+        #endif
     }
 
     static func run(_ executable: URL, _ args: [String], allowFailure: Bool = false, timeout: TimeInterval = 120) throws -> Result {

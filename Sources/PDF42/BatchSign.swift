@@ -165,7 +165,11 @@ enum BatchSignUI {
     /// Output folder, suffix and the page for a visible signature.
     static func askSettings(count: Int) -> BatchSigner.Settings? {
         let d = UserDefaults.standard
+        #if APP_STORE
+        var folder: URL? = d.string(forKey: "batch.folder").map { SecurityScopedFolders.url(path: $0, key: "batch.folder") }
+        #else
         var folder: URL? = d.string(forKey: "batch.folder").map { URL(fileURLWithPath: $0) }
+        #endif
         let where_ = NSPopUpButton(frame: .zero, pullsDown: false)
         func fillFolder() {
             where_.removeAllItems()
@@ -180,7 +184,14 @@ enum BatchSignUI {
             p.canChooseDirectories = true
             p.canChooseFiles = false
             p.canCreateDirectories = true
+            #if APP_STORE
+            if p.runModal() == .OK, let url = p.url {
+                SecurityScopedFolders.remember(url, key: "batch.folder")
+                folder = url; d.set(true, forKey: "batch.useFolder"); fillFolder(); where_.selectItem(at: 1)
+            }
+            #else
             if p.runModal() == .OK, let url = p.url { folder = url; d.set(true, forKey: "batch.useFolder"); fillFolder(); where_.selectItem(at: 1) }
+            #endif
         }
         let suffix = NSTextField(string: d.string(forKey: "batch.suffix") ?? L("signed"))
         let page = NSPopUpButton(frame: .zero, pullsDown: false)

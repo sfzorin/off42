@@ -1,0 +1,58 @@
+{
+  "siteLanguage": "vi",
+  "appStoreLocale": "vi",
+  "note": null,
+  "privacyPolicyURL": "https://off42.cc/vi/privacy/",
+  "supportURL": "https://off42.cc/vi/support/",
+  "marketingURL": "https://off42.cc/vi/",
+  "apps": {
+    "PDF42": {
+      "name": "PDF42",
+      "subtitle": "PDF với nhiều khả năng hơn.",
+      "promotionalText": "Không thuê bao, không thời gian dùng thử, không quảng cáo. Giấy phép MIT và miễn phí, hôm nay và cả ngày mai.",
+      "keywords": "pdf,chỉnh sửa,chú thích,ký,chữ ký,con dấu,nén,ghép,trang,biểu mẫu",
+      "description": "Đọc, chú thích, sắp xếp, nén và ký tệp PDF.\n\nBiến PDF thành tài liệu làm việc. Với PDF42, bạn có thể sửa văn bản trên trang, thêm ghi chú, tô sáng nội dung quan trọng, điền biểu mẫu và sắp xếp lại các trang.\n\n• Sửa văn bản trên trang và chú thích bằng tô sáng, hộp văn bản, hình dạng hoặc nét vẽ tự do.\n• Chèn, trích xuất, xoay, xóa và sắp xếp lại các trang.\n• Điền biểu mẫu PDF được hỗ trợ và lưu thay đổi.\n\nCác chỉnh sửa văn bản trên trang được làm phẳng khi lưu. Bố cục và biểu mẫu PDF phức tạp có thể được xử lý khác nhau; hãy kiểm tra bản sao đã lưu trước khi chia sẻ.\n\nLuôn sẵn chữ ký và con dấu cho công việc. Thêm chữ ký hiển thị, dùng lại con dấu hoặc sử dụng chữ ký số dựa trên chứng thư số trong PDF42.\n\n• Lưu chữ ký và con dấu có thể tái sử dụng trong thư viện chung.\n• Đặt và điều chỉnh dấu hiển thị trên trang.\n• Sử dụng ký bằng chứng thư số khi quy trình làm việc yêu cầu.\n\nChữ ký hiển thị không phải chữ ký số có chứng thư số. Độ tin cậy của chứng thư và khả năng tương tác của dấu thời gian phụ thuộc vào chứng thư, dịch vụ và phần mềm của người nhận.\n\nCác thao tác chỉnh sửa chính chạy ngay trên máy tính của bạn, không tải tệp lên mạng. Tính năng trực tuyến tùy chọn cần kết nối; khả năng sử dụng khác nhau theo nền tảng.\n\nKhông thuê bao, không thời gian dùng thử, không quảng cáo. Giấy phép MIT và miễn phí, hôm nay và cả ngày mai.",
+      "check": []
+    },
+    "DOC42": {
+      "name": "DOC42",
+      "subtitle": "Từ ý tưởng đến tài liệu.",
+      "promotionalText": "Không thuê bao, không thời gian dùng thử, không quảng cáo. Giấy phép MIT và miễn phí, hôm nay và cả ngày mai.",
+      "keywords": "soạn thảo văn bản,docx,odt,rtf,markdown,tài liệu,thư,văn phòng",
+      "description": "Soạn thảo và dàn trang tài liệu DOCX, ODT, RTF và Markdown.\n\nViết thư, báo cáo và bản nháp mới với DOC42. Kết hợp văn bản có định dạng và bố cục trang trong các định dạng tài liệu quen thuộc.\n\n• Mở và lưu DOCX, ODT, RTF, Markdown cùng các định dạng văn bản khác.\n• Làm việc với định dạng, bảng, hình ảnh và bố cục trang.\n• Xuất sang PDF khi tài liệu đã sẵn sàng để chia sẻ.\n\nTài liệu Office phức tạp có thể hiển thị khác nhau. Hãy kiểm tra bố cục khi nhập và tệp đã xuất trước khi dựa vào khả năng tái hiện chính xác.\n\nCác thao tác chỉnh sửa chính chạy ngay trên máy tính của bạn, không tải tệp lên mạng. Tính năng trực tuyến tùy chọn cần kết nối; khả năng sử dụng khác nhau theo nền tảng.\n\nKhông thuê bao, không thời gian dùng thử, không quảng cáo. Giấy phép MIT và miễn phí, hôm nay và cả ngày mai.",
+      "check": []
+    },
+    "XLS42": {
+      "name": "XLS42",
+      "subtitle": "Để những con số kể chuyện.",
+      "promotionalText": "Không thuê bao, không thời gian dùng thử, không quảng cáo. Giấy phép MIT và miễn phí, hôm nay và cả ngày mai.",
+      "keywords": "bảng tính,xlsx,ods,csv,công thức,biểu đồ,bảng,ngân sách,nhãn,mã qr",
+      "description": "Làm việc với bảng tính, công thức và biểu đồ trong XLSX, ODS và CSV.\n\nTừ danh sách đơn giản đến báo cáo có tính toán, XLS42 mang ô dữ liệu, công thức và biểu đồ vào công việc hằng ngày.\n\n• Mở XLSX, XLS cũ, ODS và tệp văn bản có ký tự phân cách.\n• Dùng công thức, định dạng và biểu đồ để giải thích dữ liệu.\n• Lưu XLSX, ODS hoặc CSV, hay xuất PDF.\n\nKhả năng hỗ trợ công thức và định dạng tùy thuộc vào tệp. CSV chỉ lưu một bảng giá trị, không lưu toàn bộ sổ làm việc với định dạng và nhiều trang tính.\n\nĐặt mã quét được hoặc dấu hợp chuẩn vào PDF, văn bản hay bảng tính, rồi in cả tờ nhãn từ dữ liệu của bạn. Kích thước được đặt bằng milimét.\n\n• Chèn mã QR, Data Matrix, Code 128 và Aztec vẫn chỉnh sửa được sau khi lưu.\n• Thêm 97 dấu sản phẩm — dấu hợp chuẩn (CE, UKCA, EAC, FCC, UL, CCC), dấu môi trường (WEEE, RoHS), hình đồ cảnh báo nguy hiểm GHS và ký hiệu an toàn IEC — kèm điều kiện sử dụng.\n• In tờ nhãn từ các hàng bảng tính, bảng trong văn bản hoặc vùng PDF trên 559 khổ giấy có sẵn hoặc lưới tùy chỉnh.\n\nDấu chỉ là hình vẽ: chèn dấu không chứng nhận sản phẩm. Chỉ dùng dấu hợp chuẩn và nhãn hiệu thương mại khi sản phẩm đã được chứng nhận hoặc bạn có giấy phép; ứng dụng hiển thị điều kiện của từng dấu. Hãy in thử để kiểm tra dung sai của giấy và máy in. Trên macOS; hộp thoại được dịch sang tiếng Anh, tiếng Nga và tiếng Thổ Nhĩ Kỳ, tên dấu sang 11 ngôn ngữ.\n\nCác thao tác chỉnh sửa chính chạy ngay trên máy tính của bạn, không tải tệp lên mạng. Tính năng trực tuyến tùy chọn cần kết nối; khả năng sử dụng khác nhau theo nền tảng.\n\nKhông thuê bao, không thời gian dùng thử, không quảng cáo. Giấy phép MIT và miễn phí, hôm nay và cả ngày mai.",
+      "check": []
+    },
+    "PPT42": {
+      "name": "PPT42",
+      "subtitle": "Ý tưởng đáng trình bày",
+      "promotionalText": "Không thuê bao, không thời gian dùng thử, không quảng cáo. Giấy phép MIT và miễn phí, hôm nay và cả ngày mai.",
+      "keywords": "trình chiếu,bản trình bày,slide,pptx,odp,ghi chú,văn phòng",
+      "description": "Tạo trang chiếu, thêm bảng và hình dạng để kể câu chuyện của bạn.\n\nKể một câu chuyện trực quan rõ ràng với PPT42. Sắp xếp văn bản, hình ảnh, hình dạng và bảng, rồi chuyển từ chỉnh sửa sang trình chiếu.\n\n• Làm việc với tệp trình chiếu PPTX và OpenDocument.\n• Sắp xếp đối tượng, bảng và ghi chú diễn giả trên trang chiếu.\n• Xuất trang chiếu thành PDF và hình ảnh để chia sẻ dễ dàng.\n\nTệp PPT cũ cần được chuyển đổi trước. Bố cục phức tạp có thể thay đổi khi nhập; hãy kiểm tra toàn bộ bài trước khi trình bày.\n\nCác thao tác chỉnh sửa chính chạy ngay trên máy tính của bạn, không tải tệp lên mạng. Tính năng trực tuyến tùy chọn cần kết nối; khả năng sử dụng khác nhau theo nền tảng.\n\nKhông thuê bao, không thời gian dùng thử, không quảng cáo. Giấy phép MIT và miễn phí, hôm nay và cả ngày mai.",
+      "check": []
+    },
+    "IMG42": {
+      "name": "IMG42",
+      "subtitle": "Chỉnh nhẹ. Ảnh đẹp hơn.",
+      "promotionalText": "Không thuê bao, không thời gian dùng thử, không quảng cáo. Giấy phép MIT và miễn phí, hôm nay và cả ngày mai.",
+      "keywords": "chỉnh sửa ảnh,ảnh,cắt,đổi kích thước,chú thích,heic,jpeg,png,chuyển đổi",
+      "description": "Xem, cắt, đổi kích thước, chú thích và điều chỉnh hình ảnh.\n\nMở ảnh, cắt phần gây xao nhãng, điều chỉnh hình ảnh hoặc thêm chú thích rõ ràng. IMG42 giúp bạn xử lý các tác vụ hình ảnh hằng ngày thuận tiện.\n\n• Xem định dạng ảnh phổ biến như JPEG, PNG, HEIC và TIFF.\n• Cắt, đổi kích thước, xoay và điều chỉnh hình ảnh.\n• Thêm đánh dấu và xuất sang định dạng hình ảnh được hỗ trợ.\n\nKhả năng đọc và ghi tùy thuộc định dạng và codec có sẵn trên macOS. Một số định dạng có thể mở nhưng không thể lưu lại ở dạng gốc.\n\nCác thao tác chỉnh sửa chính chạy ngay trên máy tính của bạn, không tải tệp lên mạng. Tính năng trực tuyến tùy chọn cần kết nối; khả năng sử dụng khác nhau theo nền tảng.\n\nKhông thuê bao, không thời gian dùng thử, không quảng cáo. Giấy phép MIT và miễn phí, hôm nay và cả ngày mai.",
+      "check": []
+    },
+    "SCN42": {
+      "name": "SCN42",
+      "subtitle": "Quét và nhận dạng văn bản",
+      "promotionalText": "Không thuê bao, không thời gian dùng thử, không quảng cáo. Giấy phép MIT và miễn phí, hôm nay và cả ngày mai.",
+      "keywords": "máy quét,quét,ocr,nhận dạng văn bản,pdf,tài liệu,camera,hóa đơn",
+      "description": "Quét, làm sạch trang và nhận dạng văn bản bằng OCR ngay trên thiết bị.\n\nĐưa giấy vào văn phòng số với SCN42. Thu nhận trang, chỉnh thẳng, làm sạch rồi nhận dạng văn bản ngay trên Mac.\n\n• Thu nhận từ máy quét được hỗ trợ hoặc nhập hình ảnh và PDF.\n• Cắt, chỉnh nghiêng và điều chỉnh trang trước khi nhận dạng.\n• Xuất PDF có thể tìm kiếm hoặc văn bản đã nhận dạng.\n\nKhả năng hỗ trợ máy quét và tính năng Thông suốt phụ thuộc vào phần cứng. Ngôn ngữ và độ chính xác của OCR phụ thuộc vào Apple Vision và ảnh nguồn; 20 ngôn ngữ giao diện là tính năng riêng.\n\nCác thao tác chỉnh sửa chính chạy ngay trên máy tính của bạn, không tải tệp lên mạng. Tính năng trực tuyến tùy chọn cần kết nối; khả năng sử dụng khác nhau theo nền tảng.\n\nKhông thuê bao, không thời gian dùng thử, không quảng cáo. Giấy phép MIT và miễn phí, hôm nay và cả ngày mai.",
+      "check": []
+    }
+  }
+}

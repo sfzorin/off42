@@ -101,7 +101,12 @@ struct SaveOptions: Codable, Equatable {
 
     static var defaultTemplate: String { L("Scan") + " YYYY-MM-DD HH-mm" }
 
+    #if APP_STORE
+    /// A folder chosen in the save sheet is reached through its security-scoped bookmark in later sessions.
+    var folderURL: URL { folder.map { SecurityScopedFolders.url(path: $0, key: "scan.folder") } ?? Store.defaultDestination }
+    #else
     var folderURL: URL { folder.map { URL(fileURLWithPath: $0, isDirectory: true) } ?? Store.defaultDestination }
+    #endif
 }
 
 /// One page as it goes into a file.

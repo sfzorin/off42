@@ -1,0 +1,58 @@
+{
+  "siteLanguage": "pl",
+  "appStoreLocale": "pl",
+  "note": null,
+  "privacyPolicyURL": "https://off42.cc/pl/privacy/",
+  "supportURL": "https://off42.cc/pl/support/",
+  "marketingURL": "https://off42.cc/pl/",
+  "apps": {
+    "PDF42": {
+      "name": "PDF42",
+      "subtitle": "PDF-y pełne możliwości.",
+      "promotionalText": "Bez subskrypcji, bez okresu próbnego, bez reklam. Licencja MIT i za darmo — dziś i jutro.",
+      "keywords": "pdf,edytor,adnotacje,podpis,podpisać,pieczęć,kompresja,scalanie,strony,formularz",
+      "description": "Czytaj, opisuj, porządkuj, kompresuj i podpisuj pliki PDF.\n\nNiech PDF stanie się dokumentem roboczym. Edytuj tekst strony, dodawaj notatki, wyróżniaj ważne fragmenty, wypełniaj formularze i porządkuj strony w PDF42.\n\n• Edytuj tekst strony oraz dodawaj wyróżnienia, pola tekstowe, kształty i odręczne oznaczenia.\n• Wstawiaj, wyodrębniaj, obracaj, usuwaj i przestawiaj strony.\n• Wypełniaj obsługiwane formularze PDF i zapisuj zmiany.\n\nZmiany tekstu strony są spłaszczane podczas zapisu. Złożone układy i formularze PDF mogą zachowywać się różnie; sprawdź zapisaną kopię przed udostępnieniem.\n\nMiej podpisy i pieczęcie pod ręką. Dodaj podpis graficzny, użyj pieczęci ponownie lub korzystaj z podpisów cyfrowych opartych na certyfikatach w PDF42.\n\n• Przechowuj podpisy i pieczęcie wielokrotnego użytku we wspólnej bibliotece.\n• Umieść i dopasuj znak graficzny na stronie.\n• Używaj podpisu opartego na certyfikacie, gdy wymaga tego Twoja praca.\n\nPodpis graficzny nie jest podpisem cyfrowym opartym na certyfikacie. Zaufanie do certyfikatu i zgodność znaczników czasu zależą od certyfikatu, usługi i programu odbiorcy.\n\nPodstawowa edycja odbywa się lokalnie na komputerze, bez przesyłania plików. Opcjonalne funkcje sieciowe wymagają połączenia; ich dostępność zależy od platformy.\n\nBez subskrypcji, bez okresu próbnego, bez reklam. Licencja MIT i za darmo — dziś i jutro.",
+      "check": []
+    },
+    "DOC42": {
+      "name": "DOC42",
+      "subtitle": "Od myśli do dokumentu.",
+      "promotionalText": "Bez subskrypcji, bez okresu próbnego, bez reklam. Licencja MIT i za darmo — dziś i jutro.",
+      "keywords": "edytor tekstu,docx,odt,rtf,markdown,dokument,list,tekst,biuro",
+      "description": "Pisz i składaj dokumenty w formatach DOCX, ODT, RTF i Markdown.\n\nPisz listy, raporty i kolejne szkice w DOC42. Łącz formatowany tekst i układ stron ze znanymi formatami dokumentów.\n\n• Otwieraj i zapisuj DOCX, ODT, RTF, Markdown oraz inne formaty tekstowe.\n• Pracuj z formatowaniem, tabelami, obrazami i układem stron.\n• Eksportuj do PDF, gdy dokument jest gotowy do udostępnienia.\n\nZłożone dokumenty Office mogą wyglądać inaczej. Sprawdź zaimportowany układ i wyeksportowany plik, zanim założysz pełną zgodność.\n\nPodstawowa edycja odbywa się lokalnie na komputerze, bez przesyłania plików. Opcjonalne funkcje sieciowe wymagają połączenia; ich dostępność zależy od platformy.\n\nBez subskrypcji, bez okresu próbnego, bez reklam. Licencja MIT i za darmo — dziś i jutro.",
+      "check": []
+    },
+    "XLS42": {
+      "name": "XLS42",
+      "subtitle": "Arkusze, formuły i wykresy",
+      "promotionalText": "Bez subskrypcji, bez okresu próbnego, bez reklam. Licencja MIT i za darmo — dziś i jutro.",
+      "keywords": "arkusz kalkulacyjny,xlsx,ods,csv,formuła,wykres,tabela,budżet,etykiety,kod qr",
+      "description": "Pracuj z arkuszami, formułami i wykresami w XLSX, ODS i CSV.\n\nOd prostej listy po raport z obliczeniami — XLS42 wprowadza komórki, formuły i wykresy do codziennej pracy.\n\n• Otwieraj XLSX, starsze XLS, ODS i pliki tekstowe z separatorami.\n• Korzystaj z formuł, formatowania i wykresów, by objaśniać dane.\n• Zapisuj XLSX, ODS lub CSV albo eksportuj PDF.\n\nObsługa formuł i formatowania zależy od pliku. CSV przechowuje jedną tabelę wartości, a nie cały skoroszyt z formatowaniem i wieloma arkuszami.\n\nUmieść skanowalny kod lub znak zgodności w pliku PDF, dokumencie albo arkuszu kalkulacyjnym, a potem wydrukuj pełny arkusz etykiet ze swoich danych. Rozmiary ustawia się w milimetrach.\n\n• Wstawiaj kody QR, Data Matrix, Code 128 i Aztec, które po zapisaniu pozostają edytowalne.\n• Dodawaj 97 oznaczeń produktów – znaki zgodności (CE, UKCA, EAC, FCC, UL, CCC), środowiskowe (WEEE, RoHS), piktogramy zagrożeń GHS i symbole bezpieczeństwa IEC – wraz z warunkami ich użycia.\n• Drukuj arkusze etykiet z wierszy arkusza kalkulacyjnego, tabel w dokumentach lub obszaru PDF na 559 formatach albo na własnej siatce.\n\nZnaki to grafiki: wstawienie znaku nie certyfikuje produktu. Używaj znaków zgodności i znaków towarowych tylko wtedy, gdy produkt ma certyfikat lub masz licencję; aplikacja pokazuje warunki każdego znaku. Sprawdź tolerancje papieru i drukarki wydrukiem próbnym. Na macOS; okno dialogowe jest przetłumaczone na angielski, rosyjski i turecki, a nazwy znaków na 11 języków.\n\nPodstawowa edycja odbywa się lokalnie na komputerze, bez przesyłania plików. Opcjonalne funkcje sieciowe wymagają połączenia; ich dostępność zależy od platformy.\n\nBez subskrypcji, bez okresu próbnego, bez reklam. Licencja MIT i za darmo — dziś i jutro.",
+      "check": []
+    },
+    "PPT42": {
+      "name": "PPT42",
+      "subtitle": "Pomysły warte pokazania.",
+      "promotionalText": "Bez subskrypcji, bez okresu próbnego, bez reklam. Licencja MIT i za darmo — dziś i jutro.",
+      "keywords": "prezentacja,slajdy,pptx,odp,pokaz slajdów,notatki prelegenta,biuro",
+      "description": "Twórz slajdy, korzystaj z tabel i kształtów, opowiedz swoją historię.\n\nZbuduj czytelną opowieść wizualną w PPT42. Rozmieść tekst, obrazy, kształty i tabele, a potem przejdź od edycji do pokazu slajdów.\n\n• Pracuj z prezentacjami PPTX i OpenDocument.\n• Rozmieszczaj obiekty slajdów, tabele i notatki prelegenta.\n• Eksportuj slajdy do PDF i obrazów, by łatwo je udostępnić.\n\nStarsze pliki PPT wymagają wcześniejszej konwersji. Złożone importowane układy mogą się różnić; przejrzyj całą prezentację przed pokazem.\n\nPodstawowa edycja odbywa się lokalnie na komputerze, bez przesyłania plików. Opcjonalne funkcje sieciowe wymagają połączenia; ich dostępność zależy od platformy.\n\nBez subskrypcji, bez okresu próbnego, bez reklam. Licencja MIT i za darmo — dziś i jutro.",
+      "check": []
+    },
+    "IMG42": {
+      "name": "IMG42",
+      "subtitle": "Mała zmiana. Lepszy obraz.",
+      "promotionalText": "Bez subskrypcji, bez okresu próbnego, bez reklam. Licencja MIT i za darmo — dziś i jutro.",
+      "keywords": "edytor zdjęć,obraz,kadrowanie,zmiana rozmiaru,adnotacje,heic,jpeg,png,konwersja",
+      "description": "Przeglądaj, kadruj, skaluj, opisuj i dostosowuj obrazy.\n\nOtwórz zdjęcie, wykadruj zbędny fragment, dostosuj obraz lub dodaj czytelną adnotację. IMG42 ułatwia codzienną pracę z obrazami.\n\n• Przeglądaj popularne formaty obrazów, w tym JPEG, PNG, HEIC i TIFF.\n• Kadruj, skaluj, obracaj i dostosowuj obrazy.\n• Dodawaj adnotacje i eksportuj do obsługiwanych formatów obrazów.\n\nObsługa odczytu i zapisu zależy od formatu oraz dostępności kodeków w macOS. Niektóre formaty można otworzyć, ale nie można ich zapisać w oryginalnej postaci.\n\nPodstawowa edycja odbywa się lokalnie na komputerze, bez przesyłania plików. Opcjonalne funkcje sieciowe wymagają połączenia; ich dostępność zależy od platformy.\n\nBez subskrypcji, bez okresu próbnego, bez reklam. Licencja MIT i za darmo — dziś i jutro.",
+      "check": []
+    },
+    "SCN42": {
+      "name": "SCN42",
+      "subtitle": "Nowe możliwości dla papieru.",
+      "promotionalText": "Bez subskrypcji, bez okresu próbnego, bez reklam. Licencja MIT i za darmo — dziś i jutro.",
+      "keywords": "skaner,skanowanie,ocr,rozpoznawanie tekstu,pdf,dokument,aparat,paragon",
+      "description": "Skanuj, oczyszczaj strony i rozpoznawaj tekst dzięki OCR na urządzeniu.\n\nPrzenieś papier do cyfrowego biura z SCN42. Pozyskaj strony, wyprostuj je i oczyść, a następnie rozpoznaj tekst na Macu.\n\n• Pobieraj strony z obsługiwanych skanerów lub importuj obrazy i PDF-y.\n• Kadruj, prostuj i dostosowuj strony przed rozpoznaniem tekstu.\n• Eksportuj przeszukiwalne PDF-y lub rozpoznany tekst.\n\nObsługa skanerów i Continuity zależy od sprzętu. Języki i dokładność OCR zależą od Apple Vision oraz obrazu źródłowego; 20 języków interfejsu to osobna funkcja.\n\nPodstawowa edycja odbywa się lokalnie na komputerze, bez przesyłania plików. Opcjonalne funkcje sieciowe wymagają połączenia; ich dostępność zależy od platformy.\n\nBez subskrypcji, bez okresu próbnego, bez reklam. Licencja MIT i za darmo — dziś i jutro.",
+      "check": []
+    }
+  }
+}

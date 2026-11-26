@@ -1,0 +1,58 @@
+{
+  "siteLanguage": "ms",
+  "appStoreLocale": "ms",
+  "note": null,
+  "privacyPolicyURL": "https://off42.cc/ms/privacy/",
+  "supportURL": "https://off42.cc/ms/support/",
+  "marketingURL": "https://off42.cc/ms/",
+  "apps": {
+    "PDF42": {
+      "name": "PDF42",
+      "subtitle": "PDF dengan pelbagai fungsi",
+      "promotionalText": "Tiada langganan, tiada tempoh percubaan, tiada iklan. Berlesen MIT dan percuma, hari ini dan esok.",
+      "keywords": "pdf,editor,anotasi,tandatangan,cop,mampat,gabung,halaman,borang,pembaca",
+      "description": "Baca, anotasi, susun, mampatkan dan tandatangani PDF anda.\n\nJadikan PDF dokumen kerja anda. Edit teks halaman, tambah nota, serlahkan bahagian penting, isi borang dan susun halaman dengan PDF42.\n\n• Edit teks halaman dan tambah anotasi dengan serlahan, kotak teks, bentuk serta lakaran bebas.\n• Sisipkan, ekstrak, putar, padam dan susun semula halaman.\n• Isi borang PDF yang disokong dan simpan perubahan anda.\n\nPerubahan teks halaman digabungkan ke dalam kandungan halaman semasa disimpan. Susun atur dan borang PDF yang rumit mungkin berbeza; semak salinan tersimpan sebelum berkongsi.\n\nPastikan tandatangan dan cop mudah dicapai. Tambah tandatangan visual, guna semula cop atau gunakan tandatangan digital berasaskan sijil dalam PDF42.\n\n• Simpan tandatangan dan cop yang boleh digunakan semula dalam pustaka bersama.\n• Letakkan dan laraskan tanda visual pada halaman.\n• Gunakan tandatangan berasaskan sijil apabila aliran kerja memerlukannya.\n\nTandatangan visual bukan tandatangan digital yang disokong sijil. Kepercayaan sijil dan keserasian cap masa bergantung pada sijil, perkhidmatan dan perisian penerima.\n\nPenyuntingan asas berjalan secara setempat pada komputer anda tanpa memuat naik fail. Ciri dalam talian pilihan memerlukan sambungan; ketersediaannya berbeza mengikut platform.\n\nTiada langganan, tiada tempoh percubaan, tiada iklan. Berlesen MIT dan percuma, hari ini dan esok.",
+      "check": []
+    },
+    "DOC42": {
+      "name": "DOC42",
+      "subtitle": "Dari idea menjadi dokumen.",
+      "promotionalText": "Tiada langganan, tiada tempoh percubaan, tiada iklan. Berlesen MIT dan percuma, hari ini dan esok.",
+      "keywords": "pemproses perkataan,docx,odt,rtf,markdown,dokumen,surat,teks,pejabat",
+      "description": "Tulis dan susun atur dokumen dalam DOCX, ODT, RTF dan Markdown.\n\nTulis surat, laporan dan draf seterusnya dengan DOC42. Gabungkan teks berformat dan susun atur halaman dengan format dokumen yang biasa digunakan.\n\n• Buka dan simpan DOCX, ODT, RTF, Markdown serta format teks lain.\n• Gunakan pemformatan, jadual, imej dan susun atur halaman.\n• Eksport ke PDF apabila dokumen sedia untuk dikongsi.\n\nDokumen Office yang rumit mungkin dipaparkan secara berbeza. Semak susun atur yang diimport dan fail yang dieksport sebelum bergantung pada padanan yang tepat.\n\nPenyuntingan asas berjalan secara setempat pada komputer anda tanpa memuat naik fail. Ciri dalam talian pilihan memerlukan sambungan; ketersediaannya berbeza mengikut platform.\n\nTiada langganan, tiada tempoh percubaan, tiada iklan. Berlesen MIT dan percuma, hari ini dan esok.",
+      "check": []
+    },
+    "XLS42": {
+      "name": "XLS42",
+      "subtitle": "Biarkan nombor anda bercerita.",
+      "promotionalText": "Tiada langganan, tiada tempoh percubaan, tiada iklan. Berlesen MIT dan percuma, hari ini dan esok.",
+      "keywords": "hamparan,xlsx,ods,csv,formula,carta,jadual,belanjawan,label,kod qr",
+      "description": "Gunakan hamparan, formula dan carta dalam XLSX, ODS dan CSV.\n\nDaripada senarai ringkas hingga laporan pengiraan, XLS42 membawa sel, formula dan carta ke kerja harian anda.\n\n• Buka XLSX, XLS lama, ODS dan fail teks berpembatas.\n• Gunakan formula, pemformatan dan carta untuk menerangkan data anda.\n• Simpan XLSX, ODS atau CSV, atau eksport PDF.\n\nSokongan formula dan pemformatan berbeza mengikut fail. CSV menyimpan satu jadual nilai, bukan buku kerja lengkap dengan pemformatan dan berbilang helaian.\n\nLetakkan kod yang boleh diimbas atau tanda pematuhan ke dalam PDF, dokumen atau hamparan, kemudian cetak sehelai penuh label daripada data anda. Saiz ditetapkan dalam milimeter.\n\n• Sisipkan kod QR, Data Matrix, Code 128 dan Aztec yang kekal boleh disunting selepas disimpan.\n• Tambah 97 tanda produk — pematuhan (CE, UKCA, EAC, FCC, UL, CCC), alam sekitar (WEEE, RoHS), piktogram bahaya GHS dan simbol keselamatan IEC — bersama syarat penggunaannya.\n• Cetak helaian label daripada baris hamparan, jadual dokumen atau kawasan PDF pada 559 format kertas atau grid anda sendiri.\n\nTanda hanyalah grafik: menyisipkannya tidak mensijilkan produk. Gunakan tanda pematuhan dan tanda dagangan hanya apabila produk anda diperakui atau anda memegang lesennya; apl memaparkan syarat setiap tanda. Semak toleransi kertas dan pencetak dengan cetakan ujian. Pada macOS; dialog diterjemahkan ke bahasa Inggeris, Rusia dan Turki, nama tanda ke 11 bahasa.\n\nPenyuntingan asas berjalan secara setempat pada komputer anda tanpa memuat naik fail. Ciri dalam talian pilihan memerlukan sambungan; ketersediaannya berbeza mengikut platform.\n\nTiada langganan, tiada tempoh percubaan, tiada iklan. Berlesen MIT dan percuma, hari ini dan esok.",
+      "check": []
+    },
+    "PPT42": {
+      "name": "PPT42",
+      "subtitle": "Idea yang wajar dibentangkan.",
+      "promotionalText": "Tiada langganan, tiada tempoh percubaan, tiada iklan. Berlesen MIT dan percuma, hari ini dan esok.",
+      "keywords": "persembahan,slaid,pptx,odp,tayangan slaid,nota penceramah,pejabat",
+      "description": "Cipta slaid, gunakan jadual dan bentuk, lalu sampaikan cerita anda.\n\nBina cerita visual yang jelas dengan PPT42. Susun teks, imej, bentuk dan jadual, kemudian beralih daripada penyuntingan kepada tayangan slaid.\n\n• Gunakan fail pembentangan PPTX dan OpenDocument.\n• Susun objek slaid, jadual dan nota pembentang.\n• Eksport slaid ke PDF dan imej untuk perkongsian yang mudah.\n\nFail PPT lama perlu ditukar terlebih dahulu. Susun atur import yang rumit mungkin berbeza; semak keseluruhan pembentangan sebelum membentang.\n\nPenyuntingan asas berjalan secara setempat pada komputer anda tanpa memuat naik fail. Ciri dalam talian pilihan memerlukan sambungan; ketersediaannya berbeza mengikut platform.\n\nTiada langganan, tiada tempoh percubaan, tiada iklan. Berlesen MIT dan percuma, hari ini dan esok.",
+      "check": []
+    },
+    "IMG42": {
+      "name": "IMG42",
+      "subtitle": "Pangkas, laras dan anotasi",
+      "promotionalText": "Tiada langganan, tiada tempoh percubaan, tiada iklan. Berlesen MIT dan percuma, hari ini dan esok.",
+      "keywords": "editor foto,imej,pangkas,ubah saiz,anotasi,heic,jpeg,png,tukar",
+      "description": "Lihat, pangkas, ubah saiz, anotasi dan laraskan imej anda.\n\nBuka foto, pangkas bahagian yang mengganggu, laraskan imej atau tambah anotasi yang jelas. IMG42 memudahkan tugas imej harian anda.\n\n• Lihat format imej biasa, termasuk JPEG, PNG, HEIC dan TIFF.\n• Pangkas, ubah saiz, putar dan laraskan imej.\n• Tambah anotasi dan eksport ke format imej yang disokong.\n\nSokongan membaca dan menulis berbeza mengikut format dan ketersediaan codec macOS. Sesetengah format boleh dibuka tetapi tidak boleh disimpan dalam bentuk asalnya.\n\nPenyuntingan asas berjalan secara setempat pada komputer anda tanpa memuat naik fail. Ciri dalam talian pilihan memerlukan sambungan; ketersediaannya berbeza mengikut platform.\n\nTiada langganan, tiada tempoh percubaan, tiada iklan. Berlesen MIT dan percuma, hari ini dan esok.",
+      "check": []
+    },
+    "SCN42": {
+      "name": "SCN42",
+      "subtitle": "Imbas dan kenal pasti teks",
+      "promotionalText": "Tiada langganan, tiada tempoh percubaan, tiada iklan. Berlesen MIT dan percuma, hari ini dan esok.",
+      "keywords": "pengimbas,imbas,ocr,pengecaman teks,pdf,dokumen,kamera,resit",
+      "description": "Imbas, bersihkan halaman dan kenal pasti teks dengan OCR pada peranti.\n\nBawa kertas ke pejabat digital anda dengan SCN42. Dapatkan halaman, luruskan dan bersihkannya, kemudian kenal pasti teks pada Mac anda.\n\n• Dapatkan halaman daripada pengimbas yang disokong atau import imej dan PDF.\n• Pangkas, luruskan dan laraskan halaman sebelum pengecaman.\n• Eksport PDF yang boleh dicari atau teks yang dikenal pasti.\n\nSokongan pengimbas dan Continuity bergantung pada perkakasan anda. Bahasa dan ketepatan OCR bergantung pada Apple Vision serta imej sumber; 20 bahasa antara muka ialah ciri yang berasingan.\n\nPenyuntingan asas berjalan secara setempat pada komputer anda tanpa memuat naik fail. Ciri dalam talian pilihan memerlukan sambungan; ketersediaannya berbeza mengikut platform.\n\nTiada langganan, tiada tempoh percubaan, tiada iklan. Berlesen MIT dan percuma, hari ini dan esok.",
+      "check": []
+    }
+  }
+}

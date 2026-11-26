@@ -228,6 +228,9 @@ final class SaveSheetController: NSWindowController, NSTextFieldDelegate {
             guard r == .OK, let url = panel.url else { return }
             options.folder = url.path
             folder.url = url
+            #if APP_STORE
+            SecurityScopedFolders.remember(url, key: "scan.folder")
+            #endif
         }
     }
 

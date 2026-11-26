@@ -43,6 +43,10 @@ public enum MenuBar {
             .separator,
         ]
         if let prefs = spec.preferences { appItems += [.command(prefs), .separator] }
+        #if APP_STORE
+        AppStoreEdition.start()
+        appItems += [.item(AppStoreEdition.importMenuItem()), .separator]
+        #endif
         let services = NSMenuItem(title: L("Services"), action: nil, keyEquivalent: "")
         services.submenu = NSMenu(title: L("Services"))
         NSApp.servicesMenu = services.submenu

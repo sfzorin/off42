@@ -1,0 +1,58 @@
+{
+  "siteLanguage": "pt",
+  "appStoreLocale": "pt-BR",
+  "note": null,
+  "privacyPolicyURL": "https://off42.cc/pt/privacy/",
+  "supportURL": "https://off42.cc/pt/support/",
+  "marketingURL": "https://off42.cc/pt/",
+  "apps": {
+    "PDF42": {
+      "name": "PDF42",
+      "subtitle": "PDFs com mais possibilidades.",
+      "promotionalText": "Sem assinatura, sem período de teste, sem anúncios. Licença MIT e grátis, hoje e amanhã.",
+      "keywords": "pdf,editor,anotar,assinar,assinatura,carimbo,comprimir,juntar,páginas,formulário",
+      "description": "Leia, anote, organize, comprima e assine seus PDFs.\n\nTransforme o PDF em seu documento de trabalho. Edite o texto, adicione notas, destaque o que importa, preencha formulários e organize as páginas com o PDF42.\n\n• Edite o texto das páginas e adicione destaques, caixas de texto, formas e traços à mão livre.\n• Insira, extraia, gire, exclua e reordene páginas.\n• Preencha formulários PDF compatíveis e salve as alterações.\n\nAs edições de texto são incorporadas ao conteúdo da página ao salvar. Layouts e formulários PDF complexos podem variar; revise a cópia salva antes de compartilhar.\n\nTenha assinaturas e carimbos por perto. Adicione uma assinatura visual, reutilize um carimbo ou trabalhe com assinaturas digitais baseadas em certificados no PDF42.\n\n• Guarde assinaturas e carimbos reutilizáveis na biblioteca compartilhada.\n• Posicione e ajuste uma marca visual na página.\n• Use assinatura baseada em certificado quando seu trabalho exigir.\n\nUma assinatura visual não é uma assinatura digital baseada em certificado. A confiança no certificado e a compatibilidade do carimbo de tempo dependem do certificado, do serviço e do software do destinatário.\n\nA edição principal acontece localmente no seu computador, sem enviar arquivos. Recursos on-line opcionais precisam de conexão; a disponibilidade varia conforme a plataforma.\n\nSem assinatura, sem período de teste, sem anúncios. Licença MIT e grátis, hoje e amanhã.",
+      "check": []
+    },
+    "DOC42": {
+      "name": "DOC42",
+      "subtitle": "Da ideia ao documento.",
+      "promotionalText": "Sem assinatura, sem período de teste, sem anúncios. Licença MIT e grátis, hoje e amanhã.",
+      "keywords": "processador de texto,docx,odt,rtf,markdown,documento,carta,texto,escritório",
+      "description": "Escreva e diagrame documentos em DOCX, ODT, RTF e Markdown.\n\nEscreva cartas, relatórios e novos rascunhos com o DOC42. Combine texto formatado e diagramação com formatos de documento conhecidos.\n\n• Abra e salve DOCX, ODT, RTF, Markdown e outros formatos de texto.\n• Trabalhe com formatação, tabelas, imagens e layout de página.\n• Exporte para PDF quando o documento estiver pronto para compartilhar.\n\nDocumentos complexos do Office podem ser exibidos de forma diferente. Confira o layout importado e o arquivo exportado antes de contar com uma reprodução exata.\n\nA edição principal acontece localmente no seu computador, sem enviar arquivos. Recursos on-line opcionais precisam de conexão; a disponibilidade varia conforme a plataforma.\n\nSem assinatura, sem período de teste, sem anúncios. Licença MIT e grátis, hoje e amanhã.",
+      "check": []
+    },
+    "XLS42": {
+      "name": "XLS42",
+      "subtitle": "Planilhas com fórmulas",
+      "promotionalText": "Sem assinatura, sem período de teste, sem anúncios. Licença MIT e grátis, hoje e amanhã.",
+      "keywords": "planilha,xlsx,ods,csv,fórmula,gráfico,tabela,orçamento,etiquetas,código qr",
+      "description": "Trabalhe com planilhas, fórmulas e gráficos em XLSX, ODS e CSV.\n\nDe uma lista simples a um relatório calculado, o XLS42 traz células, fórmulas e gráficos para seu escritório diário.\n\n• Abra XLSX, XLS antigos, ODS e arquivos de texto delimitado.\n• Use fórmulas, formatação e gráficos para explicar seus dados.\n• Salve XLSX, ODS ou CSV, ou exporte um PDF.\n\nO suporte a fórmulas e formatação varia por arquivo. CSV armazena uma única tabela de valores, não uma pasta de trabalho completa com formatação e várias planilhas.\n\nColoque um código escaneável ou uma marca de conformidade em um PDF, documento ou planilha e imprima uma folha completa de etiquetas com os seus dados. Os tamanhos são definidos em milímetros.\n\n• Insira códigos QR, Data Matrix, Code 128 e Aztec que continuam editáveis depois de salvos.\n• Adicione 97 marcas de produto — de conformidade (CE, UKCA, EAC, FCC, UL, CCC), ambientais (WEEE, RoHS), pictogramas de perigo GHS e símbolos de segurança IEC — com suas condições de uso.\n• Imprima folhas de etiquetas a partir de linhas de planilha, tabelas de documentos ou uma região de PDF em 559 formatos ou na sua própria grade.\n\nAs marcas são arte: inserir uma não certifica o produto. Use marcas de conformidade e marcas registradas somente se o seu produto for certificado ou se você tiver a licença; o app mostra as condições de cada marca. Confira as tolerâncias do papel e da impressora com uma impressão de teste. No macOS; a caixa de diálogo está traduzida para inglês, russo e turco, e os nomes das marcas para 11 idiomas.\n\nA edição principal acontece localmente no seu computador, sem enviar arquivos. Recursos on-line opcionais precisam de conexão; a disponibilidade varia conforme a plataforma.\n\nSem assinatura, sem período de teste, sem anúncios. Licença MIT e grátis, hoje e amanhã.",
+      "check": []
+    },
+    "PPT42": {
+      "name": "PPT42",
+      "subtitle": "Ideias que merecem palco",
+      "promotionalText": "Sem assinatura, sem período de teste, sem anúncios. Licença MIT e grátis, hoje e amanhã.",
+      "keywords": "apresentação,slides,pptx,odp,notas do apresentador,escritório",
+      "description": "Crie slides, trabalhe com tabelas e formas e apresente sua história.\n\nCrie uma história visual clara com o PPT42. Organize textos, imagens, formas e tabelas e passe da edição para a apresentação de slides.\n\n• Trabalhe com arquivos de apresentação PPTX e OpenDocument.\n• Organize objetos dos slides, tabelas e notas do apresentador.\n• Exporte slides para PDF e imagens para compartilhar facilmente.\n\nArquivos PPT antigos precisam ser convertidos primeiro. Layouts importados complexos podem diferir; revise toda a apresentação antes de apresentá-la.\n\nA edição principal acontece localmente no seu computador, sem enviar arquivos. Recursos on-line opcionais precisam de conexão; a disponibilidade varia conforme a plataforma.\n\nSem assinatura, sem período de teste, sem anúncios. Licença MIT e grátis, hoje e amanhã.",
+      "check": []
+    },
+    "IMG42": {
+      "name": "IMG42",
+      "subtitle": "Recorte, ajuste e anote fotos",
+      "promotionalText": "Sem assinatura, sem período de teste, sem anúncios. Licença MIT e grátis, hoje e amanhã.",
+      "keywords": "editor de fotos,imagem,recortar,redimensionar,anotar,heic,jpeg,png,converter",
+      "description": "Visualize, recorte, redimensione, anote e ajuste suas imagens.\n\nAbra uma foto, recorte o que distrai, ajuste a imagem ou adicione uma anotação clara. O IMG42 mantém as tarefas de imagem do dia a dia ao alcance.\n\n• Visualize formatos comuns, incluindo JPEG, PNG, HEIC e TIFF.\n• Recorte, redimensione, gire e ajuste imagens.\n• Adicione anotações e exporte para formatos de imagem compatíveis.\n\nO suporte a leitura e gravação varia conforme o formato e os codecs disponíveis no macOS. Alguns formatos podem ser abertos, mas não salvos na forma original.\n\nA edição principal acontece localmente no seu computador, sem enviar arquivos. Recursos on-line opcionais precisam de conexão; a disponibilidade varia conforme a plataforma.\n\nSem assinatura, sem período de teste, sem anúncios. Licença MIT e grátis, hoje e amanhã.",
+      "check": []
+    },
+    "SCN42": {
+      "name": "SCN42",
+      "subtitle": "Digitalize e reconheça texto",
+      "promotionalText": "Sem assinatura, sem período de teste, sem anúncios. Licença MIT e grátis, hoje e amanhã.",
+      "keywords": "scanner,digitalizar,ocr,reconhecimento de texto,pdf,documento,câmera,recibo",
+      "description": "Digitalize, limpe páginas e reconheça texto com OCR no dispositivo.\n\nLeve o papel para seu escritório digital com o SCN42. Capture páginas, endireite e limpe as imagens e reconheça o texto no seu Mac.\n\n• Capture de scanners compatíveis ou importe imagens e PDFs.\n• Recorte, corrija a inclinação e ajuste as páginas antes do reconhecimento.\n• Exporte PDFs pesquisáveis ou o texto reconhecido.\n\nO suporte a scanners e Continuity depende do seu equipamento. Os idiomas e a precisão do OCR dependem do Apple Vision e da imagem original; os 20 idiomas de interface são um recurso separado.\n\nA edição principal acontece localmente no seu computador, sem enviar arquivos. Recursos on-line opcionais precisam de conexão; a disponibilidade varia conforme a plataforma.\n\nSem assinatura, sem período de teste, sem anúncios. Licença MIT e grátis, hoje e amanhã.",
+      "check": []
+    }
+  }
+}

@@ -1031,9 +1031,16 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
 - Dark mode everywhere; `K42_APPEARANCE=dark` (or `light`) forces it for one run, e.g. with `K42_SNAPSHOT`.
 - `scripts/check_strings.py` — checks all 20 languages for missing strings, duplicate/empty catalog entries,
   unsafe format substitutions, changed shortcuts and broken template/formula/command examples.
-- Distribution to other Macs: `DEVELOPER_ID="Developer ID Application: …" ./scripts/sign_and_notarize.sh PDF42 DOC42 XLS42 IMG42 PPT42 SCN42`
-  (needs an Apple Developer account and stored notarization credentials; see the script header).
-  Pass the app names explicitly: the script's current no-argument fallback forms one combined name and is not usable.
+- Distribution to other Macs: `DEVELOPER_ID="Developer ID Application: …" VERSION=… ./scripts/sign_and_notarize.sh`
+  signs all six apps with the hardened runtime and a secure timestamp (P11Bridge42 with library validation off, so it
+  can load the card vendor's module; SCN42 with the camera entitlement), builds `build/dist/off42-<VERSION>-arm64.dmg`,
+  signs, notarizes and staples it. `STAPLE_APPS=1` also staples each app; `DMG=0` gives one notarized ZIP per app.
+  Needs an Apple Developer account and stored notarization credentials (script header). Not yet run: there is no
+  Developer ID certificate yet.
+- Mac App Store variant: `scripts/build-app-store.sh` builds sandboxed copies of the six apps into `build/app-store`
+  (Swift condition `APP_STORE`, separate `.build/app-store` folder; `./build.sh` and the DMG are unchanged).
+  What changes inside the sandbox, the signing variables and the App Store Connect steps are in
+  [appstore/README.md](appstore/README.md).
 
 ### Digital signatures in Word, Excel and OpenDocument files (DOC42, XLS42)
 

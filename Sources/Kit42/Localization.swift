@@ -50,7 +50,11 @@ public enum Language: String, CaseIterable {
         return Language(rawValue: String(base))
     }
 
+    #if APP_STORE
+    static let defaults = AppStoreEdition.sharedDefaults
+    #else
     static let defaults = UserDefaults(suiteName: "com.sfzorin.suite42") ?? .standard
+    #endif
 
     /// Chosen once at launch; changing it relaunches the app (see `switchLanguage`).
     /// `-Suite42Language <code>` overrides this process only, for isolated UI audits.

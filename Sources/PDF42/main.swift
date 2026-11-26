@@ -19,6 +19,15 @@ import PDFKit
 //   PDF42 --key-delete ID
 Localization.register(rows: pdf42Strings)
 
+#if APP_STORE
+// The sandboxed App Store variant: shared library location, disabled features and its own strings.
+if CommandLine.arguments.contains("--selftest") {
+    let cryptoPro = !CryptoPro.isInstalled && (try? CryptoPro.run("cryptcp", [])) == nil
+    print("\(cryptoPro ? "PASS" : "FAIL") App Store edition: CryptoPro CSP tools are not run")
+    if !AppStoreEdition.selfCheck() || !cryptoPro { exit(1) }
+}
+#endif
+
 let args = CommandLine.arguments
 if args.count >= 2, args[1] == "--selftest" {
     let basic = PDFSelfTest.run(), deep = PDFFilesAudit.run(), signatures = SignatureSelfTest.run()

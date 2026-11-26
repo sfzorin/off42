@@ -23,6 +23,9 @@ public enum PKCS11Modules {
 
     /// Installed modules: (display name, path).
     public static func installed() -> [(String, String)] {
+        #if APP_STORE
+        return []  // the App Store variant has no P11Bridge42 helper
+        #else
         var out: [(String, String)] = []
         for k in known { for p in k.paths where FileManager.default.fileExists(atPath: p) { out.append((k.name, p)) } }
         if let custom = UserDefaults.standard.string(forKey: "pkcs11.module"), FileManager.default.fileExists(atPath: custom),
@@ -30,6 +33,7 @@ public enum PKCS11Modules {
             out.append(((custom as NSString).lastPathComponent, custom))
         }
         return out
+        #endif
     }
 
     /// CPU architectures in a Mach-O file (thin or universal).
@@ -66,10 +70,14 @@ public enum PKCS11Modules {
 
     /// The bridge helper: inside the app bundle, else next to the executable (development builds).
     public static func bridgeURL() -> URL? {
+        #if APP_STORE
+        return nil
+        #else
         if let env = ProcessInfo.processInfo.environment["SUITE42_P11BRIDGE"] { return URL(fileURLWithPath: env) }
         let candidates = [Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/P11Bridge42"),
                           Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("P11Bridge42")].compactMap { $0 }
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0.path) }
+        #endif
     }
 }
 

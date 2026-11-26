@@ -183,10 +183,18 @@ final class PrintCalibrationAccessory: NSViewController, NSPrintPanelAccessorizi
     @objc private func saveProfile() {
         let value = PrintCorrection(offsetX: offsetX, offsetY: offsetY, scaleX: scaleX / 100, scaleY: scaleY / 100)
         guard value.isValid, let data = try? JSONEncoder().encode(value) else { return }
+        #if APP_STORE
+        AppStoreEdition.sharedDefaults.set(data, forKey: profileKey); status.stringValue = L("Saved for %@ and this paper size.", info.printer.name)
+        #else
         UserDefaults(suiteName: "com.sfzorin.suite42")?.set(data, forKey: profileKey); status.stringValue = L("Saved for %@ and this paper size.", info.printer.name)
+        #endif
     }
     @objc private func loadProfile() {
+        #if APP_STORE
+        guard let data = AppStoreEdition.sharedDefaults.data(forKey: profileKey), let value = try? JSONDecoder().decode(PrintCorrection.self, from: data), value.isValid else { status.stringValue = L("No profile for this printer and paper size."); return }
+        #else
         guard let data = UserDefaults(suiteName: "com.sfzorin.suite42")?.data(forKey: profileKey), let value = try? JSONDecoder().decode(PrintCorrection.self, from: data), value.isValid else { status.stringValue = L("No profile for this printer and paper size."); return }
+        #endif
         offsetX = value.offsetX; offsetY = value.offsetY; scaleX = value.scaleX * 100; scaleY = value.scaleY * 100; enabled = true; status.stringValue = L("Calibration: %@", info.printer.name)
     }
     @objc private func calculate() {
