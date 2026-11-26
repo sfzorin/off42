@@ -47,7 +47,11 @@ final class LabelSheetController: NSObject, NSComboBoxDelegate {
     private var tableRows: NSStackView!
     var result: LabelSheetResult?
     var generation = 0
+    #if APP_STORE
+    private let defaults = AppStoreEdition.sharedDefaults
+    #else
     private let defaults = UserDefaults(suiteName: "com.sfzorin.suite42")!
+    #endif
     private var savedTemplates: [SavedLabelTemplate] {
         guard let data = defaults.data(forKey: "LabelTemplates.v1"), data.count <= 1_000_000 else { return [] }
         return (try? JSONDecoder().decode([SavedLabelTemplate].self, from: data)) ?? []

@@ -1,0 +1,58 @@
+{
+  "siteLanguage": "tr",
+  "appStoreLocale": "tr",
+  "note": null,
+  "privacyPolicyURL": "https://off42.cc/tr/privacy/",
+  "supportURL": "https://off42.cc/tr/support/",
+  "marketingURL": "https://off42.cc/tr/",
+  "apps": {
+    "PDF42": {
+      "name": "PDF42",
+      "subtitle": "PDF'lerde yeni olanaklar.",
+      "promotionalText": "Abonelik yok, deneme süresi yok, reklam yok. MIT lisanslı ve ücretsiz; bugün de, yarın da.",
+      "keywords": "pdf,düzenleyici,açıklama,imza,e-imza,mühür,sıkıştır,birleştir,sayfa,form,okuyucu",
+      "description": "PDF'lerinizi okuyun, not ekleyin, düzenleyin, sıkıştırın ve imzalayın.\n\nPDF'yi çalışma belgenize dönüştürün. PDF42 ile sayfa metnini düzenleyin, not ekleyin, önemli bölümleri vurgulayın, formları doldurun ve sayfaları sıralayın.\n\n• Sayfa metnini düzenleyin; vurgular, metin kutuları, şekiller ve serbest çizimlerle işaretleyin.\n• Sayfa ekleyin, çıkarın, döndürün, silin ve sıralamayı değiştirin.\n• Desteklenen PDF formlarını doldurun ve değişiklikleri kaydedin.\n\nSayfa metni düzenlemeleri kaydederken sayfa içeriğine birleştirilir. Karmaşık PDF düzenleri ve formlar farklılık gösterebilir; paylaşmadan önce kaydedilen kopyayı inceleyin.\n\nİmza ve kaşelerinizi elinizin altında tutun. PDF42'de görsel imza ekleyin, kaşeyi yeniden kullanın veya sertifika tabanlı dijital imzalarla çalışın.\n\n• Yeniden kullanılabilir imza ve kaşeleri ortak kitaplıkta saklayın.\n• Sayfaya görsel bir işaret yerleştirin ve ayarlayın.\n• İş akışınız gerektiriyorsa sertifika tabanlı imzalama kullanın.\n\nGörsel imza, sertifika tabanlı dijital imza değildir. Sertifikaya güven ve zaman damgası uyumluluğu; sertifikaya, hizmete ve alıcı yazılıma bağlıdır.\n\nTemel düzenleme, dosyalar yüklenmeden bilgisayarınızda yerel olarak yapılır. İsteğe bağlı çevrimiçi özellikler bağlantı gerektirir; kullanılabilirlik platforma göre değişir.\n\nAbonelik yok, deneme süresi yok, reklam yok. MIT lisanslı ve ücretsiz; bugün de, yarın da.",
+      "check": []
+    },
+    "DOC42": {
+      "name": "DOC42",
+      "subtitle": "Düşünceden belgeye.",
+      "promotionalText": "Abonelik yok, deneme süresi yok, reklam yok. MIT lisanslı ve ücretsiz; bugün de, yarın da.",
+      "keywords": "kelime işlemci,docx,odt,rtf,markdown,belge,mektup,metin,ofis",
+      "description": "DOCX, ODT, RTF ve Markdown belgeleri yazın ve sayfa düzenini oluşturun.\n\nDOC42 ile mektuplar, raporlar ve yeni taslaklar yazın. Zengin metni ve sayfa düzenini tanıdık belge biçimleriyle birleştirin.\n\n• DOCX, ODT, RTF, Markdown ve diğer metin biçimlerini açıp kaydedin.\n• Biçimlendirme, tablolar, görseller ve sayfa düzeniyle çalışın.\n• Belge paylaşılmaya hazır olduğunda PDF olarak dışa aktarın.\n\nKarmaşık Office belgeleri farklı görüntülenebilir. Tam doğruluğa güvenmeden önce içe aktarılan düzeni ve dışa aktarılan dosyayı kontrol edin.\n\nTemel düzenleme, dosyalar yüklenmeden bilgisayarınızda yerel olarak yapılır. İsteğe bağlı çevrimiçi özellikler bağlantı gerektirir; kullanılabilirlik platforma göre değişir.\n\nAbonelik yok, deneme süresi yok, reklam yok. MIT lisanslı ve ücretsiz; bugün de, yarın da.",
+      "check": []
+    },
+    "XLS42": {
+      "name": "XLS42",
+      "subtitle": "Rakamlarınıza hikâye katın",
+      "promotionalText": "Abonelik yok, deneme süresi yok, reklam yok. MIT lisanslı ve ücretsiz; bugün de, yarın da.",
+      "keywords": "elektronik tablo,xlsx,ods,csv,formül,grafik,tablo,bütçe,etiket,qr kod,barkod",
+      "description": "XLSX, ODS ve CSV dosyalarında tablolar, formüller ve grafiklerle çalışın.\n\nBasit bir listeden hesaplamalı rapora kadar XLS42; hücreleri, formülleri ve grafikleri günlük ofisinize getirir.\n\n• XLSX, eski XLS, ODS ve ayraçlı metin dosyalarını açın.\n• Verilerinizi açıklamak için formüller, biçimlendirme ve grafikler kullanın.\n• XLSX, ODS veya CSV kaydedin ya da PDF dışa aktarın.\n\nFormül ve biçimlendirme desteği dosyaya göre değişir. CSV, biçimlendirme ve birden fazla sayfa içeren tam bir çalışma kitabı yerine tek bir değer tablosu saklar.\n\nBir PDF'ye, belgeye veya tabloya taranabilir bir kod ya da uygunluk işareti ekleyin, ardından verilerinizden bütün bir etiket sayfası yazdırın. Boyutlar milimetre cinsinden ayarlanır.\n\n• Kaydettikten sonra da düzenlenebilen QR, Data Matrix, Code 128 ve Aztec kodları ekleyin.\n• 97 ürün işaretini kullanım koşullarıyla birlikte ekleyin: uygunluk (CE, UKCA, EAC, FCC, UL, CCC), çevre (WEEE, RoHS), GHS tehlike piktogramları ve IEC güvenlik sembolleri.\n• Tablo satırlarından, belge tablolarından veya bir PDF bölgesinden 559 kâğıt formatında ya da kendi ızgaranızda etiket sayfaları yazdırın.\n\nİşaretler çizimdir: bir işaret eklemek ürünü sertifikalandırmaz. Uygunluk işaretlerini ve ticari markaları yalnızca ürününüz sertifikalıysa veya lisansa sahipseniz kullanın; uygulama her işaretin koşullarını gösterir. Kâğıt ve yazıcı toleranslarını bir deneme baskısıyla kontrol edin. macOS'ta; iletişim kutusu İngilizce, Rusça ve Türkçeye, işaret adları 11 dile çevrilmiştir.\n\nTemel düzenleme, dosyalar yüklenmeden bilgisayarınızda yerel olarak yapılır. İsteğe bağlı çevrimiçi özellikler bağlantı gerektirir; kullanılabilirlik platforma göre değişir.\n\nAbonelik yok, deneme süresi yok, reklam yok. MIT lisanslı ve ücretsiz; bugün de, yarın da.",
+      "check": []
+    },
+    "PPT42": {
+      "name": "PPT42",
+      "subtitle": "Sunulmaya değer fikirler.",
+      "promotionalText": "Abonelik yok, deneme süresi yok, reklam yok. MIT lisanslı ve ücretsiz; bugün de, yarın da.",
+      "keywords": "sunum,slayt,pptx,odp,slayt gösterisi,konuşmacı notları,ofis",
+      "description": "Slaytlar oluşturun, tablolar ve şekillerle çalışın, hikâyenizi sunun.\n\nPPT42 ile anlaşılır bir görsel anlatı oluşturun. Metinleri, görselleri, şekilleri ve tabloları yerleştirin; ardından düzenlemeden slayt gösterisine geçin.\n\n• PPTX ve OpenDocument sunum dosyalarıyla çalışın.\n• Slayt nesnelerini, tabloları ve konuşmacı notlarını düzenleyin.\n• Kolay paylaşım için slaytları PDF ve görsel olarak dışa aktarın.\n\nEski PPT dosyalarının önce dönüştürülmesi gerekir. Karmaşık içe aktarılmış düzenler farklı olabilir; sunumdan önce tüm slaytları inceleyin.\n\nTemel düzenleme, dosyalar yüklenmeden bilgisayarınızda yerel olarak yapılır. İsteğe bağlı çevrimiçi özellikler bağlantı gerektirir; kullanılabilirlik platforma göre değişir.\n\nAbonelik yok, deneme süresi yok, reklam yok. MIT lisanslı ve ücretsiz; bugün de, yarın da.",
+      "check": []
+    },
+    "IMG42": {
+      "name": "IMG42",
+      "subtitle": "Kırp, ayarla, işaretle",
+      "promotionalText": "Abonelik yok, deneme süresi yok, reklam yok. MIT lisanslı ve ücretsiz; bugün de, yarın da.",
+      "keywords": "resim düzenleyici,fotoğraf,kırp,boyutlandır,işaretleme,heic,jpeg,png,dönüştür",
+      "description": "Görsellerinizi görüntüleyin, kırpın, yeniden boyutlandırın, işaretleyin ve ayarlayın.\n\nFotoğraf açın, fazlalıkları kırpın, görseli ayarlayın veya açıklayıcı bir not ekleyin. IMG42, günlük görsel işlerinizi elinizin altında tutar.\n\n• JPEG, PNG, HEIC ve TIFF dâhil yaygın görsel biçimlerini görüntüleyin.\n• Görselleri kırpın, yeniden boyutlandırın, döndürün ve ayarlayın.\n• İşaretleme ekleyin ve desteklenen görsel biçimlerine dışa aktarın.\n\nOkuma ve yazma desteği, biçime ve kullanılabilir macOS kodeklerine göre değişir. Bazı biçimler açılabilir ancak özgün biçimlerinde kaydedilemez.\n\nTemel düzenleme, dosyalar yüklenmeden bilgisayarınızda yerel olarak yapılır. İsteğe bağlı çevrimiçi özellikler bağlantı gerektirir; kullanılabilirlik platforma göre değişir.\n\nAbonelik yok, deneme süresi yok, reklam yok. MIT lisanslı ve ücretsiz; bugün de, yarın da.",
+      "check": []
+    },
+    "SCN42": {
+      "name": "SCN42",
+      "subtitle": "Kâğıda yeni olanaklar.",
+      "promotionalText": "Abonelik yok, deneme süresi yok, reklam yok. MIT lisanslı ve ücretsiz; bugün de, yarın da.",
+      "keywords": "tarayıcı,tarama,ocr,metin tanıma,pdf,belge tarayıcı,kamera,fiş",
+      "description": "Tarayın, sayfaları temizleyin ve cihaz üzerinde OCR ile metni tanıyın.\n\nSCN42 ile kâğıdı dijital ofisinize taşıyın. Sayfaları alın, düzeltip temizleyin ve Mac'inizde metin tanıma uygulayın.\n\n• Desteklenen tarayıcılardan alın veya görsel ve PDF içe aktarın.\n• Tanımadan önce sayfaları kırpın, eğriliğini giderin ve ayarlayın.\n• Aranabilir PDF'leri veya tanınan metni dışa aktarın.\n\nTarayıcı ve Continuity desteği donanımınıza bağlıdır. OCR dilleri ve doğruluğu Apple Vision'a ve kaynak görsele bağlıdır; 20 arayüz dili ayrı bir özelliktir.\n\nTemel düzenleme, dosyalar yüklenmeden bilgisayarınızda yerel olarak yapılır. İsteğe bağlı çevrimiçi özellikler bağlantı gerektirir; kullanılabilirlik platforma göre değişir.\n\nAbonelik yok, deneme süresi yok, reklam yok. MIT lisanslı ve ücretsiz; bugün de, yarın da.",
+      "check": []
+    }
+  }
+}

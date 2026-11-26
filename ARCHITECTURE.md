@@ -160,7 +160,7 @@ Swift apps; the downloadable DMG stays. The same Apple Developer account is used
 | 4 | Move the Mac apps onto the core, one app at a time, behind the existing AppKit UI | phases 1–3, owner's go-ahead | — |
 | 5 | `off42-mobile` UniFFI bindings; Android app (Compose, tablets first) | D10 | Started |
 | 6 | iPad/iPhone SwiftUI app over `off42-mobile` | D11, phase 5 bindings | — |
-| 7 | Mac App Store build variant (sandbox) and DMG notarization | D12, Apple Developer account | — |
+| 7 | Mac App Store build variant (sandbox) and DMG notarization | D12, Apple Developer account | Prepared without an account: `APP_STORE` variant, `scripts/build-app-store.sh`, DMG notarization in `scripts/sign_and_notarize.sh` (appstore/README.md); signing, upload and sandbox runtime checks wait for the account |
 
 Phase 1 result: `suite42-app` holds the `App` contract and every module listed in §1 that has no Win32 call; the
 crate's README lists them. Code that needs the platform is passed in by the shell: `platform::PdfText` (PDFium),

@@ -1,0 +1,58 @@
+{
+  "siteLanguage": "id",
+  "appStoreLocale": "id",
+  "note": null,
+  "privacyPolicyURL": "https://off42.cc/id/privacy/",
+  "supportURL": "https://off42.cc/id/support/",
+  "marketingURL": "https://off42.cc/id/",
+  "apps": {
+    "PDF42": {
+      "name": "PDF42",
+      "subtitle": "PDF penuh kemungkinan",
+      "promotionalText": "Tanpa langganan, tanpa masa uji coba, tanpa iklan. Berlisensi MIT dan gratis, hari ini dan seterusnya.",
+      "keywords": "pdf,editor,anotasi,tanda tangan,cap,kompres,gabung,halaman,formulir,pembaca",
+      "description": "Baca, beri anotasi, atur, kompres, dan tandatangani PDF Anda.\n\nJadikan PDF dokumen kerja Anda. Edit teks halaman, tambahkan catatan, sorot bagian penting, isi formulir, dan urutkan halaman dengan PDF42.\n\n• Edit teks halaman dan beri anotasi dengan sorotan, kotak teks, bentuk, serta coretan bebas.\n• Sisipkan, ekstrak, putar, hapus, dan urutkan ulang halaman.\n• Isi formulir PDF yang didukung dan simpan perubahan.\n\nPerubahan teks halaman digabungkan ke konten halaman saat disimpan. Tata letak dan formulir PDF yang rumit dapat berbeda; tinjau salinan tersimpan sebelum membagikannya.\n\nSimpan tanda tangan dan stempel dekat dengan pekerjaan Anda. Tambahkan tanda tangan visual, gunakan kembali stempel, atau gunakan tanda tangan digital berbasis sertifikat di PDF42.\n\n• Simpan tanda tangan dan stempel yang dapat digunakan kembali dalam pustaka bersama.\n• Tempatkan dan sesuaikan tanda visual pada halaman.\n• Gunakan penandatanganan berbasis sertifikat bila alur kerja memerlukannya.\n\nTanda tangan visual bukan tanda tangan digital berbasis sertifikat. Kepercayaan sertifikat dan kompatibilitas stempel waktu bergantung pada sertifikat, layanan, dan perangkat lunak penerima.\n\nPenyuntingan utama berjalan secara lokal di komputer Anda tanpa mengunggah file. Fitur daring opsional memerlukan koneksi; ketersediaannya berbeda menurut platform.\n\nTanpa langganan, tanpa masa uji coba, tanpa iklan. Berlisensi MIT dan gratis, hari ini dan seterusnya.",
+      "check": []
+    },
+    "DOC42": {
+      "name": "DOC42",
+      "subtitle": "Dari gagasan menjadi dokumen.",
+      "promotionalText": "Tanpa langganan, tanpa masa uji coba, tanpa iklan. Berlisensi MIT dan gratis, hari ini dan seterusnya.",
+      "keywords": "pengolah kata,docx,odt,rtf,markdown,dokumen,surat,teks,kantor",
+      "description": "Tulis dan tata dokumen dalam DOCX, ODT, RTF, dan Markdown.\n\nTulis surat, laporan, dan draf berikutnya dengan DOC42. Gabungkan teks kaya dan tata letak halaman dalam format dokumen yang familier.\n\n• Buka dan simpan DOCX, ODT, RTF, Markdown, serta format teks lainnya.\n• Gunakan pemformatan, tabel, gambar, dan tata letak halaman.\n• Ekspor ke PDF saat dokumen siap dibagikan.\n\nDokumen Office yang rumit dapat ditampilkan berbeda. Periksa tata letak impor dan file ekspor sebelum mengandalkan kesesuaian persis.\n\nPenyuntingan utama berjalan secara lokal di komputer Anda tanpa mengunggah file. Fitur daring opsional memerlukan koneksi; ketersediaannya berbeda menurut platform.\n\nTanpa langganan, tanpa masa uji coba, tanpa iklan. Berlisensi MIT dan gratis, hari ini dan seterusnya.",
+      "check": []
+    },
+    "XLS42": {
+      "name": "XLS42",
+      "subtitle": "Buat angka Anda bercerita.",
+      "promotionalText": "Tanpa langganan, tanpa masa uji coba, tanpa iklan. Berlisensi MIT dan gratis, hari ini dan seterusnya.",
+      "keywords": "spreadsheet,lembar kerja,xlsx,ods,csv,rumus,grafik,tabel,anggaran,label,kode qr",
+      "description": "Olah spreadsheet, rumus, dan grafik dalam XLSX, ODS, dan CSV.\n\nDari daftar sederhana hingga laporan perhitungan, XLS42 menghadirkan sel, rumus, dan grafik untuk pekerjaan sehari-hari.\n\n• Buka XLSX, XLS lama, ODS, dan file teks berpemisah.\n• Gunakan rumus, pemformatan, dan grafik untuk menjelaskan data.\n• Simpan XLSX, ODS, atau CSV, atau ekspor PDF.\n\nDukungan rumus dan pemformatan berbeda menurut file. CSV menyimpan satu tabel nilai, bukan buku kerja lengkap dengan pemformatan dan beberapa lembar.\n\nTempatkan kode yang dapat dipindai atau tanda kesesuaian di PDF, dokumen, atau spreadsheet, lalu cetak satu lembar label penuh dari data Anda. Ukuran diatur dalam milimeter.\n\n• Sisipkan kode QR, Data Matrix, Code 128, dan Aztec yang tetap dapat diedit setelah disimpan.\n• Tambahkan 97 tanda produk — kesesuaian (CE, UKCA, EAC, FCC, UL, CCC), lingkungan (WEEE, RoHS), piktogram bahaya GHS, dan simbol keselamatan IEC — beserta syarat penggunaannya.\n• Cetak lembar label dari baris spreadsheet, tabel dokumen, atau area PDF pada 559 format kertas atau kisi Anda sendiri.\n\nTanda hanyalah gambar: menyisipkannya tidak menyertifikasi produk. Gunakan tanda kesesuaian dan merek dagang hanya jika produk Anda bersertifikat atau Anda memegang lisensinya; aplikasi menampilkan syarat setiap tanda. Periksa toleransi kertas dan printer dengan cetakan uji. Di macOS; dialog diterjemahkan ke bahasa Inggris, Rusia, dan Turki, nama tanda ke 11 bahasa.\n\nPenyuntingan utama berjalan secara lokal di komputer Anda tanpa mengunggah file. Fitur daring opsional memerlukan koneksi; ketersediaannya berbeda menurut platform.\n\nTanpa langganan, tanpa masa uji coba, tanpa iklan. Berlisensi MIT dan gratis, hari ini dan seterusnya.",
+      "check": []
+    },
+    "PPT42": {
+      "name": "PPT42",
+      "subtitle": "Ide yang layak dipresentasikan",
+      "promotionalText": "Tanpa langganan, tanpa masa uji coba, tanpa iklan. Berlisensi MIT dan gratis, hari ini dan seterusnya.",
+      "keywords": "presentasi,slide,pptx,odp,tayangan slide,catatan pembicara,kantor",
+      "description": "Buat slide, gunakan tabel dan bentuk, lalu sampaikan cerita Anda.\n\nBangun cerita visual yang jelas dengan PPT42. Atur teks, gambar, bentuk, dan tabel, lalu beralih dari pengeditan ke tayangan slide.\n\n• Gunakan file presentasi PPTX dan OpenDocument.\n• Atur objek slide, tabel, dan catatan pembicara.\n• Ekspor slide ke PDF dan gambar agar mudah dibagikan.\n\nFile PPT lama perlu dikonversi terlebih dahulu. Tata letak impor yang rumit dapat berbeda; tinjau seluruh presentasi sebelum menyampaikannya.\n\nPenyuntingan utama berjalan secara lokal di komputer Anda tanpa mengunggah file. Fitur daring opsional memerlukan koneksi; ketersediaannya berbeda menurut platform.\n\nTanpa langganan, tanpa masa uji coba, tanpa iklan. Berlisensi MIT dan gratis, hari ini dan seterusnya.",
+      "check": []
+    },
+    "IMG42": {
+      "name": "IMG42",
+      "subtitle": "Potong, atur, dan beri anotasi",
+      "promotionalText": "Tanpa langganan, tanpa masa uji coba, tanpa iklan. Berlisensi MIT dan gratis, hari ini dan seterusnya.",
+      "keywords": "editor foto,gambar,potong,ubah ukuran,anotasi,heic,jpeg,png,konversi",
+      "description": "Lihat, pangkas, ubah ukuran, beri anotasi, dan sesuaikan gambar.\n\nBuka foto, pangkas bagian yang mengganggu, sesuaikan gambar, atau tambahkan anotasi yang jelas. IMG42 memudahkan tugas gambar sehari-hari.\n\n• Lihat format gambar umum, termasuk JPEG, PNG, HEIC, dan TIFF.\n• Pangkas, ubah ukuran, putar, dan sesuaikan gambar.\n• Tambahkan anotasi dan ekspor ke format gambar yang didukung.\n\nDukungan baca dan tulis berbeda menurut format dan ketersediaan codec macOS. Beberapa format dapat dibuka tetapi tidak dapat disimpan dalam format aslinya.\n\nPenyuntingan utama berjalan secara lokal di komputer Anda tanpa mengunggah file. Fitur daring opsional memerlukan koneksi; ketersediaannya berbeda menurut platform.\n\nTanpa langganan, tanpa masa uji coba, tanpa iklan. Berlisensi MIT dan gratis, hari ini dan seterusnya.",
+      "check": []
+    },
+    "SCN42": {
+      "name": "SCN42",
+      "subtitle": "Pindai dan kenali teks",
+      "promotionalText": "Tanpa langganan, tanpa masa uji coba, tanpa iklan. Berlisensi MIT dan gratis, hari ini dan seterusnya.",
+      "keywords": "pemindai,pindai,ocr,pengenalan teks,pdf,dokumen,kamera,struk",
+      "description": "Pindai, bersihkan halaman, dan kenali teks dengan OCR di perangkat.\n\nBawa kertas ke kantor digital Anda dengan SCN42. Ambil halaman, luruskan dan bersihkan, lalu kenali teks di Mac Anda.\n\n• Ambil halaman dari pemindai yang didukung atau impor gambar dan PDF.\n• Pangkas, luruskan, dan sesuaikan halaman sebelum pengenalan teks.\n• Ekspor PDF yang dapat dicari atau teks hasil pengenalan.\n\nDukungan pemindai dan Continuity bergantung pada perangkat keras Anda. Bahasa dan akurasi OCR bergantung pada Apple Vision serta gambar sumber; 20 bahasa antarmuka merupakan fitur terpisah.\n\nPenyuntingan utama berjalan secara lokal di komputer Anda tanpa mengunggah file. Fitur daring opsional memerlukan koneksi; ketersediaannya berbeda menurut platform.\n\nTanpa langganan, tanpa masa uji coba, tanpa iklan. Berlisensi MIT dan gratis, hari ini dan seterusnya.",
+      "check": []
+    }
+  }
+}

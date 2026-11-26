@@ -3,6 +3,11 @@ import Kit42
 
 Localization.register(rows: img42Strings)
 
+#if APP_STORE
+// The sandboxed App Store variant: shared library location, disabled features and its own strings.
+if CommandLine.arguments.contains("--selftest"), !AppStoreEdition.selfCheck() { exit(1) }
+#endif
+
 if CommandLine.arguments.contains("--selftest") {
     let pixels = ImagePixelAudit.run(), files = ImageFileSelfTest.run(), recovery = ImageRecoverySelfTest.run()
     exit(pixels == 0 && files == 0 && recovery == 0 ? 0 : 1)

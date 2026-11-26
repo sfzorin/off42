@@ -3,6 +3,11 @@ import Kit42
 
 Localization.register(rows: xls42Strings)
 
+#if APP_STORE
+// The sandboxed App Store variant: shared library location, disabled features and its own strings.
+if CommandLine.arguments.contains("--selftest"), !AppStoreEdition.selfCheck() { exit(1) }
+#endif
+
 // --sign-document / --verify-document: Office and OpenDocument digital signatures (Kit42/DocumentSignatureCLI.swift).
 if let code = DocumentSignatureCLI.run(CommandLine.arguments) { exit(code) }
 

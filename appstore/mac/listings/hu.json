@@ -1,0 +1,58 @@
+{
+  "siteLanguage": "hu",
+  "appStoreLocale": "hu",
+  "note": null,
+  "privacyPolicyURL": "https://off42.cc/hu/privacy/",
+  "supportURL": "https://off42.cc/hu/support/",
+  "marketingURL": "https://off42.cc/hu/",
+  "apps": {
+    "PDF42": {
+      "name": "PDF42",
+      "subtitle": "PDF-ek, tele lehetőségekkel.",
+      "promotionalText": "Nincs előfizetés, nincs próbaidőszak, nincsenek hirdetések. MIT-licenc és ingyenes – ma és holnap is.",
+      "keywords": "pdf,szerkesztő,jegyzetelés,aláírás,bélyegző,tömörítés,egyesítés,oldalak,űrlap",
+      "description": "Olvasd, jegyzeteld, rendszerezd, tömörítsd és írd alá PDF-jeidet.\n\nLegyen a PDF a munkadokumentumod. Szerkeszd az oldal szövegét, adj hozzá jegyzeteket, emeld ki a lényeget, tölts ki űrlapokat, és rendezd az oldalakat a PDF42-vel.\n\n• Szerkeszd az oldal szövegét, és adj hozzá kiemeléseket, szövegdobozokat, alakzatokat vagy szabadkézi jeleket.\n• Szúrj be, nyerj ki, forgass el, törölj és rendezz át oldalakat.\n• Töltsd ki a támogatott PDF-űrlapokat, és mentsd a módosításokat.\n\nAz oldalszöveg módosításai mentéskor beolvadnak az oldal tartalmába. Az összetett PDF-elrendezések és űrlapok eltérően működhetnek; megosztás előtt ellenőrizd a mentett másolatot.\n\nLegyenek kéznél az aláírások és bélyegzők. Adj hozzá látható aláírást, használj újra egy bélyegzőt, vagy dolgozz tanúsítványalapú digitális aláírásokkal a PDF42-ben.\n\n• Tartsd az újrahasználható aláírásokat és bélyegzőket a közös gyűjteményben.\n• Helyezz el és igazíts egy látható jelet az oldalon.\n• Használj tanúsítványalapú aláírást, ha a munkafolyamat megköveteli.\n\nA látható aláírás nem tanúsítvánnyal hitelesített digitális aláírás. A tanúsítvány megbízhatósága és az időbélyegek együttműködése a tanúsítványtól, a szolgáltatástól és a fogadó szoftvertől függ.\n\nAz alapvető szerkesztés helyben, a számítógépeden történik, fájlfeltöltés nélkül. Az opcionális online funkciókhoz kapcsolat kell; elérhetőségük platformonként eltér.\n\nNincs előfizetés, nincs próbaidőszak, nincsenek hirdetések. MIT-licenc és ingyenes – ma és holnap is.",
+      "check": []
+    },
+    "DOC42": {
+      "name": "DOC42",
+      "subtitle": "Gondolatból dokumentum.",
+      "promotionalText": "Nincs előfizetés, nincs próbaidőszak, nincsenek hirdetések. MIT-licenc és ingyenes – ma és holnap is.",
+      "keywords": "szövegszerkesztő,docx,odt,rtf,markdown,dokumentum,levél,szöveg,iroda",
+      "description": "Írj és tördeld dokumentumaidat DOCX, ODT, RTF és Markdown formátumban.\n\nÍrj leveleket, jelentéseket és újabb vázlatokat a DOC42-vel. Ötvözd a formázott szöveget és az oldaltördelést ismerős dokumentumformátumokkal.\n\n• Nyiss meg és ments DOCX, ODT, RTF, Markdown és más szövegformátumokat.\n• Dolgozz formázással, táblázatokkal, képekkel és oldaltördeléssel.\n• Exportálj PDF-et, ha a dokumentum készen áll a megosztásra.\n\nAz összetett Office-dokumentumok megjelenése eltérhet. Ellenőrizd az importált elrendezést és az exportált fájlt, mielőtt pontos egyezésre hagyatkoznál.\n\nAz alapvető szerkesztés helyben, a számítógépeden történik, fájlfeltöltés nélkül. Az opcionális online funkciókhoz kapcsolat kell; elérhetőségük platformonként eltér.\n\nNincs előfizetés, nincs próbaidőszak, nincsenek hirdetések. MIT-licenc és ingyenes – ma és holnap is.",
+      "check": []
+    },
+    "XLS42": {
+      "name": "XLS42",
+      "subtitle": "Meséljenek a számaid.",
+      "promotionalText": "Nincs előfizetés, nincs próbaidőszak, nincsenek hirdetések. MIT-licenc és ingyenes – ma és holnap is.",
+      "keywords": "táblázatkezelő,xlsx,ods,csv,képlet,diagram,táblázat,költségvetés,címkék,qr-kód",
+      "description": "Dolgozz táblázatokkal, képletekkel és diagramokkal XLSX, ODS és CSV formátumban.\n\nAz egyszerű listától a számított jelentésig az XLS42 cellákat, képleteket és diagramokat ad a mindennapi munkádhoz.\n\n• Nyiss meg XLSX, régi XLS, ODS és elválasztójelekkel tagolt szövegfájlokat.\n• Mutasd be adataidat képletekkel, formázással és diagramokkal.\n• Ments XLSX, ODS vagy CSV fájlt, vagy exportálj PDF-et.\n\nA képletek és a formázás támogatása fájlonként eltér. A CSV egyetlen értéktáblát tárol, nem teljes, formázott, több munkalapos munkafüzetet.\n\nTegyél beolvasható kódot vagy megfelelőségi jelölést egy PDF-be, dokumentumba vagy táblázatba, majd nyomtass egy teljes címkeívet az adataidból. A méreteket milliméterben adhatod meg.\n\n• Illessz be QR-, Data Matrix-, Code 128- és Aztec-kódokat, amelyek mentés után is szerkeszthetők maradnak.\n• Adj hozzá 97 termékjelölést – megfelelőségi jelöléseket (CE, UKCA, EAC, FCC, UL, CCC), környezetvédelmi jelöléseket (WEEE, RoHS), GHS veszélyességi piktogramokat és IEC biztonsági szimbólumokat – a használatuk feltételeivel együtt.\n• Nyomtass címkeíveket táblázatsorokból, dokumentumtáblázatokból vagy PDF-területből, 559 ívformátumra vagy saját rácsra.\n\nA jelölések grafikák: beillesztésük nem tanúsítja a terméket. Megfelelőségi jelöléseket és védjegyeket csak akkor használj, ha a terméked tanúsított, vagy rendelkezel a licenccel; az alkalmazás minden jelölésnél megmutatja a feltételeket. A papír és a nyomtató tűréseit próbanyomtatással ellenőrizd. macOS-en; a párbeszédablak angolul, oroszul és törökül, a jelölések nevei 11 nyelven érhetők el.\n\nAz alapvető szerkesztés helyben, a számítógépeden történik, fájlfeltöltés nélkül. Az opcionális online funkciókhoz kapcsolat kell; elérhetőségük platformonként eltér.\n\nNincs előfizetés, nincs próbaidőszak, nincsenek hirdetések. MIT-licenc és ingyenes – ma és holnap is.",
+      "check": []
+    },
+    "PPT42": {
+      "name": "PPT42",
+      "subtitle": "Bemutatásra érdemes ötletek",
+      "promotionalText": "Nincs előfizetés, nincs próbaidőszak, nincsenek hirdetések. MIT-licenc és ingyenes – ma és holnap is.",
+      "keywords": "prezentáció,diák,pptx,odp,diavetítés,előadói jegyzetek,iroda",
+      "description": "Készíts diákat, használj táblázatokat és alakzatokat, és meséld el a történeted.\n\nÉpíts világos vizuális történetet a PPT42-vel. Rendezd el a szöveget, képeket, alakzatokat és táblázatokat, majd válts szerkesztésről diavetítésre.\n\n• Dolgozz PPTX és OpenDocument bemutatófájlokkal.\n• Rendezd el a diaobjektumokat, táblázatokat és előadói jegyzeteket.\n• Exportáld a diákat PDF-be vagy képként az egyszerű megosztáshoz.\n\nA régi PPT-fájlokat előbb át kell alakítani. Az összetett importált elrendezések eltérhetnek; bemutatás előtt nézd át az összes diát.\n\nAz alapvető szerkesztés helyben, a számítógépeden történik, fájlfeltöltés nélkül. Az opcionális online funkciókhoz kapcsolat kell; elérhetőségük platformonként eltér.\n\nNincs előfizetés, nincs próbaidőszak, nincsenek hirdetések. MIT-licenc és ingyenes – ma és holnap is.",
+      "check": []
+    },
+    "IMG42": {
+      "name": "IMG42",
+      "subtitle": "Kis módosítás. Jobb kép.",
+      "promotionalText": "Nincs előfizetés, nincs próbaidőszak, nincsenek hirdetések. MIT-licenc és ingyenes – ma és holnap is.",
+      "keywords": "képszerkesztő,fotó,vágás,átméretezés,jelölés,heic,jpeg,png,konvertálás",
+      "description": "Tekintsd meg, vágd, méretezd, jegyzeteld és módosítsd képeidet.\n\nNyiss meg egy fotót, vágd le a zavaró részletet, módosítsd a képet, vagy adj hozzá világos jelölést. Az IMG42 kéznél tartja a mindennapi képes feladatok eszközeit.\n\n• Tekints meg gyakori képformátumokat, köztük JPEG, PNG, HEIC és TIFF fájlokat.\n• Vágj, méretezz, forgass és módosíts képeket.\n• Adj hozzá jelöléseket, és exportálj támogatott képformátumokba.\n\nAz olvasás és írás támogatása a formátumtól és a macOS-en elérhető kodekektől függ. Egyes formátumok megnyithatók, de eredeti formájukban nem menthetők.\n\nAz alapvető szerkesztés helyben, a számítógépeden történik, fájlfeltöltés nélkül. Az opcionális online funkciókhoz kapcsolat kell; elérhetőségük platformonként eltér.\n\nNincs előfizetés, nincs próbaidőszak, nincsenek hirdetések. MIT-licenc és ingyenes – ma és holnap is.",
+      "check": []
+    },
+    "SCN42": {
+      "name": "SCN42",
+      "subtitle": "Új lehetőségek a papírnak.",
+      "promotionalText": "Nincs előfizetés, nincs próbaidőszak, nincsenek hirdetések. MIT-licenc és ingyenes – ma és holnap is.",
+      "keywords": "szkenner,szkennelés,ocr,szövegfelismerés,pdf,dokumentum,kamera,nyugta",
+      "description": "Szkennelj, tisztítsd meg az oldalakat, és ismerd fel a szöveget helyben futó OCR-rel.\n\nVidd be a papírt a digitális irodádba az SCN42-vel. Olvasd be, egyenesítsd ki és tisztítsd meg az oldalakat, majd ismerd fel a szöveget a Maceden.\n\n• Olvass be oldalakat támogatott szkennerekről, vagy importálj képeket és PDF-eket.\n• Vágd, egyenesítsd ki és módosítsd az oldalakat a szövegfelismerés előtt.\n• Exportálj kereshető PDF-et vagy felismert szöveget.\n\nA szkenner- és Continuity-támogatás a hardveredtől függ. Az OCR nyelvei és pontossága az Apple Visiontől és a forrásképtől függ; a felület 20 nyelve ettől különálló funkció.\n\nAz alapvető szerkesztés helyben, a számítógépeden történik, fájlfeltöltés nélkül. Az opcionális online funkciókhoz kapcsolat kell; elérhetőségük platformonként eltér.\n\nNincs előfizetés, nincs próbaidőszak, nincsenek hirdetések. MIT-licenc és ingyenes – ma és holnap is.",
+      "check": []
+    }
+  }
+}

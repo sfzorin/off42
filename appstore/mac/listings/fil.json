@@ -1,0 +1,58 @@
+{
+  "siteLanguage": "fil",
+  "appStoreLocale": null,
+  "note": "App Store Connect has no Filipino localization; kept for reference only.",
+  "privacyPolicyURL": "https://off42.cc/fil/privacy/",
+  "supportURL": "https://off42.cc/fil/support/",
+  "marketingURL": "https://off42.cc/fil/",
+  "apps": {
+    "PDF42": {
+      "name": "PDF42",
+      "subtitle": "Mas maraming magagawa sa PDF.",
+      "promotionalText": "Walang subscription, walang trial period, walang ads. May lisensyang MIT at libre, ngayon at bukas.",
+      "keywords": "pdf,editor,anotasyon,pirma,lagda,selyo,compress,pagsamahin,pahina,form",
+      "description": "Basahin, anotahan, ayusin, i-compress, at lagdaan ang iyong mga PDF.\n\nGawing dokumentong magagamit sa trabaho ang PDF. I-edit ang teksto ng pahina, magdagdag ng tala, i-highlight ang mahalaga, punan ang mga form, at ayusin ang mga pahina sa PDF42.\n\n• I-edit ang teksto ng pahina at mag-anotasyon gamit ang highlight, text box, hugis, at malayang guhit.\n• Magsingit, mag-extract, mag-rotate, magtanggal, at mag-ayos ng mga pahina.\n• Punan ang mga suportadong PDF form at i-save ang mga pagbabago.\n\nPinagsasama sa nilalaman ng pahina ang mga pagbabago sa teksto kapag sine-save. Maaaring mag-iba ang mga kumplikadong PDF layout at form; suriin ang naka-save na kopya bago ibahagi.\n\nPanatilihing madaling gamitin ang mga lagda at stamp. Magdagdag ng biswal na lagda, muling gumamit ng stamp, o gumamit ng digital signature na nakabatay sa certificate sa PDF42.\n\n• Itago ang mga nagagamit-muling lagda at stamp sa iisang library.\n• Maglagay at mag-adjust ng biswal na marka sa pahina.\n• Gumamit ng certificate-based signing kapag kailangan ng iyong gawain.\n\nAng biswal na lagda ay hindi digital signature na may certificate. Nakadepende sa certificate, serbisyo, at software ng tatanggap ang pagtitiwala sa certificate at pagkakatugma ng timestamp.\n\nAng pangunahing pag-edit ay ginagawa sa iyong computer nang hindi ina-upload ang mga file. Kailangan ng koneksyon ang mga opsyonal na online feature; nag-iiba ang availability ayon sa platform.\n\nWalang subscription, walang trial period, walang ads. May lisensyang MIT at libre, ngayon at bukas.",
+      "check": []
+    },
+    "DOC42": {
+      "name": "DOC42",
+      "subtitle": "Mula ideya hanggang dokumento.",
+      "promotionalText": "Walang subscription, walang trial period, walang ads. May lisensyang MIT at libre, ngayon at bukas.",
+      "keywords": "word processor,docx,odt,rtf,markdown,dokumento,liham,teksto,opisina",
+      "description": "Sumulat at mag-layout ng mga dokumento sa DOCX, ODT, RTF, at Markdown.\n\nSumulat ng mga liham, ulat, at susunod na burador gamit ang DOC42. Pagsamahin ang rich text at page layout sa pamilyar na mga format ng dokumento.\n\n• Buksan at i-save ang DOCX, ODT, RTF, Markdown, at iba pang format ng teksto.\n• Gumamit ng formatting, talahanayan, larawan, at page layout.\n• I-export bilang PDF kapag handa nang ibahagi ang dokumento.\n\nMaaaring magkaiba ang hitsura ng mga kumplikadong Office document. Suriin ang na-import na layout at na-export na file bago umasa sa eksaktong pagkakatulad.\n\nAng pangunahing pag-edit ay ginagawa sa iyong computer nang hindi ina-upload ang mga file. Kailangan ng koneksyon ang mga opsyonal na online feature; nag-iiba ang availability ayon sa platform.\n\nWalang subscription, walang trial period, walang ads. May lisensyang MIT at libre, ngayon at bukas.",
+      "check": []
+    },
+    "XLS42": {
+      "name": "XLS42",
+      "subtitle": "Spreadsheet na may formula",
+      "promotionalText": "Walang subscription, walang trial period, walang ads. May lisensyang MIT at libre, ngayon at bukas.",
+      "keywords": "spreadsheet,xlsx,ods,csv,formula,tsart,talahanayan,badyet,label,qr code",
+      "description": "Gumamit ng mga spreadsheet, formula, at chart sa XLSX, ODS, at CSV.\n\nMula sa simpleng listahan hanggang sa ulat na may kalkulasyon, dinadala ng XLS42 ang mga cell, formula, at chart sa iyong pang-araw-araw na trabaho.\n\n• Buksan ang XLSX, lumang XLS, ODS, at mga delimited text file.\n• Gumamit ng mga formula, formatting, at chart upang ipaliwanag ang datos.\n• Mag-save ng XLSX, ODS, o CSV, o mag-export ng PDF.\n\nNag-iiba ayon sa file ang suporta sa formula at formatting. Isang talahanayan ng mga value ang iniimbak ng CSV, hindi isang buong workbook na may formatting at maraming sheet.\n\nMaglagay ng nai-scan na code o conformity mark sa PDF, dokumento o spreadsheet, saka mag-print ng buong sheet ng label mula sa iyong data. Sa milimetro itinatakda ang mga laki.\n\n• Maglagay ng QR, Data Matrix, Code 128 at Aztec code na nae-edit pa rin pagkatapos i-save.\n• Magdagdag ng 97 na product mark — conformity (CE, UKCA, EAC, FCC, UL, CCC), pangkapaligiran (WEEE, RoHS), GHS hazard pictogram at IEC safety symbol — kasama ang mga kondisyon ng paggamit nito.\n• Mag-print ng label sheet mula sa mga row ng spreadsheet, table sa dokumento o bahagi ng PDF sa 559 na format ng papel o sa sarili mong grid.\n\nArtwork lamang ang mga mark: hindi sine-certify ang produkto kapag naglagay ng isa. Gumamit lamang ng conformity mark at trademark kung certified ang iyong produkto o hawak mo ang lisensya; ipinapakita ng app ang mga kondisyon ng bawat mark. Suriin ang tolerance ng papel at printer sa isang test print. Sa macOS; nakasalin ang dialog sa English, Russian at Turkish, at ang mga pangalan ng mark sa 11 wika.\n\nAng pangunahing pag-edit ay ginagawa sa iyong computer nang hindi ina-upload ang mga file. Kailangan ng koneksyon ang mga opsyonal na online feature; nag-iiba ang availability ayon sa platform.\n\nWalang subscription, walang trial period, walang ads. May lisensyang MIT at libre, ngayon at bukas.",
+      "check": []
+    },
+    "PPT42": {
+      "name": "PPT42",
+      "subtitle": "Mga ideyang dapat maipakita.",
+      "promotionalText": "Walang subscription, walang trial period, walang ads. May lisensyang MIT at libre, ngayon at bukas.",
+      "keywords": "presentasyon,slide,pptx,odp,slideshow,tala ng tagapagsalita,opisina",
+      "description": "Gumawa ng mga slide, gumamit ng mga talahanayan at hugis, at ilahad ang iyong kuwento.\n\nBumuo ng malinaw na biswal na kuwento gamit ang PPT42. Ayusin ang teksto, larawan, hugis, at talahanayan, saka lumipat mula pag-edit tungo sa slide show.\n\n• Gumamit ng mga presentasyong PPTX at OpenDocument.\n• Ayusin ang mga object sa slide, talahanayan, at speaker note.\n• I-export ang mga slide bilang PDF at larawan para madaling ibahagi.\n\nKailangang i-convert muna ang lumang PPT. Maaaring mag-iba ang kumplikadong na-import na layout; suriin ang buong deck bago magpresenta.\n\nAng pangunahing pag-edit ay ginagawa sa iyong computer nang hindi ina-upload ang mga file. Kailangan ng koneksyon ang mga opsyonal na online feature; nag-iiba ang availability ayon sa platform.\n\nWalang subscription, walang trial period, walang ads. May lisensyang MIT at libre, ngayon at bukas.",
+      "check": []
+    },
+    "IMG42": {
+      "name": "IMG42",
+      "subtitle": "I-crop, ayusin, at markahan",
+      "promotionalText": "Walang subscription, walang trial period, walang ads. May lisensyang MIT at libre, ngayon at bukas.",
+      "keywords": "photo editor,larawan,crop,resize,anotasyon,heic,jpeg,png,convert",
+      "description": "Tingnan, i-crop, baguhin ang laki, anotahan, at ayusin ang iyong mga larawan.\n\nMagbukas ng larawan, i-crop ang nakagagambalang bahagi, mag-adjust, o magdagdag ng malinaw na anotasyon. Pinadadali ng IMG42 ang mga pang-araw-araw na gawain sa larawan.\n\n• Tingnan ang mga karaniwang format ng larawan, kabilang ang JPEG, PNG, HEIC, at TIFF.\n• I-crop, baguhin ang laki, i-rotate, at ayusin ang mga larawan.\n• Magdagdag ng anotasyon at mag-export sa mga suportadong format ng larawan.\n\nNag-iiba ayon sa format at available na codec ng macOS ang suporta sa pagbasa at pagsulat. May mga format na nabubuksan ngunit hindi mase-save sa orihinal na anyo.\n\nAng pangunahing pag-edit ay ginagawa sa iyong computer nang hindi ina-upload ang mga file. Kailangan ng koneksyon ang mga opsyonal na online feature; nag-iiba ang availability ayon sa platform.\n\nWalang subscription, walang trial period, walang ads. May lisensyang MIT at libre, ngayon at bukas.",
+      "check": []
+    },
+    "SCN42": {
+      "name": "SCN42",
+      "subtitle": "I-scan at basahin ang teksto",
+      "promotionalText": "Walang subscription, walang trial period, walang ads. May lisensyang MIT at libre, ngayon at bukas.",
+      "keywords": "scanner,scan,ocr,pagkilala ng teksto,pdf,dokumento,camera,resibo",
+      "description": "Mag-scan, maglinis ng mga pahina, at kilalanin ang teksto gamit ang OCR sa device.\n\nDalhin ang papel sa iyong digital na opisina gamit ang SCN42. Kumuha ng mga pahina, ituwid at linisin ang mga ito, saka kilalanin ang teksto sa iyong Mac.\n\n• Kumuha mula sa mga suportadong scanner o mag-import ng mga larawan at PDF.\n• I-crop, ituwid, at ayusin ang mga pahina bago kilalanin ang teksto.\n• Mag-export ng nahahanap na PDF o ng nakilalang teksto.\n\nNakadepende sa hardware ang suporta sa scanner at Continuity. Nakadepende sa Apple Vision at orihinal na larawan ang mga wika at katumpakan ng OCR; hiwalay na tampok ang 20 wika ng interface.\n\nAng pangunahing pag-edit ay ginagawa sa iyong computer nang hindi ina-upload ang mga file. Kailangan ng koneksyon ang mga opsyonal na online feature; nag-iiba ang availability ayon sa platform.\n\nWalang subscription, walang trial period, walang ads. May lisensyang MIT at libre, ngayon at bukas.",
+      "check": []
+    }
+  }
+}

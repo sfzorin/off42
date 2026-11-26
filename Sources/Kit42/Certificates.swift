@@ -192,8 +192,12 @@ public enum KeyVault {
     /// Records live here (one JSON file per key). `SUITE42_KEY_DIR` overrides it for tests.
     public static var directory: URL = {
         if let dir = ProcessInfo.processInfo.environment["SUITE42_KEY_DIR"], !dir.isEmpty { return URL(fileURLWithPath: dir) }
+        #if APP_STORE
+        return AppStoreEdition.sharedSupportDirectory.appendingPathComponent("Signing Keys", isDirectory: true)
+        #else
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("Suite42/Signing Keys", isDirectory: true)
+        #endif
     }()
 
     public static var secureEnclaveAvailable: Bool { SecureEnclave.isAvailable }

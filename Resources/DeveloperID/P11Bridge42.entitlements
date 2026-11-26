@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Developer ID (DMG) only. P11Bridge42 loads the smart-card vendor's PKCS#11 module (AKİS, SafeNet, OpenSC, …),
+	     which is signed by another team or not at all; the hardened runtime would refuse it otherwise. -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+</dict>
+</plist>

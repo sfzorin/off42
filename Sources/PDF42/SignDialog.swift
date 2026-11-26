@@ -209,6 +209,10 @@ enum SignDialog {
     static func showCryptoPro() -> Bool {
         let alert = NSAlert()
         alert.icon = Theme42.symbol("key.fill", size: 40)
+        #if APP_STORE
+        AppStoreEdition.showCryptoProUnavailable()
+        return false
+        #else
         guard CryptoPro.isInstalled else {
             alert.messageText = L("CryptoPro CSP is not installed")
             alert.informativeText = CryptoPro.installHelp
@@ -243,6 +247,7 @@ enum SignDialog {
             NSApp.presentError(error)
             return false
         }
+        #endif
     }
 
     /// Connects to a Cloud Signature Consortium (API v2) service and picks a credential.

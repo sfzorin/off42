@@ -260,6 +260,11 @@ public enum DocumentSigningUI {
 
     /// Certificates on cards in all installed PKCS#11 modules; errors are shown.
     public static func readSmartCards() -> [(PKCS11Token, PKCS11Certificate)] {
+        #if APP_STORE
+        // No P11Bridge42 helper in the sandboxed build: it would load the vendor's unsigned module.
+        AppStoreEdition.showSmartCardModulesUnavailable()
+        return []
+        #else
         var modules = PKCS11Modules.installed()
         if modules.isEmpty {
             let alert = NSAlert()
@@ -297,6 +302,7 @@ public enum DocumentSigningUI {
             }
         }
         return found
+        #endif
     }
 
     static func chooseModule() -> String? {

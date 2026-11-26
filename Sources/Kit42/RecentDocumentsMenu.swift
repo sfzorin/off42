@@ -31,6 +31,9 @@ final class RecentDocumentsMenu: NSObject, NSMenuDelegate, NSMenuItemValidation 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         let urls = controller().recentDocumentURLs
+        #if APP_STORE
+        SecurityScopedRecents.remember(urls)
+        #endif
         for url in urls {
             let item = NSMenuItem(title: url.lastPathComponent, action: #selector(openRecent(_:)), keyEquivalent: "")
             item.target = self
@@ -50,6 +53,9 @@ final class RecentDocumentsMenu: NSObject, NSMenuDelegate, NSMenuItemValidation 
 
     @objc private func openRecent(_ sender: NSMenuItem) {
         guard let url = sender.representedObject as? URL else { return }
+        #if APP_STORE
+        SecurityScopedRecents.beginAccess(url)
+        #endif
         controller().openDocument(withContentsOf: url, display: true) { _, _, error in
             if let error { NSApp.presentError(error) }
         }
