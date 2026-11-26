@@ -712,9 +712,9 @@ impl Host {
                 let width = (full - 32.0).min(984.0);
                 let margin = ((full - width) / 2.0).max(16.0);
                 // Create / open strip: a full-width band with the content centred in it.
-                let band_rect = Rect::from_min_size(ui.cursor().min, Vec2::new(full, 292.0));
+                let band_rect = Rect::from_min_size(ui.cursor().min, Vec2::new(full, 312.0));
                 ui.painter().rect_filled(band_rect, 0.0, band);
-                let strip = ui.scope_builder(egui::UiBuilder::new().max_rect(Rect::from_min_size(band_rect.min + Vec2::new(margin, 20.0), Vec2::new(width, 252.0))), |ui| {
+                let strip = ui.scope_builder(egui::UiBuilder::new().max_rect(Rect::from_min_size(band_rect.min + Vec2::new(margin, 20.0), Vec2::new(width, 272.0))), |ui| {
                     ui.horizontal(|ui| {
                         ui.set_height(44.0);
                         let heading = if self.app.supports_new() { tr("Create a document") } else { tr("Open a file") };
