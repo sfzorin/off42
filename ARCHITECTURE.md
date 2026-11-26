@@ -130,16 +130,17 @@ An optional assistant panel in the web editors (documents and spreadsheets first
   in the Rust core (stage 2 editing), so every assistant change is one Undo step and the same commands can later reach
   Windows, Linux, Android and iPad.
 - The agent loop runs in the browser; tools execute locally on the open document. Requests go to a same-origin
-  Cloudflare Worker (`off42.cc/api/assistant`) that holds the API key as a secret and forwards to the Claude Messages
-  API. The key never reaches the browser; the page still makes no requests to other origins.
+  Cloudflare Worker (`off42.cc/api/assistant`) that holds the OpenRouter API key as a secret (`OPENROUTER_API_KEY`,
+  set by the owner with `wrangler secret put`) and forwards to OpenRouter's chat-completions API with tool calling. The key never reaches the browser; the page still makes no requests to other origins.
 - Open to everyone without an account, with a per-user daily limit, a bot check (Cloudflare Turnstile), a model
-  allowlist and request/response size caps in the Worker; the owner also sets a monthly spend limit in the Anthropic
-  console. The Worker does not log document content.
+  allowlist and request/response size caps in the Worker; the owner also sets a credit/spend limit on the OpenRouter
+  key. The Worker does not log document content.
 - Nothing is sent until the user opens the assistant and agrees; then only the selection, the document outline and the
   text the model asks for through read commands. The privacy policy (all languages) and store notes describe this.
   Without the assistant every app keeps working fully offline.
-- Model: Claude Opus 5.5 by default, low effort for chat, prompt caching of instructions and tool definitions; the
-  model is one setting in the Worker.
+- Provider: OpenRouter, so the model is one setting in the Worker (an allowlist of OpenRouter model ids, chosen by
+  the owner) and can be switched without changing the app; stable instructions and tool definitions go first so
+  providers that support prompt caching can reuse them.
 - Neui/Doors (server-side Go UI) was considered and rejected: it would move documents to a server and require
   rewriting the web UI.
 
