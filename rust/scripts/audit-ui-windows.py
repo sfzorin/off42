@@ -377,9 +377,19 @@ def audit_generators(process, main, binary, output, results, local_app_data):
         assert width > 80 and height > 40 and ink >= minimum, (path.name, width, height, ink)
         return width, height, ink
 
-    def pick_variant(prefix):
-        variants = wait_for(lambda: sorted(scratch.glob(prefix + "*.png")) if len(list(scratch.glob("*.png"))) == 6 else None,
-                            "six generated variants", process)
+    def pick_variant(belongs):
+        # The app replaces the previous variants file by file: wait for exactly six of the new set, each fully written.
+        def ready():
+            paths = sorted(scratch.glob("*.png"))
+            if len(paths) != 6 or not all(belongs(path.name) for path in paths):
+                return None
+            try:
+                for path in paths:
+                    png_pixels(path)
+            except Exception:
+                return None
+            return paths
+        variants = wait_for(ready, "six generated variants", process)
         sizes = {inked(path, 300) for path in variants}
         assert len(sizes) > 1, "variants differ"
         choose_file(process, variants[1])
@@ -388,7 +398,7 @@ def audit_generators(process, main, binary, output, results, local_app_data):
 
     command(main, 65498)
     finish_prompt(process, "Create Signature", ["Sergey Zorin", "Full name", "Gel pen", "Violet ink"])
-    chosen = pick_variant("Sergey Zorin ")
+    chosen = pick_variant(lambda name: name.startswith("Sergey Zorin "))
     signature = wait_for(lambda: next(iter(library.glob("Signature - Sergey Zorin*.png")), None), "signature kept in the library", process)
     assert signature.read_bytes() == chosen.read_bytes()
     inked(signature, 300)
@@ -396,7 +406,7 @@ def audit_generators(process, main, binary, output, results, local_app_data):
     command(main, 65497)
     finish_prompt(process, "Create Stamp", ["ru.ooo", "Red ink"])
     finish_prompt(process, "Create Stamp", [])
-    pick_variant("")
+    pick_variant(lambda name: not name.startswith("Sergey Zorin "))
     stamp = wait_for(lambda: next(iter(library.glob("Stamp - *.png")), None), "stamp kept in the library", process)
     _, _, ink = inked(stamp, 2000)
     width, height, pixels = png_pixels(stamp)
@@ -2351,6 +2361,303 @@ def audit_ppt_slide_images(process, main, output, results):
     results["checks"].append("PPT42 exports numbered PNG and JPEG through normal settings, actual PNG pixels, selected dimensions and hidden-slide scope, no clobber and unchanged presentation")
 
 
+def audit_ppt_charts(process, main, output, results):
+    def text_value(raw):
+        return {"raw": raw, "crlf": False}
+
+    source = output / "ppt-chart-source.json"
+    source.write_text(json.dumps({"version": 2, "next_id": 2, "slides": [
+        {"id": 1, "title_text": text_value(""), "body_text": text_value("")}]}), encoding="utf-8")
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+
+    def saved(name, extension, kind):
+        path = output / f"ppt-chart-{name}.{extension}"
+        save_as(main)
+        choose_file(process, path, format_name=kind)
+        output_ready(process, main, path, b"{" if extension == "json" else b"PK")
+        return path
+
+    def project_chart(name):
+        project = json.loads(saved(name, "json", "off42 slides JSON").read_text(encoding="utf-8"))
+        return project["slides"][0]["objects"][0]["chart"]
+
+    def chart_prompt():
+        command(main, 81)
+        dialog = modal(process, title="Edit Chart", native_class="Suite42InputDialog")
+        values = [text(u.GetDlgItem(dialog, 100 + index)) for index in range(4)]
+        click(dialog, 2)
+        wait_for(lambda: not u.IsWindow(dialog), "chart editor cancelled", process)
+        return values
+
+    def palette_pixels(name):
+        path = output / f"ppt-chart-{name}.png"
+        fill_prompt(process, main, 77, "Export Slide Images", ["PNG", "1280", "No"])
+        choose_file(process, path)
+        path = output / f"ppt-chart-{name}-001.png"
+        output_ready(process, main, path, b"\x89PNG\r\n\x1a\n")
+        _, _, pixels = png_pixels(path)
+        counts = {}
+        for offset in range(0, len(pixels), 4):
+            color = tuple(pixels[offset:offset + 3])
+            if color in ((0x44, 0x72, 0xC4), (0xED, 0x7D, 0x31)):
+                counts[color] = counts.get(color, 0) + 1
+        return counts
+
+    grid = "\tNorth\tSouth\r\nQ1\t1\t2\r\nQ2\t3\t4"
+    fill_prompt(process, main, 80, "Insert Chart", ["Column", "Revenue", "Yes", grid])
+    counts = palette_pixels("column")
+    assert counts.get((0x44, 0x72, 0xC4), 0) > 500 and counts.get((0xED, 0x7D, 0x31), 0) > 500, counts
+    fill_prompt(process, main, 81, "Edit Chart", ["Pie", "Share", "No", "\tShare\r\nA\t1\r\nB\t3"])
+    assert chart_prompt() == ["Pie", "Share", "No", "\tShare\r\nA\t1\r\nB\t3"]
+    command(main, 4)
+    assert project_chart("undo")["kind"] == "Column"
+    command(main, 5)
+    chart = project_chart("redo")
+    assert chart["kind"] == "Pie" and chart["categories"] == ["A", "B"] and chart["legend"] is False
+    counts = palette_pixels("pie")
+    assert counts.get((0xED, 0x7D, 0x31), 0) > 2 * counts.get((0x44, 0x72, 0xC4), 0) > 0, counts
+    pptx = saved("edited", "pptx", "PowerPoint presentation")
+    odp = saved("edited", "odp", "OpenDocument presentation")
+    with zipfile.ZipFile(pptx) as package:
+        names = package.namelist()
+        parts = [name for name in names if name.startswith("ppt/charts/") and name.endswith(".xml") and "/_rels/" not in name]
+        assert len(parts) == 1 and b"<c:pieChart>" in package.read(parts[0])
+        books = [name for name in names if name.startswith("ppt/embeddings/") and name.endswith(".xlsx")]
+        assert len(books) == 1
+        assert b"drawingml.chart+xml" in package.read("[Content_Types].xml")
+    with zipfile.ZipFile(odp) as package:
+        objects = [name for name in package.namelist() if name.endswith("/content.xml") and name != "content.xml"]
+        assert len(objects) == 1 and b'chart:class="chart:circle"' in package.read(objects[0])
+        assert b"application/vnd.oasis.opendocument.chart" in package.read("META-INF/manifest.xml")
+    open_fixture(process, main, odp)
+    command(main, 46)
+    assert chart_prompt()[0] == "Pie"
+    open_fixture(process, main, pptx)
+    command(main, 46)
+    assert chart_prompt() == ["Pie", "Share", "No", "\tShare\r\nA\t1\r\nB\t3"]
+    fill_prompt(process, main, 81, "Edit Chart", ["Line", "Trend", "Yes", "\tShare\r\nA\t1\r\nB\t3\r\nC\t2"])
+    overlay = saved("overlay", "pptx", "PowerPoint presentation")
+    with zipfile.ZipFile(pptx) as before, zipfile.ZipFile(overlay) as after:
+        assert sorted(before.namelist()) == sorted(after.namelist())
+        assert b"<c:lineChart>" in after.read(parts[0])
+        import io
+        with zipfile.ZipFile(io.BytesIO(after.read(books[0]))) as book:
+            assert b">C</t>" in book.read("xl/worksheets/sheet1.xml")
+        assert before.read("ppt/slides/slide1.xml") == after.read("ppt/slides/slide1.xml")
+    open_fixture(process, main, overlay)
+    command(main, 46)
+    assert chart_prompt()[:2] == ["Line", "Trend"]
+    assert source.read_bytes() == original
+    results["checks"].append("PPT42 Insert/Edit Chart dialogs, drawn column and pie pixels, Undo/Redo, PPTX chart part and workbook, ODF chart object, reopen in both formats and in-place PPTX chart overlay")
+
+
+def audit_ppt_theme(process, main, output, results):
+    def text_value(raw):
+        return {"raw": raw, "crlf": False}
+
+    source = output / "ppt-theme-source.json"
+    source.write_text(json.dumps({"version": 2, "next_id": 2, "slides": [
+        {"id": 1, "title_text": text_value("Themed"), "body_text": text_value("")}]}), encoding="utf-8")
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+
+    def center(name):
+        path = output / f"ppt-theme-{name}.png"
+        fill_prompt(process, main, 77, "Export Slide Images", ["PNG", "1280", "No"])
+        choose_file(process, path)
+        path = output / f"ppt-theme-{name}-001.png"
+        output_ready(process, main, path, b"\x89PNG\r\n\x1a\n")
+        width, height, pixels = png_pixels(path)
+        offset = (width * (height * 3 // 4) + width // 2) * 4
+        return tuple(pixels[offset:offset + 3])
+
+    def saved(name, extension, kind):
+        path = output / f"ppt-theme-{name}.{extension}"
+        save_as(main)
+        choose_file(process, path, format_name=kind)
+        output_ready(process, main, path, b"PK")
+        return path
+
+    midnight = (0x14, 0x1B, 0x2D)
+    fill_prompt(process, main, 82, "Slide Theme", ["Midnight"])
+    assert center("midnight") == midnight
+    command(main, 4)
+    assert center("undo") == (255, 255, 255)
+    command(main, 5)
+    pptx = saved("midnight", "pptx", "PowerPoint presentation")
+    odp = saved("midnight", "odp", "OpenDocument presentation")
+    with zipfile.ZipFile(pptx) as package:
+        theme = package.read("ppt/theme/theme1.xml")
+        assert b'name="Midnight"' in theme and b'<a:lt1><a:srgbClr val="141B2D"/>' in theme
+        assert b"<p:bg>" in package.read("ppt/slideMasters/slideMaster1.xml")
+    with zipfile.ZipFile(odp) as package:
+        assert b'draw:fill-color="#141b2d"' in package.read("styles.xml")
+    open_fixture(process, main, pptx)
+    assert center("reopened-pptx") == midnight
+    open_fixture(process, main, odp)
+    assert center("reopened-odp") == midnight
+    assert source.read_bytes() == original
+    results["checks"].append("PPT42 Slide Theme dialog, themed background pixels, Undo/Redo, PPTX theme and master background, ODF master page background and reopened backgrounds")
+
+
+def audit_ppt_animations(process, main, output, results):
+    def text_value(raw):
+        return {"raw": raw, "crlf": False}
+
+    red, green = [200, 20, 20], [20, 160, 20]
+    slides = []
+    for index, color in enumerate((red, green)):
+        slides.append({
+            "id": index + 1, "title_text": text_value(""), "body_text": text_value(""), "next_object_id": 2,
+            "objects": [{"id": 1, "kind": "Rectangle", "x": 200, "y": 100, "width": 320,
+                         "height": 205, "fill": color, "stroke": color, "text": ""}],
+        })
+    source = output / "ppt-anim-source.json"
+    source.write_text(json.dumps({"version": 2, "next_id": 3, "slides": slides}), encoding="utf-8")
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+
+    def saved(name, extension, kind):
+        path = output / f"ppt-anim-{name}.{extension}"
+        save_as(main)
+        choose_file(process, path, format_name=kind)
+        output_ready(process, main, path, b"{" if extension == "json" else b"PK")
+        return path
+
+    def project(name):
+        return json.loads(saved(name, "json", "off42 slides JSON").read_text(encoding="utf-8"))["slides"][0].get("animations", [])
+
+    command(main, 46)
+    fill_prompt(process, main, 83, "Object Animation", ["Fade", "On click", "300", "0"])
+    command(main, 4)
+    assert project("undo") == []
+    command(main, 5)
+    assert project("redo") == [{"object": 1, "effect": "Fade", "start": "OnClick", "duration_ms": 300, "delay_ms": 0}]
+    pptx = saved("fade", "pptx", "PowerPoint presentation")
+    odp = saved("fade", "odp", "OpenDocument presentation")
+    with zipfile.ZipFile(pptx) as package:
+        slide = package.read("ppt/slides/slide1.xml")
+        assert b'presetID="10" presetClass="entr"' in slide and b'nodeType="clickEffect"' in slide
+        assert b"<p:timing" not in package.read("ppt/slides/slide2.xml")
+    with zipfile.ZipFile(odp) as package:
+        content = package.read("content.xml")
+        assert b'presentation:preset-id="ooo-entrance-fade-in"' in content and b'smil:targetElement="anim0_1"' in content
+    open_fixture(process, main, odp)
+    open_fixture(process, main, pptx)
+    command(main, 46)
+    command(main, 83)
+    dialog = modal(process, title="Object Animation", native_class="Suite42InputDialog")
+    assert [text(u.GetDlgItem(dialog, 100 + index)) for index in range(4)] == ["Fade", "On click", "300", "0"]
+    click(dialog, 2)
+    wait_for(lambda: not u.IsWindow(dialog), "animation dialog cancelled", process)
+    fill_prompt(process, main, 72, "Slide Show Settings", ["No", "No"])
+
+    gdi = c.WinDLL("gdi32", use_last_error=True)
+    gdi.GetPixel.argtypes, gdi.GetPixel.restype = [w.HDC, c.c_int, c.c_int], w.DWORD
+    u.GetDC.argtypes, u.GetDC.restype = [w.HWND], w.HDC
+    u.ReleaseDC.argtypes = [w.HWND, w.HDC]
+    u.GetClientRect.argtypes = [w.HWND, c.POINTER(w.RECT)]
+    u.RedrawWindow.argtypes = [w.HWND, c.c_void_p, c.c_void_p, w.UINT]
+    listing = u.GetDlgItem(main, 100)
+
+    def canvas():
+        return next((h for h in windows(process.pid, main)
+                     if classname(h) == "Suite42Canvas" and u.IsWindowVisible(h)), None)
+
+    def expect(color, description):
+        value = color[0] | color[1] << 8 | color[2] << 16
+
+        def actual():
+            target = canvas()
+            if not target:
+                return False
+            rect = w.RECT()
+            u.GetClientRect(target, c.byref(rect))
+            u.RedrawWindow(target, None, None, 0x101)
+            dc = u.GetDC(target)
+            try:
+                return gdi.GetPixel(dc, rect.right // 2, rect.bottom // 2) == value
+            finally:
+                u.ReleaseDC(target, dc)
+        wait_for(actual, description, process)
+
+    def key(value):
+        assert u.PostMessageW(canvas(), 0x100, value, 0)
+
+    command(main, 71)
+    wait_for(lambda: not u.GetMenu(main) and not u.IsWindowVisible(listing), "PPT42 presenting the animated deck", process)
+    expect([255, 255, 255], "entrance hides the object until the click")
+    key(39)
+    expect(red, "click fades the object in on the same slide")
+    key(39)
+    expect(green, "next click moves to the following slide")
+    key(37)
+    expect(red, "returning shows the finished animation")
+    key(37)
+    expect([255, 255, 255], "stepping back reverses the click")
+    key(27)
+    wait_for(lambda: u.GetMenu(main) and u.IsWindowVisible(listing), "show ended", process)
+    assert source.read_bytes() == original
+    results["checks"].append("PPT42 Object Animation dialog, Undo/Redo, PPTX p:timing and ODF anim:par output, reopened settings and click-step fade playback with back navigation in the slide show")
+
+
+def audit_ppt_smartart(process, main, output, results):
+    base = output / "ppt-anim-fade.pptx"
+    source = output / "ppt-smartart.pptx"
+    frame = ('<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="40" name="Diagram"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>'
+             '<p:xfrm><a:off x="0" y="0"/><a:ext cx="3657600" cy="1828800"/></p:xfrm><a:graphic>'
+             '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/diagram">'
+             '<dgm:relIds xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" r:dm="dm1" r:lo="lo1" r:qs="qs1" r:cs="cs1"/>'
+             '</a:graphicData></a:graphic></p:graphicFrame>')
+    drawing = ('<dsp:drawing xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+               '<dsp:spTree><dsp:nvGrpSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvGrpSpPr/></dsp:nvGrpSpPr><dsp:grpSpPr/>'
+               '<dsp:sp modelId="{1}"><dsp:nvSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr>'
+               '<a:xfrm><a:off x="0" y="0"/><a:ext cx="1828800" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+               '<a:solidFill><a:schemeClr val="accent1"/></a:solidFill></dsp:spPr><dsp:style><a:fontRef idx="minor"><a:schemeClr val="lt1"/></a:fontRef></dsp:style>'
+               '<dsp:txBody><a:bodyPr/><a:p><a:r><a:t>Plan</a:t></a:r></a:p></dsp:txBody></dsp:sp></dsp:spTree></dsp:drawing>')
+    data = ('<dgm:dataModel xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+            '<dgm:ptLst/><dgm:extLst><a:ext uri="http://schemas.microsoft.com/office/drawing/2008/diagram">'
+            '<dsp:dataModelExt xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram" relId="dr1"/></a:ext></dgm:extLst></dgm:dataModel>')
+    with zipfile.ZipFile(base) as before, zipfile.ZipFile(source, "w", zipfile.ZIP_DEFLATED) as after:
+        for name in before.namelist():
+            content = before.read(name)
+            if name == "ppt/slides/slide1.xml":
+                content = content.replace(b"</p:spTree>", frame.encode() + b"</p:spTree>")
+            elif name == "ppt/slides/_rels/slide1.xml.rels":
+                content = content.replace(b"</Relationships>", b'<Relationship Id="dm1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramData" Target="../diagrams/data1.xml"/><Relationship Id="dr1" Type="http://schemas.microsoft.com/office/2007/relationships/diagramDrawing" Target="../diagrams/drawing1.xml"/></Relationships>')
+            after.writestr(name, content)
+        after.writestr("ppt/diagrams/data1.xml", data)
+        after.writestr("ppt/diagrams/drawing1.xml", drawing)
+    original = source.read_bytes()
+    open_fixture(process, main, source)
+    image = output / "ppt-smartart.png"
+    fill_prompt(process, main, 77, "Export Slide Images", ["PNG", "1280", "No"])
+    choose_file(process, image)
+    image = output / "ppt-smartart-001.png"
+    output_ready(process, main, image, b"\x89PNG\r\n\x1a\n")
+    width, _, pixels = png_pixels(image)
+    offset = (width * 18 + 36) * 4
+    assert tuple(pixels[offset:offset + 3]) == (0x44, 0x72, 0xC4), tuple(pixels[offset:offset + 3])
+    command(main, 46)
+    command(main, 26)
+    dialog = modal(process, title="Object geometry", native_class="Suite42InputDialog")
+    set_text(u.GetDlgItem(dialog, 100), "210")
+    click(dialog, 1)
+    wait_for(lambda: not u.IsWindow(dialog), "geometry applied", process)
+    saved = output / "ppt-smartart-saved.pptx"
+    save_as(main)
+    choose_file(process, saved, format_name="PowerPoint presentation")
+    output_ready(process, main, saved, b"PK")
+    with zipfile.ZipFile(source) as before, zipfile.ZipFile(saved) as after:
+        for name in ("ppt/diagrams/data1.xml", "ppt/diagrams/drawing1.xml", "ppt/slides/_rels/slide1.xml.rels"):
+            assert before.read(name) == after.read(name), name
+        assert b'r:dm="dm1"' in after.read("ppt/slides/slide1.xml")
+        assert before.read("ppt/slides/slide1.xml") != after.read("ppt/slides/slide1.xml")
+    assert source.read_bytes() == original
+    results["checks"].append("PPT42 draws SmartArt from its PPTX drawing part (exported pixels) and keeps the diagram parts byte-identical while other objects are edited and saved")
+
+
 def audit_ppt_pdf(process, main, binary, output, results, native_print):
     dll = binary.parent / "pdfium.dll"
 
@@ -4020,6 +4327,10 @@ def audit(binary, output, extended, pictures=False, technical=False, labels=Fals
                 audit_ppt_rehearsal(process,main,output,results)
                 audit_ppt_outline_export(process,main,output,results)
                 audit_ppt_slide_images(process,main,output,results)
+                audit_ppt_charts(process,main,output,results)
+                audit_ppt_theme(process,main,output,results)
+                audit_ppt_animations(process,main,output,results)
+                audit_ppt_smartart(process,main,output,results)
                 audit_ppt_pdf(process,main,binary,output,results,native_print)
             return results
         if binary.stem.lower() == "pdf42" and not startup:

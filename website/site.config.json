@@ -12,11 +12,11 @@
       "sha256": "35532deee79b5621dc1d3f487ba0e102947c2f6994ba26cf3636f355b294f3d2"
     },
     "windows": {
-      "url": "https://github.com/sfzorin/off42/releases/download/v1.0.0-windows-preview.3/off42-1.0.0-windows-preview.3-x64.zip",
-      "version": "v1.0.0-windows-preview.3",
+      "url": "https://github.com/sfzorin/off42/releases/download/v1.0.0-windows-preview.4/off42-1.0.0-windows-preview.4-x64.zip",
+      "version": "v1.0.0-windows-preview.4",
       "architecture": "x64",
       "requirements": "Windows",
-      "sha256": "ab8a131b29eb55fd397f34c513d3dca54408d037dadcd2917dc61f5200892963"
+      "sha256": "acdd15ddb9bf4383923aa428777be03a70735bc50ef3865065d89d0f661b37f1"
     }
   }
 }

@@ -7,9 +7,12 @@ use std::{
     path::Path,
 };
 use suite42_core::{write_new, SnapshotHistory, TextValue};
+pub mod animation;
+pub mod chart;
 pub mod geometry;
 pub mod odp;
 pub mod pptx;
+pub mod theme;
 const MAX_SLIDES: usize = 200;
 const MAX_TEXT: usize = 32_768;
 const MAX_FILE: u64 = 512 * 1024;
@@ -45,6 +48,8 @@ pub struct Slide {
     pub hidden: bool,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub animations: Vec<animation::Animation>,
 }
 fn is_visible(hidden: &bool) -> bool {
     !hidden
@@ -193,6 +198,8 @@ pub struct SlideObject {
     pub media: Vec<u8>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cells: Vec<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chart: Option<chart::Chart>,
 }
 fn enabled() -> bool {
     true
@@ -253,6 +260,7 @@ pub enum ObjectKind {
     Text,
     Picture,
     Table,
+    Chart,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutlineRole {
@@ -288,6 +296,7 @@ impl Slide {
             timing: SlideTiming::default(),
             hidden: false,
             notes: String::new(),
+            animations: Vec::new(),
         }
     }
     fn edited(&self, title: &str, body: &str) -> Self {
@@ -305,6 +314,7 @@ impl Slide {
             timing: self.timing,
             hidden: self.hidden,
             notes: self.notes.clone(),
+            animations: self.animations.clone(),
         }
     }
 }
@@ -314,11 +324,14 @@ pub struct Deck {
     version: u32,
     next_id: u64,
     pub slides: Vec<Slide>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<theme::Theme>,
 }
 impl Deck {
     fn valid(&self) -> bool {
         let mut ids = HashSet::new();
         self.version == 2
+            && self.theme.as_ref().is_none_or(theme::Theme::valid)
             && self.next_id > 0
             && !self.slides.is_empty()
             && self.slides.len() <= MAX_SLIDES
@@ -337,6 +350,8 @@ impl Deck {
                         .advance_ms
                         .is_none_or(|ms| (100..=86_400_000).contains(&ms))
                     && (100..=10_000).contains(&s.timing.duration_ms)
+                    && s.animations.len() <= animation::MAX_ANIMATIONS
+                    && s.animations.iter().all(|a| a.valid() && s.objects.iter().any(|o| o.id == a.object))
                     && {
                         let mut object_ids = HashSet::new();
                         s.next_object_id > 0
@@ -380,6 +395,7 @@ impl Deck {
                                                 .join("\n")
                                                 == o.text))
                                     && o.media.len() <= 16 * 1024 * 1024
+                                    && o.chart.as_ref().map_or(!matches!(o.kind, ObjectKind::Chart), |c| matches!(o.kind, ObjectKind::Chart) && c.valid())
                                     && o.cells.len() <= 100
                                     && o.cells.iter().all(|r| {
                                         r.len() <= 100 && r.iter().all(|c| c.len() <= MAX_TEXT)
@@ -432,6 +448,7 @@ impl Presentation {
                         version: 2,
                         next_id: 2,
                         slides: vec![Slide::new(1, String::new(), String::new())],
+                        theme: None,
                     },
                     selected: 1,
                 },
@@ -532,6 +549,71 @@ impl Presentation {
         self.history.apply(state);
         Ok(())
     }
+    pub fn theme(&self) -> Option<&theme::Theme> {
+        self.history.current().deck.theme.as_ref()
+    }
+    /// Applies (or removes) the deck theme as one Undo step.
+    pub fn set_theme(&mut self, theme: Option<theme::Theme>) -> Result<(), String> {
+        if theme.as_ref().is_some_and(|t| !t.valid()) {
+            return Err("Invalid theme".into());
+        }
+        if self.theme() == theme.as_ref() {
+            return Ok(());
+        }
+        let mut state = self.history.current().clone();
+        state.deck.theme = theme;
+        self.history.apply(state);
+        Ok(())
+    }
+    /// Sets, replaces (keeping its place in the order) or removes the animation of an object.
+    pub fn set_animation(&mut self, object: u64, animation: Option<animation::Animation>) -> Result<(), String> {
+        let mut state = self.history.current().clone();
+        let slide = &mut state.deck.slides[self.current()];
+        if !slide.objects.iter().any(|o| o.id == object) {
+            return Err("Select an object".into());
+        }
+        let position = slide.animations.iter().position(|a| a.object == object);
+        match (animation, position) {
+            (Some(mut a), Some(i)) => {
+                a.object = object;
+                slide.animations[i] = a;
+            }
+            (Some(mut a), None) => {
+                a.object = object;
+                slide.animations.push(a);
+            }
+            (None, Some(_)) => slide.animations.retain(|a| a.object != object),
+            (None, None) => return Ok(()),
+        }
+        if &state == self.history.current() {
+            return Ok(());
+        }
+        if !state.deck.valid() {
+            return Err("Invalid animation".into());
+        }
+        self.history.apply(state);
+        Ok(())
+    }
+    /// Replaces the animation list of the current slide without validation of intent (importers).
+    pub(crate) fn set_slide_animations(&mut self, animations: Vec<animation::Animation>) -> Result<(), String> {
+        let mut state = self.history.current().clone();
+        state.deck.slides[self.current()].animations = animations;
+        if !state.deck.valid() {
+            return Err("Invalid animation".into());
+        }
+        self.history.apply(state);
+        Ok(())
+    }
+    /// Moves an object's animation one place earlier or later in the slide order.
+    pub fn move_animation(&mut self, object: u64, earlier: bool) -> Result<(), String> {
+        let mut state = self.history.current().clone();
+        let list = &mut state.deck.slides[self.current()].animations;
+        let i = list.iter().position(|a| a.object == object).ok_or("The object has no animation")?;
+        let j = if earlier { i.checked_sub(1) } else { (i + 1 < list.len()).then_some(i + 1) }.ok_or("The animation cannot move further")?;
+        list.swap(i, j);
+        self.history.apply(state);
+        Ok(())
+    }
     pub fn insert_object(&mut self, kind: ObjectKind, text: String) -> Result<u64, String> {
         self.insert_content(kind, text, Vec::new(), Vec::new())
     }
@@ -591,7 +673,26 @@ impl Presentation {
         cells: Vec<Vec<String>>,
         size: [f64; 2],
     ) -> Result<u64, String> {
-        self.insert_content_geometry(kind, text, media, cells, size, None)
+        self.insert_content_geometry(kind, text, media, cells, size, None, None)
+    }
+    /// Inserts a chart object; one Undo step.
+    pub fn insert_chart(&mut self, chart: chart::Chart) -> Result<u64, String> {
+        if !chart.valid() {
+            return Err("Invalid chart data".into());
+        }
+        self.insert_content_geometry(ObjectKind::Chart, String::new(), Vec::new(), Vec::new(), [360.0, 220.0], None, Some(chart))
+    }
+    /// Replaces the data and options of a chart object; one Undo step.
+    pub fn set_chart(&mut self, id: u64, chart: chart::Chart) -> Result<(), String> {
+        let mut object = self.slides()[self.current()].objects.iter().find(|o| o.id == id && o.chart.is_some()).ok_or("Select a chart")?.clone();
+        if !chart.valid() {
+            return Err("Invalid chart data".into());
+        }
+        if object.chart.as_ref() == Some(&chart) {
+            return Ok(());
+        }
+        object.chart = Some(chart);
+        self.update_object(object)
     }
     pub fn insert_preset(&mut self, preset: geometry::Preset) -> Result<u64, String> {
         if !preset.valid() {
@@ -604,6 +705,7 @@ impl Presentation {
             Vec::new(),
             [180.0, 90.0],
             Some(preset),
+            None,
         )
     }
     fn insert_content_geometry(
@@ -614,11 +716,18 @@ impl Presentation {
         cells: Vec<Vec<String>>,
         size: [f64; 2],
         preset: Option<geometry::Preset>,
+        chart: Option<chart::Chart>,
     ) -> Result<u64, String> {
         let mut state = self.history.current().clone();
         let slide = &mut state.deck.slides[self.current()];
         let id = slide.next_object_id;
         slide.next_object_id = id.checked_add(1).ok_or("object identity exhausted")?;
+        let mut text_style = TextStyle::default();
+        if let Some(theme) = &state.deck.theme {
+            text_style.color = theme.text();
+            text_style.family = theme.minor_font.clone();
+        }
+        let slide = &mut state.deck.slides[self.current()];
         slide.objects.push(SlideObject {
             id,
             group_id: None,
@@ -634,10 +743,11 @@ impl Presentation {
             fill_visible: true,
             stroke_visible: true,
             text,
-            text_style: TextStyle::default(),
+            text_style,
             paragraphs: Vec::new(),
             media,
             cells,
+            chart,
         });
         if !state.deck.valid() {
             return Err("deck exceeds limits".into());
@@ -956,6 +1066,8 @@ impl Presentation {
             return Err("Invalid object selection".into());
         }
         objects.retain(|o| !ids.contains(&o.id));
+        state.deck.slides[self.current()].animations.retain(|a| !ids.contains(&a.object));
+        let objects = &mut state.deck.slides[self.current()].objects;
         let counts =
             objects
                 .iter()

@@ -217,7 +217,8 @@ jobs:
           Windows x64 preview of off42 with PDF42, DOC42, XLS42, IMG42, PPT42 and SCN42.
 
           PDF42, DOC42 and XLS42 can export A4 label sheets and PNG barcodes in four formats.
-          XLS42 can fill serial numbers with leading zeroes. PDF42, DOC42 and PPT42 share a local signature and stamp library.
+          XLS42 can fill serial numbers with leading zeroes. All six apps share a local signature and stamp library and can
+          generate handwritten signatures and stamp impressions. Insert Symbol or Code offers 97 product and conformity marks.
 
           Extract the entire ZIP, including the \`ocr\` folder, and run the app you want. Keep \`pdfium.dll\` alongside \`PDF42.exe\`.
           The executables are unsigned. The Visual C++ runtime is linked into the apps; a separate
@@ -248,7 +249,7 @@ jobs:
             if (-not $bundle) { throw 'No Windows application bundle found in this run' }
             gh run download $env:AUDIT_RUN_ID --repo $env:GITHUB_REPOSITORY --name $bundle.name --dir build
           } else {
-            gh release download v1.0.0-windows-preview.3 --repo $env:GITHUB_REPOSITORY --pattern '*-x64.zip' --dir build
+            gh release download v1.0.0-windows-preview.4 --repo $env:GITHUB_REPOSITORY --pattern '*-x64.zip' --dir build
           }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Expand-Archive build/*.zip -DestinationPath build/preview

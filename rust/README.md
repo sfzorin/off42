@@ -71,6 +71,9 @@ preservation varies by feature and source file; test important documents before 
   in `%LOCALAPPDATA%/off42/Signatures and Stamps`. Use **Insert from Library** to place an image.
   PNG imports retain transparency; import can remove white paper. IMG42 and SCN42 place the mark in a pixel rectangle
   and support Undo/Redo. SCN42 clears OCR for a changed page and restores it with Undo. These are visual marks.
+- **Signatures & Stamps → Create Signature…** draws six handwritten variants of a name or initials with a chosen
+  pen and ink; **Create Stamp…** draws six impressions from one of 132 stamp templates.
+  The chosen picture is kept in the shared library. They use the same generators as the macOS apps.
 
 ## Spreadsheet pictures
 
@@ -137,7 +140,8 @@ fixtures for defects and record the executable identity and any skipped checks.
 ## Technical objects inside documents
 
 In PDF42, DOC42, XLS42 and PPT42, **Production → Insert Symbol or Code** places a QR, Data Matrix,
-Code 128, Aztec or technical symbol at the current document location. **Edit Symbol or Code** changes
+Code 128, Aztec or one of 97 product and conformity marks (the same catalogue as macOS) at the current document location.
+Marks that carry legal conditions show a notice before insertion. **Edit Symbol or Code** changes
 the saved value, format, caption and width in millimetres. Choose an object if several are available;
 PDF42 lists the current page. Insertion and replacement each form one Undo step.
 PNG recipes survive DOCX/ODT/RTF, XLSX/ODS and PPTX/ODP exports for the supported image objects. PDF42
