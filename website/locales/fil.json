@@ -162,7 +162,9 @@
     "copy": "Kopyahin",
     "copied": "Nakopya na",
     "screenshot": "Screenshot sa macOS. Mga sample na dokumento, kathang-isip na kompanya.",
-    "downloadZip": "I-download ang ZIP"
+    "downloadZip": "I-download ang ZIP",
+    "downloadTarGz": "I-download ang tar.gz",
+    "experimental": "Eksperimental"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac: kung sinabi ng macOS na hindi mabuksan ang app, buksan ang System Settings → Privacy & Security at i-click ang Open Anyway. Isang beses lang ito kailangang gawin sa bawat app.",
     "installWindows": "Windows: kung ipinakita ng SmartScreen ang “Pinrotektahan ng Windows ang iyong PC”, i-click ang Higit pang impormasyon, pagkatapos ang Patakbuhin pa rin.",
     "web": "OFF42 sa browser",
-    "webText": "Walang kailangang i-install: isang preview na nagbubukas, nagko-convert at gumagawa ng mga file sa loob ng iyong browser tab. Hindi pa ma-e-export sa PDF ang mga dokumento at hindi pa ipinapakita ang mga pahina ng PDF."
+    "webText": "Walang kailangang i-install: isang preview na nagbubukas, nagko-convert at gumagawa ng mga file sa loob ng iyong browser tab. Hindi pa ma-e-export sa PDF ang mga dokumento at hindi pa ipinapakita ang mga pahina ng PDF.",
+    "linux": "OFF42 para sa Linux",
+    "linuxText": "Eksperimental na x86_64 preview: ang off42 command line ay nagko-convert ng mga dokumento, spreadsheet at presentasyon, nag-e-export ng PDF at gumagawa ng mga label, barcode, marka, lagda at tatak. Bumubukas ang anim na app sa simpleng window. Wala pa sa Linux ang page view, rich editing, pag-print, pag-scan at OCR.",
+    "linuxPreviewText": "Eksperimental na x86_64 preview: ang off42 command line ay nagko-convert ng mga dokumento, spreadsheet at presentasyon, nag-e-export ng PDF at gumagawa ng mga label, barcode, marka, lagda at tatak. Bumubukas ang anim na app sa simpleng window. Wala pa sa Linux ang page view, rich editing, pag-print, pag-scan at OCR.",
+    "linuxBuild": "Build at mga limitasyon",
+    "installLinux": "Linux: i-extract ang archive at patakbuhin ang ./off42 --help, o ang ./install.sh para idagdag ang mga app sa menu. Kailangan ng mga window ng app ang X11 o Wayland."
   },
   "about": {
     "title": "Isang opisinang walang itinatago.",

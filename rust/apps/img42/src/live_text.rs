@@ -128,7 +128,7 @@ impl LiveText {
             ""
         }
     }
-    fn hit(&self, p: win42::Point) -> Option<usize> {
+    fn hit(&self, p: suite42_app::Point) -> Option<usize> {
         if !p.x.is_finite() || !p.y.is_finite() {
             return None;
         }
@@ -139,8 +139,8 @@ impl LiveText {
                 && p.y < f64::from(w.y + w.height)
         })
     }
-    pub fn event(&mut self, doc: &ImageDocument, event: win42::CanvasEvent) -> bool {
-        use win42::CanvasEvent::*;
+    pub fn event(&mut self, doc: &ImageDocument, event: suite42_app::CanvasEvent) -> bool {
+        use suite42_app::CanvasEvent::*;
         if !self.ready(doc) {
             return false;
         }
@@ -250,7 +250,7 @@ mod tests {
             ],
             ..LiveText::default()
         };
-        use win42::{CanvasEvent::*, Point};
+        use suite42_app::{CanvasEvent::*, Point};
         assert!(live.event(&doc, DoubleClick(Point { x: 35., y: 5. })));
         assert_eq!(live.text(&doc, false).unwrap(), "BRAVO");
         live.event(&doc, PointerDown(Point { x: 5., y: 25. }));
@@ -286,7 +286,7 @@ mod tests {
 #[cfg(test)]
 mod app_tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn frame_navigation_and_drawing_modes_clear_reading_selection_without_dirtying_pixels() {
         let first = ImageDocument::from_rgba(100, 70, vec![255; 100 * 70 * 4], None).unwrap();
@@ -313,12 +313,12 @@ mod app_tests {
         assert!(!app.dirty());
         app.action(24).unwrap();
         assert!(app.clipboard_request(44).is_none());
-        app.canvas_event(win42::CanvasEvent::PointerDown(win42::Point {
+        app.canvas_event(suite42_app::CanvasEvent::PointerDown(suite42_app::Point {
             x: 10.,
             y: 10.,
         }))
         .unwrap();
-        app.canvas_event(win42::CanvasEvent::PointerUp(win42::Point {
+        app.canvas_event(suite42_app::CanvasEvent::PointerUp(suite42_app::Point {
             x: 40.,
             y: 15.,
         }))

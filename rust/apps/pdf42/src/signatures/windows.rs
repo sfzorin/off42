@@ -19,7 +19,7 @@ const ENCODING: u32 = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
 const MAX_SIGNERS: i32 = 8;
 const MAX_VERIFY_BYTES: usize = 512 * 1024 * 1024;
 
-pub struct Worker(Receiver<Result<win42::ReportRequest, String>>);
+pub struct Worker(Receiver<Result<suite42_app::report::ReportRequest, String>>);
 
 impl Worker {
     pub fn start(path: PathBuf) -> Self {
@@ -30,7 +30,7 @@ impl Worker {
         Self::spawn(move || inspect_bytes(&source, &name))
     }
 
-    fn spawn(task: impl FnOnce() -> Result<win42::ReportRequest, String> + Send + 'static) -> Self {
+    fn spawn(task: impl FnOnce() -> Result<suite42_app::report::ReportRequest, String> + Send + 'static) -> Self {
         let (send, receive) = mpsc::channel();
         std::thread::spawn(move || {
             let _ = send.send(task());
@@ -38,7 +38,7 @@ impl Worker {
         Self(receive)
     }
 
-    pub fn poll(&self) -> Option<Result<win42::ReportRequest, String>> {
+    pub fn poll(&self) -> Option<Result<suite42_app::report::ReportRequest, String>> {
         match self.0.try_recv() {
             Ok(result) => Some(result),
             Err(mpsc::TryRecvError::Empty) => None,
@@ -49,7 +49,7 @@ impl Worker {
     }
 }
 
-fn inspect(path: PathBuf) -> Result<win42::ReportRequest, String> {
+fn inspect(path: PathBuf) -> Result<suite42_app::report::ReportRequest, String> {
     let mut data = Vec::new();
     std::fs::File::open(&path)
         .and_then(|file| file.take(MAX_FILE as u64 + 1).read_to_end(&mut data))
@@ -60,7 +60,7 @@ fn inspect(path: PathBuf) -> Result<win42::ReportRequest, String> {
     inspect_bytes(&data, &name)
 }
 
-fn inspect_bytes(data: &[u8], name: &str) -> Result<win42::ReportRequest, String> {
+fn inspect_bytes(data: &[u8], name: &str) -> Result<suite42_app::report::ReportRequest, String> {
     let doc = load(data)?;
     let mut rows = Vec::new();
     let mut work = 0usize;
@@ -122,7 +122,7 @@ fn inspect_bytes(data: &[u8], name: &str) -> Result<win42::ReportRequest, String
     } else {
         format!("{name} · Windows cached certificate-chain check at current system time")
     };
-    Ok(win42::ReportRequest {
+    Ok(suite42_app::report::ReportRequest {
         title: "PDF Signature Verification".into(),
         summary,
         columns: vec!["Field", "Signer", "Verification", "Coverage"],

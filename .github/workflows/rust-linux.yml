@@ -1,0 +1,126 @@
+name: Rust Linux
+on:
+  push:
+    branches: ['main']
+    tags: ['v*-linux-preview.*']
+    paths: ['rust/**', '.github/workflows/rust-linux.yml']
+  pull_request:
+    paths: ['rust/**', '.github/workflows/rust-linux.yml']
+  workflow_dispatch:
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install window-system development packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pkg-config libx11-dev libxcursor-dev libxrandr-dev \
+            libxi-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev libfontconfig1-dev
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            rust/target
+          key: linux-${{ hashFiles('rust/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: linux-${{ hashFiles('rust/Cargo.lock') }}-
+      - name: Test portable crates and apps
+        run: cargo test --locked --workspace
+      - name: Check that the Win32 host does not pull in the egui host
+        run: |
+          if cargo tree --locked --target x86_64-pc-windows-msvc -p win42 -p doc42 -e normal -i eframe 2>/dev/null | grep -q eframe; then
+            echo "eframe is in the Windows dependency tree"; exit 1
+          fi
+      - name: Build the off42 CLI and six experimental app windows
+        run: cargo build --locked --release -p off42-cli -p img42 -p doc42 -p xls42 -p ppt42 -p pdf42 -p scn42
+      - name: Stage the Linux bundle
+        run: |
+          set -euo pipefail
+          out=build/off42-linux
+          mkdir -p "$out/licenses"
+          install -m 755 target/release/off42 "$out/off42"
+          for app in img42 doc42 xls42 ppt42 pdf42 scn42; do
+            install -m 755 "target/release/$app" "$out/$(echo "$app" | tr a-z A-Z)"
+          done
+          cargo metadata --locked --format-version 1 --filter-platform x86_64-unknown-linux-gnu > build/metadata.json
+          python3 scripts/collect-licenses.py build/metadata.json "$out/licenses"
+          cp ../LICENSE "$out/licenses/off42-LICENSE"
+          cp crates/doc42-layout-probe/fixtures/OFL.txt "$out/licenses/NotoSans-OFL.txt"
+          cp scripts/linux/README-LINUX.txt "$out/README-LINUX.txt"
+          cp scripts/linux/install.sh "$out/install.sh"
+          chmod 755 "$out/install.sh"
+          printf 'Commit: %s\nProfile: release\nWorkflow: %s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > "$out/BUILD-IDENTITY.txt"
+      - name: Smoke-test the packaged executables headlessly
+        run: scripts/smoke-linux.sh build/off42-linux
+      - name: Check shared-library dependencies
+        run: for f in build/off42-linux/*42; do echo "== $f"; ldd "$f"; done
+      - name: Package tar.gz
+        run: tar -C build -czf build/off42-linux-x86_64.tar.gz off42-linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: off42-linux-x86_64
+          path: rust/build/off42-linux-x86_64.tar.gz
+
+  cli-macos:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test and build the off42 CLI
+        run: |
+          cargo test --locked -p off42-cli -p suite42-pdf-text
+          cargo build --locked --release -p off42-cli
+          ./target/release/off42 --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: off42-cli-macos-arm64
+          path: rust/target/release/off42
+
+  publish-preview:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && contains(github.ref_name, '-linux-preview.')
+    needs: linux
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: off42-linux-x86_64
+      - name: Publish the tested tar.gz
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          asset="off42-${TAG#v}-x86_64.tar.gz"
+          mv off42-linux-x86_64.tar.gz "$asset"
+          tar -tzf "$asset" > /dev/null
+          digest=$(sha256sum "$asset" | cut -d' ' -f1)
+          cat > release-notes.md <<EOF
+          Experimental Linux x86_64 preview of off42.
+
+          The main tool is the \`off42\` command line over the shared document engines: convert DOCX/RTF/ODT/HTML/Markdown,
+          XLSX/ODS/CSV and PPTX/ODP, export them to plain-layout PDF, print text, merge and extract PDF pages, make
+          QR/Data Matrix/Code 128/Aztec barcodes and A4 label sheets, render 97 product and conformity marks, and
+          generate handwritten signatures and stamps (\`off42 --help\`).
+          PDF42, DOC42, XLS42, PPT42, IMG42 and SCN42 are also included as rough experimental windows (X11 or Wayland):
+          item list, text or cell table, image preview, commands and Save As. Page canvases, rich-text editing,
+          printing, scanning, OCR, PDF rendering and signing are Windows/macOS only for now.
+
+          Extract the archive and run an app, or run \`./install.sh\` to add desktop entries for the current user.
+          The executables are unsigned and need glibc, OpenGL and X11 or Wayland.
+
+          [Linux build and automated tests]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$RUN_ID) · [Features and limits]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$TAG/rust/README.md#linux-preview)
+
+          SHA-256 \`$digest\`
+          EOF
+          gh release create "$TAG" "$asset" --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease \
+            --title "off42 ${TAG#v} (x86_64)" --notes-file release-notes.md

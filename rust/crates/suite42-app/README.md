@@ -13,7 +13,7 @@ Logic and data formats that any shell needs and that do not call a platform UI A
 | `input`, `report` | Shell-neutral input forms and table reports |
 | `recovery` | Recovery journal and the `OFF42RC1` record format (`encode_record`/`decode_record` work in memory) |
 | `recents`, `window_layout`, `label_preferences`, `print_calibration`, `localization` | Stored preferences and the twenty-language UI catalogs (`resources/`) |
-| `storage` | The per-user data root (`%LOCALAPPDATA%/off42`) |
+| `storage` | The per-user data root: `%LOCALAPPDATA%/off42` on Windows, `~/Library/Application Support/off42` on macOS, `$XDG_DATA_HOME/off42` or `~/.local/share/off42` on Linux |
 | `production`, `generator`, `marks` | Label sheets and codes, signature and stamp generation, the picture library |
 | `grid_axis`, `grid_geometry`, `sparse_table`, `rich_pages`, `note_pagination`, `pdf_print_layout`, `clipboard_envelope` | Grid, page and print geometry; typed clipboard envelope |
 | `pdf` | Text comparison and export, OCR page pipeline, signature field binding, page export, merge, batch headers, label regions |
@@ -37,6 +37,5 @@ OCR `render`/`recognize` callbacks) or a folder (recovery root).
 - Stored formats (recovery records, preferences, histories, libraries) stay byte-compatible; tests pin them.
 - Prefer bytes and in-memory documents at the boundary. Some services still read and write files or start worker
   threads (recovery journal, preferences, batch workers); they compile for WebAssembly but need a desktop shell at run
-  time. `storage::local_data()` is the Windows location and returns `None` where `LOCALAPPDATA` is unset; other
-  desktop platforms need their own root there before these stores work.
+  time. `storage::local_data()` returns the per-user root on Windows, macOS and Linux and `None` in the browser.
 - Move tests with the code. `cargo test -p suite42-app` runs on any host.

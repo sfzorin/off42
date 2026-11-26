@@ -162,7 +162,9 @@
     "copy": "複製",
     "copied": "已複製",
     "screenshot": "macOS 實機截圖。範例文件，公司皆為虛構。",
-    "downloadZip": "下載 ZIP"
+    "downloadZip": "下載 ZIP",
+    "downloadTarGz": "下載 tar.gz",
+    "experimental": "實驗性"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac：如果 macOS 提示無法打開該 App，請打開「系統設定 → 隱私權與安全性」，然後按一下「仍要打開」。每個 App 只需操作一次。",
     "installWindows": "Windows：如果 SmartScreen 顯示「Windows 已保護您的電腦」，請按一下「其他資訊」，然後按一下「仍要執行」。",
     "web": "瀏覽器中的 OFF42",
-    "webText": "不需安裝：在瀏覽器分頁內開啟、轉換和建立檔案的預覽版。目前文件無法匯出為 PDF，也不會顯示 PDF 頁面。"
+    "webText": "不需安裝：在瀏覽器分頁內開啟、轉換和建立檔案的預覽版。目前文件無法匯出為 PDF，也不會顯示 PDF 頁面。",
+    "linux": "OFF42 Linux 版",
+    "linuxText": "適用於 x86_64 的實驗性預覽版：off42 命令列可轉換文件、試算表與簡報、匯出 PDF，並產生標籤、條碼、標誌、簽名與印章。六款 App 在簡易視窗中開啟。頁面檢視、格式化編輯、列印、掃描與 OCR 尚未支援 Linux。",
+    "linuxPreviewText": "適用於 x86_64 的實驗性預覽版：off42 命令列可轉換文件、試算表與簡報、匯出 PDF，並產生標籤、條碼、標誌、簽名與印章。六款 App 在簡易視窗中開啟。頁面檢視、格式化編輯、列印、掃描與 OCR 尚未支援 Linux。",
+    "linuxBuild": "建置與限制",
+    "installLinux": "Linux：解壓縮封存檔後執行 ./off42 --help，或執行 ./install.sh 將 App 加入選單。App 視窗需要 X11 或 Wayland。"
   },
   "about": {
     "title": "一套坦誠開放的辦公工具。",

@@ -162,7 +162,9 @@
     "copy": "Copier",
     "copied": "Copié",
     "screenshot": "Capture d'écran sur macOS. Documents d'exemple, entreprises fictives.",
-    "downloadZip": "Télécharger le ZIP"
+    "downloadZip": "Télécharger le ZIP",
+    "downloadTarGz": "Télécharger le tar.gz",
+    "experimental": "Expérimental"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac : si macOS indique que l’app ne peut pas être ouverte, ouvrez Réglages Système → Confidentialité et sécurité, puis cliquez sur « Ouvrir quand même ». Cette étape n’est nécessaire qu’une fois par app.",
     "installWindows": "Windows : si SmartScreen affiche « Windows a protégé votre ordinateur », cliquez sur « Informations complémentaires », puis sur « Exécuter quand même ».",
     "web": "OFF42 dans le navigateur",
-    "webText": "Rien à installer : un aperçu qui ouvre, convertit et crée des fichiers dans l'onglet de votre navigateur. Les documents ne peuvent pas encore être exportés en PDF et les pages PDF ne sont pas encore affichées."
+    "webText": "Rien à installer : un aperçu qui ouvre, convertit et crée des fichiers dans l'onglet de votre navigateur. Les documents ne peuvent pas encore être exportés en PDF et les pages PDF ne sont pas encore affichées.",
+    "linux": "OFF42 pour Linux",
+    "linuxText": "Préversion expérimentale x86_64 : la ligne de commande off42 convertit documents, feuilles de calcul et présentations, exporte en PDF et crée étiquettes, codes-barres, marquages, signatures et tampons. Les six apps s’ouvrent dans une fenêtre simple. L’affichage des pages, l’édition enrichie, l’impression, la numérisation et l’OCR ne sont pas encore disponibles sous Linux.",
+    "linuxPreviewText": "Préversion expérimentale x86_64 : la ligne de commande off42 convertit documents, feuilles de calcul et présentations, exporte en PDF et crée étiquettes, codes-barres, marquages, signatures et tampons. Les six apps s’ouvrent dans une fenêtre simple. L’affichage des pages, l’édition enrichie, l’impression, la numérisation et l’OCR ne sont pas encore disponibles sous Linux.",
+    "linuxBuild": "Compilation et limites",
+    "installLinux": "Linux : extrayez l’archive et lancez ./off42 --help, ou ./install.sh pour ajouter les apps au menu. Les fenêtres des apps nécessitent X11 ou Wayland."
   },
   "about": {
     "title": "Un bureau qui n'a rien à cacher.",

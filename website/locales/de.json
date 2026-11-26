@@ -162,7 +162,9 @@
     "copy": "Kopieren",
     "copied": "Kopiert",
     "screenshot": "Screenshot unter macOS. Beispieldokumente, fiktive Firmen.",
-    "downloadZip": "ZIP herunterladen"
+    "downloadZip": "ZIP herunterladen",
+    "downloadTarGz": "tar.gz herunterladen",
+    "experimental": "Experimentell"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac: Wenn macOS meldet, dass die App nicht geöffnet werden kann, öffne Systemeinstellungen → Datenschutz & Sicherheit und klicke auf „Trotzdem öffnen“. Das ist nur einmal pro App nötig.",
     "installWindows": "Windows: Wenn SmartScreen „Der Computer wurde durch Windows geschützt“ anzeigt, klicke auf „Weitere Informationen“ und dann auf „Trotzdem ausführen“.",
     "web": "OFF42 im Browser",
-    "webText": "Nichts zu installieren: eine Vorschau, die Dateien in deinem Browser-Tab öffnet, konvertiert und erstellt. Dokumente können noch nicht als PDF exportiert werden und PDF-Seiten werden noch nicht angezeigt."
+    "webText": "Nichts zu installieren: eine Vorschau, die Dateien in deinem Browser-Tab öffnet, konvertiert und erstellt. Dokumente können noch nicht als PDF exportiert werden und PDF-Seiten werden noch nicht angezeigt.",
+    "linux": "OFF42 für Linux",
+    "linuxText": "Experimentelle x86_64-Vorschau: Die off42-Befehlszeile konvertiert Dokumente, Tabellen und Präsentationen, exportiert PDF und erstellt Etiketten, Barcodes, Zeichen, Unterschriften und Stempel. Die sechs Apps öffnen sich in einem einfachen Fenster. Seitenansichten, Formatbearbeitung, Drucken, Scannen und OCR gibt es unter Linux noch nicht.",
+    "linuxPreviewText": "Experimentelle x86_64-Vorschau: Die off42-Befehlszeile konvertiert Dokumente, Tabellen und Präsentationen, exportiert PDF und erstellt Etiketten, Barcodes, Zeichen, Unterschriften und Stempel. Die sechs Apps öffnen sich in einem einfachen Fenster. Seitenansichten, Formatbearbeitung, Drucken, Scannen und OCR gibt es unter Linux noch nicht.",
+    "linuxBuild": "Build und Grenzen",
+    "installLinux": "Linux: Archiv entpacken und ./off42 --help ausführen oder ./install.sh, um die Apps ins Menü aufzunehmen. Die App-Fenster benötigen X11 oder Wayland."
   },
   "about": {
     "title": "Ein Büro, das nichts zu verbergen hat.",

@@ -56,12 +56,12 @@ fn hex(color: [u8; 3]) -> String {
     format!("#{:02X}{:02X}{:02X}", color[0], color[1], color[2])
 }
 impl Pdf {
-    pub(super) fn decoration_request(&self, id: u16) -> Option<win42::InputRequest> {
+    pub(super) fn decoration_request(&self, id: u16) -> Option<suite42_app::InputRequest> {
         let doc = self.doc.as_ref()?;
         let pages = format!("1-{}", doc.page_count());
         let settings = &self.decorations;
         Some(match id {
-            90 => win42::InputRequest {
+            90 => suite42_app::InputRequest {
                 title: "Text Watermark",
                 fields: vec![
                     ("Text", settings.watermark.text.clone()),
@@ -78,7 +78,7 @@ impl Pdf {
                     ("Pages", pages),
                 ],
             },
-            91 => win42::InputRequest {
+            91 => suite42_app::InputRequest {
                 title: "Page Numbers",
                 fields: vec![
                     ("Position", "Bottom center".into()),
@@ -116,12 +116,12 @@ impl Pdf {
                     ("Font",if settings.header_font.is_empty(){"Noto Sans".into()}else{settings.header_font.clone()}),
                     ("Color (#RRGGBB)",hex(h.color)),
                 ]);
-                win42::InputRequest {
+                suite42_app::InputRequest {
                     title: "Header & Footer",
                     fields,
                 }
             }
-            93 => win42::InputRequest {
+            93 => suite42_app::InputRequest {
                 title: "Bates Numbering Settings",
                 fields: vec![
                     ("Prefix", settings.header.bates_prefix.clone()),
@@ -138,7 +138,7 @@ impl Pdf {
                     ),
                 ],
             },
-            94 => win42::InputRequest {
+            94 => suite42_app::InputRequest {
                 title: "Image Watermark",
                 fields: vec![
                     (
@@ -382,7 +382,7 @@ impl Pdf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn bates_settings_dont_edit_document_and_save_name_tracks_successful_destination() {
         let directory = tempfile::tempdir().unwrap();
@@ -482,7 +482,7 @@ mod tests {
         assert_eq!(app.take_pending_command(), None);
         assert!(matches!(
             app.dialog_request(112),
-            Some(win42::DialogRequest::BatchFolder { .. })
+            Some(suite42_app::DialogRequest::BatchFolder { .. })
         ));
         app.action(4).unwrap();
         assert_eq!(
@@ -534,7 +534,7 @@ mod tests {
 #[cfg(all(test,windows))]
 mod native_font_tests{
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn header_choices_embed_each_actual_windows_font_and_preserve_history(){
         let directory=tempfile::tempdir().unwrap();let source=directory.path().join("source.pdf");std::fs::write(&source,include_bytes!("../fixtures/page-export.pdf")).unwrap();

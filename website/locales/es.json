@@ -162,7 +162,9 @@
     "copy": "Copiar",
     "copied": "Copiado",
     "screenshot": "Captura de pantalla en macOS. Documentos de ejemplo, empresas ficticias.",
-    "downloadZip": "Descargar ZIP"
+    "downloadZip": "Descargar ZIP",
+    "downloadTarGz": "Descargar tar.gz",
+    "experimental": "Experimental"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac: si macOS dice que no se puede abrir la app, abre Ajustes del Sistema → Privacidad y seguridad y haz clic en «Abrir de todos modos». Solo hace falta una vez por app.",
     "installWindows": "Windows: si SmartScreen muestra «Windows protegió su PC», haz clic en «Más información» y después en «Ejecutar de todas formas».",
     "web": "OFF42 en el navegador",
-    "webText": "Nada que instalar: una vista previa que abre, convierte y crea archivos dentro de la pestaña del navegador. Los documentos aún no se pueden exportar a PDF y las páginas PDF aún no se muestran."
+    "webText": "Nada que instalar: una vista previa que abre, convierte y crea archivos dentro de la pestaña del navegador. Los documentos aún no se pueden exportar a PDF y las páginas PDF aún no se muestran.",
+    "linux": "OFF42 para Linux",
+    "linuxText": "Versión preliminar experimental para x86_64: la línea de comandos off42 convierte documentos, hojas de cálculo y presentaciones, exporta PDF y crea etiquetas, códigos de barras, marcas, firmas y sellos. Las seis apps se abren en una ventana sencilla. La vista de páginas, la edición con formato, la impresión, el escaneo y el OCR aún no están disponibles en Linux.",
+    "linuxPreviewText": "Versión preliminar experimental para x86_64: la línea de comandos off42 convierte documentos, hojas de cálculo y presentaciones, exporta PDF y crea etiquetas, códigos de barras, marcas, firmas y sellos. Las seis apps se abren en una ventana sencilla. La vista de páginas, la edición con formato, la impresión, el escaneo y el OCR aún no están disponibles en Linux.",
+    "linuxBuild": "Compilación y límites",
+    "installLinux": "Linux: extrae el archivo y ejecuta ./off42 --help, o ./install.sh para añadir las apps al menú. Las ventanas de las apps requieren X11 o Wayland."
   },
   "about": {
     "title": "Una oficina sin nada que ocultar.",

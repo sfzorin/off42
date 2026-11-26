@@ -25,3 +25,4 @@ sha2 = "0.10"
 suite42-core = { path = "../suite42-core" }
 
 [dev-dependencies]
+suite42-pdf-text = { path = "../suite42-pdf-text" }

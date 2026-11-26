@@ -14,3 +14,6 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg"]
 lopdf = "0.47"
 suite42-pdf-text = { path = "../../crates/suite42-pdf-text" }
 unicode-segmentation = "1"
+
+[target.'cfg(not(windows))'.dependencies]
+egui42 = { path = "../../crates/egui42" }

@@ -82,10 +82,6 @@ mod rich_ruler;
 mod scene_transform;
 #[cfg(windows)]
 pub use native::run;
-#[cfg(not(windows))]
-pub fn run(app: Box<dyn App>) {
-    eprintln!("{} requires Windows.", app.name());
-}
 
 /// Explorer's natural filename ordering for numbered PDF batches.
 pub fn logical_file_order(a: &std::ffi::OsStr, b: &std::ffi::OsStr) -> std::cmp::Ordering {

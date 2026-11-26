@@ -162,7 +162,9 @@
     "copy": "Kopyala",
     "copied": "Kopyalandı",
     "screenshot": "macOS'ta ekran görüntüsü. Örnek belgeler, kurgusal şirketler.",
-    "downloadZip": "ZIP indir"
+    "downloadZip": "ZIP indir",
+    "downloadTarGz": "tar.gz indir",
+    "experimental": "Deneysel"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac: macOS uygulamanın açılamadığını söylerse Sistem Ayarları → Gizlilik ve Güvenlik bölümünü açıp “Yine de Aç” düğmesine tıklayın. Bunu her uygulama için yalnızca bir kez yapmanız gerekir.",
     "installWindows": "Windows: SmartScreen “Windows bilgisayarınızı korudu” uyarısı verirse “Daha fazla bilgi”ye, ardından “Yine de çalıştır”a tıklayın.",
     "web": "Tarayıcıda OFF42",
-    "webText": "Kurulum gerekmez: dosyaları tarayıcı sekmenizin içinde açan, dönüştüren ve oluşturan bir önizleme. Belgeler henüz PDF'ye aktarılamaz ve PDF sayfaları henüz görüntülenmez."
+    "webText": "Kurulum gerekmez: dosyaları tarayıcı sekmenizin içinde açan, dönüştüren ve oluşturan bir önizleme. Belgeler henüz PDF'ye aktarılamaz ve PDF sayfaları henüz görüntülenmez.",
+    "linux": "Linux için OFF42",
+    "linuxText": "Deneysel x86_64 önizlemesi: off42 komut satırı belgeleri, tabloları ve sunuları dönüştürür, PDF dışa aktarır; etiket, barkod, işaret, imza ve kaşe oluşturur. Altı uygulama basit bir pencerede açılır. Sayfa görünümü, biçimli düzenleme, yazdırma, tarama ve OCR Linux'ta henüz yok.",
+    "linuxPreviewText": "Deneysel x86_64 önizlemesi: off42 komut satırı belgeleri, tabloları ve sunuları dönüştürür, PDF dışa aktarır; etiket, barkod, işaret, imza ve kaşe oluşturur. Altı uygulama basit bir pencerede açılır. Sayfa görünümü, biçimli düzenleme, yazdırma, tarama ve OCR Linux'ta henüz yok.",
+    "linuxBuild": "Derleme ve sınırlar",
+    "installLinux": "Linux: arşivi açıp ./off42 --help komutunu ya da uygulamaları menüye eklemek için ./install.sh komutunu çalıştırın. Uygulama pencereleri X11 veya Wayland gerektirir."
   },
   "about": {
     "title": "Saklayacak şeyi olmayan bir ofis.",

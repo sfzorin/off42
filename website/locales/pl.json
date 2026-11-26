@@ -162,7 +162,9 @@
     "copy": "Kopiuj",
     "copied": "Skopiowano",
     "screenshot": "Zrzut ekranu w macOS. Przykładowe dokumenty, fikcyjne firmy.",
-    "downloadZip": "Pobierz ZIP"
+    "downloadZip": "Pobierz ZIP",
+    "downloadTarGz": "Pobierz tar.gz",
+    "experimental": "Eksperymentalne"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac: jeśli macOS informuje, że nie można otworzyć aplikacji, otwórz Ustawienia systemowe → Prywatność i ochrona i kliknij „Otwórz mimo to”. Trzeba to zrobić tylko raz dla każdej aplikacji.",
     "installWindows": "Windows: jeśli SmartScreen wyświetli komunikat „System Windows chronił Twój komputer”, kliknij „Więcej informacji”, a potem „Uruchom mimo to”.",
     "web": "OFF42 w przeglądarce",
-    "webText": "Bez instalacji: wersja podglądowa, która otwiera, konwertuje i tworzy pliki w karcie przeglądarki. Eksport dokumentów do PDF i wyświetlanie stron PDF nie są jeszcze dostępne."
+    "webText": "Bez instalacji: wersja podglądowa, która otwiera, konwertuje i tworzy pliki w karcie przeglądarki. Eksport dokumentów do PDF i wyświetlanie stron PDF nie są jeszcze dostępne.",
+    "linux": "OFF42 dla Linuksa",
+    "linuxText": "Eksperymentalna wersja x86_64: wiersz poleceń off42 konwertuje dokumenty, arkusze i prezentacje, eksportuje PDF oraz tworzy etykiety, kody kreskowe, znaki, podpisy i pieczątki. Sześć aplikacji otwiera się w prostym oknie. Widok stron, edycja z formatowaniem, drukowanie, skanowanie i OCR nie są jeszcze dostępne w Linuksie.",
+    "linuxPreviewText": "Eksperymentalna wersja x86_64: wiersz poleceń off42 konwertuje dokumenty, arkusze i prezentacje, eksportuje PDF oraz tworzy etykiety, kody kreskowe, znaki, podpisy i pieczątki. Sześć aplikacji otwiera się w prostym oknie. Widok stron, edycja z formatowaniem, drukowanie, skanowanie i OCR nie są jeszcze dostępne w Linuksie.",
+    "linuxBuild": "Kompilacja i ograniczenia",
+    "installLinux": "Linux: rozpakuj archiwum i uruchom ./off42 --help albo ./install.sh, aby dodać aplikacje do menu. Okna aplikacji wymagają X11 lub Wayland."
   },
   "about": {
     "title": "Biuro bez tajemnic.",

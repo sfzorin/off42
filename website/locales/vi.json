@@ -162,7 +162,9 @@
     "copy": "Sao chép",
     "copied": "Đã sao chép",
     "screenshot": "Ảnh chụp màn hình trên macOS. Tài liệu mẫu, công ty hư cấu.",
-    "downloadZip": "Tải ZIP"
+    "downloadZip": "Tải ZIP",
+    "downloadTarGz": "Tải tar.gz",
+    "experimental": "Thử nghiệm"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac: nếu macOS báo không thể mở ứng dụng, hãy mở Cài đặt hệ thống → Quyền riêng tư & Bảo mật rồi nhấp Vẫn mở. Bạn chỉ cần làm một lần cho mỗi ứng dụng.",
     "installWindows": "Windows: nếu SmartScreen hiện “Windows đã bảo vệ PC của bạn”, hãy nhấp Thông tin thêm, rồi nhấp Vẫn chạy.",
     "web": "OFF42 trên trình duyệt",
-    "webText": "Không cần cài đặt: bản xem trước mở, chuyển đổi và tạo tệp ngay trong thẻ trình duyệt. Hiện chưa thể xuất tài liệu sang PDF và chưa hiển thị trang PDF."
+    "webText": "Không cần cài đặt: bản xem trước mở, chuyển đổi và tạo tệp ngay trong thẻ trình duyệt. Hiện chưa thể xuất tài liệu sang PDF và chưa hiển thị trang PDF.",
+    "linux": "OFF42 cho Linux",
+    "linuxText": "Bản xem trước thử nghiệm x86_64: dòng lệnh off42 chuyển đổi tài liệu, bảng tính và bản trình chiếu, xuất PDF và tạo nhãn, mã vạch, dấu hiệu, chữ ký và con dấu. Sáu ứng dụng mở trong một cửa sổ đơn giản. Xem trang, chỉnh sửa định dạng, in, quét và OCR chưa có trên Linux.",
+    "linuxPreviewText": "Bản xem trước thử nghiệm x86_64: dòng lệnh off42 chuyển đổi tài liệu, bảng tính và bản trình chiếu, xuất PDF và tạo nhãn, mã vạch, dấu hiệu, chữ ký và con dấu. Sáu ứng dụng mở trong một cửa sổ đơn giản. Xem trang, chỉnh sửa định dạng, in, quét và OCR chưa có trên Linux.",
+    "linuxBuild": "Biên dịch và giới hạn",
+    "installLinux": "Linux: giải nén tệp lưu trữ rồi chạy ./off42 --help, hoặc ./install.sh để thêm ứng dụng vào menu. Cửa sổ ứng dụng cần X11 hoặc Wayland."
   },
   "about": {
     "title": "Một bộ văn phòng không giấu điều gì.",

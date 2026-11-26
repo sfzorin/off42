@@ -162,7 +162,9 @@
     "copy": "Salin",
     "copied": "Disalin",
     "screenshot": "Tangkapan skrin pada macOS. Dokumen contoh, syarikat rekaan.",
-    "downloadZip": "Muat turun ZIP"
+    "downloadZip": "Muat turun ZIP",
+    "downloadTarGz": "Muat turun tar.gz",
+    "experimental": "Eksperimen"
   },
   "apps": {
     "pdf": {
@@ -394,7 +396,12 @@
     "installMac": "Mac: jika macOS menyatakan app tidak boleh dibuka, buka Tetapan Sistem → Privasi & Keselamatan dan klik Buka Juga. Anda hanya perlu berbuat demikian sekali bagi setiap app.",
     "installWindows": "Windows: jika SmartScreen memaparkan “Windows telah melindungi PC anda”, klik Maklumat lanjut, kemudian Jalankan juga.",
     "web": "OFF42 dalam pelayar",
-    "webText": "Tiada apa-apa untuk dipasang: pratonton yang membuka, menukar dan mencipta fail dalam tab pelayar anda. Dokumen belum boleh dieksport ke PDF dan halaman PDF belum dipaparkan."
+    "webText": "Tiada apa-apa untuk dipasang: pratonton yang membuka, menukar dan mencipta fail dalam tab pelayar anda. Dokumen belum boleh dieksport ke PDF dan halaman PDF belum dipaparkan.",
+    "linux": "OFF42 untuk Linux",
+    "linuxText": "Pratonton eksperimen x86_64: baris arahan off42 menukar dokumen, hamparan dan persembahan, mengeksport PDF serta membuat label, kod bar, tanda, tandatangan dan cop. Keenam-enam apl dibuka dalam tetingkap ringkas. Paparan halaman, suntingan berformat, pencetakan, pengimbasan dan OCR belum tersedia di Linux.",
+    "linuxPreviewText": "Pratonton eksperimen x86_64: baris arahan off42 menukar dokumen, hamparan dan persembahan, mengeksport PDF serta membuat label, kod bar, tanda, tandatangan dan cop. Keenam-enam apl dibuka dalam tetingkap ringkas. Paparan halaman, suntingan berformat, pencetakan, pengimbasan dan OCR belum tersedia di Linux.",
+    "linuxBuild": "Binaan dan had",
+    "installLinux": "Linux: ekstrak arkib dan jalankan ./off42 --help, atau ./install.sh untuk menambah apl ke menu. Tetingkap apl memerlukan X11 atau Wayland."
   },
   "about": {
     "title": "Pejabat tanpa apa-apa untuk disembunyikan.",

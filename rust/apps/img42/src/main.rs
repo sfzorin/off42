@@ -21,7 +21,7 @@ struct Img {
     conversion_risk: bool,
     original_16bit: Vec<bool>,
     pending_16bit: Vec<bool>,
-    print_pending: Option<std::sync::mpsc::Receiver<Result<win42::PrintJob, String>>>,
+    print_pending: Option<std::sync::mpsc::Receiver<Result<suite42_app::PrintJob, String>>>,
     pdf_pending: Option<(
         pdf_view::Receiver,
         std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -60,7 +60,7 @@ impl Img {
         })
     }
 }
-impl win42::App for Img {
+impl suite42_app::App for Img {
     fn supports_marks(&self) -> bool {
         true
     }
@@ -192,15 +192,15 @@ impl win42::App for Img {
         }
         self.pdf_prepared = None;
     }
-    fn save_formats(&self) -> Vec<win42::FileFormat> {
+    fn save_formats(&self) -> Vec<suite42_app::FileFormat> {
         if self.frames.len() > 1 {
             return vec![
-                win42::FileFormat {
+                suite42_app::FileFormat {
                     id: "tiff",
                     title: "TIFF (all pages)",
                     extensions: &["tif", "tiff"],
                 },
-                win42::FileFormat {
+                suite42_app::FileFormat {
                     id: "gif",
                     title: "Animated GIF (all frames)",
                     extensions: &["gif"],
@@ -208,32 +208,32 @@ impl win42::App for Img {
             ];
         }
         vec![
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "png",
                 title: "PNG image",
                 extensions: &["png"],
             },
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "jpeg",
                 title: "JPEG image (white background)",
                 extensions: &["jpg", "jpeg"],
             },
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "tiff",
                 title: "TIFF image",
                 extensions: &["tif", "tiff"],
             },
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "gif",
                 title: "GIF image (single frame)",
                 extensions: &["gif"],
             },
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "webp",
                 title: "WebP image",
                 extensions: &["webp"],
             },
-            win42::FileFormat {
+            suite42_app::FileFormat {
                 id: "bmp",
                 title: "BMP image (white background)",
                 extensions: &["bmp"],
@@ -243,7 +243,7 @@ impl win42::App for Img {
     fn take_pending_open(&mut self) -> Option<std::path::PathBuf> {
         self.pending_open.take()
     }
-    fn take_pending_print_job(&mut self) -> Option<Result<win42::PrintJob, String>> {
+    fn take_pending_print_job(&mut self) -> Option<Result<suite42_app::PrintJob, String>> {
         let result = self
             .print_pending
             .as_ref()
@@ -258,7 +258,7 @@ impl win42::App for Img {
     }
     fn supports_recovery(&self)->bool{true}
     fn recovery_extensions(&self)->&'static[&'static str]{&["img42r"]}
-    fn recovery_snapshot(&self)->Result<Option<win42::recovery::Snapshot>,String>{
+    fn recovery_snapshot(&self)->Result<Option<suite42_app::recovery::Snapshot>,String>{
         recovery::snapshot(self)
     }
     fn save_snapshot_to(
@@ -358,8 +358,8 @@ impl win42::App for Img {
     fn open_filter(&self) -> String {
         "*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp;*.svg;*.pdf".into()
     }
-    fn file_actions(&self) -> &'static [win42::FileAction] {
-        &[win42::FileAction {
+    fn file_actions(&self) -> &'static [suite42_app::FileAction] {
+        &[suite42_app::FileAction {
             id: EXPORT_SELECTION,
             title: "Export selected pixels (8-bit PNG)...",
             save: true,
@@ -414,15 +414,15 @@ impl win42::App for Img {
             (42, "Batch outcomes..."),
         ]
     }
-    fn command_specs(&self)->Vec<win42::CommandSpec> {
+    fn command_specs(&self)->Vec<suite42_app::CommandSpec> {
         [(43,"Recognize Image Text…",None),(44,"Copy Selected Text",Some("Ctrl+C")),(45,"Copy All Recognized Text",None),(46,"Select All Recognized Text",Some("Ctrl+A")),(47,"Clear Text Selection",None),(48,"Cancel Text Recognition",None),(49,"View and Select Text",None)]
-            .into_iter().map(|(id,title,accelerator)|win42::CommandSpec{id,title,accelerator,group:"Live Text"}).collect()
+            .into_iter().map(|(id,title,accelerator)|suite42_app::CommandSpec{id,title,accelerator,group:"Live Text"}).collect()
     }
     fn toolbar_command_visible(&self,id:u16)->bool {matches!(id,44|49)}
-    fn command_state(&self,id:u16)->win42::CommandState {win42::CommandState{enabled:self.enabled(id),checked:id==49&&self.tool==0}}
-    fn clipboard_request(&self,id:u16)->Option<win42::ClipboardRequest> {
+    fn command_state(&self,id:u16)->suite42_app::CommandState {suite42_app::CommandState{enabled:self.enabled(id),checked:id==49&&self.tool==0}}
+    fn clipboard_request(&self,id:u16)->Option<suite42_app::ClipboardRequest> {
         if !matches!(id,44|45)||(id==44&&self.tool!=0){return None;}
-        self.live_text.text(self.doc.as_ref()?,id==45).map(win42::ClipboardRequest::WriteText)
+        self.live_text.text(self.doc.as_ref()?,id==45).map(suite42_app::ClipboardRequest::WriteText)
     }
     fn input_folder_fields(&self, id: u16) -> Vec<(usize, &'static str)> {
         if id == 40 {
@@ -434,17 +434,17 @@ impl win42::App for Img {
             vec![]
         }
     }
-    fn input_request(&self, id: u16) -> Option<win42::InputRequest> {
+    fn input_request(&self, id: u16) -> Option<suite42_app::InputRequest> {
         if id == uniform_background::COMMAND {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Remove Uniform Background",
                 fields: vec![("Color tolerance (0–64)", "24".into())],
             });
         }
-        if id==43 {return Some(win42::InputRequest{title:"Recognize Image Text",fields:vec![("Language (auto, en-US, eng+rus; up to 3)",if self.live_text.language.is_empty(){"auto".into()}else{self.live_text.language.clone()})]});}
+        if id==43 {return Some(suite42_app::InputRequest{title:"Recognize Image Text",fields:vec![("Language (auto, en-US, eng+rus; up to 3)",if self.live_text.language.is_empty(){"auto".into()}else{self.live_text.language.clone()})]});}
 
         if id == 40 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Batch conversion: JPEG is 8-bit on white",
                 fields: vec![
                     ("Input folder path", String::new()),
@@ -462,7 +462,7 @@ impl win42::App for Img {
             });
         }
         if id == 33 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Select pixels by sampled color",
                 fields: vec![
                     ("Sample X", "0".into()),
@@ -472,7 +472,7 @@ impl win42::App for Img {
             });
         }
         if id == 32 {
-            return Some(win42::InputRequest {
+            return Some(suite42_app::InputRequest {
                 title: "Add text using markup color",
                 fields: vec![
                     ("Text", "Text".into()),
@@ -539,7 +539,7 @@ impl win42::App for Img {
             ),
             _ => return None,
         };
-        Some(win42::InputRequest { title, fields })
+        Some(suite42_app::InputRequest { title, fields })
     }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
         if id == uniform_background::COMMAND {
@@ -750,8 +750,8 @@ impl win42::App for Img {
         }
         Some((d.width(), d.height(), pixels))
     }
-    fn canvas_event(&mut self, event: win42::CanvasEvent) -> Result<(), String> {
-        use win42::CanvasEvent::*;
+    fn canvas_event(&mut self, event: suite42_app::CanvasEvent) -> Result<(), String> {
+        use suite42_app::CanvasEvent::*;
         if self.tool==0 {
             if let Key{code:32|33|34,..}=event {
                 self.live_text.clear();
@@ -764,7 +764,7 @@ impl win42::App for Img {
             Some(d) => d,
             None => return Ok(()),
         };
-        let point = |p: win42::Point| {
+        let point = |p: suite42_app::Point| {
             (
                 p.x.floor().clamp(0.0, (d.width() - 1) as f64) as u32,
                 p.y.floor().clamp(0.0, (d.height() - 1) as f64) as u32,
@@ -824,11 +824,11 @@ impl win42::App for Img {
     fn set_image_pointer_scale(&mut self, dip_per_pixel: f64) {
         self.image_pointer_scale = dip_per_pixel;
     }
-    fn image_overlay(&self) -> Vec<win42::SceneItem> {
+    fn image_overlay(&self) -> Vec<suite42_app::SceneItem> {
         if self.tool != 7 || self.gesture.is_empty() {
             return Vec::new();
         }
-        let points: Vec<_> = self.gesture.iter().map(|&(x, y)| win42::Point {
+        let points: Vec<_> = self.gesture.iter().map(|&(x, y)| suite42_app::Point {
             x: f64::from(x),
             y: f64::from(y),
         }).collect();
@@ -836,8 +836,8 @@ impl win42::App for Img {
         let radius = self.lasso_radius();
         let color = [0, 100, 245];
         vec![
-            win42::SceneItem::Path { points, color, closed: false },
-            win42::SceneItem::Ellipse {
+            suite42_app::SceneItem::Path { points, color, closed: false },
+            suite42_app::SceneItem::Ellipse {
                 x: last.x - radius,
                 y: last.y - radius,
                 width: radius * 2.0,
@@ -1070,7 +1070,7 @@ impl win42::App for Img {
             }
             let (tx, rx) = std::sync::mpsc::channel();
             std::thread::spawn(move || {
-                let result = (|| -> Result<win42::PrintJob, String> {
+                let result = (|| -> Result<suite42_app::PrintJob, String> {
                     let mut out = Vec::new();
                     for (w, h, pixels, (dx, dy)) in pages {
                         let width = w as f64 * 72.0 / dx as f64;
@@ -1078,7 +1078,7 @@ impl win42::App for Img {
                         if width < 1.0 || height < 1.0 || width > 4096.0 || height > 4096.0 {
                             return Err("Page size is outside printable limits".into());
                         }
-                        let geometry = win42::PrintGeometry {
+                        let geometry = suite42_app::PrintGeometry {
                             width_twips: (width * 20.0).round() as i32,
                             height_twips: (height * 20.0).round() as i32,
                             margin_left_twips: 0,
@@ -1086,9 +1086,9 @@ impl win42::App for Img {
                             margin_right_twips: 0,
                             margin_bottom_twips: 0,
                         };
-                        let scene = win42::CanvasScene {
-                            viewport: win42::Viewport::default(),
-                            items: vec![win42::SceneItem::ImageScaled {
+                        let scene = suite42_app::CanvasScene {
+                            viewport: suite42_app::Viewport::default(),
+                            items: vec![suite42_app::SceneItem::ImageScaled {
                                 x: 0.0,
                                 y: 0.0,
                                 width,
@@ -1098,9 +1098,9 @@ impl win42::App for Img {
                                 rgba: pixels,
                             }],
                         };
-                        out.push(win42::PrintPage { geometry, scene });
+                        out.push(suite42_app::PrintPage { geometry, scene });
                     }
-                    Ok(win42::PrintJob::Scenes(out))
+                    Ok(suite42_app::PrintJob::Scenes(out))
                 })();
                 let _ = tx.send(result);
             });
@@ -1264,8 +1264,13 @@ fn shape_points(
         _ => vec![a, b],
     }
 }
+/// Win32 host on Windows; the experimental egui host elsewhere.
+#[cfg(windows)]
+use win42::run as run_host;
+#[cfg(not(windows))]
+use egui42::run as run_host;
 fn main() {
-    win42::run(Box::new(Img::default()))
+    run_host(Box::new(Img::default()))
 }
 
 #[cfg(test)]
@@ -1273,7 +1278,7 @@ mod selection_tests {
     use super::*;
     #[test]
     fn smart_lasso_snaps_to_subject_and_selection_edit_is_one_history_step() {
-        use win42::{App, CanvasEvent, Point};
+        use suite42_app::{App, CanvasEvent, Point};
         let target: Vec<_> = (0..128).flat_map(|y| {
             (0..128).map(move |x| (32..96).contains(&x) && (32..96).contains(&y))
         }).collect();
@@ -1316,7 +1321,7 @@ mod selection_tests {
     #[test]
     fn png_with_srgb_can_save_in_place() {
         use image::ImageEncoder;
-        use win42::App;
+        use suite42_app::App;
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("source.png");
         let mut png = Vec::new();
@@ -1339,7 +1344,7 @@ mod selection_tests {
     #[test]
     fn png_with_unpreserved_color_metadata_needs_new_destination() {
         use image::ImageEncoder;
-        use win42::App;
+        use suite42_app::App;
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("source.png");
         let mut bytes = Vec::new();
@@ -1363,7 +1368,7 @@ mod selection_tests {
     #[test]
     fn png16_save_tracks_published_precision() {
         use image::ImageEncoder;
-        use win42::App;
+        use suite42_app::App;
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("photo.png");
         let samples = [1u16, 257, 4097, 65535];
@@ -1388,7 +1393,7 @@ mod selection_tests {
     }
     #[test]
     fn prepared_pdf_is_atomic_and_cancellable() {
-        use win42::App;
+        use suite42_app::App;
         let original = ImageDocument::from_rgba(1, 1, vec![1, 2, 3, 255], None).unwrap();
         let next = ImageDocument::from_rgba(1, 1, vec![4, 5, 6, 255], None).unwrap();
         let mut app = Img::default();
@@ -1433,7 +1438,7 @@ mod selection_tests {
 #[cfg(test)]
 mod batch_option_tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     #[test]
     fn rejects_invalid_jpeg_quality() {
         for quality in ["0", "101", "bad"] {

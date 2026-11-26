@@ -1,0 +1,10 @@
+[package]
+name = "egui42"
+version = "0.1.0"
+edition = "2021"
+description = "Experimental egui host for the off42 apps on Linux and macOS; Windows uses the Win32 host in win42"
+
+[dependencies]
+suite42-app = { path = "../suite42-app" }
+suite42-core = { path = "../suite42-core" }
+eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }

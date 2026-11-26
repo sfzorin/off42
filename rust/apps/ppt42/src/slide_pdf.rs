@@ -3,7 +3,8 @@ use lopdf::{dictionary, Dictionary, Document, Object, ObjectId, Stream};
 use std::fmt::Write;
 use suite42_pdf_text::PdfFont;
 use unicode_segmentation::UnicodeSegmentation;
-use win42::{CanvasScene, SceneFont, SceneItem, SceneTextMeasurer, TextAlign};
+use win42::SceneTextMeasurer;
+use suite42_app::{CanvasScene, SceneFont, SceneItem, TextAlign};
 
 const DPI: i32 = 144;
 const SCALE: f64 = DPI as f64 / 72.0;

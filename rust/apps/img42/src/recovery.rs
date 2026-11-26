@@ -6,7 +6,7 @@ fn number(out: &mut Vec<u8>, value: u32) {
     out.extend_from_slice(&value.to_le_bytes());
 }
 
-pub(super) fn snapshot(app: &Img) -> Result<Option<win42::recovery::Snapshot>, String> {
+pub(super) fn snapshot(app: &Img) -> Result<Option<suite42_app::recovery::Snapshot>, String> {
     if app.doc.is_none() {
         return Ok(None);
     }
@@ -56,7 +56,7 @@ pub(super) fn snapshot(app: &Img) -> Result<Option<win42::recovery::Snapshot>, S
         }
         bytes.extend_from_slice(&image);
     }
-    Ok(Some(win42::recovery::Snapshot::new("img42r", bytes)))
+    Ok(Some(suite42_app::recovery::Snapshot::new("img42r", bytes)))
 }
 
 struct Reader<'a>(&'a [u8]);
@@ -158,7 +158,7 @@ pub(super) fn open(path: &Path) -> Result<Img, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use win42::App;
+    use suite42_app::App;
     fn fixture() -> Img {
         let first =
             ImageDocument::from_rgba(2, 1, vec![1, 2, 3, 4, 5, 6, 7, 8], Some((300, 150))).unwrap();
