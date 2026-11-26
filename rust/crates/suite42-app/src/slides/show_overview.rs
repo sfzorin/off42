@@ -1,26 +1,26 @@
 use std::time::Instant;
-use win42::{CanvasEvent, CanvasRect, CanvasScene, Point, SceneFont, SceneItem, TextAlign};
+use crate::{CanvasEvent, CanvasRect, CanvasScene, Point, SceneFont, SceneItem, TextAlign};
 
 const COLUMNS: usize = 4;
 const PAGE_SIZE: usize = 12;
-pub(super) const THUMBNAIL: (u32, u32) = (162, 91);
+pub const THUMBNAIL: (u32, u32) = (162, 91);
 
-pub(super) enum Outcome {
+pub enum Outcome {
     Stay,
     Close,
     Jump(usize),
     End,
 }
 
-pub(super) struct Overview {
+pub struct Overview {
     indices: Vec<usize>,
     selected: usize,
     thumbnails: Vec<Vec<u8>>,
-    pub(super) opened: Instant,
+    pub opened: Instant,
 }
 
 impl Overview {
-    pub(super) fn new(indices: Vec<usize>, current: usize, opened: Instant) -> Option<Self> {
+    pub fn new(indices: Vec<usize>, current: usize, opened: Instant) -> Option<Self> {
         let selected = indices.iter().position(|&index| index == current)?;
         Some(Self {
             indices,
@@ -30,7 +30,7 @@ impl Overview {
         })
     }
 
-    pub(super) fn page(&self) -> usize {
+    pub fn page(&self) -> usize {
         self.selected / PAGE_SIZE
     }
 
@@ -39,7 +39,7 @@ impl Overview {
         &self.indices[start..(start + PAGE_SIZE).min(self.indices.len())]
     }
 
-    pub(super) fn load(
+    pub fn load(
         &mut self,
         mut render: impl FnMut(usize) -> Result<Vec<u8>, String>,
     ) -> Result<(), String> {
@@ -52,7 +52,7 @@ impl Overview {
         Ok(())
     }
 
-    pub(super) fn handle(&mut self, event: CanvasEvent) -> Outcome {
+    pub fn handle(&mut self, event: CanvasEvent) -> Outcome {
         use CanvasEvent::*;
         let step = match event {
             Key { code: 27 | 71, .. } => return Outcome::Close,
@@ -84,7 +84,7 @@ impl Overview {
         Outcome::Stay
     }
 
-    pub(super) fn scene(&self) -> CanvasScene {
+    pub fn scene(&self) -> CanvasScene {
         let mut scene = CanvasScene::default();
         scene.items.push(SceneItem::Rect {
             x: 0.0,
@@ -95,14 +95,14 @@ impl Overview {
             stroke: [28, 30, 36],
         });
         scene.items.push(label(
-            win42::localization::text("Overview"),
+            crate::localization::text("Overview"),
             14.0,
             12.0,
             230.0,
             15.0,
             TextAlign::Left,
         ));
-        let page = win42::localization::text("Page %d of %d")
+        let page = crate::localization::text("Page %d of %d")
             .replacen("%d", &(self.page() + 1).to_string(), 1)
             .replacen("%d", &self.indices.len().div_ceil(PAGE_SIZE).to_string(), 1);
         scene

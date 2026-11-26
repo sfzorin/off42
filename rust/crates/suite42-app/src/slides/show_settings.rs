@@ -2,21 +2,29 @@ use std::{io::Read, path::PathBuf};
 use suite42_core::session::{publish_bundle, FileIdentity, SaveBundle};
 
 #[derive(Clone, Copy, Default)]
-pub(crate) struct ShowSettings {
+pub struct ShowSettings {
     pub looped: bool,
     pub show_hidden: bool,
 }
 
 fn location() -> Option<PathBuf> {
-    let root = std::env::var_os("LOCALAPPDATA")?;
-    Some(
-        PathBuf::from(root)
-            .join("off42")
-            .join("PPT42 show settings"),
-    )
+    Some(crate::storage::local_data()?.join("PPT42 show settings"))
 }
 
 impl ShowSettings {
+    /// Stored form: `1\n` then one digit each for looping and hidden slides, then `\n`.
+    pub fn encode(self) -> [u8; 5] {
+        [b'1', b'\n', b'0' + u8::from(self.looped), b'0' + u8::from(self.show_hidden), b'\n']
+    }
+    pub fn decode(data: &[u8]) -> Option<Self> {
+        match data {
+            [b'1', b'\n', looped @ (b'0' | b'1'), hidden @ (b'0' | b'1'), b'\n'] => Some(Self {
+                looped: *looped == b'1',
+                show_hidden: *hidden == b'1',
+            }),
+            _ => None,
+        }
+    }
     pub fn load() -> Self {
         location()
             .and_then(|path| {
@@ -26,15 +34,7 @@ impl ShowSettings {
                     .take(9)
                     .read_to_end(&mut data)
                     .ok()?;
-                match data.as_slice() {
-                    [b'1', b'\n', looped @ (b'0' | b'1'), hidden @ (b'0' | b'1'), b'\n'] => {
-                        Some(Self {
-                            looped: *looped == b'1',
-                            show_hidden: *hidden == b'1',
-                        })
-                    }
-                    _ => None,
-                }
+                Self::decode(&data)
             })
             .unwrap_or_default()
     }
@@ -49,17 +49,25 @@ impl ShowSettings {
             Err(error) => return Err(error.to_string()),
         };
         let bundle = SaveBundle {
-            main: vec![
-                b'1',
-                b'\n',
-                b'0' + u8::from(self.looped),
-                b'0' + u8::from(self.show_hidden),
-                b'\n',
-            ],
+            main: self.encode().to_vec(),
             sidecars: Vec::new(),
         };
         publish_bundle(&path, &bundle, identity.as_ref())
             .map(|_| ())
             .map_err(|error| error.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn stored_show_settings_format_is_pinned() {
+        let settings = ShowSettings { looped: true, show_hidden: false };
+        assert_eq!(&settings.encode(), b"1\n10\n");
+        let decoded = ShowSettings::decode(b"1\n01\n").unwrap();
+        assert!(!decoded.looped && decoded.show_hidden);
+        assert!(ShowSettings::decode(b"2\n01\n").is_none());
+        assert!(ShowSettings::decode(b"1\n01\n\n").is_none());
     }
 }

@@ -1,14 +1,14 @@
 //! Chart drawing and the Insert/Edit Chart dialog.
 use ppt42_core::chart::{self, Chart, Mark};
-use win42::{PathSegment, Point, SceneItem};
+use crate::{PathSegment, Point, SceneItem};
 
-pub(super) const INSERT: u16 = 80;
-pub(super) const EDIT: u16 = 81;
+pub const INSERT: u16 = 80;
+pub const EDIT: u16 = 81;
 const LEGEND: [&str; 2] = ["No", "Yes"];
-pub(super) const DATA_FIELD: usize = 3;
+pub const DATA_FIELD: usize = 3;
 
 /// Scene items for a chart frame at (`x`, `y`).
-pub(super) fn scene(chart: &Chart, x: f64, y: f64, width: f64, height: f64) -> Vec<SceneItem> {
+pub fn scene(chart: &Chart, x: f64, y: f64, width: f64, height: f64) -> Vec<SceneItem> {
     let p = |(px, py): (f64, f64)| Point { x: x + px, y: y + py };
     chart::layout(chart, width, height)
         .into_iter()
@@ -37,11 +37,11 @@ pub(super) fn scene(chart: &Chart, x: f64, y: f64, width: f64, height: f64) -> V
                 height,
                 text,
                 color: [64, 64, 64],
-                font: win42::SceneFont { family: "Arial".into(), points, bold, italic: false, underline: false },
+                font: crate::SceneFont { family: "Arial".into(), points, bold, italic: false, underline: false },
                 align: match align {
-                    -1 => win42::TextAlign::Left,
-                    0 => win42::TextAlign::Center,
-                    _ => win42::TextAlign::Right,
+                    -1 => crate::TextAlign::Left,
+                    0 => crate::TextAlign::Center,
+                    _ => crate::TextAlign::Right,
                 },
                 wrap: false,
             },
@@ -49,8 +49,8 @@ pub(super) fn scene(chart: &Chart, x: f64, y: f64, width: f64, height: f64) -> V
         .collect()
 }
 
-pub(super) fn request(id: u16, chart: &Chart) -> win42::InputRequest {
-    win42::InputRequest {
+pub fn request(id: u16, chart: &Chart) -> crate::InputRequest {
+    crate::InputRequest {
         title: if id == INSERT { "Insert Chart" } else { "Edit Chart" },
         fields: vec![
             ("Chart type", chart.type_label().into()),
@@ -58,13 +58,13 @@ pub(super) fn request(id: u16, chart: &Chart) -> win42::InputRequest {
             ("Legend", LEGEND[chart.legend as usize].into()),
             (
                 "Data (tab-separated; first row series names, first column categories)",
-                win42::to_native_text(&chart.grid()),
+                crate::to_native_text(&chart.grid()),
             ),
         ],
     }
 }
 
-pub(super) fn choices() -> Vec<(usize, Vec<String>)> {
+pub fn choices() -> Vec<(usize, Vec<String>)> {
     vec![
         (0, chart::TYPES.iter().map(|t| t.0.to_owned()).collect()),
         (2, LEGEND.map(str::to_owned).to_vec()),
@@ -72,7 +72,7 @@ pub(super) fn choices() -> Vec<(usize, Vec<String>)> {
 }
 
 /// Applies the dialog values to `base`.
-pub(super) fn parse(values: &[String], base: &Chart) -> Result<Chart, String> {
+pub fn parse(values: &[String], base: &Chart) -> Result<Chart, String> {
     let [kind, title, legend, data] = values else {
         return Err("Invalid chart form".into());
     };

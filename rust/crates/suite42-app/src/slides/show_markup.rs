@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use win42::{CanvasEvent, CanvasRect, Point, SceneItem};
+use crate::{CanvasEvent, CanvasRect, Point, SceneItem};
 
 const RED: [u8; 3] = [230, 32, 36];
 const MAX_POINTS: usize = 100_000;
@@ -14,7 +14,7 @@ enum Tool {
 }
 
 #[derive(Default)]
-pub(super) struct Markup {
+pub struct Markup {
     tool: Tool,
     cursor_hidden: bool,
     laser: Option<Point>,
@@ -24,20 +24,20 @@ pub(super) struct Markup {
 }
 
 impl Markup {
-    pub(super) fn track_hover(&self) -> bool {
+    pub fn track_hover(&self) -> bool {
         self.tool == Tool::Laser
     }
 
-    pub(super) fn hide_cursor(&self) -> bool {
+    pub fn hide_cursor(&self) -> bool {
         self.cursor_hidden || self.track_hover()
     }
 
-    pub(super) fn moved_slide(&mut self) {
+    pub fn moved_slide(&mut self) {
         self.laser = None;
         self.stroke.clear();
     }
 
-    pub(super) fn handle(&mut self, event: CanvasEvent, index: usize, blank: bool) -> bool {
+    pub fn handle(&mut self, event: CanvasEvent, index: usize, blank: bool) -> bool {
         use CanvasEvent::*;
         match event {
             Key {
@@ -119,7 +119,7 @@ impl Markup {
         }
     }
 
-    pub(super) fn add_overlay(&self, index: usize, scene: &mut Vec<SceneItem>) {
+    pub fn add_overlay(&self, index: usize, scene: &mut Vec<SceneItem>) {
         let mut items = Vec::new();
         for stroke in self
             .ink

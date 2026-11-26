@@ -25,6 +25,7 @@ pub mod recovery;
 pub mod storage;
 pub mod window_layout;
 pub mod sheet;
+pub mod slides;
 pub mod sparse_table;
 pub use grid_axis::GridAxis;
 pub use grid_geometry::GridRange;

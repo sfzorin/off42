@@ -1,15 +1,10 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 use ppt42_core::Presentation;
 use std::path::Path;
-mod chart_ui;
-mod outline;
-mod rich;
+use suite42_app::slides::{chart_ui, outline, rich, show_markup, show_overview, show_settings};
 mod slide_images;
 #[cfg(windows)]
 mod slide_pdf;
-mod show_settings;
-mod show_markup;
-mod show_overview;
 use show_settings::ShowSettings;
 const EXPORT_PDF: u16 = 78;
 const THEME: u16 = 82;
@@ -1624,7 +1619,7 @@ impl win42::App for Ppt {
             return Err("The outline filename does not match its format".into());
         }
         self.finish_rich(true)?;
-        let bytes = format.encode(self)?;
+        let bytes = format.encode(&self.deck, self.pptx_source.as_ref(), self.odp_source.as_ref())?;
         suite42_core::write_new(path, &bytes).map_err(|error| error.to_string())
     }
     fn file_action(&mut self, id: u16, path: &Path) -> Result<(), String> {

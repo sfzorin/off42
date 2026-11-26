@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 [dependencies]
 win42 = { path = "../../crates/win42" }
+suite42-app = { path = "../../crates/suite42-app" }
 ppt42-core = { path = "../../crates/ppt42-core" }
 doc42-core = { path = "../../crates/doc42-core" }
 suite42-core = { path = "../../crates/suite42-core" }

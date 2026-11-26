@@ -1,20 +1,19 @@
-use crate::Ppt;
 use doc42_core::rich::{
     Block, Format, Paragraph, ParagraphStyle, RichDocument, Run, State, TextStyle,
 };
-use ppt42_core::{ObjectKind, OutlineRole, Slide};
+use ppt42_core::{ObjectKind, OutlineRole, Presentation, Slide};
 use std::fmt::Write;
 
 #[derive(Clone, Copy)]
-pub(super) enum Output {
+pub enum Output {
     Rtf,
     Markdown,
 }
 
 impl Output {
-    pub(super) const CHOICES: [&'static str; 2] = ["Rich Text (RTF)", "Markdown"];
+    pub const CHOICES: [&'static str; 2] = ["Rich Text (RTF)", "Markdown"];
 
-    pub(super) fn from_choice(values: &[String]) -> Result<Self, String> {
+    pub fn from_choice(values: &[String]) -> Result<Self, String> {
         match values {
             [value] if value == Self::CHOICES[0] => Ok(Self::Rtf),
             [value] if value == Self::CHOICES[1] => Ok(Self::Markdown),
@@ -22,18 +21,24 @@ impl Output {
         }
     }
 
-    pub(super) fn extension(self) -> &'static str {
+    pub fn extension(self) -> &'static str {
         match self {
             Self::Rtf => "rtf",
             Self::Markdown => "md",
         }
     }
 
-    pub(super) fn encode(self, app: &Ppt) -> Result<Vec<u8>, String> {
+    /// Outline of `deck`; imported decks use their source package to find titles and body text.
+    pub fn encode(
+        self,
+        deck: &Presentation,
+        pptx: Option<&ppt42_core::pptx::Source>,
+        odp: Option<&ppt42_core::odp::Source>,
+    ) -> Result<Vec<u8>, String> {
         let mut markdown = String::new();
         let mut blocks = Vec::new();
-        for (index, slide) in app.deck.slides().iter().enumerate() {
-            let (title, paragraphs) = slide_text(app, slide);
+        for (index, slide) in deck.slides().iter().enumerate() {
+            let (title, paragraphs) = slide_text(pptx, odp, slide);
             let title = format!("{}. {title}", index + 1);
             match self {
                 Self::Rtf => {
@@ -77,17 +82,17 @@ impl Output {
     }
 }
 
-fn slide_text(app: &Ppt, slide: &Slide) -> (String, Vec<String>) {
-    let imported = app.pptx_source.is_some() || app.odp_source.is_some();
+fn slide_text(
+    pptx: Option<&ppt42_core::pptx::Source>,
+    odp: Option<&ppt42_core::odp::Source>,
+    slide: &Slide,
+) -> (String, Vec<String>) {
+    let imported = pptx.is_some() || odp.is_some();
     let role = |id| {
         let slide = slide.source_identity();
-        app.pptx_source
-            .as_ref()
-            .and_then(|source| source.outline_role(slide, id))
+        pptx.and_then(|source| source.outline_role(slide, id))
             .or_else(|| {
-                app.odp_source
-                    .as_ref()
-                    .and_then(|source| source.outline_role(slide, id))
+                odp.and_then(|source| source.outline_role(slide, id))
             })
     };
     let is_text = |kind: &ObjectKind| !matches!(kind, ObjectKind::Picture | ObjectKind::Table);
@@ -109,7 +114,7 @@ fn slide_text(app: &Ppt, slide: &Slide) -> (String, Vec<String>) {
     });
     let title = clean_inline(title_object.map_or(&slide.title, |object| &object.text));
     let title = if title.trim().is_empty() {
-        win42::localization::text("Untitled")
+        crate::localization::text("Untitled")
     } else {
         title
     };
@@ -182,7 +187,6 @@ fn push_paragraph(blocks: &mut Vec<Block>, text: String, heading: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ppt42_core::Presentation;
 
     #[test]
     fn outline_formats_keep_slide_order_unicode_and_document_state() {
@@ -193,14 +197,13 @@ mod tests {
         deck.add().unwrap();
         deck.edit("Hidden slide".into(), "Second bullet".into()).unwrap();
         deck.set_hidden(true).unwrap();
-        let app = Ppt::new(deck);
-        let before = app.deck.save_snapshot().unwrap().0;
-        let md = String::from_utf8(Output::Markdown.encode(&app).unwrap()).unwrap();
+        let before = deck.save_snapshot().unwrap().0;
+        let md = String::from_utf8(Output::Markdown.encode(&deck, None, None).unwrap()).unwrap();
         assert!(md.starts_with("## 1. Питание \\& I/O\n\n- Check \\[SDA\\]\n- See \\<ref\\>\n"));
         assert!(md.contains(
             "> Private \\*cue\\*\n> Second line\n\n## 2. Hidden slide\n\n- Second bullet"
         ));
-        let rtf = Output::Rtf.encode(&app).unwrap();
+        let rtf = Output::Rtf.encode(&deck, None, None).unwrap();
         let document = RichDocument::decode(&rtf, Format::Rtf).unwrap();
         let paragraphs = document
             .state()
@@ -227,6 +230,6 @@ mod tests {
                 "•\tSecond bullet"
             ]
         );
-        assert_eq!(app.deck.save_snapshot().unwrap().0, before);
+        assert_eq!(deck.save_snapshot().unwrap().0, before);
     }
 }
