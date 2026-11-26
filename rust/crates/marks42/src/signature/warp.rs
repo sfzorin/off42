@@ -28,7 +28,7 @@ pub fn encode(picture: &RgbaImage) -> Option<GrayImage> {
 }
 
 /// The picture composited over white paper (opaque).
-fn on_white(picture: &RgbaImage) -> RgbaImage {
+pub(crate) fn on_white(picture: &RgbaImage) -> RgbaImage {
     RgbaImage::from_fn(picture.width(), picture.height(), |x, y| {
         let [r, g, b, a] = picture.get_pixel(x, y).0;
         let a = a as f64 / 255.0;

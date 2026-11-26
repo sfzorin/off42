@@ -18,10 +18,12 @@
 
 mod alphabet;
 mod kinematics;
+pub mod learning;
 mod pen;
 pub mod warp;
 
 pub use kinematics::PenSample;
+pub use learning::{LearnedSignature, SignatureSample};
 pub use pen::Pen;
 
 use crate::rng::SeededRandom;

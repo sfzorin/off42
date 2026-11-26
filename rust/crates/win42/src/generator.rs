@@ -1,6 +1,10 @@
 //! Create Signature… / Create Stamp…: generated variants are written to a scratch folder for choosing in the native
 //! picker (with Explorer thumbnails), and the chosen one is kept in the shared signature and stamp library, from which
 //! every app inserts it. The drawing itself is `marks42`, the port of the macOS generators.
+//!
+//! Learn Signature from Samples…: one to five pictures of the user's own signature are traced (as on macOS), and the
+//! variants are new copies in that hand — half made from the samples' ink, half redrawn by the pen model from the
+//! traced strokes, blending compatible samples.
 
 use marks42::{seal, signature, InkColor, SeededRandom};
 use std::{
@@ -59,6 +63,55 @@ impl SignatureRequest {
             .map(|design| {
                 signature::render(&self.name, design, rng.next_u64(), self.ink.pen(), self.pen, SIGNATURE_PIXEL_HEIGHT)
                     .ok_or_else(|| "This name could not be written as a signature.".to_owned())
+            })
+            .collect()
+    }
+}
+
+/// Most pictures for Learn Signature from Samples… (the macOS hint: three to five samples teach the hand).
+pub const MAXIMUM_LEARN_SAMPLES: usize = 5;
+
+/// One signature per picture: each is traced into a sample, keeping the picture for copies from its ink.
+pub fn learn_samples(pictures: &[(String, image::RgbaImage)]) -> Result<Vec<signature::SignatureSample>, String> {
+    use crate::localization::text;
+    if pictures.is_empty() || pictures.len() > MAXIMUM_LEARN_SAMPLES {
+        return Err(text("Choose one to five pictures of your signature."));
+    }
+    pictures
+        .iter()
+        .map(|(name, image)| {
+            signature::SignatureSample::from_picture(image).ok_or_else(|| {
+                format!("{}: {name}\n{}", text("No signature found in the picture"), text("Use dark ink on light paper, one signature per picture."))
+            })
+        })
+        .collect()
+}
+
+/// Pen and ink for the learned copies.
+pub struct LearnRequest {
+    pub pen: signature::Pen,
+    pub ink: InkColor,
+}
+
+impl LearnRequest {
+    pub fn parse(fields: &[String]) -> Result<Self, String> {
+        let [pen, ink] = fields else {
+            return Err("Invalid signature settings.".into());
+        };
+        Ok(Self { pen: pick(&signature::Pen::ALL, |p| p.title(), pen, "pen")?, ink: pick(&InkColor::ALL, |i| i.title(), ink, "ink colour")? })
+    }
+
+    /// New copies of the learned signature: alternately from the samples' ink (what macOS shows for pictures) and
+    /// redrawn with the chosen pen from the traced strokes.
+    pub fn variants(&self, samples: &[signature::SignatureSample], count: usize, rng: &mut SeededRandom) -> Result<Vec<image::RgbaImage>, String> {
+        let from_ink = signature::LearnedSignature::new(samples.to_vec());
+        let redrawn = signature::LearnedSignature::new(samples.iter().map(|s| s.traced_only()).collect());
+        (0..count)
+            .map(|i| {
+                let learned = if i % 2 == 0 { &from_ink } else { &redrawn };
+                learned
+                    .render(rng.next_u64(), self.ink.pen(), self.pen, SIGNATURE_PIXEL_HEIGHT)
+                    .ok_or_else(|| "This signature could not be copied from the samples.".to_owned())
             })
             .collect()
     }
@@ -271,6 +324,39 @@ mod tests {
         let images = stamp_impressions(&red, 2, &mut SeededRandom::new(3)).unwrap();
         assert!(images.iter().all(|i| i.width() > 100 && i.pixels().filter(|p| p.0[3] > 100).count() > 1000));
         assert_ne!(images[0].as_raw(), images[1].as_raw(), "each pressing differs");
+    }
+
+    #[test]
+    fn learns_from_pictures_and_draws_distinct_copies() {
+        // A thick stroke with a loop, like a scanned signature on off-white paper.
+        let picture = |shift: f64| {
+            image::RgbaImage::from_fn(240, 100, |x, y| {
+                let (x, y) = (x as f64, y as f64);
+                let wave = (y - (55.0 + 22.0 * ((x - shift) / 18.0).sin())).abs() <= 2.5 && (30.0..=210.0).contains(&x);
+                let ring = ((x - 60.0).hypot(y - 40.0) - 18.0).abs() <= 2.5;
+                image::Rgba(if wave || ring { [25, 30, 90, 255] } else { [246, 244, 236, 255] })
+            })
+        };
+        let pictures = vec![("one.png".to_owned(), picture(0.0)), ("two.png".to_owned(), picture(2.0))];
+        let samples = learn_samples(&pictures).unwrap();
+        assert_eq!(samples.len(), 2);
+        let request = LearnRequest::parse(&["Gel pen", "Violet ink"].map(String::from)).unwrap();
+        let images = request.variants(&samples, VARIANTS, &mut SeededRandom::new(11)).unwrap();
+        assert_eq!(images.len(), VARIANTS);
+        assert!(images.iter().all(|i| i.height() > 60 && i.pixels().filter(|p| p.0[3] > 200).count() > 300));
+        for (i, a) in images.iter().enumerate() {
+            assert!(images[i + 1..].iter().all(|b| a != b), "copies differ");
+        }
+        // Violet ink: blue dominates green in the inked pixels.
+        let violet = images[1].pixels().filter(|p| p.0[3] > 200 && p.0[2] > p.0[1]).count();
+        assert!(violet > images[1].pixels().filter(|p| p.0[3] > 200).count() / 2);
+
+        let blank = ("blank.png".to_owned(), image::RgbaImage::from_pixel(120, 60, image::Rgba([255; 4])));
+        let error = learn_samples(&[pictures[0].clone(), blank]).unwrap_err();
+        assert!(error.contains("blank.png"), "{error}");
+        assert!(learn_samples(&[]).is_err());
+        assert!(learn_samples(&vec![pictures[0].clone(); MAXIMUM_LEARN_SAMPLES + 1]).is_err());
+        assert!(LearnRequest::parse(&["Quill", "Blue ink"].map(String::from)).is_err());
     }
 
     #[test]
