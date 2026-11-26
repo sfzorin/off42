@@ -318,7 +318,6 @@ pub fn line_boxes(change: &Change) -> Vec<[f64; 4]> {
     }
     out
 }
-#[cfg(windows)]
 pub struct Session {
     pub changes: Vec<Change>,
     pub source: pdf42_core::SaveState,
@@ -328,15 +327,14 @@ pub struct Session {
     pub keeping: bool,
     pub visible: bool,
 }
-#[cfg(windows)]
 impl Session {
-    pub fn report(&self) -> win42::ReportRequest {
-        win42::ReportRequest {
-            title: win42::localization::text("Comparison with “%@”").replace("%@", &self.name),
+    pub fn report(&self) -> crate::report::ReportRequest {
+        crate::report::ReportRequest {
+            title: crate::localization::text("Comparison with “%@”").replace("%@", &self.name),
             summary: if self.changes.is_empty() {
-                win42::localization::text("No differences in the text")
+                crate::localization::text("No differences in the text")
             } else {
-                win42::localization::text("%d changes. Red: removed, orange: replaced. Words that were only added are listed here.").replace("%d",&self.changes.len().to_string())
+                crate::localization::text("%d changes. Red: removed, orange: replaced. Words that were only added are listed here.").replace("%d",&self.changes.len().to_string())
             },
             columns: vec!["Page", "Removed", "Added"],
             column_colors: vec![None, Some([190, 30, 30]), Some([0, 130, 0])],
@@ -363,7 +361,6 @@ impl Session {
             .collect()
     }
 }
-#[cfg(windows)]
 pub struct Worker {
     pub rx: std::sync::mpsc::Receiver<Result<Vec<Change>, String>>,
     pub cancel: std::sync::Arc<AtomicBool>,
@@ -374,7 +371,6 @@ pub struct Worker {
     pub name: String,
     pub tag: u64,
 }
-#[cfg(windows)]
 impl Worker {
     pub fn start(
         bytes: Vec<u8>,
@@ -383,6 +379,7 @@ impl Worker {
         epoch: u64,
         tag: u64,
         path: &std::path::Path,
+        engine: &'static dyn crate::platform::PdfText,
     ) -> Result<Self, String> {
         let path = path.to_path_buf();
         let name = path
@@ -403,8 +400,8 @@ impl Worker {
                     }
                     let other = pdf42_core::PdfDocument::open(&path)?;
                     let (other_bytes, _) = other.save_snapshot()?;
-                    let a = crate::text_export::pdfium::positioned(&bytes, pages, &count, &token)?;
-                    let b = crate::text_export::pdfium::positioned(
+                    let a = engine.positioned(&bytes, pages, &count, &token)?;
+                    let b = engine.positioned(
                         &other_bytes,
                         other.page_count(),
                         &count,
@@ -577,7 +574,7 @@ mod mac_reference_tests {
     #[test]
     fn actual_foundation_word_comparison_reference_and_reconstruction() {
         let fixture: serde_json::Value =
-            serde_json::from_str(include_str!("../fixtures/macos-comparison-cases.json")).unwrap();
+            serde_json::from_str(include_str!("../../fixtures/macos-comparison-cases.json")).unwrap();
         let cases = fixture["cases"].as_array().unwrap();
         assert_eq!(cases.len(), 10);
         for case in cases {

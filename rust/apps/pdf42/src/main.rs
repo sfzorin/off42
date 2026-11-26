@@ -3,7 +3,8 @@ mod decorations;
 #[cfg(windows)]
 use suite42_app::pdf::label_region;
 use suite42_app::pdf::{batch_headers, merge, page_export};
-mod comparison;
+#[cfg(windows)]
+use suite42_app::pdf::comparison;
 mod ocr;
 mod text_export;
 #[cfg(any(windows, test))]
@@ -315,6 +316,7 @@ impl Pdf {
             self.current_epoch,
             self.next_comparison,
             path,
+            &text_export::PDFIUM,
         )?);
         Ok(())
     }
@@ -2251,6 +2253,7 @@ impl win42::App for Pdf {
                     pages,
                     path.to_owned(),
                     output,
+                    &text_export::PDFIUM,
                 )?);
                 self.operation_error = None;
                 return Ok(());

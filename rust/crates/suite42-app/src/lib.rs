@@ -14,6 +14,7 @@ pub mod marks;
 pub mod note_pagination;
 pub mod pdf;
 pub mod pdf_print_layout;
+pub mod platform;
 pub mod print_calibration;
 pub mod production;
 pub mod recents;

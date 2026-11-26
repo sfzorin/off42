@@ -2287,6 +2287,7 @@ dependencies = [
 name = "suite42-app"
 version = "0.1.0"
 dependencies = [
+ "doc42-core",
  "image",
  "label42",
  "lopdf",
@@ -2298,6 +2299,7 @@ dependencies = [
  "sha2 0.10.9",
  "suite42-core",
  "tempfile",
+ "unicode-segmentation",
  "zip 6.0.0",
 ]
 

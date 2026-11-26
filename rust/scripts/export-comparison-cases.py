@@ -36,6 +36,6 @@ with tempfile.TemporaryDirectory(prefix='off42-compare-oracle-')as tmp:
  path=Path(tmp)/'oracle.swift';path.write_text(stub+implementation+suffix);binary=Path(tmp)/'oracle'
  subprocess.run(['swiftc','-module-cache-path',str(Path(tmp)/'module-cache'),str(path),'-o',str(binary)],check=True)
  result=json.loads(subprocess.check_output([str(binary)],input=json.dumps(cases).encode()))
-out=root/'rust/apps/pdf42/fixtures/macos-comparison-cases.json';out.parent.mkdir(exist_ok=True)
+out=root/'rust/crates/suite42-app/fixtures/macos-comparison-cases.json';out.parent.mkdir(exist_ok=True)
 out.write_text(json.dumps({'source_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'cases':result},ensure_ascii=False,indent=2)+'\n')
 print(len(result),out)
