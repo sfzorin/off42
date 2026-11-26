@@ -165,7 +165,8 @@
     "downloadZip": "ZIP 다운로드",
     "downloadTarGz": "tar.gz 다운로드",
     "experimental": "실험적",
-    "support": "지원"
+    "support": "지원",
+    "email": "이메일"
   },
   "apps": {
     "pdf": {
@@ -476,7 +477,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "GitHub에서 문의하기"
-        }
+        },
+        "email": true
       }
     ]
   },
@@ -512,7 +514,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "GitHub에서 이슈 열기"
-        }
+        },
+        "email": true
       },
       {
         "title": "문서",

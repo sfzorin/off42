@@ -165,7 +165,8 @@
     "downloadZip": "Скачать ZIP",
     "downloadTarGz": "Скачать tar.gz",
     "experimental": "Экспериментально",
-    "support": "Поддержка"
+    "support": "Поддержка",
+    "email": "Эл. почта"
   },
   "apps": {
     "pdf": {
@@ -476,7 +477,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "Связаться с нами на GitHub"
-        }
+        },
+        "email": true
       }
     ]
   },
@@ -512,7 +514,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "Создать issue на GitHub"
-        }
+        },
+        "email": true
       },
       {
         "title": "Документация",

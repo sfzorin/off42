@@ -165,7 +165,8 @@
     "downloadZip": "ดาวน์โหลด ZIP",
     "downloadTarGz": "ดาวน์โหลด tar.gz",
     "experimental": "ทดลอง",
-    "support": "ฝ่ายสนับสนุน"
+    "support": "ฝ่ายสนับสนุน",
+    "email": "อีเมล"
   },
   "apps": {
     "pdf": {
@@ -476,7 +477,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "ติดต่อเราบน GitHub"
-        }
+        },
+        "email": true
       }
     ]
   },
@@ -512,7 +514,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "เปิด issue บน GitHub"
-        }
+        },
+        "email": true
       },
       {
         "title": "เอกสารประกอบ",

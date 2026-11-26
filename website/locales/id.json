@@ -165,7 +165,8 @@
     "downloadZip": "Unduh ZIP",
     "downloadTarGz": "Unduh tar.gz",
     "experimental": "Eksperimental",
-    "support": "Dukungan"
+    "support": "Dukungan",
+    "email": "Email"
   },
   "apps": {
     "pdf": {
@@ -476,7 +477,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "Hubungi kami di GitHub"
-        }
+        },
+        "email": true
       }
     ]
   },
@@ -512,7 +514,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "Buka issue di GitHub"
-        }
+        },
+        "email": true
       },
       {
         "title": "Dokumentasi",

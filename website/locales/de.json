@@ -165,7 +165,8 @@
     "downloadZip": "ZIP herunterladen",
     "downloadTarGz": "tar.gz herunterladen",
     "experimental": "Experimentell",
-    "support": "Support"
+    "support": "Support",
+    "email": "E-Mail"
   },
   "apps": {
     "pdf": {
@@ -476,7 +477,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "Kontaktiere uns auf GitHub"
-        }
+        },
+        "email": true
       }
     ]
   },
@@ -512,7 +514,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "Issue auf GitHub eröffnen"
-        }
+        },
+        "email": true
       },
       {
         "title": "Dokumentation",

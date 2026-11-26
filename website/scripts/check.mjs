@@ -53,6 +53,7 @@ for(const page of manifest.files){
  const attrs=[...html.matchAll(/(?:href|src)="([^"]+)"/g)].map(x=>x[1]);
  for(const dest of attrs){
   if(dest.startsWith('https:')){const u=new URL(dest.replace(/&amp;/g,'&'));assert(['https:'].includes(u.protocol));continue;}
+  if(dest.startsWith('mailto:')){assert.equal(dest,`mailto:${config.contactEmail}`,'Only the configured contact address may be linked');continue;}
   assert(dest.startsWith('/')||dest.startsWith('#'),`Unsafe URL ${dest}`);
   if(dest.startsWith('#')){assert(html.includes(`id="${dest.slice(1)}"`));continue;}
   links++;

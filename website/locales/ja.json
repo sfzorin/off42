@@ -165,7 +165,8 @@
     "downloadZip": "ZIP をダウンロード",
     "downloadTarGz": "tar.gz をダウンロード",
     "experimental": "試験的",
-    "support": "サポート"
+    "support": "サポート",
+    "email": "メール"
   },
   "apps": {
     "pdf": {
@@ -476,7 +477,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "GitHub でお問い合わせ"
-        }
+        },
+        "email": true
       }
     ]
   },
@@ -512,7 +514,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "GitHub で issue を作成"
-        }
+        },
+        "email": true
       },
       {
         "title": "ドキュメント",

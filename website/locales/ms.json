@@ -165,7 +165,8 @@
     "downloadZip": "Muat turun ZIP",
     "downloadTarGz": "Muat turun tar.gz",
     "experimental": "Eksperimen",
-    "support": "Sokongan"
+    "support": "Sokongan",
+    "email": "E-mel"
   },
   "apps": {
     "pdf": {
@@ -476,7 +477,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "Hubungi kami di GitHub"
-        }
+        },
+        "email": true
       }
     ]
   },
@@ -512,7 +514,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "Buka issue di GitHub"
-        }
+        },
+        "email": true
       },
       {
         "title": "Dokumentasi",

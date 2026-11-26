@@ -165,7 +165,8 @@
     "downloadZip": "下载 ZIP",
     "downloadTarGz": "下载 tar.gz",
     "experimental": "实验性",
-    "support": "支持"
+    "support": "支持",
+    "email": "电子邮件"
   },
   "apps": {
     "pdf": {
@@ -476,7 +477,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "在 GitHub 上联系我们"
-        }
+        },
+        "email": true
       }
     ]
   },
@@ -512,7 +514,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "在 GitHub 上创建 issue"
-        }
+        },
+        "email": true
       },
       {
         "title": "文档",

@@ -165,7 +165,8 @@
     "downloadZip": "ZIP letöltése",
     "downloadTarGz": "tar.gz letöltése",
     "experimental": "Kísérleti",
-    "support": "Támogatás"
+    "support": "Támogatás",
+    "email": "E-mail"
   },
   "apps": {
     "pdf": {
@@ -476,7 +477,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "Írj nekünk a GitHubon"
-        }
+        },
+        "email": true
       }
     ]
   },
@@ -512,7 +514,8 @@
         "link": {
           "href": "{repo}/issues",
           "text": "Issue nyitása a GitHubon"
-        }
+        },
+        "email": true
       },
       {
         "title": "Dokumentáció",
