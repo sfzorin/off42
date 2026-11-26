@@ -78,14 +78,16 @@ six apps from the `App` contract; app models are unchanged.
   with `supports_new`) and the Open tile; the Recent list (name, modified, size) from `suite42_app::recents`. The
   drawer lists the six Linux apps and starts the sibling executable; the language popover saves
   `localization::save` and applies after restart.
-- **Document window**, top to bottom: title row (app mark = Home, file name, format badge, save state and
-  `App::status`, primary **Save** pill in the app's light accent tint), an egui menu bar (File, Edit, View, one menu
+- **Document window**, top to bottom: title row (app mark = Home, file name, format badge, the human save state —
+  "Saved on this computer", "Edited" or "Not saved yet", never `App::status` fields —, primary **Save** pill in the
+  app's light accent tint), an egui menu bar (File, Edit, View, one menu
   per `CommandSpec::group`, Help), one rounded toolbar strip, then the canvas. File has New, Open…, Open recent ▸,
   Save, Save as ▸ (save formats, then export file actions), Import ▸ and Close; View has the app's view actions, zoom,
   Appearance ▸ (System/Light/Dark) and Language ▸.
 - **Toolbar strip** (`#edf1f7`, radius 20, 40 pt): Undo, Redo, the zoom combo, then the app's
-  `toolbar_command_visible` commands that have a suite icon (all of them when an app curates twelve or fewer), with
-  group separators; commands that do not fit go to a More menu. Checked commands use the toggled tint
+  `toolbar_command_visible` commands that have a suite icon (all of them when an app curates twelve or fewer, with a
+  generic command glyph where the suite has none), with group separators. Every command is a 30 pt icon button whose
+  label is its tooltip and accessible name; there are no text buttons. Commands that do not fit go to a More menu. Checked commands use the toggled tint
   (`#d3e2fd`/`#0b2f6b`).
 - **Canvases**: neutral background `#f8f9fb`; paper (pages, slides, pictures) is white with a soft shadow in both
   themes. Text documents: a 816×1056 pt page with 96/84 pt margins; typed text reaches the model after a pause, on
@@ -95,7 +97,11 @@ six apps from the `App` contract; app models are unchanged.
   the `canvas_scene` slide in the centre and the slide's title/body text below it. PDF: page strip and a placeholder
   page until PDFium exists on Linux. Images and scans: the picture centred and fitted.
 - **Side panels** are flat with a 1 px separator; there are no bordered cards or frames.
-- **One snackbar** at the bottom left reports results and errors (6 s, errors 10 s, Dismiss).
+- **One snackbar** at the bottom left reports results and errors (6 s, errors 10 s, Dismiss); in spreadsheets it
+  sits above the sheet-tab bar.
+- **Status chip** at the bottom right: the readable first field of `App::status` (word count, page or slide
+  position, picture size); fields that look like debug output are dropped. Spreadsheets show the sheet and cell in
+  the tabs and the formula bar instead.
 - **Icons** are 24×24 thin-stroke SVG paths (the web set) rasterised once with resvg and tinted; there are no text or
   emoji glyph icons. App marks are drawn as shapes in the app accent.
 - **Accents**: documents `#2f6fde`, spreadsheets `#1e8e4f`, presentations `#e0891b`, PDF `#d23f31`, images

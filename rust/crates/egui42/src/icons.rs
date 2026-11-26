@@ -55,6 +55,10 @@ pub enum Icon {
     Merge,
     Link,
     Page,
+    SelectRange,
+    NumberFormat,
+    Chart,
+    Command,
 }
 
 fn svg(icon: Icon) -> &'static str {
@@ -110,17 +114,21 @@ fn svg(icon: Icon) -> &'static str {
         Merge => r#"<rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M7 12h10M9 10l-2 2 2 2M15 10l2 2-2 2"/>"#,
         Link => r#"<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>"#,
         Page => r#"<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>"#,
+        SelectRange => r#"<path d="M4 8V5a1 1 0 0 1 1-1h3M12 4h2M18 4h1a1 1 0 0 1 1 1v3M4 12v2M4 18v1a1 1 0 0 0 1 1h3"/><path d="m13 13 7 2.6-3 1.4-1.4 3z"/>"#,
+        NumberFormat => r#"<path d="M10 4 8 20M16 4l-2 16M5 9h15M4 15h15"/>"#,
+        Chart => r#"<path d="M4 4v16h16"/><path d="M8 16v-5M12 16V7M16 16v-8"/>"#,
+        Command => r#"<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 9 3 3-3 3M13 15h3"/>"#,
     }
 }
 
-const ALL: [Icon; 50] = {
+const ALL: [Icon; 54] = {
     use Icon::*;
     [
         Menu, Search, Globe, Help, Plus, Minus, Upload, Download, Folder, NewFile, Undo, Redo,
         ChevronDown, ChevronRight, Bold, Italic, Underline, TextColor, AlignLeft, AlignCenter,
         AlignRight, Justify, Bullets, Numbers, Table, Image, ZoomIn, ZoomOut, Close, Check, Info,
         Lock, More, Outline, List, Rotate, Trash, Copy, Scan, Text, Comment, Slide, Shape, Play,
-        Sort, Filter, Function, Merge, Link, Page,
+        Sort, Filter, Function, Merge, Link, Page, SelectRange, NumberFormat, Chart, Command,
     ]
 };
 
@@ -248,8 +256,12 @@ pub fn for_command(title: &str) -> Option<Icon> {
     let t = title.trim_end_matches(['…', '.']).trim().to_ascii_lowercase();
     Some(match t.as_str() {
         "bold" | "toggle bold" | "b" => Icon::Bold,
-        "i" => Icon::Italic,
-        "u" => Icon::Underline,
+        "i" | "toggle italic" => Icon::Italic,
+        "u" | "toggle underline" => Icon::Underline,
+        "select range" | "select cells" => Icon::SelectRange,
+        "number format" | "format cells" => Icon::NumberFormat,
+        "insert chart" | "chart" | "add chart" => Icon::Chart,
+        "copy cells" => Icon::Copy,
         "italic" => Icon::Italic,
         "underline" => Icon::Underline,
         "text color" | "text colour" => Icon::TextColor,
