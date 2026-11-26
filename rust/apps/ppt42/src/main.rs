@@ -1,6 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 use ppt42_core::Presentation;
 use std::path::Path;
+mod chart_ui;
 mod outline;
 mod rich;
 mod slide_images;
@@ -11,6 +12,10 @@ mod show_markup;
 mod show_overview;
 use show_settings::ShowSettings;
 const EXPORT_PDF: u16 = 78;
+const THEME: u16 = 82;
+const ANIMATION: u16 = 83;
+const ANIMATE_EARLIER: u16 = 84;
+const ANIMATE_LATER: u16 = 85;
 const PRINT_LAYOUT: u16 = 79;
 const PDF_LAYOUTS: [&str; 3] = ["Slides", "Notes Pages", "Handouts"];
 const HANDOUT_COUNTS: [&str; 6] = ["1", "2", "3", "4", "6", "9"];
@@ -140,6 +145,7 @@ struct Ppt {
     rich_draft: Option<ppt42_core::SlideObject>,
     pending_word:Option<(ppt42_core::SlideObject,ppt42_core::SlideObject)>,
     rich_selection: (usize, usize),
+    pending_command: Option<u16>,
 }
 struct Show {
     started: std::time::Instant,
@@ -154,6 +160,11 @@ struct Show {
     settings: ShowSettings,
     markup: show_markup::Markup,
     overview: Option<show_overview::Overview>,
+    /// Click groups of the current slide's animations that have started.
+    step: usize,
+    step_since: std::time::Instant,
+    /// The current group is shown finished (after stepping backwards).
+    step_complete: bool,
 }
 impl Show {
     fn new(now: std::time::Instant, windowed: bool) -> Self {
@@ -170,6 +181,9 @@ impl Show {
             settings: ShowSettings::default(),
             markup: show_markup::Markup::default(),
             overview: None,
+            step: 0,
+            step_since: now,
+            step_complete: false,
         }
     }
 
@@ -350,10 +364,15 @@ impl Ppt {
             rich_draft: None,
             pending_word:None,
             rich_selection: (0, 0),
+            pending_command: None,
         }
     }
 }
 impl Ppt {
+    fn selected_chart(&self) -> Option<&ppt42_core::chart::Chart> {
+        let id = self.selected_object?;
+        self.deck.slides()[self.deck.current()].objects.iter().find(|o| o.id == id)?.chart.as_ref()
+    }
     fn show_move(&mut self, index: usize, now: std::time::Instant) -> Result<(), String> {
         let old = self.deck.current();
         let show = self.show.get_or_insert_with(|| Show::new(now, false));
@@ -363,6 +382,9 @@ impl Ppt {
             return Ok(());
         }
         let paused = show.paused.is_some();
+        show.step = 0;
+        show.step_since = now;
+        show.step_complete = false;
         self.deck.select(index)?;
         show.markup.moved_slide();
         let timing = self.deck.slides()[index].timing;
@@ -382,6 +404,14 @@ impl Ppt {
         };
         if show.paused.is_some() || show.blank.is_some() || show.overview.is_some() {
             return false;
+        }
+        let animations = &self.deck.slides()[self.deck.current()].animations;
+        if !show.step_complete
+            && !animations.is_empty()
+            && now.saturating_duration_since(show.step_since).as_millis()
+                <= u128::from(ppt42_core::animation::group_length(animations, show.step)) + 50
+        {
+            return true;
         }
         let timing = self.deck.slides()[self.deck.current()].timing;
         let elapsed = now.saturating_duration_since(show.since).as_millis();
@@ -474,17 +504,35 @@ impl Ppt {
             }
             Key { code: 13 | 39 | 40 | 32 | 34 | 78, .. } | PointerUp(_) => {
                 if !show.reveal(now) {
-                    self.advance_show(now, settings)?;
+                    let clicks = ppt42_core::animation::clicks(&self.deck.slides()[self.deck.current()].animations);
+                    if show.step < clicks {
+                        show.step += 1;
+                        show.step_since = now;
+                        show.step_complete = false;
+                    } else {
+                        self.advance_show(now, settings)?;
+                    }
                 }
             }
             Key { code: 8 | 37 | 38 | 33, .. } => {
                 if show.reveal(now) {
                     return Ok(());
                 }
+                if show.step > 0 {
+                    show.step -= 1;
+                    show.step_complete = true;
+                    return Ok(());
+                }
                 let current = self.deck.current();
                 let previous = self.shown_slides(settings).rfind(|&index| index < current);
                 if let Some(index) = previous {
                     self.show_move(index, now)?;
+                    // Returning to a slide shows it as it was left: every animation finished.
+                    let clicks = ppt42_core::animation::clicks(&self.deck.slides()[index].animations);
+                    if let Some(show) = self.show.as_mut() {
+                        show.step = clicks;
+                        show.step_complete = true;
+                    }
                 }
             }
             _ => {}
@@ -652,13 +700,38 @@ impl Ppt {
         }
     }
     fn scene_for(&self, index: usize, show_selection: bool) -> Option<win42::CanvasScene> {
+        self.scene_with(index, show_selection, None)
+    }
+    /// Animation states of the current slide while presenting.
+    fn show_visuals(&self) -> Option<std::collections::HashMap<u64, ppt42_core::animation::Visual>> {
+        let show = self.show.as_ref().filter(|_| self.presenting)?;
+        let slide = &self.deck.slides()[self.deck.current()];
+        if slide.animations.is_empty() {
+            return None;
+        }
+        let now = show.paused.unwrap_or_else(std::time::Instant::now);
+        let elapsed = now.saturating_duration_since(show.step_since).as_millis() as u64;
+        let elapsed = if show.step_complete { u64::MAX / 2 } else { elapsed };
+        Some(ppt42_core::animation::visuals(&slide.animations, show.step, elapsed, |id| {
+            slide.objects.iter().find(|o| o.id == id).map_or(405.0, |o| 405.0 - o.y + 20.0)
+        }))
+    }
+    fn scene_with(
+        &self,
+        index: usize,
+        show_selection: bool,
+        visuals: Option<&std::collections::HashMap<u64, ppt42_core::animation::Visual>>,
+    ) -> Option<win42::CanvasScene> {
         use win42::{CanvasScene, Point, SceneItem};
         let slide = &self.deck.slides()[index];
-        let background = self
-            .pptx_source
-            .as_ref()
-            .and_then(|s| s.background(slide.source_identity()))
+        let theme = self.deck.theme();
+        let background = theme
+            .map(|t| t.background())
+            .or_else(|| self.pptx_source.as_ref().and_then(|s| s.background(slide.source_identity())))
+            .or_else(|| self.odp_source.as_ref().and_then(|s| s.background()))
             .unwrap_or([255, 255, 255]);
+        let text_color = theme.map_or([0, 0, 0], |t| t.text());
+        let (title_font, body_font) = theme.map_or(("Arial", "Arial"), |t| (t.major_font.as_str(), t.minor_font.as_str()));
         let decorations = self
             .pptx_source
             .as_ref()
@@ -679,9 +752,9 @@ impl Ppt {
                 width: 650.0,
                 height: 40.0,
                 text: slide.title.clone(),
-                color: [0, 0, 0],
+                color: text_color,
                 font: win42::SceneFont {
-                    family: "Arial".into(),
+                    family: title_font.into(),
                     points: 28.0,
                     bold: true,
                     italic: false,
@@ -696,9 +769,9 @@ impl Ppt {
                 width: 650.0,
                 height: 290.0,
                 text: slide.body.clone(),
-                color: [0, 0, 0],
+                color: text_color,
                 font: win42::SceneFont {
-                    family: "Arial".into(),
+                    family: body_font.into(),
                     points: 18.0,
                     bold: false,
                     italic: false,
@@ -728,6 +801,23 @@ impl Ppt {
                     _ => None,
                 })
                 .unwrap_or(original);
+            let visual = visuals.filter(|_| editable).and_then(|v| v.get(&o.id)).copied();
+            if visual.is_some_and(|v| v.hidden()) {
+                continue;
+            }
+            let moved;
+            let o = match visual.filter(|v| v.dy != 0.0 || v.scale != 1.0) {
+                Some(v) => {
+                    let mut c = o.clone();
+                    c.x += o.width * (1.0 - v.scale) / 2.0;
+                    c.y += o.height * (1.0 - v.scale) / 2.0 + v.dy;
+                    c.width *= v.scale;
+                    c.height *= v.scale;
+                    moved = c;
+                    &moved
+                }
+                None => o,
+            };
             let stroke = if editable && show_selection && self.selection().contains(&o.id) {
                 [0, 100, 220]
             } else {
@@ -782,6 +872,23 @@ impl Ppt {
                 }
             } else {
                 match o.kind {
+                    ppt42_core::ObjectKind::Chart => {
+                        if let Some(chart) = &o.chart {
+                            items.extend(chart_ui::scene(chart, o.x, o.y, o.width, o.height));
+                        }
+                        if editable && show_selection && self.selection().contains(&o.id) {
+                            items.push(SceneItem::Path {
+                                points: vec![
+                                    Point { x: o.x, y: o.y },
+                                    Point { x: o.x + o.width, y: o.y },
+                                    Point { x: o.x + o.width, y: o.y + o.height },
+                                    Point { x: o.x, y: o.y + o.height },
+                                ],
+                                color: stroke,
+                                closed: true,
+                            });
+                        }
+                    }
                     ppt42_core::ObjectKind::Rectangle | ppt42_core::ObjectKind::Text => {
                         if o.fill_visible {
                             items.push(SceneItem::Rect {
@@ -1024,6 +1131,14 @@ impl Ppt {
                         y: o.y + o.height / 2.0,
                     },
                     degrees: o.rotation_degrees,
+                    items: children,
+                });
+            }
+            if let Some(opacity) = visual.map(|v| v.opacity).filter(|v| *v < 1.0) {
+                let children = items.split_off(object_start);
+                items.push(SceneItem::OpacityLayer {
+                    bounds: win42::CanvasRect { x: 0.0, y: 0.0, width: 720.0, height: 405.0 },
+                    opacity: (opacity * 255.0).round().clamp(0.0, 255.0) as u8,
                     items: children,
                 });
             }
@@ -1682,6 +1797,26 @@ impl win42::App for Ppt {
                         ("Rotation (degrees)", o.rotation_degrees.to_string()),
                     ],
                 }),
+            ANIMATION => self.selected_object.filter(|id| slide.objects.iter().any(|o| o.id == *id)).map(|id| {
+                let current = slide.animations.iter().find(|a| a.object == id);
+                win42::InputRequest {
+                    title: "Object Animation",
+                    fields: vec![
+                        ("Effect", current.map_or("None", |a| a.effect.label()).into()),
+                        ("Start", current.map_or(ppt42_core::animation::Start::OnClick, |a| a.start).label().into()),
+                        ("Duration (milliseconds)", current.map_or(500, |a| a.duration_ms).to_string()),
+                        ("Delay (milliseconds)", current.map_or(0, |a| a.delay_ms).to_string()),
+                    ],
+                }
+            }),
+            THEME => Some(win42::InputRequest {
+                title: "Slide Theme",
+                fields: vec![("Theme", self.deck.theme().map_or_else(|| "None".into(), |t| t.name.clone()))],
+            }),
+            chart_ui::INSERT => Some(chart_ui::request(id, &ppt42_core::chart::Chart::sample())),
+            chart_ui::EDIT => self
+                .selected_chart()
+                .map(|chart| chart_ui::request(id, chart)),
             33 => Some(win42::InputRequest {
                 title: "Insert table",
                 fields: vec![("Rows", "3".into()), ("Columns", "3".into())],
@@ -1721,6 +1856,15 @@ impl win42::App for Ppt {
                  (2, HANDOUT_COUNTS.map(str::to_owned).to_vec())]
         } else if id == 72 {
             vec![(0, vec!["No".into(), "Yes".into()]), (1, vec!["No".into(), "Yes".into()])]
+        } else if id == ANIMATION {
+            vec![
+                (0, std::iter::once("None".to_owned()).chain(ppt42_core::animation::EFFECTS.iter().map(|e| e.0.to_owned())).collect()),
+                (1, ppt42_core::animation::STARTS.iter().map(|e| e.0.to_owned()).collect()),
+            ]
+        } else if id == THEME {
+            vec![(0, std::iter::once("None".to_owned()).chain(ppt42_core::theme::Theme::names()).collect())]
+        } else if matches!(id, chart_ui::INSERT | chart_ui::EDIT) {
+            chart_ui::choices()
         } else if matches!(id, 68 | 69) {
             vec![(
                 0,
@@ -1735,6 +1879,16 @@ impl win42::App for Ppt {
     }
     fn multiline_input(&self, id: u16) -> bool {
         id == 74
+    }
+    fn input_multiline_fields(&self, id: u16) -> Vec<usize> {
+        match id {
+            74 => vec![0],
+            chart_ui::INSERT | chart_ui::EDIT => vec![chart_ui::DATA_FIELD],
+            _ => Vec::new(),
+        }
+    }
+    fn take_pending_command(&mut self) -> Option<u16> {
+        self.pending_command.take()
     }
     fn toolbar_command_visible(&self, id: u16) -> bool {
         !matches!(id, 74 | 75 | PRINT_LAYOUT)
@@ -1896,6 +2050,44 @@ impl win42::App for Ppt {
                 }
                 self.deck.update_objects(objects)
             }
+            ANIMATION if values.len() == 4 && self.enabled(id) => {
+                let object = self.selected_object.ok_or("Select an object")?;
+                let animation = match values[0].trim() {
+                    "None" => None,
+                    effect => {
+                        let ms = |value: &String, name: &str| -> Result<u32, String> {
+                            value.trim().parse::<u32>().ok().filter(|v| *v <= ppt42_core::animation::MAX_MS)
+                                .ok_or_else(|| format!("{name} must be 0 to 60000 milliseconds"))
+                        };
+                        Some(ppt42_core::animation::Animation {
+                            object,
+                            effect: ppt42_core::animation::Effect::from_label(effect).ok_or("Choose an effect")?,
+                            start: ppt42_core::animation::Start::from_label(&values[1]).ok_or("Choose when the effect starts")?,
+                            duration_ms: ms(&values[2], "Duration")?,
+                            delay_ms: ms(&values[3], "Delay")?,
+                        })
+                    }
+                };
+                self.deck.set_animation(object, animation)
+            }
+            THEME if values.len() == 1 && self.enabled(id) => {
+                let theme = match values[0].trim() {
+                    "None" => None,
+                    name => Some(ppt42_core::theme::Theme::built_in(name).ok_or("Choose a theme")?),
+                };
+                self.deck.set_theme(theme)
+            }
+            chart_ui::INSERT => {
+                let chart = chart_ui::parse(values, &ppt42_core::chart::Chart::sample())?;
+                self.selected_object = Some(self.deck.insert_chart(chart)?);
+                self.selected_objects.clear();
+                Ok(())
+            }
+            chart_ui::EDIT if self.enabled(id) => {
+                let id = self.selected_object.ok_or("Select a chart")?;
+                let chart = chart_ui::parse(values, self.selected_chart().ok_or("Select a chart")?)?;
+                self.deck.set_chart(id, chart)
+            }
             33 if values.len() == 2 => {
                 let rows = values[0].parse().map_err(|_| "Invalid row count")?;
                 let cols = values[1].parse().map_err(|_| "Invalid column count")?;
@@ -2009,7 +2201,8 @@ impl win42::App for Ppt {
         if self.show.as_ref().is_some_and(|show| show.blank.is_some()) {
             return Some(win42::CanvasScene::default());
         }
-        let mut current = self.scene_for(self.deck.current(), !self.presenting)?;
+        let visuals = self.show_visuals();
+        let mut current = self.scene_with(self.deck.current(), !self.presenting, visuals.as_ref())?;
         if let Some(show) = self.show.as_ref().filter(|_| self.presenting) {
             if let Some(previous) = show.previous {
                 let now = show.paused.unwrap_or_else(std::time::Instant::now);
@@ -2073,7 +2266,9 @@ impl win42::App for Ppt {
             && self
                 .show
                 .as_ref()
-                .is_some_and(|s| s.previous.is_some() && s.paused.is_none() && s.blank.is_none() && s.overview.is_none())
+                .is_some_and(|s| (s.previous.is_some() || !s.step_complete) && s.paused.is_none() && s.blank.is_none() && s.overview.is_none())
+            && (self.show.as_ref().is_some_and(|s| s.previous.is_some())
+                || !self.deck.slides()[self.deck.current()].animations.is_empty())
         {
             16
         } else {
@@ -2089,7 +2284,9 @@ impl win42::App for Ppt {
             DoubleClick(p) => {
                 self.pointer_down(p, false);
                 self.drag = None;
-                if self.enabled(58) {
+                if self.selected_chart().is_some() {
+                    self.pending_command = Some(chart_ui::EDIT);
+                } else if self.enabled(58) {
                     self.action(58)?;
                 }
             }
@@ -2306,6 +2503,12 @@ impl win42::App for Ppt {
             (30, "Fill Color…"),
             (31, "Line Color…"),
             (33, "Insert Table…"),
+            (chart_ui::INSERT, "Insert Chart…"),
+            (chart_ui::EDIT, "Edit Chart…"),
+            (THEME, "Slide Theme…"),
+            (ANIMATION, "Object Animation…"),
+            (ANIMATE_EARLIER, "Animate Earlier"),
+            (ANIMATE_LATER, "Animate Later"),
             (34, "Edit Table Cell…"),
             (40, "Print…"),
             (PRINT_LAYOUT, "Print Layout…"),
@@ -2597,7 +2800,7 @@ impl win42::App for Ppt {
                             o.id == id
                                 && !matches!(
                                     o.kind,
-                                    ppt42_core::ObjectKind::Picture | ppt42_core::ObjectKind::Table
+                                    ppt42_core::ObjectKind::Picture | ppt42_core::ObjectKind::Table | ppt42_core::ObjectKind::Chart
                                 )
                                 && o.rotation_degrees.rem_euclid(360.0) == 0.0
                                 && rich::document(o).is_ok_and(|d| d.rich_edit_projection().is_ok())
@@ -2684,6 +2887,7 @@ impl win42::App for Ppt {
             12 => i > 0,
             13 => i + 1 < n,
             14 => self.deck.can_duplicate(),
+            25 if self.selected_chart().is_some() => false,
             25 if self.pptx_source.is_some() => self.selected_object.is_some_and(|id| {
                 self.pptx_source
                     .as_ref()
@@ -2714,6 +2918,22 @@ impl win42::App for Ppt {
                     .iter()
                     .any(|o| o.id == id && matches!(o.kind, ppt42_core::ObjectKind::Table))
             }),
+            chart_ui::EDIT => self.selected_chart().is_some(),
+            // Office sources keep their own theme parts; themes apply to native decks and new files.
+            THEME => self.pptx_source.is_none() && self.odp_source.is_none(),
+            ANIMATION | ANIMATE_EARLIER | ANIMATE_LATER => {
+                let slide = &self.deck.slides()[i];
+                let editable = self.pptx_source.as_ref().is_none_or(|s| s.can_edit_animations(slide.source_identity()))
+                    && self.odp_source.as_ref().is_none_or(|s| s.can_edit_animations(slide.source_identity()));
+                let position = self.selected_object.and_then(|id| slide.animations.iter().position(|a| a.object == id));
+                editable
+                    && self.selected_object.is_some_and(|id| slide.objects.iter().any(|o| o.id == id))
+                    && match id {
+                        ANIMATE_EARLIER => position.is_some_and(|p| p > 0),
+                        ANIMATE_LATER => position.is_some_and(|p| p + 1 < slide.animations.len()),
+                        _ => true,
+                    }
+            }
             _ => true,
         }
     }
@@ -2742,6 +2962,10 @@ impl win42::App for Ppt {
             12 => self.deck.move_slide(i, i - 1),
             13 => self.deck.move_slide(i, i + 1),
             14 => self.deck.duplicate(),
+            ANIMATE_EARLIER | ANIMATE_LATER => {
+                let object = self.selected_object.ok_or("Select an object")?;
+                self.deck.move_animation(object, id == ANIMATE_EARLIER)
+            }
             46 => {
                 self.selected_objects =
                     self.deck.slides()[i].objects.iter().map(|o| o.id).collect();
@@ -3661,3 +3885,123 @@ mod word_edit_regression {
         app.prepare_rich_word(&native,(3,10),"spelling").unwrap();app.finish_rich_word(true).unwrap();let mut expected=original.clone();expected.text="😀 spelling world".into();assert_eq!(app.rich_object().unwrap(),expected);app.finish_inline_rich(true).unwrap();assert_eq!(app.deck.slides()[0].objects.iter().find(|o|o.id==id),Some(&expected));app.action(4).unwrap();assert_eq!(app.deck.slides()[0].objects.iter().find(|o|o.id==id),Some(&object));app.action(5).unwrap();assert_eq!(app.deck.slides()[0].objects.iter().find(|o|o.id==id),Some(&expected));
     }
 }
+#[cfg(test)]
+mod chart_ui_tests {
+    use super::*;
+    use win42::App;
+    fn values(request: &win42::InputRequest) -> Vec<String> {
+        request.fields.iter().map(|f| f.1.clone()).collect()
+    }
+    #[test]
+    fn chart_dialogs_insert_edit_undo_draw_and_save() {
+        let mut app = Ppt::new(Presentation::new());
+        assert!(!app.enabled(chart_ui::EDIT));
+        assert_eq!(app.input_multiline_fields(chart_ui::INSERT), vec![chart_ui::DATA_FIELD]);
+        let mut form = values(&app.input_request(chart_ui::INSERT).unwrap());
+        assert_eq!(form[0], "Column");
+        assert!(app.input_choices(chart_ui::INSERT)[0].1.contains(&"Doughnut".to_owned()));
+        form[1] = "Revenue".into();
+        app.input_action(chart_ui::INSERT, &form).unwrap();
+        assert!(app.enabled(chart_ui::EDIT) && !app.enabled(25) && !app.enabled(58));
+        let scene = app.canvas_scene().unwrap();
+        assert!(scene.items.iter().any(|i| matches!(i, win42::SceneItem::TextBox { text, .. } if text == "Revenue")));
+        let mut edit = values(&app.input_request(chart_ui::EDIT).unwrap());
+        assert!(edit[3].contains("\r\nQ1\t4.3"));
+        edit[0] = "Pie".into();
+        edit[2] = "No".into();
+        edit[3] = "\tShare\r\nA\t1\r\nB\t3".into();
+        app.input_action(chart_ui::EDIT, &edit).unwrap();
+        let chart = app.selected_chart().unwrap().clone();
+        assert_eq!(chart.type_label(), "Pie");
+        assert_eq!(chart.categories, vec!["A", "B"]);
+        assert!(!chart.legend);
+        let wedges = app.canvas_scene().unwrap().items.iter().filter(|i| matches!(i, win42::SceneItem::VectorPath { .. })).count();
+        assert_eq!(wedges, 2);
+        edit[3] = "\tShare\r\nA\tx".into();
+        assert!(app.input_action(chart_ui::EDIT, &edit).is_err());
+        app.action(4).unwrap();
+        assert_eq!(app.selected_chart().unwrap().type_label(), "Column");
+        app.action(5).unwrap();
+        // Double-click opens the chart editor through the pending command.
+        let object = app.deck.slides()[0].objects[0].clone();
+        app.canvas_event(win42::CanvasEvent::DoubleClick(win42::Point { x: object.x + 5.0, y: object.y + 5.0 })).unwrap();
+        assert_eq!(app.take_pending_command(), Some(chart_ui::EDIT));
+        for format in ["pptx", "odp"] {
+            let (_, bytes) = app.save_snapshot(format).unwrap().unwrap();
+            let restored = if format == "pptx" {
+                ppt42_core::pptx::import(&bytes).unwrap().0
+            } else {
+                ppt42_core::odp::import(&bytes).unwrap()
+            };
+            let found = restored.slides()[0].objects[0].chart.clone().unwrap();
+            assert_eq!(found.categories, chart.categories);
+            assert_eq!(found.type_label(), "Pie");
+            assert_eq!(found.series[0].values, chart.series[0].values);
+        }
+    }
+    #[test]
+    fn theme_dialog_applies_background_and_text_with_undo() {
+        let mut app = Ppt::new(Presentation::new());
+        app.deck.edit("Title".into(), String::new()).unwrap();
+        assert_eq!(app.input_request(THEME).unwrap().fields[0].1, "None");
+        assert_eq!(app.input_choices(THEME)[0].1.len(), 7);
+        app.input_action(THEME, &["Forest".into()]).unwrap();
+        let scene = app.canvas_scene().unwrap();
+        assert!(matches!(scene.items[0], win42::SceneItem::Rect { fill: [0xF6, 0xF8, 0xF3], .. }));
+        assert!(scene.items.iter().any(|i| matches!(i, win42::SceneItem::TextBox { text, color: [0x1E, 0x2B, 0x22], font, .. } if text == "Title" && font.family == "Georgia")));
+        assert!(app.input_action(THEME, &["Missing".into()]).is_err());
+        app.action(4).unwrap();
+        assert!(app.deck.theme().is_none());
+        let (_, bytes) = app.save_snapshot("pptx").unwrap().unwrap();
+        app.pptx_source = Some(ppt42_core::pptx::import(&bytes).unwrap().1);
+        assert!(!app.enabled(THEME));
+    }
+    #[test]
+    fn animation_dialog_and_click_steps_in_the_show() {
+        use std::time::{Duration, Instant};
+        let mut app = Ppt::new(Presentation::new());
+        let a = app.deck.insert_object(ppt42_core::ObjectKind::Rectangle, "A".into()).unwrap();
+        let b = app.deck.insert_object(ppt42_core::ObjectKind::Ellipse, String::new()).unwrap();
+        app.deck.add().unwrap();
+        app.deck.select(0).unwrap();
+        app.selected_object = Some(a);
+        assert_eq!(app.input_request(ANIMATION).unwrap().fields[0].1, "None");
+        app.input_action(ANIMATION, &["Fade".into(), "On click".into(), "400".into(), "0".into()]).unwrap();
+        app.selected_object = Some(b);
+        app.input_action(ANIMATION, &["Fly in".into(), "After previous".into(), "300".into(), "100".into()]).unwrap();
+        assert!(app.input_action(ANIMATION, &["Zoom".into(), "On click".into(), "x".into(), "0".into()]).is_err());
+        assert!(app.enabled(ANIMATE_EARLIER) && !app.enabled(ANIMATE_LATER));
+        app.action(ANIMATE_EARLIER).unwrap();
+        assert_eq!(app.deck.slides()[0].animations[0].object, b);
+        app.action(4).unwrap();
+        assert_eq!(app.deck.slides()[0].animations[0].object, a);
+        let edit = app.input_request(ANIMATION).unwrap();
+        assert_eq!(edit.fields.iter().map(|f| f.1.as_str()).collect::<Vec<_>>(), ["Fly in", "After previous", "300", "100"]);
+
+        let shapes = |app: &Ppt| app.canvas_scene().unwrap().items.iter().filter(|i| matches!(i, win42::SceneItem::Rect { fill: [220, 230, 245], .. } | win42::SceneItem::Ellipse { .. } | win42::SceneItem::OpacityLayer { .. })).count();
+        assert_eq!(shapes(&app), 2);
+        let start = Instant::now();
+        app.presenting = true;
+        app.show = Some(Show::new(start, false));
+        assert_eq!(shapes(&app), 0, "entrance effects hide their objects until their click");
+        app.show_event(win42::CanvasEvent::Key { code: 39, modifiers: 0 }, start).unwrap();
+        assert_eq!(app.deck.current(), 0);
+        assert_eq!(app.show.as_ref().unwrap().step, 1);
+        assert!(app.show_tick(start + Duration::from_millis(100)));
+        app.show.as_mut().unwrap().step_since = Instant::now() - Duration::from_millis(200);
+        let partial = app.canvas_scene().unwrap();
+        assert!(partial.items.iter().any(|i| matches!(i, win42::SceneItem::OpacityLayer { opacity, .. } if *opacity > 60 && *opacity < 200)));
+        app.show.as_mut().unwrap().step_since = Instant::now() - Duration::from_secs(5);
+        assert_eq!(shapes(&app), 2);
+        app.show_event(win42::CanvasEvent::Key { code: 37, modifiers: 0 }, start).unwrap();
+        assert_eq!((app.deck.current(), app.show.as_ref().unwrap().step), (0, 0));
+        assert_eq!(shapes(&app), 0);
+        app.show_event(win42::CanvasEvent::Key { code: 39, modifiers: 0 }, start).unwrap();
+        app.show_event(win42::CanvasEvent::Key { code: 39, modifiers: 0 }, start).unwrap();
+        assert_eq!((app.deck.current(), app.show.as_ref().unwrap().step), (1, 0));
+        app.show_event(win42::CanvasEvent::Key { code: 37, modifiers: 0 }, start).unwrap();
+        assert_eq!((app.deck.current(), app.show.as_ref().unwrap().step), (0, 1));
+        assert_eq!(shapes(&app), 2, "a revisited slide shows its finished animations");
+    }
+}
+

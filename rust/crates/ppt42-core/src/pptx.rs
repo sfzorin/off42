@@ -20,6 +20,7 @@ struct ObjectSource {
     inherited_geometry: bool,
     rich_safe: bool,
     outline_role: Option<OutlineRole>,
+    chart_part: Option<String>,
 }
 #[derive(Clone)]
 struct SlideSource {
@@ -39,6 +40,8 @@ struct SlideSource {
     timing: SlideTiming,
     hidden: bool,
     timing_editable: bool,
+    animations: Vec<crate::animation::Animation>,
+    animations_editable: bool,
 }
 pub struct Source {
     bytes: Vec<u8>,
@@ -78,6 +81,10 @@ impl Source {
             .map(|o| o.transform)
             .unwrap_or([1.0, 1.0, 0.0, 0.0]);
         ((transform[0] * 720.0 / self.width) - (transform[1] * 405.0 / self.height)).abs() <= 1e-9
+    }
+    /// Whether the slide's animation timeline can be rewritten without losing effects.
+    pub fn can_edit_animations(&self, slide: u64) -> bool {
+        self.slides.iter().find(|s| s.slide_id == slide).is_none_or(|s| s.animations_editable)
     }
     pub fn can_edit_rich(&self, slide: u64, object: u64) -> bool {
         self.slides
@@ -568,7 +575,80 @@ fn decoration(
         paragraphs: Vec::new(),
         media: Vec::new(),
         cells: Vec::new(),
+        chart: None,
     })
+}
+/// Shapes of a SmartArt drawing part (`dsp:drawing`), placed in the frame at `frame` (EMU origin and scale).
+fn smartart_shapes(
+    bytes: &[u8],
+    frame: [f64; 4],
+    width: f64,
+    height: f64,
+    palette: &HashMap<String, [u8; 3]>,
+    aliases: &HashMap<String, String>,
+) -> Vec<SlideObject> {
+    let Ok(doc) = xml(bytes) else { return Vec::new() };
+    fn child<'a, 'i>(n: roxmltree::Node<'a, 'i>, name: &str) -> Option<roxmltree::Node<'a, 'i>> {
+        n.children().find(|c| c.is_element() && c.tag_name().name() == name)
+    }
+    let mut out = Vec::new();
+    for sp in doc.descendants().filter(|n| n.is_element() && n.tag_name().name() == "sp").take(500) {
+        let Some(props) = child(sp, "spPr") else { continue };
+        let Some(xfrm) = child(props, "xfrm") else { continue };
+        if attr(xfrm, "rot").is_some_and(|v| v != "0") || attr(xfrm, "flipH").is_some_and(|v| v != "0") || attr(xfrm, "flipV").is_some_and(|v| v != "0") {
+            continue;
+        }
+        let (Some(off), Some(ext)) = (child(xfrm, "off"), child(xfrm, "ext")) else { continue };
+        let (Some(x), Some(y), Some(w), Some(h)) = (num(off, "x"), num(off, "y"), num(ext, "cx"), num(ext, "cy")) else { continue };
+        if w <= 0.0 || h <= 0.0 {
+            continue;
+        }
+        let preset = child(props, "prstGeom").and_then(|n| attr(n, "prst")).unwrap_or("rect");
+        let kind = match preset {
+            "rect" => ObjectKind::Rectangle,
+            "ellipse" => ObjectKind::Ellipse,
+            "line" => ObjectKind::Line,
+            name if crate::geometry::definition(name).is_some() => ObjectKind::Rectangle,
+            _ => continue,
+        };
+        let style = child(sp, "style");
+        let style_color = |name: &str| style.and_then(|s| child(s, name)).and_then(|n| resolved_color(n, palette, aliases));
+        let no_fill = child(props, "noFill").is_some();
+        let fill = child(props, "solidFill").and_then(|n| resolved_color(n, palette, aliases)).or_else(|| style_color("fillRef"));
+        let line = child(props, "ln");
+        let no_line = line.is_some_and(|l| child(l, "noFill").is_some());
+        let stroke = line.and_then(|l| child(l, "solidFill")).and_then(|n| resolved_color(n, palette, aliases)).or_else(|| style_color("lnRef"));
+        let mut text_style = TextStyle { align: TextAlign::Center, ..TextStyle::default() };
+        if let Some(color) = local(sp, "rPr").and_then(|r| child(r, "solidFill")).and_then(|n| resolved_color(n, palette, aliases)).or_else(|| style_color("fontRef")) {
+            text_style.color = color;
+        }
+        if let Some(points) = local(sp, "rPr").and_then(|r| attr(r, "sz")).and_then(|v| v.parse::<f64>().ok()).map(|v| v / 100.0).filter(|v| (1.0..=512.0).contains(v)) {
+            text_style.points = points;
+        }
+        let [fx, fy, sx, sy] = frame;
+        out.push(SlideObject {
+            id: 0,
+            group_id: None,
+            x: (fx + x * sx) / width * 720.0,
+            y: (fy + y * sy) / height * 405.0,
+            width: w * sx / width * 720.0,
+            height: h * sy / height * 405.0,
+            rotation_degrees: 0.0,
+            kind,
+            preset: if preset == "rect" || matches!(preset, "ellipse" | "line") { None } else { read_preset(sp).ok().flatten() },
+            fill: fill.unwrap_or([255, 255, 255]),
+            stroke: stroke.or(fill).unwrap_or([0, 0, 0]),
+            fill_visible: fill.is_some() && !no_fill,
+            stroke_visible: stroke.is_some() && !no_line,
+            text: content(sp),
+            text_style,
+            paragraphs: Vec::new(),
+            media: Vec::new(),
+            cells: Vec::new(),
+            chart: None,
+        });
+    }
+    out
 }
 /// Opens ordinary PPTX packages, retaining all original parts for lossless overlay.
 /// Objects outside the editable subset remain in the package, but may not appear on the canvas.
@@ -823,12 +903,52 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
             let preset = local(node, "prstGeom")
                 .and_then(|n| attr(n, "prst"))
                 .unwrap_or("rect");
+            let mut chart_part = None;
+            let mut chart_data = None;
             let kind = if node.tag_name().name() == "pic" {
                 ObjectKind::Picture
             } else if node.tag_name().name() == "graphicFrame" && local(node, "tbl").is_some() {
                 ObjectKind::Table
-            } else if node.tag_name().name() == "graphicFrame" {
+            } else if node.tag_name().name() == "graphicFrame"
+                && local(node, "graphicData").and_then(|n| attr(n, "uri")) == Some("http://schemas.openxmlformats.org/drawingml/2006/diagram")
+            {
+                // SmartArt: show the cached shapes of its drawing part; the diagram parts stay untouched.
+                let drawing = local(node, "relIds")
+                    .and_then(|n| attr(n, "dm"))
+                    .and_then(|rid| slide_targets.get(rid))
+                    .and_then(|data| read(&mut z, data).ok())
+                    .and_then(|bytes| {
+                        let doc = xml(&bytes).ok()?;
+                        let id = local(doc.root_element(), "dataModelExt").and_then(|n| attr(n, "relId"))?.to_owned();
+                        slide_targets.get(&id).cloned()
+                    });
+                if let Some(bytes) = drawing.and_then(|path| read(&mut z, &path).ok()) {
+                    decorations.extend(smartart_shapes(
+                        &bytes,
+                        [x * transform[0] + transform[2], y * transform[1] + transform[3], transform[0], transform[1]],
+                        width,
+                        height,
+                        &palette,
+                        &aliases,
+                    ));
+                }
                 continue;
+            } else if node.tag_name().name() == "graphicFrame" {
+                let Some(part) = local(node, "graphicData")
+                    .filter(|n| attr(*n, "uri") == Some("http://schemas.openxmlformats.org/drawingml/2006/chart"))
+                    .and_then(|n| local(n, "chart"))
+                    .and_then(|n| attr(n, "id"))
+                    .and_then(|rid| slide_targets.get(rid))
+                    .cloned()
+                else {
+                    continue;
+                };
+                let Some(parsed) = read(&mut z, &part).ok().and_then(|bytes| crate::chart::from_drawingml(&bytes)) else {
+                    continue;
+                };
+                chart_part = Some(part);
+                chart_data = Some(parsed);
+                ObjectKind::Chart
             } else {
                 match preset {
                     "rect" => {
@@ -878,12 +998,15 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
             } else {
                 Vec::new()
             };
-            let text = if matches!(kind, ObjectKind::Picture | ObjectKind::Table) {
+            let text = if matches!(kind, ObjectKind::Picture | ObjectKind::Table | ObjectKind::Chart) {
                 String::new()
             } else {
                 content(node)
             };
-            let object_id = deck.insert_content(kind, text, media, cells)?;
+            let object_id = match chart_data {
+                Some(chart) => deck.insert_chart(chart)?,
+                None => deck.insert_content(kind, text, media, cells)?,
+            };
             let mut object = deck.slides()[index]
                 .objects
                 .iter()
@@ -1021,8 +1144,29 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
                 inherited_geometry: explicit.is_none(),
                 rich_safe: node.tag_name().name() == "sp" && rich_edit_safe(node),
                 outline_role,
+                chart_part,
             });
         }
+        let (animations, animations_editable) = match local(tree.root_element(), "timing") {
+            None => (Vec::new(), true),
+            Some(timing) => {
+                let (found, complete) = crate::animation::read_pptx_timing(timing);
+                let mut mapped = Vec::new();
+                let mut complete = complete;
+                for mut a in found {
+                    match objects.iter().find(|o| o.xml_id.parse::<u64>().ok() == Some(a.object)) {
+                        Some(o) => {
+                            a.object = o.object_id;
+                            mapped.push(a);
+                        }
+                        None => complete = false,
+                    }
+                }
+                (mapped, complete)
+            }
+        };
+        let animations = if deck.set_slide_animations(animations.clone()).is_ok() { animations } else { Vec::new() };
+        let animations_editable = animations_editable && deck.slides()[index].animations == animations;
         let notes_cloneable = if let Some(ref note) = notes_path {
             if note.starts_with("ppt/notesSlides/") {
                 if let Some((dir, file)) = note.rsplit_once('/') {
@@ -1071,6 +1215,8 @@ pub fn import(bytes: &[u8]) -> Result<(Presentation, Source), String> {
             timing,
             hidden,
             timing_editable: parsed_timing.is_some(),
+            animations,
+            animations_editable,
         });
     }
     for (index, slide) in slides.iter_mut().enumerate().filter(|(_, slide)| !slide.notes.is_empty()) {
@@ -1564,18 +1710,22 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                 .filter(|r| r.path.starts_with("ppt/slides/"))
                 .find_map(|r| r.layout_target.as_deref())
                 .ok_or("No PPTX slide layout")?;
-            let (fragments, relationships, media) =
+            let (fragments, relationships, media, chart_overrides) =
                 appended_objects(slide, &slide.objects, 1, source.width, source.height)?;
+            slide_overrides.push_str(&chart_overrides);
             let group="<p:nvGrpSpPr><p:cNvPr id=\"1\" name=\"\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>";
             let transition = timing_xml(slide.timing);
+            let animations = crate::animation::pptx_timing(&slide.animations, |object| {
+                slide.objects.iter().position(|o| o.id == object).map(|k| k as u64 + 2)
+            })?;
             let visibility = visibility_attr(slide.hidden);
-            let xml=format!("<p:sld xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"{visibility}><p:cSld><p:spTree>{group}{fragments}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>{transition}</p:sld>");
+            let xml=format!("<p:sld xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"{visibility}><p:cSld><p:spTree>{group}{fragments}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>{transition}{animations}</p:sld>");
             let rels=format!("<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"layout\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout\" Target=\"{}\"/>{relationships}</Relationships>",escape(layout));
             let (dir, file) = path.rsplit_once('/').ok_or("Invalid slide path")?;
             added_files.push((format!("{dir}/_rels/{file}.rels"), rels.into_bytes()));
             added_files.push((path, xml.into_bytes()));
             for (path, bytes) in media {
-                image_extensions.insert(path.rsplit('.').next().unwrap_or("").to_owned());
+                register_extension(&path, &mut image_extensions);
                 added_files.push((path, bytes));
             }
             continue;
@@ -1610,6 +1760,36 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                 patches.push((at..at, format!(" show=\"{value}\"")));
             }
         }
+        if slide.animations != record.animations {
+            if !record.animations_editable {
+                return Err("This PPTX animation timeline cannot be safely edited".into());
+            }
+            let first_new = tree
+                .descendants()
+                .filter(|n| n.is_element() && n.tag_name().name() == "cNvPr")
+                .filter_map(|n| attr(n, "id").and_then(|v| v.parse::<u64>().ok()))
+                .max()
+                .unwrap_or(1);
+            let timing = crate::animation::pptx_timing(&slide.animations, |object| {
+                record
+                    .objects
+                    .iter()
+                    .find(|o| o.object_id == object)
+                    .and_then(|o| o.xml_id.parse().ok())
+                    .or_else(|| extras.iter().position(|o| o.id == object).map(|k| first_new + k as u64 + 1))
+            })?;
+            let root = tree.root_element();
+            if let Some(node) = root.children().find(|n| n.is_element() && n.tag_name().name() == "timing") {
+                patches.push((node.range(), timing));
+            } else {
+                let insertion = root
+                    .children()
+                    .find(|n| n.is_element() && n.tag_name().name() == "extLst")
+                    .map(|n| n.range().start)
+                    .unwrap_or_else(|| content.rfind("</").unwrap_or(root.range().end));
+                patches.push((insertion..insertion, timing));
+            }
+        }
         if slide.timing != record.timing {
             if !record.timing_editable {
                 return Err("This PPTX transition cannot be safely edited".into());
@@ -1639,8 +1819,9 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                 .filter_map(|n| attr(n, "id").and_then(|v| v.parse::<u64>().ok()))
                 .max()
                 .unwrap_or(1);
-            let (fragments, relationships, media) =
+            let (fragments, relationships, media, chart_overrides) =
                 appended_objects(slide, &extras, max_id, source.width, source.height)?;
+            slide_overrides.push_str(&chart_overrides);
             added_fragment = fragments;
             if !relationships.is_empty() {
                 let (dir, file) = record.path.rsplit_once('/').ok_or("Invalid slide path")?;
@@ -1652,7 +1833,7 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                 let mut rels=match read(&mut input,&relpath){Ok(bytes)=>String::from_utf8(bytes).map_err(|e|e.to_string())?,Err(_)=>"<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"></Relationships>".into()};
                 for object in extras
                     .iter()
-                    .filter(|o| matches!(o.kind, ObjectKind::Picture))
+                    .filter(|o| matches!(o.kind, ObjectKind::Picture | ObjectKind::Chart))
                 {
                     if rels.contains(&format!("suite42_{}_{}", slide.id, object.id)) {
                         return Err("PPTX relationship ID collision".into());
@@ -1666,8 +1847,7 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                 }
             }
             for (path, bytes) in media {
-                let ext = path.rsplit('.').next().unwrap_or("").to_owned();
-                image_extensions.insert(ext);
+                register_extension(&path, &mut image_extensions);
                 added_files.push((path, bytes));
             }
         }
@@ -1701,6 +1881,33 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                     return Err("Changing inherited transform and preset together is unsupported".into());
                 }
                 patches.push((geom.range(), geometry_xml(object.preset.as_ref(), "rect")));
+            }
+            if object.chart != item.original.chart {
+                let chart = object.chart.as_ref().ok_or("PPTX chart data missing")?;
+                if cloned {
+                    return Err("Edit the chart on the original slide before duplicating it".into());
+                }
+                let part = item.chart_part.as_deref().ok_or("PPTX chart part missing")?;
+                let (dir, file) = part.rsplit_once('/').ok_or("Invalid PPTX chart path")?;
+                let workbook = read(&mut input, &format!("{dir}/_rels/{file}.rels")).ok().and_then(|bytes| {
+                    let doc = xml(&bytes).ok()?;
+                    doc.descendants()
+                        .filter(|n| n.is_element() && n.tag_name().name() == "Relationship")
+                        .find(|n| {
+                            attr(*n, "Type").is_some_and(|t| t.ends_with("/package"))
+                                && n.attribute("TargetMode").is_none_or(|m| m == "Internal")
+                                && attr(*n, "Target").is_some_and(|t| t.ends_with(".xlsx"))
+                        })
+                        .and_then(|n| Some((attr(n, "Id")?.to_owned(), target(part, attr(n, "Target")?)?)))
+                });
+                let workbook = workbook.filter(|(_, path)| input.by_name(path).is_ok());
+                replacements.insert(
+                    part.to_owned(),
+                    crate::chart::to_drawingml(chart, workbook.as_ref().map(|w| w.0.as_str())).into_bytes(),
+                );
+                if let Some((_, path)) = workbook {
+                    replacements.insert(path, crate::chart::workbook(chart)?);
+                }
             }
             if object.cells != item.original.cells {
                 let table = local(node, "tbl").ok_or("PPTX table missing")?;
@@ -2004,10 +2211,10 @@ pub fn export(deck: &Presentation, source: &Source) -> Result<Vec<u8>, String> {
                     && n.tag_name().name() == "Default"
                     && attr(n, "Extension").is_some_and(|v| v.eq_ignore_ascii_case(&ext))
             }) {
-                let mime = if ext == "png" {
-                    "image/png"
-                } else {
-                    "image/jpeg"
+                let mime = match ext.as_str() {
+                    "png" => "image/png",
+                    "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    _ => "image/jpeg",
                 };
                 additions.push_str(&format!(
                     "<Default Extension=\"{ext}\" ContentType=\"{mime}\"/>"
@@ -2537,10 +2744,11 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
                     fill_visible: false,
                     stroke_visible: false,
                     text: (*value).clone(),
-                    text_style: TextStyle::default(),
+                    text_style: themed_style(deck.theme(), row == 0),
                     paragraphs: Vec::new(),
                     media: Vec::new(),
                     cells: Vec::new(),
+                    chart: None,
                 });
                 next = next.saturating_add(1);
             }
@@ -2646,6 +2854,14 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
                     }
                     target.push_str(&format!("<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id=\"{id}\" name=\"Table {id}\"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr><p:xfrm rot=\"{rot}\"><a:off x=\"{x}\" y=\"{y}\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></p:xfrm><a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/table\"><a:tbl><a:tblPr/><a:tblGrid>{grid}</a:tblGrid>{rows}</a:tbl></a:graphicData></a:graphic></p:graphicFrame>"));
                 }
+                ObjectKind::Chart => {
+                    let chart = o.chart.as_ref().ok_or("Chart data missing")?;
+                    let rid = format!("chart{id}");
+                    let name = format!("chart{n}_{id}");
+                    rels.push_str(&format!("<Relationship Id=\"{rid}\" Type=\"{rns}/chart\" Target=\"../charts/{name}.xml\"/>"));
+                    parts.extend(chart_parts(chart, &name, &mut overrides)?);
+                    target.push_str(&format!("<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id=\"{id}\" name=\"Chart {id}\"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr><p:xfrm rot=\"{rot}\"><a:off x=\"{x}\" y=\"{y}\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></p:xfrm><a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/chart\"><c:chart xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\" r:id=\"{rid}\"/></a:graphicData></a:graphic></p:graphicFrame>"));
+                }
             }
         }
         for (index, group_id) in group_order.iter().enumerate() {
@@ -2661,8 +2877,11 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
             parts.push((format!("ppt/notesSlides/_rels/notesSlide{n}.xml.rels"), notes::relationships(n)));
         }
         let transition = timing_xml(slide.timing);
+        let animations = crate::animation::pptx_timing(&slide.animations, |object| {
+            slide.objects.iter().position(|o| o.id == object).map(|k| k as u64 + 2)
+        })?;
         let visibility = visibility_attr(slide.hidden);
-        parts.push((format!("ppt/slides/slide{n}.xml"),format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><p:sld xmlns:p=\"{pns}\" xmlns:a=\"{ans}\" xmlns:r=\"{rns}\"{visibility}><p:cSld><p:spTree>{group}{shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>{transition}</p:sld>").into_bytes()));
+        parts.push((format!("ppt/slides/slide{n}.xml"),format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><p:sld xmlns:p=\"{pns}\" xmlns:a=\"{ans}\" xmlns:r=\"{rns}\"{visibility}><p:cSld><p:spTree>{group}{shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>{transition}{animations}</p:sld>").into_bytes()));
         parts.push((
             format!("ppt/slides/_rels/slide{n}.xml.rels"),
             format!("<Relationships xmlns=\"{pkg}\">{rels}</Relationships>").into_bytes(),
@@ -2674,7 +2893,12 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
         format!("<Relationships xmlns=\"{pkg}\">{pres_rels}</Relationships>").into_bytes(),
     ));
     parts.push(("_rels/.rels".into(),format!("<Relationships xmlns=\"{pkg}\"><Relationship Id=\"main\" Type=\"{rns}/officeDocument\" Target=\"ppt/presentation.xml\"/></Relationships>").into_bytes()));
-    let master=format!("<p:sldMaster xmlns:p=\"{pns}\" xmlns:a=\"{ans}\" xmlns:r=\"{rns}\"><p:cSld><p:spTree>{group}</p:spTree></p:cSld><p:clrMap bg1=\"lt1\" tx1=\"dk1\" bg2=\"lt2\" tx2=\"dk2\" accent1=\"accent1\" accent2=\"accent2\" accent3=\"accent3\" accent4=\"accent4\" accent5=\"accent5\" accent6=\"accent6\" hlink=\"hlink\" folHlink=\"folHlink\"/><p:sldLayoutIdLst><p:sldLayoutId id=\"2147483649\" r:id=\"layout\"/></p:sldLayoutIdLst><p:txStyles/></p:sldMaster>");
+    let background = if deck.theme().is_some() {
+        "<p:bg><p:bgPr><a:solidFill><a:schemeClr val=\"bg1\"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>"
+    } else {
+        ""
+    };
+    let master=format!("<p:sldMaster xmlns:p=\"{pns}\" xmlns:a=\"{ans}\" xmlns:r=\"{rns}\"><p:cSld>{background}<p:spTree>{group}</p:spTree></p:cSld><p:clrMap bg1=\"lt1\" tx1=\"dk1\" bg2=\"lt2\" tx2=\"dk2\" accent1=\"accent1\" accent2=\"accent2\" accent3=\"accent3\" accent4=\"accent4\" accent5=\"accent5\" accent6=\"accent6\" hlink=\"hlink\" folHlink=\"folHlink\"/><p:sldLayoutIdLst><p:sldLayoutId id=\"2147483649\" r:id=\"layout\"/></p:sldLayoutIdLst><p:txStyles/></p:sldMaster>");
     parts.push((
         "ppt/slideMasters/slideMaster1.xml".into(),
         master.into_bytes(),
@@ -2700,9 +2924,12 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
         colors.push_str(&format!("<a:{key}><a:srgbClr val=\"{value}\"/></a:{key}>"));
     }
     let solid = "<a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill>";
-    let theme=format!("<a:theme xmlns:a=\"{ans}\" name=\"Suite42\"><a:themeElements><a:clrScheme name=\"Suite42\">{colors}</a:clrScheme><a:fontScheme name=\"Suite42\"><a:majorFont><a:latin typeface=\"Arial\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/></a:majorFont><a:minorFont><a:latin typeface=\"Arial\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/></a:minorFont></a:fontScheme><a:fmtScheme name=\"Suite42\"><a:fillStyleLst>{}</a:fillStyleLst><a:lnStyleLst>{}</a:lnStyleLst><a:effectStyleLst>{}</a:effectStyleLst><a:bgFillStyleLst>{}</a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>",solid.repeat(3),format!("<a:ln>{solid}</a:ln>").repeat(3),"<a:effectStyle><a:effectLst/></a:effectStyle>".repeat(3),solid.repeat(3));
+    let theme = match deck.theme() {
+        Some(theme) => theme.drawingml(),
+        None => format!("<a:theme xmlns:a=\"{ans}\" name=\"Suite42\"><a:themeElements><a:clrScheme name=\"Suite42\">{colors}</a:clrScheme><a:fontScheme name=\"Suite42\"><a:majorFont><a:latin typeface=\"Arial\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/></a:majorFont><a:minorFont><a:latin typeface=\"Arial\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/></a:minorFont></a:fontScheme><a:fmtScheme name=\"Suite42\"><a:fillStyleLst>{}</a:fillStyleLst><a:lnStyleLst>{}</a:lnStyleLst><a:effectStyleLst>{}</a:effectStyleLst><a:bgFillStyleLst>{}</a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>",solid.repeat(3),format!("<a:ln>{solid}</a:ln>").repeat(3),"<a:effectStyle><a:effectLst/></a:effectStyle>".repeat(3),solid.repeat(3)),
+    };
     parts.push(("ppt/theme/theme1.xml".into(), theme.into_bytes()));
-    let types=format!("<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"png\" ContentType=\"image/png\"/><Default Extension=\"jpg\" ContentType=\"image/jpeg\"/><Override PartName=\"/ppt/presentation.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml\"/><Override PartName=\"/ppt/slideMasters/slideMaster1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml\"/><Override PartName=\"/ppt/slideLayouts/slideLayout1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml\"/><Override PartName=\"/ppt/theme/theme1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.theme+xml\"/>{overrides}</Types>");
+    let types=format!("<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"png\" ContentType=\"image/png\"/><Default Extension=\"jpg\" ContentType=\"image/jpeg\"/><Default Extension=\"xlsx\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\"/><Override PartName=\"/ppt/presentation.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml\"/><Override PartName=\"/ppt/slideMasters/slideMaster1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml\"/><Override PartName=\"/ppt/slideLayouts/slideLayout1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml\"/><Override PartName=\"/ppt/theme/theme1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.theme+xml\"/>{overrides}</Types>");
     parts.push(("[Content_Types].xml".into(), types.into_bytes()));
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     let opt = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
@@ -2713,6 +2940,31 @@ pub fn export_new(deck: &Presentation) -> Result<Vec<u8>, String> {
     Ok(zip.finish().map_err(|e| e.to_string())?.into_inner())
 }
 
+/// Text style of the legacy title (`title`) or body under the deck theme.
+pub(crate) fn themed_style(theme: Option<&crate::theme::Theme>, title: bool) -> TextStyle {
+    let mut style = TextStyle::default();
+    if let Some(theme) = theme {
+        style.color = theme.text();
+        style.family = if title { theme.major_font.clone() } else { theme.minor_font.clone() };
+    }
+    style
+}
+/// Chart part, its relationships and embedded workbook for a new chart named `name`.
+fn chart_parts(chart: &crate::chart::Chart, name: &str, overrides: &mut String) -> Result<Vec<(String, Vec<u8>)>, String> {
+    overrides.push_str(&format!("<Override PartName=\"/ppt/charts/{name}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.chart+xml\"/>"));
+    Ok(vec![
+        (format!("ppt/charts/{name}.xml"), crate::chart::to_drawingml(chart, Some("workbook")).into_bytes()),
+        (format!("ppt/charts/_rels/{name}.xml.rels"), format!("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"workbook\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/package\" Target=\"../embeddings/{name}.xlsx\"/></Relationships>").into_bytes()),
+        (format!("ppt/embeddings/{name}.xlsx"), crate::chart::workbook(chart)?),
+    ])
+}
+/// Records a generated part's extension when it needs a default content type.
+fn register_extension(path: &str, extensions: &mut HashSet<String>) {
+    let ext = path.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+    if !matches!(ext.as_str(), "xml" | "rels") {
+        extensions.insert(ext);
+    }
+}
 fn append_element_content(element: &mut String, addition: &str) -> Result<(), String> {
     if let Some(end) = element.rfind("</") {
         element.insert_str(end, addition);
@@ -2742,7 +2994,7 @@ fn appended_objects(
     max_id: u64,
     width: f64,
     height: f64,
-) -> Result<(String, String, Vec<(String, Vec<u8>)>), String> {
+) -> Result<(String, String, Vec<(String, Vec<u8>)>, String), String> {
     let mut temp_slide = slide.clone();
     temp_slide.objects = extras
         .iter()
@@ -2755,6 +3007,7 @@ fn appended_objects(
             o
         })
         .collect();
+    temp_slide.animations.clear();
     temp_slide.title.clear();
     temp_slide.body.clear();
     temp_slide.title_text = TextValue::from_raw(String::new());
@@ -2765,6 +3018,7 @@ fn appended_objects(
             version: 2,
             next_id,
             slides: vec![temp_slide],
+            theme: None,
         },
         selected: slide.id,
     };
@@ -2787,6 +3041,7 @@ fn appended_objects(
     let mut fragments = String::new();
     let mut relationships = String::new();
     let mut media = Vec::new();
+    let mut overrides = String::new();
     for (index, (node, object)) in nodes.iter().zip(extras).enumerate() {
         let old = index + 2;
         let new = max_id
@@ -2819,9 +3074,15 @@ fn appended_objects(
             relationships.push_str(&format!("<Relationship Id=\"{rid}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"../media/{file}\"/>"));
             media.push((format!("ppt/media/{file}"), object.media.clone()));
         }
+        if let Some(chart) = object.chart.as_ref().filter(|_| matches!(object.kind, ObjectKind::Chart)) {
+            let name = format!("suite42_{}_{}", slide.id, object.id);
+            fragment = fragment.replace(&format!("r:id=\"chart{old}\""), &format!("r:id=\"{name}\""));
+            relationships.push_str(&format!("<Relationship Id=\"{name}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart\" Target=\"../charts/{name}.xml\"/>"));
+            media.extend(chart_parts(chart, &name, &mut overrides)?);
+        }
         fragments.push_str(&fragment);
     }
-    Ok((fragments, relationships, media))
+    Ok((fragments, relationships, media, overrides))
 }
 
 fn read_preset(node: roxmltree::Node<'_, '_>) -> Result<Option<crate::geometry::Preset>, String> {
@@ -2868,4 +3129,71 @@ fn geometry_xml(preset: Option<&crate::geometry::Preset>, fallback: &str) -> Str
         })
         .unwrap_or_default();
     format!("<a:prstGeom xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" prst=\"{name}\"><a:avLst>{adjustments}</a:avLst></a:prstGeom>")
+}
+#[cfg(test)]
+mod smartart_tests {
+    use super::*;
+
+    fn rewrite(bytes: &[u8], edit: impl Fn(&str, Vec<u8>) -> Vec<u8>, extra: &[(&str, &str)]) -> Vec<u8> {
+        let mut input = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut out = ZipWriter::new(Cursor::new(Vec::new()));
+        for i in 0..input.len() {
+            let mut file = input.by_index(i).unwrap();
+            let name = file.name().to_owned();
+            let mut data = Vec::new();
+            file.read_to_end(&mut data).unwrap();
+            out.start_file(name.clone(), SimpleFileOptions::default()).unwrap();
+            out.write_all(&edit(&name, data)).unwrap();
+        }
+        for (name, data) in extra {
+            out.start_file(*name, SimpleFileOptions::default()).unwrap();
+            out.write_all(data.as_bytes()).unwrap();
+        }
+        out.finish().unwrap().into_inner()
+    }
+
+    #[test]
+    fn smartart_drawing_shapes_are_shown_and_diagram_parts_survive_edits() {
+        let mut deck = Presentation::new();
+        deck.insert_object(ObjectKind::Rectangle, "Box".into()).unwrap();
+        let base = export_new(&deck).unwrap();
+        let frame = r#"<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="40" name="Diagram"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr><p:xfrm><a:off x="914400" y="914400"/><a:ext cx="3657600" cy="1828800"/></p:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/diagram"><dgm:relIds xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" r:dm="dm1" r:lo="lo1" r:qs="qs1" r:cs="cs1"/></a:graphicData></a:graphic></p:graphicFrame>"#;
+        let drawing = r#"<dsp:drawing xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><dsp:spTree><dsp:nvGrpSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvGrpSpPr/></dsp:nvGrpSpPr><dsp:grpSpPr/><dsp:sp modelId="{1}"><dsp:nvSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="1828800" cy="914400"/></a:xfrm><a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></dsp:spPr><dsp:style><a:lnRef idx="2"><a:scrgbClr r="0" g="0" b="0"/></a:lnRef><a:fillRef idx="1"><a:scrgbClr r="0" g="0" b="0"/></a:fillRef><a:effectRef idx="0"><a:scrgbClr r="0" g="0" b="0"/></a:effectRef><a:fontRef idx="minor"><a:schemeClr val="lt1"/></a:fontRef></dsp:style><dsp:txBody><a:bodyPr/><a:p><a:r><a:rPr sz="2000"/><a:t>Plan</a:t></a:r></a:p></dsp:txBody></dsp:sp><dsp:sp modelId="{2}"><dsp:nvSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr><a:xfrm><a:off x="1828800" y="914400"/><a:ext cx="1828800" cy="914400"/></a:xfrm><a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="70AD47"/></a:solidFill></dsp:spPr><dsp:txBody><a:bodyPr/><a:p><a:r><a:t>Do</a:t></a:r></a:p></dsp:txBody></dsp:sp></dsp:spTree></dsp:drawing>"#;
+        let data = r#"<dgm:dataModel xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><dgm:ptLst/><dgm:extLst><a:ext uri="http://schemas.microsoft.com/office/drawing/2008/diagram"><dsp:dataModelExt xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram" relId="dr1" minVer="http://schemas.openxmlformats.org/drawingml/2006/diagram"/></a:ext></dgm:extLst></dgm:dataModel>"#;
+        let package = rewrite(
+            &base,
+            |name, data| match name {
+                "ppt/slides/slide1.xml" => String::from_utf8(data).unwrap().replace("</p:spTree>", &format!("{frame}</p:spTree>")).into_bytes(),
+                "ppt/slides/_rels/slide1.xml.rels" => String::from_utf8(data).unwrap().replace("</Relationships>", "<Relationship Id=\"dm1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramData\" Target=\"../diagrams/data1.xml\"/><Relationship Id=\"dr1\" Type=\"http://schemas.microsoft.com/office/2007/relationships/diagramDrawing\" Target=\"../diagrams/drawing1.xml\"/></Relationships>").into_bytes(),
+                _ => data,
+            },
+            &[("ppt/diagrams/data1.xml", data), ("ppt/diagrams/drawing1.xml", drawing)],
+        );
+        let (mut opened, source) = import(&package).unwrap();
+        assert_eq!(opened.slides()[0].objects.len(), 1, "the diagram is not an editable object");
+        let shapes = source.decorations(opened.slides()[0].id);
+        assert_eq!(shapes.len(), 2);
+        let (box_, circle) = (&shapes[0], &shapes[1]);
+        assert_eq!((box_.x, box_.y, box_.width, box_.height), (72.0, 72.0, 144.0, 72.0));
+        assert_eq!(box_.fill, [0x44, 0x72, 0xC4]);
+        assert_eq!(box_.text, "Plan");
+        assert_eq!(box_.text_style.color, [255, 255, 255]);
+        assert_eq!(box_.text_style.points, 20.0);
+        assert_eq!(box_.preset.as_ref().map(|p| p.name.as_str()), Some("roundRect"));
+        assert_eq!((circle.kind.clone(), circle.x, circle.y, circle.fill), (ObjectKind::Ellipse, 216.0, 144.0, [0x70, 0xAD, 0x47]));
+        let mut object = opened.slides()[0].objects[0].clone();
+        object.x += 10.0;
+        opened.update_object(object).unwrap();
+        let saved = export(&opened, &source).unwrap();
+        let read_entry = |bytes: &[u8], name: &str| {
+            let mut z = ZipArchive::new(Cursor::new(bytes)).unwrap();
+            let mut out = Vec::new();
+            z.by_name(name).unwrap().read_to_end(&mut out).unwrap();
+            out
+        };
+        for part in ["ppt/diagrams/data1.xml", "ppt/diagrams/drawing1.xml", "ppt/slides/_rels/slide1.xml.rels"] {
+            assert_eq!(read_entry(&saved, part), read_entry(&package, part));
+        }
+        assert!(String::from_utf8(read_entry(&saved, "ppt/slides/slide1.xml")).unwrap().contains("r:dm=\"dm1\""));
+    }
 }
