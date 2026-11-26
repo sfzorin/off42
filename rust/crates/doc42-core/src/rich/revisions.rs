@@ -779,6 +779,33 @@ mod tests {
     }
 
     #[test]
+    fn richedit_ulnone_after_an_insertion_mark_round_trips() {
+        // RichEdit writes the display underline of a tracked insertion back as
+        // \ul ... \ulnone; the projection must decode without changing the model.
+        let mut d = doc(&["Keep new text"]);
+        d.transact(|s| {
+            s.revisions.push(Revision {
+                id: 1,
+                start: at(10, 5),
+                end: at(10, 9),
+                author: "Ada".into(),
+                insertion: true,
+                date: None,
+            });
+            Ok(())
+        })
+        .unwrap();
+        let projection = String::from_utf8(d.rich_edit_projection().unwrap()).unwrap();
+        let richedit = projection.replace("\\ul0", "\\ulnone");
+        assert!(richedit.contains("\\ulnone"), "{projection}");
+        let before = d.snapshot();
+        let changed = d.apply_rich_edit_projection(richedit.as_bytes(), (0, 0)).unwrap();
+        assert!(!changed);
+        assert_eq!(d.snapshot().blocks, before.blocks);
+        assert_eq!(d.snapshot().revisions, before.revisions);
+    }
+
+    #[test]
     fn typing_with_tracking_records_insertions_and_deletions() {
         let mut d = doc(&["One two"]);
         d.set_track_changes(true).unwrap();
