@@ -212,6 +212,27 @@ def simple_pdf(path, pages=3):
     out += b''.join(f'{o:010d} 00000 n \n'.encode() for o in offsets)
     out += f'trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n'.encode()
     path.write_bytes(out)
+def signed_fixtures():
+    """Test-CA .p12 and signed DOCX/XLSX copies for the signature lifecycle audits (regenerated each run)."""
+    pki = out / 'pki'
+    pki.mkdir(exist_ok=True)
+    ossl = ['/usr/bin/openssl']
+    def sh(*a):
+        subprocess.run(ossl + list(map(str, a)), check=True, capture_output=True, cwd=pki)
+    sh('req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', 'ca.key', '-out', 'ca.pem', '-days', '3650',
+       '-subj', '/C=TR/O=Suite42 Test/CN=Suite42 UI Audit Root', '-addext', 'basicConstraints=critical,CA:true')
+    sh('req', '-newkey', 'rsa:2048', '-nodes', '-keyout', 'user.key', '-out', 'user.csr', '-subj', '/CN=UI Audit Signer')
+    (pki / 'ext.cnf').write_text('keyUsage=critical,digitalSignature,nonRepudiation\n')
+    sh('x509', '-req', '-in', 'user.csr', '-CA', 'ca.pem', '-CAkey', 'ca.key', '-CAcreateserial', '-out', 'user.pem',
+       '-days', '30', '-extfile', 'ext.cnf')
+    sh('pkcs12', '-export', '-inkey', 'user.key', '-in', 'user.pem', '-out', 'user.p12', '-passout', 'pass:test')
+    p12 = ['--p12', pki / 'user.p12', '--password', 'test']
+    if 'DOC42' in binaries:
+        fixture('DOC42', ['--sign-document', out / 'sample.docx', out / 'signed.docx', *p12])
+    if 'XLS42' in binaries:
+        if not (out / 'sample.xlsx').exists(): fixture('XLS42', ['--feature-demo', out / 'sample.xlsx'])
+        fixture('XLS42', ['--sign-document', out / 'sample.xlsx', out / 'signed.xlsx', *p12])
+    return {'K42_P12': str(pki / 'user.p12'), 'K42_P12_PASSWORD': 'test'}
 
 
 results = []
@@ -224,6 +245,7 @@ if args.mode in ('all', 'tests'):
     if 'PDF42' in binaries and not (out / 'sample.pdf').exists():
         if not (out / 'sample.docx').exists(): fixture('DOC42', ['--demo', out / 'sample.docx'])
         fixture('DOC42', ['--pdf', out / 'sample.docx', out / 'sample.pdf'])
+    signing = signed_fixtures()
     tests = [
         ('XLS42', 'xls-ui', ('--uitest',), {'K42_PASTEBOARD': '1'}, 'ALL PASSED', False),
         ('IMG42', 'img-ui', ('--uitest',), {}, 'IMG42 UI: 0 failures', False),
@@ -252,6 +274,9 @@ if args.mode in ('all', 'tests'):
         ('PDF42', 'pdf-pages', (out / 'sample.pdf',), {'K42_AUDIT': 'pages'}, 'PDF pages UI regressions:', True),
         ('PDF42', 'pdf-core', (out / 'sample.pdf',), {'K42_AUDIT': 'core'}, 'PDF core UI regressions:', True),
         ('PDF42', 'pdf-files', (out / 'sample.pdf',), {'K42_AUDIT': 'files'}, 'PDF document lifecycle regressions:', True),
+        ('DOC42', 'doc-signature', (out / 'signed.docx',), {'K42_SCRIPT': 'auditsignature', 'K42_SNAPSHOT_DELAY': '8', **signing}, 'Signature UI regressions:', True),
+        ('XLS42', 'xls-signature', (), {'K42_OPEN': str(out / 'signed.xlsx'), 'K42_SIGNATURE_AUDIT': '1', 'K42_SNAPSHOT_DELAY': '8', **signing},
+         'Signature UI regressions:', True),
         ('PDF42', 'mark-samples', ('--mark-samples', out / 'marks'), {}, 'Mark samples: ', False),
         ('PDF42', 'signature-fidelity', ('--signature-fidelity-synthetic', out / 'signature-fidelity'), {}, 'Synthetic checks: passed', False),
         ('PDF42', 'page-marks', (out / 'page-marks.pdf',), {'K42_DO': 'auditPageMarks', 'K42_SNAPSHOT_DELAY': '3', 'K42_SIZE': '1180x780',

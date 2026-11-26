@@ -311,9 +311,9 @@ public enum KeyVault {
     }
 
     private static func spki(raw: [UInt8], ec: Bool) -> [UInt8] {
-        let algorithm = ec ? ASN1.seq(ASN1.oid("1.2.840.10045.2.1"), ASN1.oid("1.2.840.10045.3.1.7"))
-                           : ASN1.seq(ASN1.oid("1.2.840.113549.1.1.1"), ASN1.null)
-        return ASN1.seq(algorithm, ASN1.bitString(raw))
+        let algorithm = ec ? RequestDER.seq(RequestDER.oid("1.2.840.10045.2.1"), RequestDER.oid("1.2.840.10045.3.1.7"))
+                           : RequestDER.seq(RequestDER.oid("1.2.840.113549.1.1.1"), RequestDER.null)
+        return RequestDER.seq(algorithm, RequestDER.bitString(raw))
     }
 
     /// Signs `message` with SHA-256: an X9.62 DER ECDSA signature or a PKCS#1 v1.5 RSA signature.
@@ -334,8 +334,8 @@ public enum KeyVault {
 
     /// DER AlgorithmIdentifier of the signatures `sign` makes.
     public static func signatureAlgorithm(_ key: StoredKey) -> Data {
-        Data(key.algorithm.isEC ? ASN1.seq(ASN1.oid("1.2.840.10045.4.3.2"))
-                                : ASN1.seq(ASN1.oid("1.2.840.113549.1.1.11"), ASN1.null))
+        Data(key.algorithm.isEC ? RequestDER.seq(RequestDER.oid("1.2.840.10045.4.3.2"))
+                                : RequestDER.seq(RequestDER.oid("1.2.840.113549.1.1.11"), RequestDER.null))
     }
 
     // MARK: Requests
@@ -347,15 +347,15 @@ public enum KeyVault {
         guard !subject.commonName.trimmingCharacters(in: .whitespaces).isEmpty else {
             throw CertificateStore.plain(L("The request needs a name"))
         }
-        var extensions = [ASN1.seq(ASN1.oid("2.5.29.15"), ASN1.bool(true), ASN1.octet(ASN1.bitString([0xC0], unused: 6)))]
+        var extensions = [RequestDER.seq(RequestDER.oid("2.5.29.15"), RequestDER.bool(true), RequestDER.octet(RequestDER.bitString([0xC0], unused: 6)))]
         let email = subject.email.trimmingCharacters(in: .whitespaces)
         if !email.isEmpty {
-            extensions.append(ASN1.seq(ASN1.oid("2.5.29.17"), ASN1.octet(ASN1.seq(ASN1.tlv(0x81, Array(email.utf8))))))
+            extensions.append(RequestDER.seq(RequestDER.oid("2.5.29.17"), RequestDER.octet(RequestDER.seq(RequestDER.tlv(0x81, Array(email.utf8))))))
         }
-        let extensionRequest = ASN1.seq(ASN1.oid("1.2.840.113549.1.9.14"), ASN1.tlv(0x31, ASN1.seq(extensions)))
-        let info = ASN1.seq(ASN1.int(0), name(subject), [UInt8](try publicKeyInfo(key)), ASN1.tlv(0xA0, extensionRequest))
+        let extensionRequest = RequestDER.seq(RequestDER.oid("1.2.840.113549.1.9.14"), RequestDER.tlv(0x31, RequestDER.seq(extensions)))
+        let info = RequestDER.seq(RequestDER.int(0), name(subject), [UInt8](try publicKeyInfo(key)), RequestDER.tlv(0xA0, extensionRequest))
         let signature = try sign(Data(info), with: key, reason: L("create a certificate request"))
-        let request = Data(ASN1.seq(info, [UInt8](signatureAlgorithm(key)), ASN1.bitString([UInt8](signature))))
+        let request = Data(RequestDER.seq(info, [UInt8](signatureAlgorithm(key)), RequestDER.bitString([UInt8](signature))))
         key.subject = subject
         key.request = request
         if persist { try save(key) }
@@ -371,26 +371,26 @@ public enum KeyVault {
             f.locale = Locale(identifier: "en_US_POSIX")
             f.timeZone = TimeZone(identifier: "UTC")
             f.dateFormat = "yyMMddHHmmss'Z'"
-            return ASN1.tlv(0x17, Array(f.string(from: date).utf8))
+            return RequestDER.tlv(0x17, Array(f.string(from: date).utf8))
         }
         let now = Date()
         let end = Calendar(identifier: .gregorian).date(byAdding: .year, value: years, to: now) ?? now
         var serial = [UInt8](repeating: 0, count: 16)
         _ = SecRandomCopyBytes(kSecRandomDefault, serial.count, &serial)
         serial[0] &= 0x7F
-        var extensions = [ASN1.seq(ASN1.oid("2.5.29.19"), ASN1.bool(true), ASN1.octet(ASN1.seq())),
-                          ASN1.seq(ASN1.oid("2.5.29.15"), ASN1.bool(true), ASN1.octet(ASN1.bitString([0xC0], unused: 6)))]
+        var extensions = [RequestDER.seq(RequestDER.oid("2.5.29.19"), RequestDER.bool(true), RequestDER.octet(RequestDER.seq())),
+                          RequestDER.seq(RequestDER.oid("2.5.29.15"), RequestDER.bool(true), RequestDER.octet(RequestDER.bitString([0xC0], unused: 6)))]
         let email = subject.email.trimmingCharacters(in: .whitespaces)
         if !email.isEmpty {
-            extensions.append(ASN1.seq(ASN1.oid("2.5.29.17"), ASN1.octet(ASN1.seq(ASN1.tlv(0x81, Array(email.utf8))))))
+            extensions.append(RequestDER.seq(RequestDER.oid("2.5.29.17"), RequestDER.octet(RequestDER.seq(RequestDER.tlv(0x81, Array(email.utf8))))))
         }
         let algorithm = [UInt8](signatureAlgorithm(key))
         let issuer = name(subject)
-        let tbs = ASN1.seq(ASN1.tlv(0xA0, ASN1.int(2)), ASN1.tlv(0x02, serial), algorithm, issuer,
-                           ASN1.seq(utc(now.addingTimeInterval(-300)), utc(end)), issuer, [UInt8](try publicKeyInfo(key)),
-                           ASN1.tlv(0xA3, ASN1.seq(extensions)))
+        let tbs = RequestDER.seq(RequestDER.tlv(0xA0, RequestDER.int(2)), RequestDER.tlv(0x02, serial), algorithm, issuer,
+                           RequestDER.seq(utc(now.addingTimeInterval(-300)), utc(end)), issuer, [UInt8](try publicKeyInfo(key)),
+                           RequestDER.tlv(0xA3, RequestDER.seq(extensions)))
         let signature = try sign(Data(tbs), with: key, reason: L("create a certificate"))
-        let certificate = Data(ASN1.seq(tbs, algorithm, ASN1.bitString([UInt8](signature))))
+        let certificate = Data(RequestDER.seq(tbs, algorithm, RequestDER.bitString([UInt8](signature))))
         key.subject = subject
         key = try importCertificate(certificate, into: key, persist: persist)
         return certificate
@@ -411,11 +411,11 @@ public enum KeyVault {
             ("2.5.4.3", trim(s.commonName), 0x0C),
             ("1.2.840.113549.1.9.1", trim(s.email), 0x16),
         ]
-        return ASN1.seq(fields.filter { !$0.1.isEmpty }.map { oid, value, tag in
+        return RequestDER.seq(fields.filter { !$0.1.isEmpty }.map { oid, value, tag in
             // PrintableString only allows a small set; fall back to UTF8String.
             let printable = value.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || " '()+,-./:=?".contains($0)) }
             let stringTag: UInt8 = tag == 0x13 && !printable ? 0x0C : tag
-            return ASN1.tlv(0x31, ASN1.seq(ASN1.oid(oid), ASN1.tlv(stringTag, Array(value.utf8))))
+            return RequestDER.tlv(0x31, RequestDER.seq(RequestDER.oid(oid), RequestDER.tlv(stringTag, Array(value.utf8))))
         })
     }
 
@@ -469,8 +469,8 @@ public enum KeyVault {
     /// SubjectPublicKeyInfo of a certificate (DER).
     static func publicKeyInfo(of cert: SecCertificate) -> Data? {
         let der = [UInt8](SecCertificateCopyData(cert) as Data)
-        guard let tbs = ASN1.children(der).first else { return nil }
-        let parts = ASN1.children(tbs)
+        guard let tbs = RequestDER.children(der).first else { return nil }
+        let parts = RequestDER.children(tbs)
         let offset = parts.first?.first == 0xA0 ? 1 : 0
         guard parts.count > offset + 5 else { return nil }
         return Data(parts[offset + 5])
@@ -478,7 +478,7 @@ public enum KeyVault {
 }
 
 /// Small DER encoder/reader for the request and certificate parsing above.
-enum ASN1 {
+enum RequestDER {
     static func tlv(_ tag: UInt8, _ body: [UInt8]) -> [UInt8] {
         var length: [UInt8]
         if body.count < 0x80 { length = [UInt8(body.count)] } else {

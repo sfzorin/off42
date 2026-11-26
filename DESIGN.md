@@ -389,7 +389,7 @@ documented by the app: PPT42 uses ⇧⌘P for Play from Current Slide and remove
 | `SizeStepper`, `stripPopUp` | compact "− 12 +" for sizes; borderless pop-ups for font/style/format |
 | `PaginatedPDF` | paginated PDF of any view through the print system (exports) |
 | `DocxWriter` | .docx writer (paragraphs, runs, tables, images) — the system writer drops tables |
-| `BannerView` | status bar (`info / success / warning / error`) |
+| `BannerView` | status bar (`info / success / warning / error`); takes no height while hidden. `BannerView.install(in: root)` puts one at the top of a constraint-based window and moves the views that hung from the safe-area top below it (DOC42, XLS42); `DocumentSignatureState` drives it for signed Office/ODF files |
 | `WelcomeWindowController` | start window |
 | `StampLibrary`, `StampLibraryViewController`, `ImageTools` | shared library of signatures and seals, background removal; `K42_STAMP_LIBRARY=DIR` uses a separate library (audits) |
 | `SigmaLognormal`, `PenRenderer`, `PenType` | sigma-lognormal timing along a smooth line (geometry and time separated); ink from speed and direction for ballpoint, gel, fountain and felt-tip pens, paper fibres |

@@ -104,6 +104,8 @@ if args.count >= 3, args[1] == "--mark-samples" {
 if let code = GOSTCLI.run(args) { exit(code) }
 if let code = PDFMainCLI.run(args) { exit(code) }
 if let code = KeyCLI.run(args) { exit(code) }
+// Smart-card (PKCS#11) signing, Turkish qualified-signature report and Office/ODF signature checks (EImza.swift).
+if let code = EImzaCLI.run(args) { exit(code) }
 
 if let code = SigningWorkflowCLI.run(args) { exit(code) }
 if let code = ToolsCLI.run(args) { exit(code) }

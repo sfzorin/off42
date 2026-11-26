@@ -73,6 +73,7 @@ extension PDFSigner.Options {
         if let remote { return remote.chain.first }
         if case .cryptoPro(let cert, _) = signer { return cert.info.flatMap { X509(der: [UInt8]($0.der)) } }
         if case .secureEnclave(let key) = signer { return key.certificate.flatMap { X509(der: [UInt8]($0)) } }
+        if case .smartCard(let card) = signer { return card.chain.first }
         guard let identity = identity?.identity else { return nil }
         var cert: SecCertificate?
         guard SecIdentityCopyCertificate(identity, &cert) == errSecSuccess, let cert else { return nil }

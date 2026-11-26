@@ -21,8 +21,40 @@ final class SheetDocument: NSDocument {
     }
 
     override func makeWindowControllers() {
-        addWindowController(SheetWindowController())
+        let controller = SheetWindowController()
+        addWindowController(controller)
+        if let root = controller.window?.contentView { signatureState.install(in: root) }
     }
+
+    override func read(from url: URL, ofType typeName: String) throws {
+        try super.read(from: url, ofType: typeName)
+        signatureState.load(url)
+    }
+
+    // MARK: Digital signatures (Office/OpenDocument XMLDSig, Kit42)
+
+    lazy var signatureState = DocumentSignatureState(document: self)
+
+    override func updateChangeCount(_ change: NSDocument.ChangeType) {
+        super.updateChangeCount(change)
+        if change == .changeDone { signatureState.didEdit() }
+    }
+
+    override func save(_ sender: Any?) {
+        guard signatureState.confirmSave() else { return }
+        super.save(sender)
+    }
+
+    override func save(to url: URL, ofType typeName: String, for saveOperation: NSDocument.SaveOperationType,
+                       completionHandler: @escaping (Error?) -> Void) {
+        super.save(to: url, ofType: typeName, for: saveOperation) { [weak self] error in
+            if error == nil, saveOperation == .saveOperation || saveOperation == .saveAsOperation { self?.signatureState.didSave() }
+            completionHandler(error)
+        }
+    }
+
+    @objc func signDocumentAction(_ sender: Any?) { signatureState.sign() }
+    @objc func showSignaturesAction(_ sender: Any?) { signatureState.showDetails() }
 
     static func isCSV(_ typeName: String) -> Bool {
         let t = typeName.lowercased()

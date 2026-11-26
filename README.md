@@ -256,6 +256,12 @@ lets you switch extensions off.
   pasted access token; credentials/list → credentials/authorize (PIN / one-time code, or credential-scoped OAuth for
   `oauth2code` credentials) → signatures/signHash. Only the SHA-256 hash of the signed attributes is sent; the document
   stays local. RSA (PKCS#1 v1.5) and ECDSA with SHA-256.
+- Smart cards (Sign dialog › Smart Card…): PAdES with a card through the PKCS#11 module its middleware installed —
+  Turkish e-imza (AKİS cards with Kamu SM, E-Tuğra or TÜRKTRUST qualified certificates), SafeNet, IDPrime, OpenSC.
+  Nothing is bundled; see Common › Smart cards and Turkish e-imza. The verification panel names qualified
+  certificates under Turkish Law 5070, the provider and a masked TC Kimlik No.
+  CLI: `--pkcs11-sign in.pdf out.pdf MODULE pin=… [level=B-B|B-T|B-LT|B-LTA] [tsa=URL] [slot=N] [key=HEX]`,
+  `--pkcs11-list MODULE`, `--verify-tr file.pdf`.
 - GOST signatures (ГОСТ Р 34.10-2012) through the user's own **CryptoPro CSP 5.0 for macOS**, which PDF42 does not
   include. Install CSP from cryptopro.ru (registration, administrator rights; 90-day trial licence, then a purchased
   serial number), the certificate with its key container (token or folder) and the CA root. PDF42 calls CSP's
@@ -1014,6 +1020,41 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   (needs an Apple Developer account and stored notarization credentials; see the script header).
   Pass the app names explicitly: the script's current no-argument fallback forms one combined name and is not usable.
 
+### Digital signatures in Word, Excel and OpenDocument files (DOC42, XLS42)
+
+- File › Sign Document… adds an XML digital signature to the saved file, the kind Word and Excel create on Windows
+  (Word for Mac cannot create them): Office Open XML signatures in `_xmlsignatures/` for .docx/.xlsx (.pptx is read
+  and signed by the shared code but not offered in PPT42), and ODF 1.2 signatures in
+  `META-INF/documentsignatures.xml` for .odt/.ods. XMLDSig with XAdES signed properties (signing time, signing
+  certificate), RSA or ECDSA with SHA-256, an optional purpose (Office's “purpose for signing”). An already signed file
+  gets an additional signature. Certificates come from the Keychain, an imported .p12/.pfx, or a smart card.
+- Opening a signed file shows a banner: valid, intact but not trusted (the certificate does not chain to a trusted
+  root), or invalid with the changed part. Details lists the signers, times, purposes and Turkish qualification.
+  The first edit turns the banner into a warning; ⌘S asks before writing the file without the signatures, which is
+  what saving any edit of a signed file does (use Save As to keep the signed original). Re-sign after saving.
+- Verification follows Office: all package parts reached through the signed relationship types, the relationship
+  transform for `.rels` parts and the XAdES certificate digest; parts or relationships added after signing make the
+  signature invalid. ODF signatures must cover every stream (the mimetype included, as LibreOffice requires).
+- CLI (DOC42 and XLS42): `--sign-document in out (--p12 file --password pw | --identity name | --pkcs11 module --pin pin)
+  [--comment text]`, `--verify-document file` (exit status 0 when all signatures are intact).
+
+### Smart cards and Turkish e-imza (PDF42, DOC42, XLS42)
+
+- The card's PKCS#11 module is loaded from where the middleware installed it (AKİS: `/usr/local/lib/libakisp11.dylib`;
+  also SafeNet, IDPrime, OpenSC, SoftHSM), or chosen with Choose Module…. It runs in a separate helper,
+  `Contents/Helpers/P11Bridge42`, built universal: an Intel-only module (current AKİS macOS builds ship x86_64 only)
+  runs under Rosetta, and a crashing vendor module cannot take the app down. Without Rosetta the app says so.
+- Certificates of all inserted cards are listed; the non-repudiation (qualified) one is placed first, the
+  authentication certificate of an e-imza card after it. PIN entry with the PIN-state warnings the card reports
+  (count low, final try, locked); PIN-pad readers ask on the reader. Wrong, locked or expired PINs get plain messages.
+- Turkish qualified certificates are recognised by the Law 5070 policy (BTK arc `2.16.792.1.61.0.1.5070`), Kamu SM's
+  policy arc, or ETSI QcCompliance from a Turkish provider; the provider (Kamu SM, E-Tuğra, TÜRKTRUST, E-İmzaTR,
+  E-Güven) comes from the issuer. Trust still comes from macOS: install the provider's root certificates (published by
+  the providers) to see a signature as valid rather than intact-but-untrusted. Intermediate certificates are fetched
+  from the certificates' caIssuers URLs for PAdES B-LT/B-LTA.
+- Mobile signature (mobil imza) is not supported: the operators' MSSP interface (ETSI TS 102 204) is available only
+  under a commercial application-provider agreement, not as a public API. See STATUS.md.
+
 ## Known limitations
 
 - PDF42 signatures: signing and LTV need a file with a classic cross-reference table (any file saved by PDF42; files
@@ -1029,6 +1070,11 @@ right. Every scan adds pages to the document; save them as one searchable PDF wh
   is P-256 only (some authorities accept only RSA), and is not a certified QSCD for eIDAS qualified signatures. RSA-PSS keys,
   OCSP nonces and asynchronous (multi-signature) CSC operations are not supported. Network calls block the window
   while they run (the OAuth wait keeps the run loop alive).
+- Office/ODF signatures: not yet checked against Microsoft Office (no Office installation was available); they were
+  verified with LibreOffice and an independent XMLDSig check (STATUS.md). Signatures created by LibreOffice 25.2 in
+  .docx files are reported as invalid by DOC42 (LibreOffice's relationship transform differs; its ODF signatures are
+  read correctly). XAdES timestamps (XAdES-T) and signature lines with images are not created. No real AKİS card or
+  Turkish qualified certificate was used in testing; smart-card signing was tested with SoftHSM.
 - GOST signatures need the user's own CryptoPro CSP. The GOST path has been exercised only against stand-in tools
   (`scripts/fake-cryptopro`), not against a real CSP install, so `cryptcp` option compatibility (`-cadesbes`,
   `-cadest`) and interoperability with CryptoPro PDF/Acrobat are not yet confirmed.
@@ -1076,6 +1122,10 @@ python3 scripts/audit-spreadsheets-cli.py --binary .build/debug/XLS42
 python3 scripts/audit-presentations-cli.py --binary .build/debug/PPT42
 python3 scripts/audit-images-cli.py --binary .build/debug/IMG42
 python3 scripts/audit-scans-cli.py --binary .build/debug/SCN42
+# Office/ODF signatures: Suite42, an independent lxml+OpenSSL check, LibreOffice (if installed), Office/LibreOffice
+# fixtures (downloaded). Smart cards: needs `brew install softhsm opensc`.
+python3 scripts/audit-document-signatures.py
+python3 scripts/audit-eimza.py
 swiftc -module-cache-path .build/ModuleCache Sources/Kit42/Zip.swift Sources/Kit42/TextDecoding.swift \
   scripts/audit-documents-regressions.swift -o .build/audit-documents-regressions
 .build/audit-documents-regressions

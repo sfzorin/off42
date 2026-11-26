@@ -39,6 +39,17 @@ QL_TYPES=(
 
 swift build -c release
 
+# P11Bridge42 hosts the user's smart-card PKCS#11 module out of process. It is universal so that an Intel-only module
+# (e.g. AKİS builds without arm64) can run under Rosetta beside the Apple-silicon apps.
+P11_DIR=.build/p11bridge
+mkdir -p "$P11_DIR"
+for ARCH in arm64 x86_64; do
+  swiftc -O -target $ARCH-apple-macos14 Sources/P11Bridge42/main.swift -o "$P11_DIR/P11Bridge42-$ARCH"
+done
+lipo -create "$P11_DIR/P11Bridge42-arm64" "$P11_DIR/P11Bridge42-x86_64" -output "$P11_DIR/P11Bridge42"
+typeset -A P11_HOSTS
+P11_HOSTS=(DOC42 1 XLS42 1 PDF42 1)
+
 # make_appex <App.app> <host> <kind: preview|thumbnail>
 make_appex() {
   local APP=$1 HOST=$2 KIND=$3
@@ -106,6 +117,11 @@ for APP_NAME in $APPS; do
   cp "$RES/AppIcon.icns" "$APP/Contents/Resources/"
   cp -R ".build/release/Suite42_Kit42.bundle" "$APP/Contents/Resources/"
   [[ -d .build/release/Suite42_$APP_NAME.bundle ]] && cp -R ".build/release/Suite42_$APP_NAME.bundle" "$APP/Contents/Resources/"
+  if [[ -n "${P11_HOSTS[$APP_NAME]:-}" ]]; then
+    mkdir -p "$APP/Contents/Helpers"
+    cp "$P11_DIR/P11Bridge42" "$APP/Contents/Helpers/"
+    codesign --force -s - "$APP/Contents/Helpers/P11Bridge42"
+  fi
   if [[ -n "${QL_TYPES[$APP_NAME]:-}" ]]; then
     make_appex "$APP" $APP_NAME preview
     make_appex "$APP" $APP_NAME thumbnail

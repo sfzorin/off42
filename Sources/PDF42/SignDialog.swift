@@ -10,6 +10,8 @@ enum SignDialog {
         case secureEnclave(StoredKey)
         case gost(CryptoPro.Certificate)
         case remote(CSCSigner)
+        /// A certificate on a smart card (PKCS#11, e.g. a Turkish e-imza card).
+        case card(PKCS11Token, PKCS11Certificate)
 
         var title: String {
             switch self {
@@ -17,6 +19,7 @@ enum SignDialog {
             case .secureEnclave(let key): return "\(key.displayName) — \(L("Secure Enclave"))"
             case .gost(let c): return L("GOST: %@", c.displayName)
             case .remote(let r): return "☁︎ " + r.credential.label
+            case .card(_, let c): return "▣ " + c.displayName + (TurkishESign.isQualified(c.der) ? " · " + L("qualified") : "")
             }
         }
     }
@@ -75,6 +78,14 @@ enum SignDialog {
         actions.add(L("Remote (CSC)…")) {
             if let signer = connectRemote() { choices.append(.remote(signer)); fill(select: Choice.remote(signer).title) }
         }
+        actions.add(L("Smart Card…")) {
+            // e-imza and other PKCS#11 cards; the qualified (non-repudiation) certificate first.
+            let cards = DocumentSigningUI.readSmartCards().sorted { $0.1.keyUsage.nonRepudiation && !$1.1.keyUsage.nonRepudiation }
+            guard !cards.isEmpty else { return }
+            choices.removeAll { if case .card = $0 { return true } else { return false } }
+            choices += cards.map { Choice.card($0.0, $0.1) }
+            fill(select: Choice.card(cards[0].0, cards[0].1).title)
+        }
         actions.add(L("CryptoPro (GOST)…")) {
             if showCryptoPro() { choices = Self.choices(); fill() }
         }
@@ -106,7 +117,7 @@ enum SignDialog {
         format.addItems(withTitles: PAdESLevel.allCases.map(\.title))
         format.selectItem(at: d.object(forKey: "sign.level") == nil ? PAdESLevel.baselineLTA.rawValue : d.integer(forKey: "sign.level"))
         let alert = NSAlert.form(L("Sign Document"),
-                                 info: L("The signature is added to a copy of the document. Certificates come from the macOS Keychain, the Secure Enclave (Get a Certificate…), a remote signing service (CSC) or, for GOST signatures, CryptoPro CSP. Long-term levels (B-T and above) need the timestamp server."),
+                                 info: L("The signature is added to a copy of the document. Certificates come from the macOS Keychain, the Secure Enclave (Get a Certificate…), a smart card (PKCS#11, e.g. e-imza), a remote signing service (CSC) or, for GOST signatures, CryptoPro CSP. Long-term levels (B-T and above) need the timestamp server."),
                                  ok: L("Sign…"),
                                  rows: [(L("Certificate:"), popup), ("", actions), (L("PIN:"), pin), (L("Reason:"), reason), (L("Location:"), location),
                                         (L("Power of attorney:"), poaRow), ("", visible), (L("Handwritten:"), handwriting), (L("Format:"), format), ("", timestamp), (L("TSA server:"), tsa)])
@@ -147,6 +158,14 @@ enum SignDialog {
             case .gost(let c):
                 signer = .cryptoPro(c, CryptoPro.SignOptions(thumbprint: c.thumbprint, pin: pin.stringValue.isEmpty ? nil : pin.stringValue))
             case .remote(let r): signer = .remote(r)
+            case .card(let token, let cert):
+                guard let cardPIN = DocumentSigningUI.askPIN(token: token, certificate: cert) else { continue }
+                do {
+                    signer = .smartCard(try PKCS11CMSSigner(token: token, certificate: cert, pin: cardPIN))
+                } catch {
+                    NSApp.presentError(error)
+                    continue
+                }
             }
             var o = PDFSigner.Options(signer: signer, reason: reason.stringValue, location: location.stringValue)
             // GOST signatures keep CryptoPro's format; the PAdES level applies to Keychain and CSC signers.

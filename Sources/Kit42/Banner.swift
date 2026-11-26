@@ -29,6 +29,12 @@ public final class BannerView: NSView {
     private let button = NSButton(title: "", target: nil, action: nil)
     private var handler: (() -> Void)?
     private var style: Style = .info
+    private var height: NSLayoutConstraint!
+
+    /// A hidden banner takes no height, so it can sit in a constraint layout as well as in a stack view.
+    public override var isHidden: Bool {
+        didSet { height?.constant = isHidden ? 0 : Theme42.bannerHeight }
+    }
 
     public override init(frame: NSRect) {
         super.init(frame: frame)
@@ -62,8 +68,9 @@ public final class BannerView: NSView {
             line.leadingAnchor.constraint(equalTo: leadingAnchor),
             line.trailingAnchor.constraint(equalTo: trailingAnchor),
             line.bottomAnchor.constraint(equalTo: bottomAnchor),
-            heightAnchor.constraint(equalToConstant: Theme42.bannerHeight),
         ])
+        height = heightAnchor.constraint(equalToConstant: 0)
+        height.isActive = true
     }
 
     required init?(coder: NSCoder) { fatalError("not supported") }
@@ -81,6 +88,12 @@ public final class BannerView: NSView {
     }
 
     public func hide() { isHidden = true }
+
+    /// Current text and style (UI regression checks).
+    public var text: String { label.stringValue }
+    public var currentStyle: Style { style }
+    /// Views that hung from the top of the safe area before `install(in:)` put the banner there.
+    public internal(set) var anchoredBelow: [NSView] = []
 
     /// Layer colours are not dynamic: resolve the system colour for the current appearance.
     private func updateTint() {

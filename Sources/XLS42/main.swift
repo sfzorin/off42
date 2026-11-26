@@ -3,6 +3,9 @@ import Kit42
 
 Localization.register(rows: xls42Strings)
 
+// --sign-document / --verify-document: Office and OpenDocument digital signatures (Kit42/DocumentSignatureCLI.swift).
+if let code = DocumentSignatureCLI.run(CommandLine.arguments) { exit(code) }
+
 if CommandLine.arguments.contains("--selftest") { exit(SelfTest.run()) }
 // XLS42 --lo-compare [dir] [soffice path] [verbose]: function values against LibreOffice (headless, private profile)
 if let i = CommandLine.arguments.firstIndex(of: "--lo-compare") {
