@@ -7,7 +7,8 @@
     "language": "Bahasa",
     "menu": "Menu",
     "skip": "Langkau ke kandungan",
-    "home": "Laman utama"
+    "home": "Laman utama",
+    "webApp": "Aplikasi web"
   },
   "home": {
     "eyebrow": "Percuma · Sumber terbuka · macOS dan Windows",
@@ -106,6 +107,20 @@
     "qrAlt": "“Insert Symbol or Code” dalam XLS42: kod QR 30 mm yang dibuat daripada pautan produk.",
     "labelsAlt": "“Create Labels” dalam XLS42: helaian label dengan kod QR yang dibina daripada sepuluh baris produk.",
     "caption": "Helaian label yang dibuat daripada sepuluh baris hamparan. Produknya adalah rekaan."
+  },
+  "web": {
+    "label": "OFF42 DALAM PELAYAR",
+    "title": "Buka, tukar dan cipta fail terus dalam pelayar anda.",
+    "text": "Aplikasi web menjalankan enjin OFF42 yang dikompil kepada WebAssembly. Fail diproses dalam tab pelayar dan diberikan semula sebagai muat turun: tiada apa-apa dimuat naik dan tiada apa-apa dipasang.",
+    "points": [
+      "Pratonton fail DOCX, ODT, RTF, Markdown, HTML dan teks, dan simpan dalam format lain daripada senarai ini",
+      "Lihat helaian XLSX, ODS, XLS dan CSV dengan nilai yang dikira, dan simpan sebagai XLSX, ODS atau CSV",
+      "Paparkan slaid PPTX dan ODP sebagai rangka teks dan tukar antara kedua-dua format",
+      "Baca bilangan halaman, metadata, penanda buku, lampiran dan medan borang PDF",
+      "Cipta kod QR, Data Matrix, Code 128 dan Aztec, helaian label A4 sebagai PDF, tanda produk, tandatangan dan cop"
+    ],
+    "limits": "Ini ialah pratonton dengan had yang jelas: dokumen, hamparan dan persembahan tidak boleh dieksport ke PDF, halaman PDF tidak dipaparkan, slaid ditunjukkan sebagai teks sahaja, dan cop hanya menyokong tulisan Latin, Cyril dan Yunani. Enjin dimuat turun sekali sahaja, bersaiz sehingga 16 MB. Apl desktop untuk Mac dan Windows mempunyai set ciri penuh.",
+    "open": "Buka aplikasi web"
   },
   "show": {
     "label": "LIHAT CARA IA BERFUNGSI",
@@ -377,7 +392,9 @@
     "windowsPreviewText": "Versi pratonton yang mengandungi kesemua enam aplikasi. Ekstrak keseluruhan ZIP, kemudian jalankan aplikasi pilihan anda. Termasuk alat untuk membuat label dan kod bar.",
     "installTitle": "Pelancaran pertama",
     "installMac": "Mac: jika macOS menyatakan app tidak boleh dibuka, buka Tetapan Sistem → Privasi & Keselamatan dan klik Buka Juga. Anda hanya perlu berbuat demikian sekali bagi setiap app.",
-    "installWindows": "Windows: jika SmartScreen memaparkan “Windows telah melindungi PC anda”, klik Maklumat lanjut, kemudian Jalankan juga."
+    "installWindows": "Windows: jika SmartScreen memaparkan “Windows telah melindungi PC anda”, klik Maklumat lanjut, kemudian Jalankan juga.",
+    "web": "OFF42 dalam pelayar",
+    "webText": "Tiada apa-apa untuk dipasang: pratonton yang membuka, menukar dan mencipta fail dalam tab pelayar anda. Dokumen belum boleh dieksport ke PDF dan halaman PDF belum dipaparkan."
   },
   "about": {
     "title": "Pejabat tanpa apa-apa untuk disembunyikan.",

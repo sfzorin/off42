@@ -7,7 +7,8 @@
     "language": "Langue",
     "menu": "Menu",
     "skip": "Aller au contenu",
-    "home": "Accueil"
+    "home": "Accueil",
+    "webApp": "Application web"
   },
   "home": {
     "eyebrow": "Gratuit · Open source · macOS et Windows",
@@ -106,6 +107,20 @@
     "qrAlt": "« Insert Symbol or Code » dans XLS42 : un code QR de 30 mm créé à partir d'un lien produit.",
     "labelsAlt": "« Create Labels » dans XLS42 : une planche d'étiquettes avec des codes QR créés à partir de dix lignes de produits.",
     "caption": "Une planche d'étiquettes créée à partir de dix lignes de tableur. Les produits sont fictifs."
+  },
+  "web": {
+    "label": "OFF42 DANS LE NAVIGATEUR",
+    "title": "Ouvrez, convertissez et créez des fichiers directement dans votre navigateur.",
+    "text": "L'application web exécute le moteur OFF42 compilé en WebAssembly. Les fichiers sont traités dans l'onglet du navigateur et vous sont rendus sous forme de téléchargements : rien n'est envoyé en ligne et rien n'est installé.",
+    "points": [
+      "Aperçu des fichiers DOCX, ODT, RTF, Markdown, HTML et texte, et enregistrement dans un autre de ces formats",
+      "Affichage des feuilles XLSX, ODS, XLS et CSV avec les valeurs calculées, et enregistrement en XLSX, ODS ou CSV",
+      "Affichage des diapositives PPTX et ODP sous forme de plan texte et conversion entre ces deux formats",
+      "Lecture du nombre de pages, des métadonnées, des signets, des pièces jointes et des champs de formulaire d'un PDF",
+      "Création de codes QR, Data Matrix, Code 128 et Aztec, de planches d'étiquettes A4 en PDF, de marquages de produit, de signatures et de tampons"
+    ],
+    "limits": "C'est un aperçu aux limites bien définies : les documents, tableurs et présentations ne peuvent pas être exportés en PDF, les pages PDF ne sont pas affichées, les diapositives sont affichées uniquement sous forme de texte et les tampons ne prennent en charge que les écritures latine, cyrillique et grecque. Le moteur est un téléchargement unique de 16 Mo au plus. Les applications de bureau pour Mac et Windows offrent toutes les fonctionnalités.",
+    "open": "Ouvrir l'application web"
   },
   "show": {
     "label": "EN SITUATION",
@@ -377,7 +392,9 @@
     "windowsPreviewText": "Version préliminaire avec les six applications. Décompressez toute l’archive ZIP, puis lancez l’application de votre choix. Des outils permettent de créer des étiquettes et des codes-barres.",
     "installTitle": "Premier lancement",
     "installMac": "Mac : si macOS indique que l’app ne peut pas être ouverte, ouvrez Réglages Système → Confidentialité et sécurité, puis cliquez sur « Ouvrir quand même ». Cette étape n’est nécessaire qu’une fois par app.",
-    "installWindows": "Windows : si SmartScreen affiche « Windows a protégé votre ordinateur », cliquez sur « Informations complémentaires », puis sur « Exécuter quand même »."
+    "installWindows": "Windows : si SmartScreen affiche « Windows a protégé votre ordinateur », cliquez sur « Informations complémentaires », puis sur « Exécuter quand même ».",
+    "web": "OFF42 dans le navigateur",
+    "webText": "Rien à installer : un aperçu qui ouvre, convertit et crée des fichiers dans l'onglet de votre navigateur. Les documents ne peuvent pas encore être exportés en PDF et les pages PDF ne sont pas encore affichées."
   },
   "about": {
     "title": "Un bureau qui n'a rien à cacher.",

@@ -40,8 +40,15 @@ code { font-size: 0.9em; }
   position: sticky; top: 0; z-index: 1;
 }
 .brand { font-weight: 700; font-size: 1.2rem; }
-.brand span { font-weight: 400; color: var(--muted); font-size: 0.85rem; margin-left: 6px; }
+.brand span { font-weight: 400; color: var(--muted); font-size: 0.85rem; margin-inline-start: 6px; }
 .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.language { margin-inline-start: auto; }
+.language select { width: auto; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.limits { color: var(--muted); font-size: 0.9rem; margin: -8px 0 16px; }
+.limits summary { cursor: pointer; }
+.limits p { margin: 6px 0 0; max-width: 80ch; }
+footer a { color: inherit; }
 .tabs button { border: 0; background: none; padding: 8px 14px; border-radius: 8px; color: var(--muted); }
 .tabs button[aria-selected="true"] { background: var(--bg); color: var(--text); font-weight: 600; }
 
@@ -95,12 +102,12 @@ input[type="checkbox"] { width: auto; }
 .sheet-scroll table { border-collapse: collapse; font-size: 0.85rem; }
 .sheet-scroll th, .sheet-scroll td { border: 1px solid var(--line); padding: 3px 8px; white-space: nowrap; }
 .sheet-scroll th { background: var(--bg); color: var(--muted); font-weight: 500; position: sticky; top: 0; }
-.sheet-scroll tbody th { position: sticky; left: 0; }
-.sheet-scroll td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.sheet-scroll tbody th { position: sticky; inset-inline-start: 0; }
+.sheet-scroll td.num { text-align: end; font-variant-numeric: tabular-nums; }
 
 .slides { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
 .slide { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; aspect-ratio: 16 / 10; overflow: auto; }
-.slide ul { margin: 4px 0; padding-left: 18px; }
+.slide ul { margin: 4px 0; padding-inline-start: 18px; }
 .slide p { margin: 4px 0; }
 .hidden-slide { opacity: 0.6; }
 .slide-number { color: var(--muted); font-size: 0.75rem; }
@@ -108,7 +115,7 @@ input[type="checkbox"] { width: auto; }
 table.mini { border-collapse: collapse; font-size: 0.8rem; margin: 4px 0; }
 table.mini td { border: 1px solid var(--line); padding: 2px 6px; }
 table.info { border-collapse: collapse; margin-top: 12px; }
-table.info th { text-align: left; color: var(--muted); font-weight: 500; padding: 4px 16px 4px 0; vertical-align: top; }
+table.info th { text-align: start; color: var(--muted); font-weight: 500; padding-block: 4px; padding-inline: 0 16px; vertical-align: top; }
 table.info td { padding: 4px 0; }
 
 .preview { display: grid; place-items: center; min-height: 140px; border-radius: var(--radius); padding: 12px; }

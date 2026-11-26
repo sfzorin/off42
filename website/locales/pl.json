@@ -7,7 +7,8 @@
     "language": "Język",
     "menu": "Menu",
     "skip": "Przejdź do treści",
-    "home": "Strona główna"
+    "home": "Strona główna",
+    "webApp": "Aplikacja webowa"
   },
   "home": {
     "eyebrow": "Za darmo · Otwarty kod · macOS i Windows",
@@ -106,6 +107,20 @@
     "qrAlt": "„Insert Symbol or Code” w XLS42: kod QR o rozmiarze 30 mm utworzony z linku do produktu.",
     "labelsAlt": "„Create Labels” w XLS42: arkusz etykiet z kodami QR utworzonymi z dziesięciu wierszy produktów.",
     "caption": "Arkusz etykiet utworzony z dziesięciu wierszy arkusza kalkulacyjnego. Produkty są fikcyjne."
+  },
+  "web": {
+    "label": "OFF42 W PRZEGLĄDARCE",
+    "title": "Otwieraj, konwertuj i twórz pliki prosto w przeglądarce.",
+    "text": "Aplikacja webowa uruchamia silnik OFF42 skompilowany do WebAssembly. Pliki są przetwarzane w karcie przeglądarki i zwracane do pobrania: nic nie jest przesyłane ani instalowane.",
+    "points": [
+      "Podgląd plików DOCX, ODT, RTF, Markdown, HTML i tekstowych oraz zapis w innym z tych formatów",
+      "Przeglądanie arkuszy XLSX, ODS, XLS i CSV z obliczonymi wartościami oraz zapis jako XLSX, ODS lub CSV",
+      "Slajdy PPTX i ODP jako konspekt tekstowy oraz konwersja między tymi dwoma formatami",
+      "Odczyt liczby stron, metadanych, zakładek, załączników i pól formularza pliku PDF",
+      "Kody QR, Data Matrix, Code 128 i Aztec, arkusze etykiet A4 w PDF, znaki na produkty, podpisy i pieczęcie"
+    ],
+    "limits": "To wersja podglądowa z wyraźnymi ograniczeniami: dokumentów, arkuszy i prezentacji nie można eksportować do PDF, strony PDF nie są wyświetlane, slajdy są pokazywane tylko jako tekst, a pieczęcie obsługują tylko alfabet łaciński, cyrylicę i alfabet grecki. Silnik pobiera się jednorazowo i zajmuje do 16 MB. Aplikacje desktopowe dla Maca i Windows mają pełny zestaw funkcji.",
+    "open": "Otwórz aplikację webową"
   },
   "show": {
     "label": "ZOBACZ W DZIAŁANIU",
@@ -377,7 +392,9 @@
     "windowsPreviewText": "Wersja wstępna zawiera wszystkie sześć aplikacji. Rozpakuj całe archiwum ZIP i uruchom wybraną aplikację. Zawiera narzędzia do tworzenia etykiet i kodów kreskowych.",
     "installTitle": "Pierwsze uruchomienie",
     "installMac": "Mac: jeśli macOS informuje, że nie można otworzyć aplikacji, otwórz Ustawienia systemowe → Prywatność i ochrona i kliknij „Otwórz mimo to”. Trzeba to zrobić tylko raz dla każdej aplikacji.",
-    "installWindows": "Windows: jeśli SmartScreen wyświetli komunikat „System Windows chronił Twój komputer”, kliknij „Więcej informacji”, a potem „Uruchom mimo to”."
+    "installWindows": "Windows: jeśli SmartScreen wyświetli komunikat „System Windows chronił Twój komputer”, kliknij „Więcej informacji”, a potem „Uruchom mimo to”.",
+    "web": "OFF42 w przeglądarce",
+    "webText": "Bez instalacji: wersja podglądowa, która otwiera, konwertuje i tworzy pliki w karcie przeglądarki. Eksport dokumentów do PDF i wyświetlanie stron PDF nie są jeszcze dostępne."
   },
   "about": {
     "title": "Biuro bez tajemnic.",

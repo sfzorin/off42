@@ -7,7 +7,8 @@
     "language": "Lingua",
     "menu": "Menu",
     "skip": "Vai al contenuto",
-    "home": "Home"
+    "home": "Home",
+    "webApp": "App web"
   },
   "home": {
     "eyebrow": "Gratis · Open source · macOS e Windows",
@@ -106,6 +107,20 @@
     "qrAlt": "«Insert Symbol or Code» in XLS42: un codice QR da 30 mm creato dal link di un prodotto.",
     "labelsAlt": "«Create Labels» in XLS42: un foglio di etichette con codici QR creati da dieci righe di prodotti.",
     "caption": "Un foglio di etichette creato da dieci righe di un foglio di calcolo. I prodotti sono di fantasia."
+  },
+  "web": {
+    "label": "OFF42 NEL BROWSER",
+    "title": "Apri, converti e crea file direttamente nel browser.",
+    "text": "L'app web esegue il motore OFF42 compilato in WebAssembly. I file vengono elaborati all'interno della scheda del browser e restituiti come download: non viene caricato nulla e non si installa nulla.",
+    "points": [
+      "Anteprima di file DOCX, ODT, RTF, Markdown, HTML e di testo, con salvataggio in un altro di questi formati",
+      "Visualizzazione di fogli XLSX, ODS, XLS e CSV con i valori calcolati e salvataggio in XLSX, ODS o CSV",
+      "Slide PPTX e ODP mostrate come schema di testo e conversione tra i due formati",
+      "Lettura di numero di pagine, metadati, segnalibri, allegati e campi modulo di un PDF",
+      "Creazione di codici QR, Data Matrix, Code 128 e Aztec, fogli di etichette A4 in PDF, marcature di prodotto, firme e timbri"
+    ],
+    "limits": "È un'anteprima con limiti chiari: documenti, fogli di calcolo e presentazioni non possono essere esportati in PDF, le pagine PDF non vengono visualizzate, le slide sono mostrate solo come testo e i timbri supportano solo la scrittura latina, cirillica e greca. Il motore si scarica una sola volta e pesa fino a 16 MB. Le app desktop per Mac e Windows offrono tutte le funzioni.",
+    "open": "Apri l'app web"
   },
   "show": {
     "label": "ALL'OPERA",
@@ -377,7 +392,9 @@
     "windowsPreviewText": "Versione di anteprima con tutte e sei le app. Estrai tutto il contenuto dello ZIP e avvia l’app che ti serve. Include strumenti per creare etichette e codici a barre.",
     "installTitle": "Primo avvio",
     "installMac": "Mac: se macOS segnala che l’app non può essere aperta, apri Impostazioni di Sistema → Privacy e sicurezza e fai clic su «Apri comunque». Basta farlo una volta per app.",
-    "installWindows": "Windows: se SmartScreen mostra «Il PC è stato protetto da Windows», fai clic su «Ulteriori informazioni» e poi su «Esegui comunque»."
+    "installWindows": "Windows: se SmartScreen mostra «Il PC è stato protetto da Windows», fai clic su «Ulteriori informazioni» e poi su «Esegui comunque».",
+    "web": "OFF42 nel browser",
+    "webText": "Niente da installare: un'anteprima che apre, converte e crea file nella scheda del browser. I documenti non possono ancora essere esportati in PDF e le pagine PDF non vengono ancora visualizzate."
   },
   "about": {
     "title": "Un ufficio che non ha nulla da nascondere.",

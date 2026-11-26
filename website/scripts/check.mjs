@@ -1,4 +1,4 @@
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
@@ -58,7 +58,8 @@ for(const page of manifest.files){
   links++;
   const [pathAndQuery,hash]=dest.split('#');
   const url=pathAndQuery.split('?')[0];
-  if(url.startsWith('/assets/')||/^\/(favicon\.ico|apple-touch-icon\.png|site\.webmanifest)$/.test(url))assert((await stat(path.join(root,'dist',url))).isFile(),url);
+  if(url==='/app/'){assert.equal(pathAndQuery,`/app/?lang=${page.lang}`,page.path+' web app link carries the page language');assert((await stat(path.join(root,'dist/app/index.html'))).isFile(),'web app index');}
+  else if(url.startsWith('/assets/')||/^\/(favicon\.ico|apple-touch-icon\.png|site\.webmanifest)$/.test(url))assert((await stat(path.join(root,'dist',url))).isFile(),url);
   else {assert(known.has(url),`Missing route ${dest} from ${page.path}`); if(hash){const target=await read('dist'+url+'index.html');assert(target.includes(`id="${hash}"`),dest);}}
  }
  if(page.route===''){
@@ -67,6 +68,8 @@ for(const page of manifest.files){
  }
  assert(html.includes('max-image-preview:large')&&html.includes('rel="apple-touch-icon"')&&html.includes('rel="manifest"')&&html.includes('href="/favicon.ico"'),page.path+' robots preview, icons and manifest');
  assert.equal((html.match(/og:locale:alternate/g)||[]).length,expected.length-1,page.path+' og:locale alternates');
+ assert.equal((html.match(new RegExp(`href="/app/\\?lang=${page.lang}"`,'g'))||[]).length,page.route===''?3:page.route==='download/'?3:2,page.path+' web app in desktop and mobile navigation');
+ if(page.route==='')assert(html.includes('id="web-app"'),page.path+' web app section');
  if(page.route===''){assert(html.includes(`src="/assets/video/off42-demo-${page.lang}.mp4"`)&&html.includes(`poster="/assets/video/off42-demo-${page.lang}.jpg"`),page.path+' localized demo video');assert(html.includes('id="codes"'),page.path+' codes section');}
  if(page.route==='download/')for(const [platform,release] of Object.entries(config.releases)){
   if(release){assert(new URL(release.url).protocol==='https:');assert(release.version&&release.requirements&&release.architecture);assert(!release.sha256||/^[a-f0-9]{64}$/.test(release.sha256));assert(html.includes(release.url));}
@@ -100,4 +103,22 @@ const errorPage=await read('dist/404.html');
 assert(errorPage.includes('name="robots" content="noindex"'));
 assert(!/rel="canonical"|rel="alternate"|property="og:url"|application\/ld\+json/.test(errorPage),'404 must not describe the home page as its canonical or alternate');
 assert((await stat(path.join(root,'dist/assets/office-still-life.webp'))).size<700000);assert((await stat(path.join(root,'dist/assets/og-image.jpg'))).size<300000);
-console.log(`PASS: ${manifest.pages} pages; ${expected.length} locales; ${translations} localized values; ${links} internal link/asset targets; unique titles/canonicals; language alternates; JSON-LD; sitemap; release states.`);
+// The web app (built from web/ and committed to public/app, because the Cloudflare build cannot compile Rust):
+// its page exists, every file it references exists, the engine is served as a local .wasm file under the 25 MiB
+// static asset limit, and both its own policy and the site's header policy let it compile WebAssembly.
+const appDir=path.join(root,'dist/app');
+const appHtml=await readFile(path.join(appDir,'index.html'),'utf8');
+assert(/http-equiv="Content-Security-Policy" content="[^"]*script-src 'self' 'wasm-unsafe-eval'/.test(appHtml),'web app CSP allows wasm');
+assert(/connect-src 'self'/.test(appHtml),'web app fetches only from its own origin');
+const appRefs=[...appHtml.matchAll(/(?:src|href)="([^"]+)"/g)].map(m=>m[1]);
+assert(appRefs.some(r=>/^\.\/assets\/index-[\w-]+\.js$/.test(r)),'web app script is a hashed relative asset');
+for(const ref of appRefs){assert(ref.startsWith('./assets/')||ref.startsWith('../'),'web app reference '+ref);if(ref.startsWith('./'))assert((await stat(path.join(appDir,ref))).isFile(),'web app asset '+ref);}
+const appAssets=await readdir(path.join(appDir,'assets'));
+const wasm=appAssets.filter(f=>/^off42_wasm_bg-[\w-]+\.wasm$/.test(f));assert.equal(wasm.length,1,'one hashed wasm engine');
+const entry=appRefs.find(r=>/index-[\w-]+\.js$/.test(r));assert((await readFile(path.join(appDir,entry),'utf8')).includes(wasm[0]),'the script loads the bundled wasm file');
+for(const f of appAssets){const size=(await stat(path.join(appDir,'assets',f))).size;assert(size<25*1024*1024,`${f} is over the 25 MiB static asset limit`);}
+assert.equal(appAssets.filter(f=>/^(?:zh-Hans|zh-Hant|es|ar|fr|pt|id|ru|de|ja|vi|tr|fil|ko|th|it|pl|ms|hu)-[\w-]+\.js$/.test(f)).length,expected.length-1,'web app catalogs for every site language');
+assert(/^source-sha256: [0-9a-f]{64}$/m.test(await readFile(path.join(appDir,'BUILD.txt'),'utf8')),'web app BUILD.txt records its sources');
+assert(/^\/\*\n(?:  [^\n]+\n)*?  Content-Security-Policy: [^\n]*script-src 'self' 'wasm-unsafe-eval'/m.test(headers),'site policy lets the web app compile its wasm');
+assert(!/run_worker_first[^\]]*\/app/.test(wrangler),'the web app is served as static assets (MIME type from the extension)');
+console.log(`PASS: ${manifest.pages} pages; ${expected.length} locales; ${translations} localized values; ${links} internal link/asset targets; unique titles/canonicals; language alternates; JSON-LD; sitemap; release states; web app at /app/ (${appAssets.length} assets, wasm ${(await stat(path.join(appDir,'assets',wasm[0]))).size} bytes).`);

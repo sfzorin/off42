@@ -7,7 +7,8 @@
     "language": "Dil",
     "menu": "Menü",
     "skip": "İçeriğe geç",
-    "home": "Ana sayfa"
+    "home": "Ana sayfa",
+    "webApp": "Web uygulaması"
   },
   "home": {
     "eyebrow": "Ücretsiz · Açık kaynak · macOS ve Windows",
@@ -106,6 +107,20 @@
     "qrAlt": "XLS42'de “Sembol veya Kod Ekle”: bir ürün bağlantısından oluşturulmuş 30 mm'lik QR kod.",
     "labelsAlt": "XLS42'de “Etiket Oluştur”: on ürün satırından oluşturulmuş QR kodlu bir etiket sayfası.",
     "caption": "On tablo satırından oluşturulmuş bir etiket sayfası. Ürünler kurgusaldır."
+  },
+  "web": {
+    "label": "TARAYICIDA OFF42",
+    "title": "Dosyaları doğrudan tarayıcınızda açın, dönüştürün ve oluşturun.",
+    "text": "Web uygulaması, WebAssembly'ye derlenmiş OFF42 motorunu çalıştırır. Dosyalar tarayıcı sekmesinin içinde işlenir ve size indirme olarak geri sunulur: hiçbir şey yüklenmez, hiçbir şey kurulmaz.",
+    "points": [
+      "DOCX, ODT, RTF, Markdown, HTML ve metin dosyalarını önizleyin ve bu biçimlerden bir diğerinde kaydedin",
+      "XLSX, ODS, XLS ve CSV tablolarını hesaplanmış değerleriyle görüntüleyin ve XLSX, ODS veya CSV olarak kaydedin",
+      "PPTX ve ODP slaytlarını metin ana hattı olarak gösterin ve iki biçim arasında dönüştürün",
+      "Bir PDF'nin sayfa sayısını, meta verilerini, yer işaretlerini, eklerini ve form alanlarını okuyun",
+      "QR, Data Matrix, Code 128 ve Aztec kodları, PDF olarak A4 etiket sayfaları, ürün işaretleri, imzalar ve kaşeler oluşturun"
+    ],
+    "limits": "Bu, sınırları net olan bir önizlemedir: belgeler, tablolar ve sunular PDF'ye aktarılamaz, PDF sayfaları görüntülenmez, slaytlar yalnızca metin olarak gösterilir ve kaşeler yalnızca Latin, Kiril ve Yunan yazısını destekler. Motor bir kez indirilir ve boyutu en fazla 16 MB'tır. Mac ve Windows masaüstü uygulamaları tüm özellikleri sunar.",
+    "open": "Web uygulamasını açın"
   },
   "show": {
     "label": "İŞ BAŞINDA",
@@ -377,7 +392,9 @@
     "windowsPreviewText": "Altı uygulamanın tamamını içeren önizleme sürümü. ZIP dosyasının tamamını çıkarıp istediğiniz uygulamayı açın. Etiket ve barkod oluşturma araçları içerir.",
     "installTitle": "İlk açılış",
     "installMac": "Mac: macOS uygulamanın açılamadığını söylerse Sistem Ayarları → Gizlilik ve Güvenlik bölümünü açıp “Yine de Aç” düğmesine tıklayın. Bunu her uygulama için yalnızca bir kez yapmanız gerekir.",
-    "installWindows": "Windows: SmartScreen “Windows bilgisayarınızı korudu” uyarısı verirse “Daha fazla bilgi”ye, ardından “Yine de çalıştır”a tıklayın."
+    "installWindows": "Windows: SmartScreen “Windows bilgisayarınızı korudu” uyarısı verirse “Daha fazla bilgi”ye, ardından “Yine de çalıştır”a tıklayın.",
+    "web": "Tarayıcıda OFF42",
+    "webText": "Kurulum gerekmez: dosyaları tarayıcı sekmenizin içinde açan, dönüştüren ve oluşturan bir önizleme. Belgeler henüz PDF'ye aktarılamaz ve PDF sayfaları henüz görüntülenmez."
   },
   "about": {
     "title": "Saklayacak şeyi olmayan bir ofis.",

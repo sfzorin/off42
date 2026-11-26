@@ -1,6 +1,7 @@
 // A thin web shell over the off42 Rust cores (crates/off42-wasm). All work happens in this tab; the engine
 // receives bytes and returns bytes, and nothing is sent over the network.
 import init, * as off42 from './wasm/off42_wasm.js';
+import { chooseLanguage, language, languagePicker, loadLanguage, t, translatePage } from './i18n';
 
 // MARK: - Helpers
 
@@ -129,21 +130,21 @@ function setupFiles() {
 
 async function openFile(file: File) {
   const view = $('file-view');
-  view.replaceChildren(el('p', { className: 'notice', textContent: `Opening ${file.name}…` }));
+  view.replaceChildren(el('p', { className: 'notice', textContent: t('files.opening', { name: file.name }) }));
   const bytes = new Uint8Array(await file.arrayBuffer());
   const kind = extension(file.name);
   // Let the notice paint before the synchronous engine call.
   await new Promise((resolve) => setTimeout(resolve, 0));
   const header = el('div', { className: 'file-header' },
     el('h2', { textContent: file.name }),
-    el('span', { className: 'hint', textContent: `${(bytes.length / 1024).toFixed(1)} KB` }));
+    el('span', { className: 'hint', textContent: t('files.size', { size: (bytes.length / 1024).toLocaleString(language, { maximumFractionDigits: 1 }) }) }));
   try {
     let body: HTMLElement;
     if (DOCUMENTS.has(kind)) body = showDocument(bytes, kind, file.name);
     else if (SHEETS.has(kind)) body = showSpreadsheet(bytes, kind, file.name);
     else if (SLIDES.has(kind)) body = showPresentation(bytes, kind, file.name);
     else if (kind === 'pdf') body = showPdf(bytes);
-    else body = errorBox(`Files of type “.${kind}” are not supported here.`);
+    else body = errorBox(t('files.unsupported', { extension: kind }));
     view.replaceChildren(header, body);
   } catch (error) {
     view.replaceChildren(header, errorBox(message(error)));
@@ -159,7 +160,7 @@ function showDocument(bytes: Uint8Array, rawKind: string, name: string): HTMLEle
   const html = off42.documentHtml(bytes, kind);
   const info = JSON.parse(off42.documentInfo(bytes, kind));
   // The preview runs no scripts and has no access to this page (empty sandbox).
-  const frame = el('iframe', { className: 'doc-frame', title: 'Document preview' });
+  const frame = el('iframe', { className: 'doc-frame', title: t('doc.preview') });
   frame.setAttribute('sandbox', '');
   frame.srcdoc = html;
   const save = (to: string) => {
@@ -169,17 +170,16 @@ function showDocument(bytes: Uint8Array, rawKind: string, name: string): HTMLEle
     } catch (error) {
       const text = message(error);
       if (!/package parts/.test(text)) throw error;
-      const ok = confirm(`${text}.\n\nConvert anyway? Styles, settings and other parts that ${to.toUpperCase()} ` +
-        'cannot hold are left out; the text and supported formatting are kept.');
+      const ok = confirm(t('doc.convertAnyway', { error: text, format: to.toUpperCase() }));
       if (!ok) return;
       output = off42.documentConvert(bytes, kind, to, true);
     }
     download(output, `${stem(name)}.${to}`, MIME[to]);
   };
-  const actions = el('div', { className: 'actions' }, el('span', { className: 'hint', textContent: 'Save as' }),
+  const actions = el('div', { className: 'actions' }, el('span', { className: 'hint', textContent: t('common.saveAs') }),
     ...['docx', 'odt', 'rtf', 'md', 'html', 'txt'].map((to) => button(to.toUpperCase(), () => save(to))));
   const stats = el('p', { className: 'hint',
-    textContent: `${info.words} words · ${info.characters} characters · ${info.paragraphs} paragraphs` });
+    textContent: t('doc.stats', { words: info.words, characters: info.characters, paragraphs: info.paragraphs }) });
   return el('div', {}, actions, stats, frame);
 }
 
@@ -210,17 +210,17 @@ function showSpreadsheet(bytes: Uint8Array, kind: string, name: string): HTMLEle
       ...row.map((text) => el('td', { textContent: text, className: /^-?[\d.,\s%]+$/.test(text) ? 'num' : '' }))));
     table.replaceChildren(el('table', {}, el('thead', {}, head), el('tbody', {}, ...body)));
     tabs.querySelectorAll('button').forEach((b, i) => b.setAttribute('aria-selected', String(i === current)));
-    note.textContent = sheet.truncated ? `Showing the first ${MAX_ROWS} rows and ${MAX_COLS} columns.` : '';
+    note.textContent = sheet.truncated ? t('sheet.truncated', { rows: MAX_ROWS, columns: MAX_COLS }) : '';
   };
   book.sheets.forEach((sheet, i) => tabs.append(button(sheet.name, () => { current = i; render(); })));
   render();
-  const actions = el('div', { className: 'actions' }, el('span', { className: 'hint', textContent: 'Save as' }),
+  const actions = el('div', { className: 'actions' }, el('span', { className: 'hint', textContent: t('common.saveAs') }),
     ...['xlsx', 'ods', 'csv'].map((to) =>
       button(to.toUpperCase(), () => download(off42.spreadsheetConvert(bytes, kind, to), `${stem(name)}.${to}`, MIME[to]))),
-    button('Sheet values as CSV', () => download(off42.spreadsheetValuesCsv(bytes, kind, current),
+    button(t('sheet.valuesCsv'), () => download(off42.spreadsheetValuesCsv(bytes, kind, current),
       `${stem(name)} - ${book.sheets[current].name}.csv`, MIME.csv)));
   const readOnly = book.readOnly
-    ? el('p', { className: 'hint', textContent: 'XLS workbooks are read-only: export the values as CSV.' }) : '';
+    ? el('p', { className: 'hint', textContent: t('sheet.readOnly') }) : '';
   return el('div', {}, actions, readOnly, tabs, note, table);
 }
 
@@ -242,8 +242,8 @@ function showPresentation(bytes: Uint8Array, kind: string, name: string): HTMLEl
       : slide.objects.find((o) => o.role === 'title')
         ?? (slide.objects.every((o) => o.role === null) ? slide.objects.find((o) => o.kind === 'Text') : undefined);
     const card = el('article', { className: `slide${slide.hidden ? ' hidden-slide' : ''}` },
-      el('div', { className: 'slide-number', textContent: `${i + 1}${slide.hidden ? ' · hidden' : ''}` }),
-      el('h3', { textContent: slide.title || titleObject?.text || 'Untitled slide' }));
+      el('div', { className: 'slide-number', textContent: `${i + 1}${slide.hidden ? ` · ${t('slides.hidden')}` : ''}` }),
+      el('h3', { textContent: slide.title || titleObject?.text || t('slides.untitled') }));
     if (slide.body) card.append(lines(slide.body));
     for (const object of slide.objects) {
       if (object === titleObject) continue;
@@ -251,32 +251,32 @@ function showPresentation(bytes: Uint8Array, kind: string, name: string): HTMLEl
         card.append(el('table', { className: 'mini' }, ...object.cells.map((row) =>
           el('tr', {}, ...row.map((text) => el('td', { textContent: text }))))));
       } else if (object.kind === 'Picture') {
-        card.append(el('p', { className: 'hint', textContent: '[picture]' }));
+        card.append(el('p', { className: 'hint', textContent: t('slides.picture') }));
       } else if (object.text) {
         card.append(object.role === 'body' ? lines(object.text) : el('p', { textContent: object.text }));
       }
     }
-    if (slide.notes) card.append(el('p', { className: 'notes', textContent: `Notes: ${slide.notes}` }));
+    if (slide.notes) card.append(el('p', { className: 'notes', textContent: t('slides.notes', { text: slide.notes }) }));
     return card;
   });
-  const actions = el('div', { className: 'actions' }, el('span', { className: 'hint', textContent: 'Save as' }),
+  const actions = el('div', { className: 'actions' }, el('span', { className: 'hint', textContent: t('common.saveAs') }),
     ...['pptx', 'odp'].map((to) =>
       button(to.toUpperCase(), () => download(off42.presentationConvert(bytes, kind, to), `${stem(name)}.${to}`, MIME[to]))));
-  return el('div', {}, actions, el('p', { className: 'hint', textContent: `${slides.length} slides — text outline` }),
+  return el('div', {}, actions, el('p', { className: 'hint', textContent: t('slides.outline', { count: slides.length }) }),
     el('div', { className: 'slides' }, ...slides));
 }
 
 function showPdf(bytes: Uint8Array): HTMLElement {
   const info = JSON.parse(off42.pdfInfo(bytes));
-  if (info.encrypted) return el('p', { className: 'notice', textContent: 'This PDF is password-protected.' });
-  const rows: [string, string][] = [['Pages', String(info.pages)]];
+  if (info.encrypted) return el('p', { className: 'notice', textContent: t('pdf.encrypted') });
+  const rows: [string, string][] = [[t('pdf.pages'), String(info.pages)]];
   for (const [key, value] of Object.entries(info.metadata as Record<string, string>)) rows.push([key, value]);
-  if (info.bookmarks.length) rows.push(['Bookmarks', info.bookmarks.join(' · ')]);
-  if (info.attachments.length) rows.push(['Attachments', info.attachments.join(', ')]);
-  if (info.formFields.length) rows.push(['Form fields', info.formFields.map((f: { name: string }) => f.name).join(', ')]);
+  if (info.bookmarks.length) rows.push([t('pdf.bookmarks'), info.bookmarks.join(' · ')]);
+  if (info.attachments.length) rows.push([t('pdf.attachments'), info.attachments.join(', ')]);
+  if (info.formFields.length) rows.push([t('pdf.formFields'), info.formFields.map((f: { name: string }) => f.name).join(', ')]);
   return el('div', {},
     el('table', { className: 'info' }, ...rows.map(([k, v]) => el('tr', {}, el('th', { textContent: k }), el('td', { textContent: v })))),
-    el('p', { className: 'hint', textContent: 'Page rendering needs PDFium for WebAssembly, which is not part of this build yet.' }));
+    el('p', { className: 'hint', textContent: t('pdf.noRendering') }));
 }
 
 // MARK: - Labels & codes
@@ -294,7 +294,7 @@ function setupLabels() {
   const renderCode = () => {
     try {
       const svg = off42.barcodeSvg(format.value, value.value, Number(width.value), caption.checked);
-      preview.replaceChildren(imageFrom(svg, MIME.svg, 'Code preview'));
+      preview.replaceChildren(imageFrom(svg, MIME.svg, t('code.preview')));
     } catch (error) {
       preview.replaceChildren(errorBox(message(error)));
     }
@@ -311,7 +311,7 @@ function setupLabels() {
   const stock = $<HTMLSelectElement>('sheet-stock');
   stock.append(...stocks.map((s) => el('option', { value: s.id,
     textContent: `${s.name} — ${s.columns}×${s.rows}, ${s.width}×${s.height} mm` })),
-  el('option', { value: 'custom', textContent: 'Custom size…' }));
+  el('option', { value: 'custom', textContent: t('labels.custom') }));
   stock.addEventListener('change', () => ($('sheet-custom').hidden = stock.value !== 'custom'));
   $('sheet-pdf').addEventListener('click', () => guarded(() => {
     const labels = $<HTMLTextAreaElement>('sheet-lines').value.split('\n').map((l) => l.trim()).filter(Boolean).map((line) => {
@@ -325,12 +325,12 @@ function setupLabels() {
       labels,
     }));
     const pages = JSON.parse(off42.pdfInfo(pdf)).pages;
-    $('sheet-status').textContent = `${labels.reduce((n, l) => n + l.copies, 0)} labels on ${pages} page(s).`;
+    $('sheet-status').textContent = t('labels.status', { labels: labels.reduce((n, l) => n + l.copies, 0), pages });
     download(pdf, 'labels.pdf', MIME.pdf);
   }, $('sheet-status')));
 
   // Product marks
-  const language = (navigator.language || 'en').slice(0, 2);
+  // label42 has mark names in 11 of the 20 languages (English otherwise), keyed by the same codes.
   const marks: Mark[] = JSON.parse(off42.productMarks(language));
   const category = $<HTMLSelectElement>('marks-category');
   category.append(...[...new Set(marks.map((m) => m.category))].sort().map((c) => el('option', { value: c, textContent: c })));
@@ -354,11 +354,11 @@ function setupLabels() {
         el('h3', { textContent: mark.name }),
         el('p', { textContent: mark.purpose }),
         ...(mark.warning ? [el('p', { className: 'warning', textContent: mark.warning })] : []),
-        ...(mark.unverified ? [el('p', { className: 'warning', textContent: 'This drawing is unverified (licensing or provenance).' })] : []),
-        ...(mark.needsNumber ? [el('p', { className: 'hint', textContent: 'Needs a registration number next to it.' })] : []),
+        ...(mark.unverified ? [el('p', { className: 'warning', textContent: t('marks.unverified') })] : []),
+        ...(mark.needsNumber ? [el('p', { className: 'hint', textContent: t('marks.needsNumber') })] : []),
         el('div', { className: 'actions' },
-          button('Download SVG', () => download(off42.productMarkSvg(mark.id, w()), `${mark.id}.svg`, MIME.svg)),
-          button('Download PNG', () => download(off42.productMarkPng(mark.id, w()), `${mark.id}.png`, MIME.png))));
+          button(t('common.downloadSvg'), () => download(off42.productMarkSvg(mark.id, w()), `${mark.id}.svg`, MIME.svg)),
+          button(t('common.downloadPng'), () => download(off42.productMarkPng(mark.id, w()), `${mark.id}.png`, MIME.png))));
     });
     thumbnails.set(mark.id, tile);
   }
@@ -403,10 +403,14 @@ function today(): string {
 
 function setupSignatures() {
   const options: { forms: Option[]; pens: Option[]; inks: Option[] } = JSON.parse(off42.signatureOptions());
-  fillSelect($('sig-form'), options.forms);
-  fillSelect($('sig-pen'), options.pens);
-  fillSelect($('sig-ink'), options.inks, 'blue');
-  fillSelect($('stamp-ink'), [{ value: '', title: 'Template default' }, ...options.inks]);
+  // The core names these in English; the interface translates the fixed option sets.
+  const forms = options.forms.map((o) => ({ ...o, title: t(`sig.form.${o.value}`) }));
+  const pens = options.pens.map((o) => ({ ...o, title: t(`sig.pen.${o.value}`) }));
+  const inks = options.inks.map((o) => ({ ...o, title: t(`ink.${o.value}`) }));
+  fillSelect($('sig-form'), forms);
+  fillSelect($('sig-pen'), pens);
+  fillSelect($('sig-ink'), inks, 'blue');
+  fillSelect($('stamp-ink'), [{ value: '', title: t('stamp.defaultInk') }, ...inks]);
 
   $('sig-generate').addEventListener('click', () => {
     const results = $('sig-results');
@@ -421,19 +425,19 @@ function setupSignatures() {
         let png: Uint8Array = new Uint8Array();
         const draw = () => {
           png = off42.signaturePng(name, design, seed(), ink, pen, 130);
-          frame.replaceChildren(imageFrom(png, MIME.png, `Signature of ${name}`));
+          frame.replaceChildren(imageFrom(png, MIME.png, t('sig.alt', { name })));
         };
         draw();
         return el('div', { className: 'result' }, frame, el('div', { className: 'actions' },
-          button('New impression', draw),
-          button('Download PNG', () => download(png, `signature-${stem(name.replace(/\s+/g, '-'))}.png`, MIME.png))));
+          button(t('common.newImpression'), draw),
+          button(t('common.downloadPng'), () => download(png, `signature-${stem(name.replace(/\s+/g, '-'))}.png`, MIME.png))));
       }));
     } catch (error) {
       results.replaceChildren(errorBox(message(error)));
     }
   });
 
-  const templates: Template[] = JSON.parse(off42.stampTemplates());
+  const templates: Template[] = JSON.parse(off42.stampTemplates(language));
   const select = $<HTMLSelectElement>('stamp-template');
   const groups = new Map<string, HTMLOptGroupElement>();
   for (const t of templates) {
@@ -478,14 +482,18 @@ function setupSignatures() {
 // MARK: - Start
 
 async function start() {
+  await loadLanguage(chooseLanguage());
+  translatePage();
+  languagePicker($<HTMLSelectElement>('language'));
+  $<HTMLAnchorElement>('site-link').href = `../${language}/`;
   try {
     await init();
   } catch (error) {
-    $('loading').replaceWith(errorBox(`The off42 engine could not start: ${message(error)}`));
+    $('loading').replaceWith(errorBox(t('app.engineFailed', { error: message(error) })));
     return;
   }
   $('loading').remove();
-  $('engine-version').textContent = `off42 engine ${off42.version()} · WebAssembly`;
+  $('engine-version').textContent = t('app.engine', { version: off42.version() });
   setupTabs();
   setupFiles();
 }

@@ -1,19 +1,27 @@
-// Headless browser test of the production build: serves dist/ with `vite preview`, drives the page in headless
-// Chromium (Playwright) and checks that files open, conversions download, generators draw, and that the page
-// makes no request outside its own origin. Run after `npm run build`.
+// Headless browser test of the production build: serves it at /app/ with the headers off42.cc sends
+// (website/public/_headers, including the site's Content-Security-Policy), drives the page in headless Chromium
+// (Playwright) and checks that files open, conversions download, generators draw, the interface follows the
+// language, and that the page makes no request outside its own origin. Run after `npm run build`; pass
+// `--dir ../website/public/app` to test the copy published on the site.
 // CHROMIUM_PATH may point at an existing headless Chromium; otherwise Playwright's own build is used
 // (`npx playwright install chromium`).
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import assert from 'node:assert/strict';
-import { preview } from 'vite';
+import { serveApp } from './serve.mjs';
 import { chromium } from 'playwright';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtures = join(root, 'test', 'fixtures');
-const server = await preview({ root, preview: { port: 0, host: '127.0.0.1', open: false }, logLevel: 'warn' });
-const origin = server.resolvedUrls.local[0].replace(/\/$/, '');
+// --url tests an app that is already served elsewhere, e.g. `wrangler dev` in website/ (http://127.0.0.1:8787/app/).
+const arg = (name) => (process.argv.includes(name) ? process.argv[process.argv.indexOf(name) + 1] : undefined);
+const dir = resolve(arg('--dir') ?? join(root, 'dist'));
+const server = arg('--url') ? { origin: new URL(arg('--url')).origin, close: async () => {} }
+  : await serveApp(dir, join(root, '..', 'website', 'public', '_headers'));
+const origin = server.origin;
+const app = arg('--url') ?? `${origin}/app/`;
+console.log(`testing ${app}${arg('--url') ? '' : ` (serving ${dir})`}`);
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || undefined });
 let failed = false;
 
@@ -43,9 +51,13 @@ try {
     return readFileSync(await download.path());
   };
 
-  await step('engine loads', async () => {
-    await page.goto(`${origin}/`);
+  await step('engine loads under /app/ with the site headers (CSP allows wasm, served as application/wasm)', async () => {
+    const wasm = page.waitForResponse((r) => r.url().endsWith('.wasm'));
+    const response = await page.goto(app);
+    assert.match(response.headers()['content-security-policy'] ?? '', /script-src 'self' 'wasm-unsafe-eval'/);
     await page.waitForSelector('#engine-version:not(:empty)', { timeout: 60_000 });
+    assert.equal((await wasm).headers()['content-type'], 'application/wasm');
+    assert.equal(await page.getAttribute('html', 'lang'), 'en');
   });
 
   await step('Markdown opens as a preview and saves as DOCX', async () => {
@@ -93,6 +105,46 @@ try {
     assert.equal(png.subarray(1, 4).toString(), 'PNG');
   });
 
+  await step('language from ?lang=: German interface, language picker, translated options', async () => {
+    await page.goto(`${app}?lang=de`);
+    await page.waitForSelector('#engine-version:not(:empty)', { timeout: 60_000 });
+    assert.equal(await page.getAttribute('html', 'lang'), 'de');
+    assert.equal(await page.textContent('[data-tab="files"]'), 'Dateien');
+    assert.equal(await page.inputValue('#language'), 'de');
+    await page.click('[data-tab="marks"]');
+    await page.waitForSelector('#stamp-preview img');
+    assert.notEqual(await page.textContent('#sig-pen option'), 'Ballpoint pen');
+    await Promise.all([page.waitForURL(/lang=fr/), page.selectOption('#language', 'fr')]);
+    await page.waitForSelector('#engine-version:not(:empty)', { timeout: 60_000 });
+    assert.equal(await page.getAttribute('html', 'lang'), 'fr');
+  });
+
+  await step('Arabic is right-to-left; Japanese mark names and Russian stamp names come from the cores', async () => {
+    await page.goto(`${app}?lang=ar`);
+    await page.waitForSelector('#engine-version:not(:empty)', { timeout: 60_000 });
+    assert.equal(await page.getAttribute('html', 'dir'), 'rtl');
+    await page.goto(`${app}?lang=ja`);
+    await page.waitForSelector('#engine-version:not(:empty)', { timeout: 60_000 });
+    await page.click('[data-tab="labels"]');
+    await page.waitForSelector('.mark');
+    assert.ok(await page.locator('.mark span', { hasText: /[\u3040-\u30ff\u4e00-\u9fff]/ }).count() > 10, 'Japanese mark names');
+    await page.goto(`${app}?lang=ru`);
+    await page.waitForSelector('#engine-version:not(:empty)', { timeout: 60_000 });
+    await page.click('[data-tab="marks"]');
+    await page.waitForSelector('#stamp-preview img');
+    assert.match(await page.textContent('#stamp-template option'), /[а-яё]/i);
+  });
+
+  await step('browser language is the default (zh-TW → Traditional Chinese)', async () => {
+    const zh = await browser.newContext({ locale: 'zh-TW' });
+    const zhPage = await zh.newPage();
+    zhPage.on('pageerror', (error) => errors.push(error.message));
+    await zhPage.goto(app);
+    await zhPage.waitForSelector('#engine-version:not(:empty)', { timeout: 60_000 });
+    assert.equal(await zhPage.getAttribute('html', 'lang'), 'zh-Hant');
+    await zh.close();
+  });
+
   assert.deepEqual(foreign, [], 'requests outside the app origin');
   assert.deepEqual(errors, [], 'page errors');
   console.log('ok   no requests left the app origin; no page errors');
@@ -101,6 +153,6 @@ try {
   console.error(`FAIL ${error?.stack ?? error}`);
 } finally {
   await browser.close();
-  await new Promise((resolve) => server.httpServer.close(resolve));
+  await server.close();
 }
 process.exit(failed ? 1 : 0);
