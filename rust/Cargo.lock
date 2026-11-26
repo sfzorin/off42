@@ -2300,6 +2300,7 @@ dependencies = [
  "suite42-core",
  "tempfile",
  "unicode-segmentation",
+ "xls42-core",
  "zip 6.0.0",
 ]
 
@@ -2877,6 +2878,7 @@ dependencies = [
  "image",
  "label42",
  "serde_json",
+ "suite42-app",
  "win42",
  "xls42-core",
 ]

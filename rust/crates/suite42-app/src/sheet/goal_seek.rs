@@ -67,25 +67,25 @@ impl Session {
     pub fn take_command(&mut self) -> Option<u16> {
         std::mem::take(&mut self.ready).then_some(RESULT)
     }
-    pub fn dialog(&self) -> Option<win42::DialogRequest> {
+    pub fn dialog(&self) -> Option<crate::DialogRequest> {
         Some(match self.outcome.as_ref()? {
-            Ok(result) => win42::DialogRequest::Confirmation {
+            Ok(result) => crate::DialogRequest::Confirmation {
                 title: "Goal Seek found a solution",
                 text: {
-                    let question = win42::localization::text("%@ = %@. Keep the result?")
+                    let question = crate::localization::text("%@ = %@. Keep the result?")
                         .replacen("%@", &reference(result.variable()), 1)
                         .replacen("%@", &result.value().to_string(), 1);
                     format!(
                         "{} = {}\n{} {}\n\n{}",
                         reference(result.formula()),
                         result.calculated(),
-                        win42::localization::text("Target value:"),
+                        crate::localization::text("Target value:"),
                         result.target(),
                         question
                     )
                 },
             },
-            Err(error) => win42::DialogRequest::Information {
+            Err(error) => crate::DialogRequest::Information {
                 title: "Goal Seek",
                 text: error.clone(),
             },
@@ -177,7 +177,7 @@ mod tests {
         assert!(session.take_command().is_none());
         assert!(matches!(
             session.dialog(),
-            Some(win42::DialogRequest::Confirmation { .. })
+            Some(crate::DialogRequest::Confirmation { .. })
         ));
         session.accept(&mut book, false).unwrap();
         assert_eq!(book.cell(0, 0), Some("1"));

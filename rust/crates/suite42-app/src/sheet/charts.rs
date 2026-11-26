@@ -1,4 +1,4 @@
-use win42::{CanvasScene, Point, SceneFont, SceneItem, TextAlign, Viewport};
+use crate::{CanvasScene, Point, SceneFont, SceneItem, TextAlign, Viewport};
 use xls42_core::{ChartData, ChartKind};
 const COLORS: [[u8; 3]; 6] = [
     [54, 113, 207],

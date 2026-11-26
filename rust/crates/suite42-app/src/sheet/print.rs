@@ -1,4 +1,4 @@
-use win42::{CanvasScene, PrintGeometry, PrintPage, SceneFont, SceneItem, TextAlign, Viewport};
+use crate::{CanvasScene, PrintGeometry, PrintPage, SceneFont, SceneItem, TextAlign, Viewport};
 use xls42_core::{Range, Workbook};
 fn contains(r: Range, row: usize, col: usize) -> bool {
     row >= r.top && row <= r.bottom && col >= r.left && col <= r.right
@@ -231,8 +231,8 @@ pub fn pages(book: &Workbook, visible: &[usize]) -> Result<Vec<PrintPage>, Strin
                         if style.borders & flag != 0 {
                             scene.items.push(SceneItem::Path {
                                 points: vec![
-                                    win42::Point { x: a.0, y: a.1 },
-                                    win42::Point { x: b.0, y: b.1 },
+                                    crate::Point { x: a.0, y: a.1 },
+                                    crate::Point { x: b.0, y: b.1 },
                                 ],
                                 color: black,
                                 closed: false,
@@ -338,13 +338,13 @@ pub fn pages(book: &Workbook, visible: &[usize]) -> Result<Vec<PrintPage>, Strin
                     return Err("Print fewer pages at a time: image data exceeds 128 MB".into());
                 }
                 scene.items.push(SceneItem::ClippedOffset {
-                    clip: win42::CanvasRect {
+                    clip: crate::CanvasRect {
                         x: 0.0,
                         y: clip_top,
                         width: page_width,
                         height: clip_height,
                     },
-                    offset: win42::Point { x: 0.0, y: 0.0 },
+                    offset: crate::Point { x: 0.0, y: 0.0 },
                     items: vec![SceneItem::ImageScaled {
                         x,
                         y,

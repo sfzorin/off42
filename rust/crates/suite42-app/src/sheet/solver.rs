@@ -74,15 +74,15 @@ impl Session {
     pub fn take_command(&mut self) -> Option<u16> {
         std::mem::take(&mut self.ready).then_some(RESULT)
     }
-    pub fn dialog(&self) -> Option<win42::DialogRequest> {
+    pub fn dialog(&self) -> Option<crate::DialogRequest> {
         Some(match self.outcome.as_ref()? {
-            Ok(result) if result.can_keep() => win42::DialogRequest::Confirmation {
+            Ok(result) if result.can_keep() => crate::DialogRequest::Confirmation {
                 title: "Solver found a solution",
                 text: format!(
                     "{} = {}\n{}\n{}\n\n{}",
-                    crate::goal_seek::reference(result.model().objective),
+                    super::goal_seek::reference(result.model().objective),
                     result.objective().unwrap(),
-                    win42::localization::text(
+                    crate::localization::text(
                         if result.status() == xls42_core::SolverStatus::Approximate {
                             "Approximate solution"
                         } else {
@@ -96,23 +96,23 @@ impl Session {
                         .zip(result.values())
                         .map(|(&cell, value)| format!(
                             "{} = {}",
-                            crate::goal_seek::reference(cell),
+                            super::goal_seek::reference(cell),
                             value
                         ))
                         .collect::<Vec<_>>()
                         .join("\n"),
-                    win42::localization::text("%@ = %@. Keep the result?")
+                    crate::localization::text("%@ = %@. Keep the result?")
                         .replacen(
                             "%@",
-                            &crate::goal_seek::reference(result.model().objective),
+                            &super::goal_seek::reference(result.model().objective),
                             1
                         )
                         .replacen("%@", &result.objective().unwrap().to_string(), 1)
                 ),
             },
-            Ok(result) => win42::DialogRequest::Information {
+            Ok(result) => crate::DialogRequest::Information {
                 title: "Solver",
-                text: win42::localization::text(match result.status() {
+                text: crate::localization::text(match result.status() {
                     xls42_core::SolverStatus::Infeasible => {
                         "No solution satisfies all the conditions."
                     }
@@ -123,7 +123,7 @@ impl Session {
                 })
                 .into(),
             },
-            Err(error) => win42::DialogRequest::Information {
+            Err(error) => crate::DialogRequest::Information {
                 title: "Solver",
                 text: error.clone(),
             },
@@ -138,7 +138,7 @@ impl Session {
         Ok(())
     }
 }
-use crate::goal_seek::{parse_reference, reference};
+use super::goal_seek::{parse_reference, reference};
 use xls42_core::{Range, SolverConstraint, SolverGoal, SolverModel, SolverOp};
 fn range_text(r: Range) -> String {
     let a = reference((r.top, r.left));
@@ -166,14 +166,14 @@ fn range(text: &str, book: &Workbook) -> Result<Range, String> {
         right: b.1,
     })
 }
-pub fn request(book: &Workbook, cell: (usize, usize)) -> win42::InputRequest {
+pub fn request(book: &Workbook, cell: (usize, usize)) -> crate::InputRequest {
     let saved = book.solver_model();
     let goal = match saved.map(|m| &m.goal) {
         Some(SolverGoal::Minimum) => "Minimum",
         Some(SolverGoal::Value(_)) => "Value of",
         _ => "Maximum",
     };
-    win42::InputRequest {
+    crate::InputRequest {
         title: "Solver",
         fields: vec![
             (
@@ -407,7 +407,7 @@ mod tests {
         assert!(s.take_command().is_none());
         assert!(matches!(
             s.dialog(),
-            Some(win42::DialogRequest::Confirmation { .. })
+            Some(crate::DialogRequest::Confirmation { .. })
         ));
         s.accept(&mut b, false).unwrap();
         assert_eq!(b.cell(0, 0), Some("0"));
@@ -456,7 +456,7 @@ mod tests {
         wait(&mut s, &mut b);
         assert!(matches!(
             s.dialog(),
-            Some(win42::DialogRequest::Information { .. })
+            Some(crate::DialogRequest::Information { .. })
         ));
         assert_eq!(b.solver_model(), Some(&m));
         assert_eq!(b.cell(0, 0), Some("0"));
