@@ -8,15 +8,17 @@
       "url": "https://github.com/sfzorin/off42/releases/download/v1.0.0-preview.2/off42-1.0.0-preview.2-arm64.dmg",
       "version": "v1.0.0-preview.2",
       "architecture": "Apple Silicon (arm64)",
-      "requirements": "macOS 14+",
-      "sha256": "b492f24b203745e7053a15f1660765506b548ac58a3ac37a1e14474b668892f6"
+      "requirements": "macOS 14 or later · Apple Silicon",
+      "sha256": "b492f24b203745e7053a15f1660765506b548ac58a3ac37a1e14474b668892f6",
+      "size": 56632222
     },
     "windows": {
       "url": "https://github.com/sfzorin/off42/releases/download/v1.0.0-windows-preview.5/off42-1.0.0-windows-preview.5-x64.zip",
       "version": "v1.0.0-windows-preview.5",
       "architecture": "x64",
-      "requirements": "Windows",
-      "sha256": "e56bf42f5a1b37dabd5ece3ac2fbb1ff44deddebee4b5e1ec5506440de7b2845"
+      "requirements": "Windows 10 or 11 · 64-bit",
+      "sha256": "e56bf42f5a1b37dabd5ece3ac2fbb1ff44deddebee4b5e1ec5506440de7b2845",
+      "size": 116507092
     }
   }
 }
