@@ -164,7 +164,8 @@
     "screenshot": "Ảnh chụp màn hình trên macOS. Tài liệu mẫu, công ty hư cấu.",
     "downloadZip": "Tải ZIP",
     "downloadTarGz": "Tải tar.gz",
-    "experimental": "Thử nghiệm"
+    "experimental": "Thử nghiệm",
+    "support": "Hỗ trợ"
   },
   "apps": {
     "pdf": {
@@ -420,14 +421,64 @@
     "issues": "Báo sự cố"
   },
   "privacy": {
-    "title": "Giữ công việc ở gần bạn.",
-    "intro": "Trang web này giới thiệu OFF42 và liên kết đến mã nguồn cùng các bản phát hành. Trang web không tiếp nhận hay xử lý tài liệu của bạn.",
-    "siteTitle": "Một trang web đơn giản",
-    "siteText": "Không có quảng cáo, mã phân tích hay hệ thống tài khoản. Nhà cung cấp lưu trữ có thể xử lý thông tin yêu cầu để cung cấp và bảo vệ trang web.",
-    "appTitle": "Xử lý tài liệu cục bộ",
-    "appText": "Các thao tác chỉnh sửa chính chạy ngay trên máy tính của bạn, không tải tệp lên mạng. Tính năng trực tuyến tùy chọn cần kết nối; khả năng sử dụng khác nhau theo nền tảng.",
-    "linksTitle": "Liên kết ngoài",
-    "linksText": "GitHub và các dịch vụ được liên kết khác có chính sách quyền riêng tư riêng. Truy cập trang web này không tải lên các tệp của bạn."
+    "title": "Chính sách quyền riêng tư",
+    "intro": "OFF42 được xây dựng để hoạt động trên thiết bị của bạn. Các ứng dụng không thu thập, lưu trữ hay chia sẻ dữ liệu cá nhân, và chúng tôi không bao giờ thấy tài liệu của bạn.",
+    "updated": "Có hiệu lực từ ngày 26 tháng 11 năm 2026",
+    "sections": [
+      {
+        "title": "Chúng tôi là ai",
+        "text": [
+          "OFF42 là bộ ứng dụng văn phòng miễn phí, mã nguồn mở do nhà phát triển phát hành dưới dạng một dự án độc lập. Chính sách này áp dụng cho các ứng dụng OFF42 dành cho macOS, Windows, Linux, Android, iPad và iPhone, phiên bản web tại off42.cc/app và trang web off42.cc."
+        ]
+      },
+      {
+        "title": "Dữ liệu chúng tôi thu thập",
+        "text": [
+          "Không có. Các ứng dụng không có tài khoản, quảng cáo, phân tích, theo dõi hay báo cáo sự cố, và không gửi dữ liệu sử dụng cho chúng tôi hay bất kỳ ai khác. Chúng tôi không bán hay chia sẻ dữ liệu cá nhân vì chúng tôi không có bất kỳ dữ liệu nào như vậy."
+        ]
+      },
+      {
+        "title": "Tài liệu của bạn",
+        "text": [
+          "Tệp của bạn được mở, chỉnh sửa, chuyển đổi và lưu trên thiết bị của bạn. Chúng không được tải lên cho chúng tôi. Chữ ký, con dấu, cài đặt, tệp gần đây và bản sao khôi phục của công việc chưa lưu chỉ được giữ trên thiết bị của bạn, trong bộ nhớ riêng của ứng dụng, và bạn có thể xóa chúng bất cứ lúc nào bằng cách xóa các tệp đó hoặc gỡ cài đặt ứng dụng.",
+          "Các ứng dụng di động chỉ mở và lưu tệp thông qua trình chọn tệp của hệ thống hoặc khi bạn chia sẻ tệp vào ứng dụng, và không yêu cầu quyền truy cập mạng."
+        ]
+      },
+      {
+        "title": "Tính năng sử dụng internet",
+        "text": [
+          "Một vài tính năng tùy chọn của PDF42 trên Mac sẽ kết nối với máy chủ, và chỉ khi bạn sử dụng chúng: dấu thời gian tin cậy được yêu cầu từ máy chủ dấu thời gian do bạn chọn (mặc định là DigiCert); việc xác thực hoặc gia hạn chữ ký số sẽ tải dữ liệu thu hồi từ các địa chỉ ghi trong chứng chỉ; ký từ xa gửi giá trị băm (hash) của tài liệu — không bao giờ gửi chính tài liệu — đến dịch vụ ký mà bạn cấu hình. Các dịch vụ này xử lý yêu cầu của bạn theo chính sách quyền riêng tư của riêng họ."
+        ]
+      },
+      {
+        "title": "Phiên bản web",
+        "text": [
+          "off42.cc/app chạy trong trình duyệt của bạn. Sau khi trang và công cụ xử lý của nó đã tải xong, nó không thực hiện thêm yêu cầu mạng nào: các tệp bạn mở vẫn nằm trong thẻ trình duyệt và không bao giờ được tải lên."
+        ]
+      },
+      {
+        "title": "Trang web",
+        "text": [
+          "off42.cc không có cookie, quảng cáo hay mã phân tích. Trang được lưu trữ bởi Cloudflare, đơn vị xử lý dữ liệu yêu cầu kỹ thuật như địa chỉ IP để cung cấp trang web và bảo vệ trang khỏi hành vi lạm dụng. Các bản tải xuống được cung cấp từ GitHub. Cả hai hoạt động theo chính sách quyền riêng tư của riêng họ."
+        ]
+      },
+      {
+        "title": "Trẻ em",
+        "text": [
+          "OFF42 phù hợp với mọi lứa tuổi và không thu thập dữ liệu từ bất kỳ ai, kể cả trẻ em."
+        ]
+      },
+      {
+        "title": "Thay đổi và liên hệ",
+        "text": [
+          "Nếu chính sách này thay đổi, phiên bản mới sẽ được đăng trên trang này với ngày có hiệu lực mới. Bạn có thể gửi câu hỏi về quyền riêng tư qua trang GitHub của dự án."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Liên hệ với chúng tôi trên GitHub"
+        }
+      }
+    ]
   },
   "seo": {
     "homeTitle": "OFF42 — Phần mềm văn phòng miễn phí cho macOS và Windows, không thuê bao",
@@ -438,7 +489,47 @@
     "downloadDescription": "OFF42 cho macOS và Windows: mã nguồn, trạng thái phát hành, hướng dẫn biên dịch và giới hạn nền tảng. Kiểm tra phần đã triển khai và thử nghiệm trước khi cài đặt.",
     "aboutTitle": "Bộ văn phòng mã nguồn mở, giấy phép MIT | OFF42",
     "aboutDescription": "OFF42 gồm sáu ứng dụng gốc cho macOS và Windows theo giấy phép MIT. Xem mã nguồn, hỗ trợ nền tảng và giới hạn trên GitHub.",
-    "privacyTitle": "Quyền riêng tư: tệp luôn ở trên máy tính của bạn | OFF42",
-    "privacyDescription": "Các thao tác chỉnh sửa chính chạy ngay trên máy tính của bạn, không tải tệp lên mạng. Tính năng trực tuyến tùy chọn cần kết nối; khả năng sử dụng khác nhau theo nền tảng."
+    "privacyTitle": "Chính sách quyền riêng tư của OFF42 — không thu thập dữ liệu",
+    "privacyDescription": "OFF42 không thu thập dữ liệu cá nhân: không tài khoản, không phân tích, không theo dõi. Tài liệu của bạn luôn ở trên thiết bị của bạn trên mọi nền tảng.",
+    "supportTitle": "Hỗ trợ OFF42 — trợ giúp, câu hỏi và báo cáo sự cố",
+    "supportDescription": "Nhận trợ giúp về OFF42 trên Mac, Windows, Linux, Android, iPad, iPhone và web: cài đặt, tài liệu hướng dẫn và cách báo cáo sự cố."
+  },
+  "support": {
+    "title": "Hỗ trợ",
+    "intro": "Trợ giúp cài đặt và sử dụng OFF42 trên mọi nền tảng.",
+    "sections": [
+      {
+        "title": "Cài đặt và khởi chạy lần đầu",
+        "text": [
+          "Tải OFF42 cho macOS, Windows hoặc Linux từ trang tải xuống, hoặc cài đặt từ App Store hay Google Play. Nếu hệ thống cảnh báo về ứng dụng được tải xuống từ internet, trang tải xuống có hướng dẫn cách mở ứng dụng."
+        ]
+      },
+      {
+        "title": "Đặt câu hỏi hoặc báo cáo sự cố",
+        "text": [
+          "Mở một issue trên GitHub và mô tả bạn đã làm gì, bạn mong đợi điều gì và điều gì đã xảy ra. Ghi rõ nền tảng và phiên bản ứng dụng, và chỉ đính kèm tệp mẫu nếu tệp đó không chứa thông tin riêng tư."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Mở issue trên GitHub"
+        }
+      },
+      {
+        "title": "Tài liệu hướng dẫn",
+        "text": [
+          "Hướng dẫn tính năng, các định dạng được hỗ trợ và những hạn chế đã biết của từng nền tảng có trên GitHub."
+        ],
+        "link": {
+          "href": "{repo}#readme",
+          "text": "Đọc tài liệu hướng dẫn"
+        }
+      },
+      {
+        "title": "Quyền riêng tư",
+        "text": [
+          "OFF42 không thu thập dữ liệu của bạn. Xem chính sách quyền riêng tư để biết chi tiết."
+        ]
+      }
+    ]
   }
 }

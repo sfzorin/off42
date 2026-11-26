@@ -164,7 +164,8 @@
     "screenshot": "Zrzut ekranu w macOS. Przykładowe dokumenty, fikcyjne firmy.",
     "downloadZip": "Pobierz ZIP",
     "downloadTarGz": "Pobierz tar.gz",
-    "experimental": "Eksperymentalne"
+    "experimental": "Eksperymentalne",
+    "support": "Pomoc"
   },
   "apps": {
     "pdf": {
@@ -420,14 +421,64 @@
     "issues": "Zgłoś problem"
   },
   "privacy": {
-    "title": "Miej swoją pracę blisko.",
-    "intro": "Ta strona przedstawia OFF42 i odsyła do kodu oraz wydań projektu. Nie przyjmuje ani nie przetwarza Twoich dokumentów.",
-    "siteTitle": "Prosta strona",
-    "siteText": "Strona nie zawiera reklam, skryptów analitycznych ani systemu kont. Dostawcy hostingu mogą przetwarzać informacje o żądaniach, aby udostępniać i chronić witrynę.",
-    "appTitle": "Lokalna praca z dokumentami",
-    "appText": "Podstawowa edycja odbywa się lokalnie na komputerze, bez przesyłania plików. Opcjonalne funkcje sieciowe wymagają połączenia; ich dostępność zależy od platformy.",
-    "linksTitle": "Linki zewnętrzne",
-    "linksText": "GitHub i inne połączone usługi mają własne polityki prywatności. Wizyta na tej stronie nie powoduje przesyłania Twoich plików."
+    "title": "Polityka prywatności",
+    "intro": "OFF42 został stworzony do pracy na Twoim urządzeniu. Aplikacje nie zbierają, nie przechowują ani nie udostępniają danych osobowych, a my nigdy nie widzimy Twoich dokumentów.",
+    "updated": "Obowiązuje od 26 listopada 2026 r.",
+    "sections": [
+      {
+        "title": "Kim jesteśmy",
+        "text": [
+          "OFF42 to darmowy pakiet biurowy o otwartym kodzie źródłowym, wydawany przez swojego twórcę jako niezależny projekt. Niniejsza polityka obejmuje aplikacje OFF42 na macOS, Windows, Linux, Android, iPad i iPhone, wersję webową pod adresem off42.cc/app oraz stronę off42.cc."
+        ]
+      },
+      {
+        "title": "Jakie dane zbieramy",
+        "text": [
+          "Żadnych. Aplikacje nie mają kont, reklam, analityki, śledzenia ani raportowania awarii i nie wysyłają danych o użytkowaniu ani do nas, ani do nikogo innego. Nie sprzedajemy ani nie udostępniamy danych osobowych, ponieważ żadnych nie mamy."
+        ]
+      },
+      {
+        "title": "Twoje dokumenty",
+        "text": [
+          "Twoje pliki są otwierane, edytowane, konwertowane i zapisywane na Twoim urządzeniu. Nie są do nas przesyłane. Podpisy, pieczątki, ustawienia, ostatnio używane pliki i kopie odzyskiwania niezapisanej pracy są przechowywane wyłącznie na Twoim urządzeniu, we własnej pamięci aplikacji, i możesz je w każdej chwili usunąć, usuwając pliki lub odinstalowując aplikację.",
+          "Aplikacje mobilne otwierają i zapisują pliki wyłącznie za pomocą systemowego okna wyboru plików lub gdy udostępnisz im plik, i nie proszą o dostęp do sieci."
+        ]
+      },
+      {
+        "title": "Funkcje korzystające z internetu",
+        "text": [
+          "Kilka opcjonalnych funkcji PDF42 na Macu łączy się z serwerem, i to tylko wtedy, gdy z nich korzystasz: zaufany znacznik czasu jest pobierany z wybranego przez Ciebie serwera znaczników czasu (domyślnie DigiCert); weryfikacja lub rozszerzenie podpisu cyfrowego pobiera dane o unieważnieniu z adresów zapisanych w certyfikatach; podpisywanie zdalne wysyła skrót (hash) dokumentu — nigdy sam dokument — do skonfigurowanej przez Ciebie usługi podpisu. Usługi te przetwarzają Twoje żądanie zgodnie z własnymi politykami prywatności."
+        ]
+      },
+      {
+        "title": "Wersja webowa",
+        "text": [
+          "off42.cc/app działa w Twojej przeglądarce. Po załadowaniu strony i jej silnika nie wykonuje już żadnych żądań sieciowych: otwierane pliki pozostają w karcie przeglądarki i nigdy nie są przesyłane."
+        ]
+      },
+      {
+        "title": "Strona internetowa",
+        "text": [
+          "off42.cc nie używa plików cookie, reklam ani skryptów analitycznych. Strona jest hostowana przez Cloudflare, który przetwarza techniczne dane żądań, takie jak adresy IP, aby dostarczać stronę i chronić ją przed nadużyciami. Pliki do pobrania są udostępniane z GitHub. Obie firmy działają zgodnie z własnymi politykami prywatności."
+        ]
+      },
+      {
+        "title": "Dzieci",
+        "text": [
+          "OFF42 jest odpowiedni dla osób w każdym wieku i nie zbiera danych od nikogo, w tym od dzieci."
+        ]
+      },
+      {
+        "title": "Zmiany i kontakt",
+        "text": [
+          "Jeśli ta polityka się zmieni, nowa wersja zostanie opublikowana na tej stronie z nową datą wejścia w życie. Pytania dotyczące prywatności można przesyłać przez stronę projektu w serwisie GitHub."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Skontaktuj się z nami na GitHub"
+        }
+      }
+    ]
   },
   "seo": {
     "homeTitle": "OFF42 — darmowy pakiet biurowy na macOS i Windows bez subskrypcji",
@@ -438,7 +489,47 @@
     "downloadDescription": "OFF42 na macOS i Windows: kod źródłowy, status wydań, instrukcje kompilacji i ograniczenia. Przed instalacją sprawdź, co zaimplementowano i przetestowano.",
     "aboutTitle": "Pakiet biurowy z otwartym kodem, licencja MIT | OFF42",
     "aboutDescription": "OFF42 to sześć natywnych aplikacji na macOS i Windows na licencji MIT. Kod źródłowy, obsługę platform i ograniczenia znajdziesz na GitHub.",
-    "privacyTitle": "Prywatność: pliki zostają na Twoim komputerze | OFF42",
-    "privacyDescription": "Podstawowa edycja odbywa się lokalnie na komputerze, bez przesyłania plików. Opcjonalne funkcje sieciowe wymagają połączenia; ich dostępność zależy od platformy."
+    "privacyTitle": "Polityka prywatności OFF42 — żadne dane nie są zbierane",
+    "privacyDescription": "OFF42 nie zbiera danych osobowych: bez kont, analityki i śledzenia. Twoje dokumenty pozostają na Twoim urządzeniu na każdej platformie.",
+    "supportTitle": "Pomoc OFF42 — wsparcie, pytania i zgłaszanie problemów",
+    "supportDescription": "Uzyskaj pomoc dotyczącą OFF42 na Macu, Windows, Linux, Android, iPad, iPhone i w przeglądarce: instalacja, dokumentacja i zgłaszanie problemów."
+  },
+  "support": {
+    "title": "Pomoc",
+    "intro": "Pomoc w instalacji i używaniu OFF42 na każdej platformie.",
+    "sections": [
+      {
+        "title": "Instalacja i pierwsze uruchomienie",
+        "text": [
+          "Pobierz OFF42 na macOS, Windows lub Linux ze strony pobierania albo zainstaluj go z App Store lub Google Play. Jeśli system ostrzega przed aplikacją pobraną z internetu, strona pobierania wyjaśnia, jak ją otworzyć."
+        ]
+      },
+      {
+        "title": "Zadaj pytanie lub zgłoś problem",
+        "text": [
+          "Utwórz zgłoszenie (issue) na GitHub i opisz, co zrobiłeś, czego oczekiwałeś i co się stało. Podaj platformę i wersję aplikacji, a przykładowy plik dołącz tylko wtedy, gdy nie zawiera niczego prywatnego."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Utwórz zgłoszenie na GitHub"
+        }
+      },
+      {
+        "title": "Dokumentacja",
+        "text": [
+          "Przewodniki po funkcjach, obsługiwane formaty i znane ograniczenia każdej platformy znajdziesz na GitHub."
+        ],
+        "link": {
+          "href": "{repo}#readme",
+          "text": "Przeczytaj dokumentację"
+        }
+      },
+      {
+        "title": "Prywatność",
+        "text": [
+          "OFF42 nie zbiera Twoich danych. Szczegóły znajdziesz w polityce prywatności."
+        ]
+      }
+    ]
   }
 }

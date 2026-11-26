@@ -164,7 +164,8 @@
     "screenshot": "Képernyőkép macOS-en. Mintadokumentumok, kitalált cégek.",
     "downloadZip": "ZIP letöltése",
     "downloadTarGz": "tar.gz letöltése",
-    "experimental": "Kísérleti"
+    "experimental": "Kísérleti",
+    "support": "Támogatás"
   },
   "apps": {
     "pdf": {
@@ -420,14 +421,64 @@
     "issues": "Hiba bejelentése"
   },
   "privacy": {
-    "title": "Tartsd közel a munkádat.",
-    "intro": "Ez a webhely bemutatja az OFF42-t, és a projekt forráskódjára, illetve kiadásaira mutat. Nem fogadja és nem dolgozza fel a dokumentumaidat.",
-    "siteTitle": "Egyszerű webhely",
-    "siteText": "A webhelyen nincs reklám, elemzőszkript vagy fiókrendszer. A tárhelyszolgáltatók a webhely kiszolgálásához és védelméhez feldolgozhatják a kérések adatait.",
-    "appTitle": "Helyi dokumentumkezelés",
-    "appText": "Az alapvető szerkesztés helyben, a számítógépeden történik, fájlfeltöltés nélkül. Az opcionális online funkciókhoz kapcsolat kell; elérhetőségük platformonként eltér.",
-    "linksTitle": "Külső hivatkozások",
-    "linksText": "A GitHubnak és más hivatkozott szolgáltatásoknak saját adatvédelmi szabályzatuk van. A webhely meglátogatása nem tölti fel a fájljaidat."
+    "title": "Adatvédelmi irányelvek",
+    "intro": "Az OFF42 arra készült, hogy a saját eszközödön működjön. Az alkalmazások nem gyűjtenek, nem tárolnak és nem osztanak meg személyes adatokat, és mi soha nem látjuk a dokumentumaidat.",
+    "updated": "Hatályos: 2026. november 26.",
+    "sections": [
+      {
+        "title": "Kik vagyunk",
+        "text": [
+          "Az OFF42 ingyenes, nyílt forráskódú irodai programcsomag, amelyet fejlesztője független projektként ad ki. Ezek az irányelvek az OFF42 macOS, Windows, Linux, Android, iPad és iPhone rendszerre készült alkalmazásaira, az off42.cc/app címen elérhető webes változatra és az off42.cc webhelyre vonatkoznak."
+        ]
+      },
+      {
+        "title": "Milyen adatokat gyűjtünk",
+        "text": [
+          "Semmilyet. Az alkalmazásokban nincs fiók, reklám, elemzés, követés vagy összeomlás-jelentés, és nem küldenek használati adatokat sem nekünk, sem másnak. Nem adunk el és nem osztunk meg személyes adatokat, mert nincsenek ilyenek nálunk."
+        ]
+      },
+      {
+        "title": "A dokumentumaid",
+        "text": [
+          "A fájljaid megnyitása, szerkesztése, konvertálása és mentése az eszközödön történik. Nem töltődnek fel hozzánk. Az aláírások, bélyegzők, beállítások, legutóbbi fájlok és a nem mentett munka helyreállítási másolatai kizárólag az eszközödön, az alkalmazás saját tárhelyén maradnak, és bármikor törölheted őket a fájlok törlésével vagy az alkalmazás eltávolításával.",
+          "A mobilalkalmazások csak a rendszer fájlválasztóján keresztül, vagy amikor megosztasz velük egy fájlt, nyitnak meg és mentenek fájlokat, és nem kérnek hálózati hozzáférést."
+        ]
+      },
+      {
+        "title": "Internetet használó funkciók",
+        "text": [
+          "A PDF42 néhány opcionális funkciója Macen kapcsolatba lép egy szerverrel, de csak akkor, ha használod őket: a megbízható időbélyeget az általad választott időbélyeg-szervertől kéri le (alapértelmezés szerint DigiCert); a digitális aláírás ellenőrzése vagy kiterjesztése visszavonási adatokat tölt le a tanúsítványokban megadott címekről; a távoli aláírás a dokumentum kivonatát (hash) – soha nem magát a dokumentumot – küldi el az általad beállított aláírási szolgáltatásnak. Ezek a szolgáltatások saját adatvédelmi irányelveik szerint kezelik a kérésedet."
+        ]
+      },
+      {
+        "title": "A webes változat",
+        "text": [
+          "Az off42.cc/app a böngésződben fut. Miután az oldal és a motorja betöltődött, nem indít további hálózati kéréseket: a megnyitott fájlok a böngészőlapon maradnak, és soha nem töltődnek fel."
+        ]
+      },
+      {
+        "title": "A webhely",
+        "text": [
+          "Az off42.cc nem használ sütiket, reklámokat vagy elemzőszkripteket. A tárhelyet a Cloudflare biztosítja, amely technikai kérésadatokat, például IP-címeket kezel a webhely kiszolgálása és a visszaélések elleni védelem érdekében. A letöltéseket a GitHub szolgálja ki. Mindkettő saját adatvédelmi irányelvei szerint jár el."
+        ]
+      },
+      {
+        "title": "Gyermekek",
+        "text": [
+          "Az OFF42 minden korosztály számára alkalmas, és senkitől sem gyűjt adatot, a gyermekeket is beleértve."
+        ]
+      },
+      {
+        "title": "Változások és kapcsolat",
+        "text": [
+          "Ha ezek az irányelvek változnak, az új változat ezen az oldalon jelenik meg, új hatálybalépési dátummal. Adatvédelmi kérdéseidet a projekt GitHub-oldalán keresztül küldheted el."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Írj nekünk a GitHubon"
+        }
+      }
+    ]
   },
   "seo": {
     "homeTitle": "OFF42 — ingyenes iroda macOS és Windows rendszerre",
@@ -438,7 +489,47 @@
     "downloadDescription": "OFF42 macOS és Windows rendszerre: forráskód, kiadási állapot, fordítási útmutatók és platformkorlátok. Telepítés előtt nézd meg, mi készült el és mit teszteltek.",
     "aboutTitle": "Nyílt forráskódú irodai csomag, MIT-licenc | OFF42",
     "aboutDescription": "Az OFF42 hat natív alkalmazás macOS és Windows rendszerre, MIT-licenccel. A forráskód, a platformtámogatás és a korlátok a GitHubon olvashatók.",
-    "privacyTitle": "Adatvédelem: a fájljaid a számítógépeden maradnak | OFF42",
-    "privacyDescription": "Az alapvető szerkesztés helyben, a számítógépeden történik, fájlfeltöltés nélkül. Az opcionális online funkciókhoz kapcsolat kell; elérhetőségük platformonként eltér."
+    "privacyTitle": "OFF42 adatvédelmi irányelvek — nincs adatgyűjtés",
+    "privacyDescription": "Az OFF42 nem gyűjt személyes adatokat: nincs fiók, elemzés vagy követés. A dokumentumaid minden platformon az eszközödön maradnak.",
+    "supportTitle": "OFF42 támogatás — segítség, kérdések és hibabejelentés",
+    "supportDescription": "Segítség az OFF42-höz Macen, Windowson, Linuxon, Androidon, iPaden, iPhone-on és a weben: telepítés, dokumentáció és hibabejelentés."
+  },
+  "support": {
+    "title": "Támogatás",
+    "intro": "Segítség az OFF42 telepítéséhez és használatához minden platformon.",
+    "sections": [
+      {
+        "title": "Telepítés és első indítás",
+        "text": [
+          "Töltsd le az OFF42-t macOS, Windows vagy Linux rendszerre a letöltési oldalról, vagy telepítsd az App Store-ból vagy a Google Playről. Ha a rendszer figyelmeztet az internetről letöltött alkalmazás miatt, a letöltési oldal elmagyarázza, hogyan nyithatod meg."
+        ]
+      },
+      {
+        "title": "Kérdés feltevése vagy hiba bejelentése",
+        "text": [
+          "Nyiss egy issue-t a GitHubon, és írd le, mit csináltál, mire számítottál és mi történt. Add meg a platformodat és az alkalmazás verzióját, mintafájlt pedig csak akkor csatolj, ha nincs benne semmi személyes."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Issue nyitása a GitHubon"
+        }
+      },
+      {
+        "title": "Dokumentáció",
+        "text": [
+          "A funkciók útmutatói, a támogatott formátumok és az egyes platformok ismert korlátai a GitHubon találhatók."
+        ],
+        "link": {
+          "href": "{repo}#readme",
+          "text": "Dokumentáció megnyitása"
+        }
+      },
+      {
+        "title": "Adatvédelem",
+        "text": [
+          "Az OFF42 nem gyűjti az adataidat. A részletekért lásd az adatvédelmi irányelveket."
+        ]
+      }
+    ]
   }
 }

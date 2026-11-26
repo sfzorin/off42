@@ -8,7 +8,7 @@ const config=JSON.parse(await read('site.config.json'));
 const manifest=JSON.parse(await read('build-manifest.json'));
 const source=JSON.parse(await read('locales/en.json'));
 const expected=['en','zh-Hans','zh-Hant','es','ar','fr','pt','id','ru','de','ja','vi','tr','fil','ko','th','it','pl','ms','hu'];
-assert.deepEqual(manifest.languages,expected);assert.equal(manifest.pages,280);
+assert.deepEqual(manifest.languages,expected);assert.equal(manifest.pages,300);
 function shape(value,ref,key='') {
  assert.equal(Array.isArray(value),Array.isArray(ref),key);
  assert.equal(typeof value,typeof ref,key);
@@ -76,7 +76,7 @@ for(const page of manifest.files){
   else assert(!html.includes({macos:source.labels.downloadDmg,windows:source.labels.downloadZip,linux:source.labels.downloadTarGz}[platform]));
  }
 }
-const sitemap=await read('dist/sitemap.xml');assert.equal((sitemap.match(/<loc>/g)||[]).length,280);assert(!sitemap.includes('<lastmod>'),'Sitemap must not claim unverified modification dates');
+const sitemap=await read('dist/sitemap.xml');assert.equal((sitemap.match(/<loc>/g)||[]).length,300);assert(!sitemap.includes('<lastmod>'),'Sitemap must not claim unverified modification dates');
 for(const page of manifest.files){
  const entry=sitemap.match(new RegExp(`<url><loc>${page.url.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}</loc>(.*?)</url>`));
  assert(entry,page.path+' sitemap entry');

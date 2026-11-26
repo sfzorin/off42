@@ -164,7 +164,8 @@
     "screenshot": "Screenshot on macOS. Sample documents, fictional companies.",
     "downloadZip": "Download ZIP",
     "downloadTarGz": "Download tar.gz",
-    "experimental": "Experimental"
+    "experimental": "Experimental",
+    "support": "Support"
   },
   "apps": {
     "pdf": {
@@ -420,14 +421,64 @@
     "issues": "Report an issue"
   },
   "privacy": {
-    "title": "Keep your work close.",
-    "intro": "This website introduces OFF42 and links to the project's source and releases. It does not accept or process your documents.",
-    "siteTitle": "A simple website",
-    "siteText": "The site has no advertising, analytics scripts or account system. Hosting providers may process request information to deliver and protect the website.",
-    "appTitle": "Local document work",
-    "appText": "Core editing runs locally on your computer without uploading files. Optional online features need a connection; availability varies by platform.",
-    "linksTitle": "External links",
-    "linksText": "GitHub and other linked services have their own privacy policies. Your files are not uploaded by visiting this website."
+    "title": "Privacy policy",
+    "intro": "OFF42 is built to work on your device. The apps do not collect, store or share personal data, and we never see your documents.",
+    "updated": "Effective 26 November 2026",
+    "sections": [
+      {
+        "title": "Who we are",
+        "text": [
+          "OFF42 is a free, open-source office suite published by its developer as an independent project. This policy covers the OFF42 apps for macOS, Windows, Linux, Android, iPad and iPhone, the web version at off42.cc/app and the website off42.cc."
+        ]
+      },
+      {
+        "title": "Data we collect",
+        "text": [
+          "None. The apps have no accounts, advertising, analytics, tracking or crash reporting, and they do not send usage data to us or to anyone else. We do not sell or share personal data because we do not have any."
+        ]
+      },
+      {
+        "title": "Your documents",
+        "text": [
+          "Your files are opened, edited, converted and saved on your device. They are not uploaded to us. Signatures, stamps, settings, recent files and recovery copies of unsaved work are kept only on your device, in the app's own storage, and you can delete them at any time by deleting the files or uninstalling the app.",
+          "The mobile apps open and save files only through the system's file picker or when you share a file to them, and they do not request network access."
+        ]
+      },
+      {
+        "title": "Features that use the internet",
+        "text": [
+          "A few optional PDF42 features on the Mac contact a server, and only when you use them: a trusted timestamp is requested from the timestamp server you choose (DigiCert by default); validating or extending a digital signature downloads revocation data from the addresses written in the certificates; remote signing sends a document hash — never the document — to the signing service you configure. These services process your request under their own privacy policies."
+        ]
+      },
+      {
+        "title": "The web version",
+        "text": [
+          "off42.cc/app runs in your browser. After the page and its engine have loaded, it makes no further network requests: the files you open stay in your browser tab and are never uploaded."
+        ]
+      },
+      {
+        "title": "The website",
+        "text": [
+          "off42.cc has no cookies, advertising or analytics scripts. It is hosted by Cloudflare, which processes technical request data such as IP addresses to deliver the site and protect it from abuse. Downloads are served from GitHub. Both act under their own privacy policies."
+        ]
+      },
+      {
+        "title": "Children",
+        "text": [
+          "OFF42 is suitable for all ages and collects no data from anyone, including children."
+        ]
+      },
+      {
+        "title": "Changes and contact",
+        "text": [
+          "If this policy changes, the new version will be published on this page with a new effective date. Questions about privacy can be sent through the project's GitHub page."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Contact us on GitHub"
+        }
+      }
+    ]
   },
   "seo": {
     "homeTitle": "OFF42 — Free Office Suite for macOS and Windows, No Subscription",
@@ -438,7 +489,47 @@
     "downloadDescription": "OFF42 for macOS and Windows: source code, release status, build instructions and platform limitations. Check what is implemented and tested before installing.",
     "aboutTitle": "Open-Source Office Suite, MIT Licensed | OFF42",
     "aboutDescription": "OFF42 is a family of six native apps for macOS and Windows under the MIT license. Explore the source, platform support and limitations on GitHub.",
-    "privacyTitle": "Privacy: Your Files Stay on Your Computer | OFF42",
-    "privacyDescription": "Core editing runs locally on your computer without uploading files. Optional online features need a connection; availability varies by platform."
+    "privacyTitle": "OFF42 privacy policy — no data collected",
+    "privacyDescription": "OFF42 collects no personal data: no accounts, analytics or tracking. Your documents stay on your device on every platform.",
+    "supportTitle": "OFF42 support — help, questions and problem reports",
+    "supportDescription": "Get help with OFF42 on Mac, Windows, Linux, Android, iPad, iPhone and the web: installation, documentation and how to report a problem."
+  },
+  "support": {
+    "title": "Support",
+    "intro": "Help with installing and using OFF42 on every platform.",
+    "sections": [
+      {
+        "title": "Install and first launch",
+        "text": [
+          "Download OFF42 for macOS, Windows or Linux from the downloads page, or install it from the App Store or Google Play. If the system warns about an app downloaded from the internet, the downloads page explains how to open it."
+        ]
+      },
+      {
+        "title": "Ask a question or report a problem",
+        "text": [
+          "Open an issue on GitHub and describe what you did, what you expected and what happened. Include your platform and app version, and attach a sample file only if it contains nothing private."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Open an issue on GitHub"
+        }
+      },
+      {
+        "title": "Documentation",
+        "text": [
+          "Feature guides, supported formats and known limitations for each platform are on GitHub."
+        ],
+        "link": {
+          "href": "{repo}#readme",
+          "text": "Read the documentation"
+        }
+      },
+      {
+        "title": "Privacy",
+        "text": [
+          "OFF42 does not collect your data. See the privacy policy for details."
+        ]
+      }
+    ]
   }
 }

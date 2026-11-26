@@ -164,7 +164,8 @@
     "screenshot": "Capture d'écran sur macOS. Documents d'exemple, entreprises fictives.",
     "downloadZip": "Télécharger le ZIP",
     "downloadTarGz": "Télécharger le tar.gz",
-    "experimental": "Expérimental"
+    "experimental": "Expérimental",
+    "support": "Assistance"
   },
   "apps": {
     "pdf": {
@@ -420,14 +421,64 @@
     "issues": "Signaler un problème"
   },
   "privacy": {
-    "title": "Gardez votre travail près de vous.",
-    "intro": "Ce site présente OFF42 et renvoie vers le code source et les versions du projet. Il ne reçoit ni ne traite vos documents.",
-    "siteTitle": "Un site simple",
-    "siteText": "Le site ne contient ni publicité, ni scripts d'analyse, ni système de comptes. Les hébergeurs peuvent traiter les informations des requêtes pour diffuser et protéger le site.",
-    "appTitle": "Des documents traités localement",
-    "appText": "La retouche et l’édition de base se font sur votre ordinateur, sans téléverser vos fichiers. Les fonctions en ligne facultatives nécessitent une connexion ; leur disponibilité dépend de la plateforme.",
-    "linksTitle": "Liens externes",
-    "linksText": "GitHub et les autres services liés ont leurs propres politiques de confidentialité. La visite de ce site n'envoie pas vos fichiers."
+    "title": "Politique de confidentialité",
+    "intro": "OFF42 est conçu pour fonctionner sur votre appareil. Les apps ne collectent, ne stockent ni ne partagent aucune donnée personnelle, et nous ne voyons jamais vos documents.",
+    "updated": "En vigueur à compter du 26 novembre 2026",
+    "sections": [
+      {
+        "title": "Qui sommes-nous",
+        "text": [
+          "OFF42 est une suite bureautique gratuite et open source, publiée par son développeur en tant que projet indépendant. Cette politique couvre les apps OFF42 pour macOS, Windows, Linux, Android, iPad et iPhone, la version web à l'adresse off42.cc/app et le site web off42.cc."
+        ]
+      },
+      {
+        "title": "Données que nous collectons",
+        "text": [
+          "Aucune. Les apps n'ont ni comptes, ni publicité, ni outils d'analyse, ni suivi, ni rapports de plantage, et elles n'envoient aucune donnée d'utilisation, ni à nous ni à qui que ce soit. Nous ne vendons ni ne partageons de données personnelles, car nous n'en avons aucune."
+        ]
+      },
+      {
+        "title": "Vos documents",
+        "text": [
+          "Vos fichiers sont ouverts, modifiés, convertis et enregistrés sur votre appareil. Ils ne nous sont pas transmis. Les signatures, tampons, réglages, fichiers récents et copies de récupération du travail non enregistré sont conservés uniquement sur votre appareil, dans le stockage propre de l'app, et vous pouvez les supprimer à tout moment en supprimant les fichiers ou en désinstallant l'app.",
+          "Les apps mobiles ouvrent et enregistrent des fichiers uniquement via le sélecteur de fichiers du système ou lorsque vous leur partagez un fichier, et elles ne demandent pas d'accès au réseau."
+        ]
+      },
+      {
+        "title": "Fonctionnalités utilisant internet",
+        "text": [
+          "Quelques fonctionnalités facultatives de PDF42 sur Mac contactent un serveur, et uniquement lorsque vous les utilisez : un horodatage de confiance est demandé au serveur d'horodatage de votre choix (DigiCert par défaut) ; la validation ou l'extension d'une signature numérique télécharge des données de révocation depuis les adresses inscrites dans les certificats ; la signature à distance envoie une empreinte (hash) du document — jamais le document lui-même — au service de signature que vous configurez. Ces services traitent votre demande selon leurs propres politiques de confidentialité."
+        ]
+      },
+      {
+        "title": "La version web",
+        "text": [
+          "off42.cc/app fonctionne dans votre navigateur. Une fois la page et son moteur chargés, elle n'effectue plus aucune requête réseau : les fichiers que vous ouvrez restent dans votre onglet et ne sont jamais envoyés."
+        ]
+      },
+      {
+        "title": "Le site web",
+        "text": [
+          "off42.cc n'utilise ni cookies, ni publicité, ni scripts d'analyse. Il est hébergé par Cloudflare, qui traite des données techniques de requête, comme les adresses IP, pour diffuser le site et le protéger contre les abus. Les téléchargements sont fournis par GitHub. Tous deux agissent selon leurs propres politiques de confidentialité."
+        ]
+      },
+      {
+        "title": "Enfants",
+        "text": [
+          "OFF42 convient à tous les âges et ne collecte de données auprès de personne, y compris les enfants."
+        ]
+      },
+      {
+        "title": "Modifications et contact",
+        "text": [
+          "Si cette politique change, la nouvelle version sera publiée sur cette page avec une nouvelle date d'entrée en vigueur. Les questions relatives à la confidentialité peuvent être envoyées via la page GitHub du projet."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Nous contacter sur GitHub"
+        }
+      }
+    ]
   },
   "seo": {
     "homeTitle": "OFF42 — Suite bureautique gratuite pour macOS et Windows, sans abonnement",
@@ -438,7 +489,47 @@
     "downloadDescription": "OFF42 pour macOS et Windows : code source, état des versions, compilation et limites des plateformes. Vérifiez ce qui est implémenté et testé avant l’installation.",
     "aboutTitle": "Suite bureautique open source sous licence MIT | OFF42",
     "aboutDescription": "OFF42 réunit six applications natives pour macOS et Windows sous licence MIT. Consultez le code, les plateformes prises en charge et leurs limites sur GitHub.",
-    "privacyTitle": "Confidentialité : vos fichiers restent sur votre ordinateur | OFF42",
-    "privacyDescription": "La retouche et l’édition de base se font sur votre ordinateur, sans téléverser vos fichiers. Les fonctions en ligne facultatives nécessitent une connexion ; leur disponibilité dépend de la plateforme."
+    "privacyTitle": "Politique de confidentialité d'OFF42 — aucune donnée collectée",
+    "privacyDescription": "OFF42 ne collecte aucune donnée personnelle : ni comptes, ni analyse, ni suivi. Vos documents restent sur votre appareil, sur toutes les plateformes.",
+    "supportTitle": "Assistance OFF42 — aide, questions et signalement de problèmes",
+    "supportDescription": "Obtenez de l'aide pour OFF42 sur Mac, Windows, Linux, Android, iPad, iPhone et le web : installation, documentation et signalement d'un problème."
+  },
+  "support": {
+    "title": "Assistance",
+    "intro": "Aide à l'installation et à l'utilisation d'OFF42 sur toutes les plateformes.",
+    "sections": [
+      {
+        "title": "Installation et premier lancement",
+        "text": [
+          "Téléchargez OFF42 pour macOS, Windows ou Linux depuis la page des téléchargements, ou installez-le depuis l'App Store ou Google Play. Si le système affiche un avertissement concernant une app téléchargée depuis internet, la page des téléchargements explique comment l'ouvrir."
+        ]
+      },
+      {
+        "title": "Poser une question ou signaler un problème",
+        "text": [
+          "Ouvrez un ticket (issue) sur GitHub et décrivez ce que vous avez fait, ce que vous attendiez et ce qui s'est produit. Indiquez votre plateforme et la version de l'app, et joignez un fichier d'exemple uniquement s'il ne contient rien de privé."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Ouvrir un ticket sur GitHub"
+        }
+      },
+      {
+        "title": "Documentation",
+        "text": [
+          "Les guides des fonctionnalités, les formats pris en charge et les limitations connues de chaque plateforme sont disponibles sur GitHub."
+        ],
+        "link": {
+          "href": "{repo}#readme",
+          "text": "Lire la documentation"
+        }
+      },
+      {
+        "title": "Confidentialité",
+        "text": [
+          "OFF42 ne collecte pas vos données. Consultez la politique de confidentialité pour plus de détails."
+        ]
+      }
+    ]
   }
 }

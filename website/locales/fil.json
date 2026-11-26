@@ -164,7 +164,8 @@
     "screenshot": "Screenshot sa macOS. Mga sample na dokumento, kathang-isip na kompanya.",
     "downloadZip": "I-download ang ZIP",
     "downloadTarGz": "I-download ang tar.gz",
-    "experimental": "Eksperimental"
+    "experimental": "Eksperimental",
+    "support": "Suporta"
   },
   "apps": {
     "pdf": {
@@ -420,14 +421,64 @@
     "issues": "Mag-ulat ng isyu"
   },
   "privacy": {
-    "title": "Panatilihing malapit ang iyong trabaho.",
-    "intro": "Ipinapakilala ng website na ito ang OFF42 at nagbibigay ng mga link sa source code at mga release. Hindi nito tinatanggap o pinoproseso ang iyong mga dokumento.",
-    "siteTitle": "Isang simpleng website",
-    "siteText": "Walang patalastas, analytics script, o sistema ng account ang site. Maaaring magproseso ng impormasyon ng request ang hosting provider upang maihatid at maprotektahan ang website.",
-    "appTitle": "Lokal na trabaho sa dokumento",
-    "appText": "Ang pangunahing pag-edit ay ginagawa sa iyong computer nang hindi ina-upload ang mga file. Kailangan ng koneksyon ang mga opsyonal na online feature; nag-iiba ang availability ayon sa platform.",
-    "linksTitle": "Mga panlabas na link",
-    "linksText": "May sariling mga patakaran sa privacy ang GitHub at iba pang naka-link na serbisyo. Hindi ina-upload ang iyong mga file kapag bumisita ka sa website na ito."
+    "title": "Patakaran sa privacy",
+    "intro": "Ginawa ang OFF42 para gumana sa iyong device. Hindi nangongolekta, nag-iimbak, o nagbabahagi ng personal na data ang mga app, at hindi namin kailanman nakikita ang iyong mga dokumento.",
+    "updated": "Epektibo simula Nobyembre 26, 2026",
+    "sections": [
+      {
+        "title": "Sino kami",
+        "text": [
+          "Ang OFF42 ay isang libre at open-source na office suite na inilalabas ng developer nito bilang isang independiyenteng proyekto. Saklaw ng patakarang ito ang mga OFF42 app para sa macOS, Windows, Linux, Android, iPad at iPhone, ang web version sa off42.cc/app, at ang website na off42.cc."
+        ]
+      },
+      {
+        "title": "Data na kinokolekta namin",
+        "text": [
+          "Wala. Walang account, patalastas, analytics, tracking, o crash reporting ang mga app, at hindi sila nagpapadala ng data ng paggamit sa amin o kaninuman. Hindi kami nagbebenta o nagbabahagi ng personal na data dahil wala kaming anumang ganoong data."
+        ]
+      },
+      {
+        "title": "Ang iyong mga dokumento",
+        "text": [
+          "Binubuksan, ine-edit, kino-convert, at sine-save ang iyong mga file sa iyong device. Hindi ina-upload ang mga ito sa amin. Ang mga lagda, stamp, setting, kamakailang file, at recovery copy ng hindi pa naka-save na trabaho ay itinatago lamang sa iyong device, sa sariling storage ng app, at maaari mo itong burahin anumang oras sa pamamagitan ng pagbura sa mga file o pag-uninstall ng app.",
+          "Nagbubukas at nagse-save ng mga file ang mga mobile app sa pamamagitan lamang ng file picker ng system o kapag nagbahagi ka ng file sa mga ito, at hindi sila humihingi ng network access."
+        ]
+      },
+      {
+        "title": "Mga feature na gumagamit ng internet",
+        "text": [
+          "May ilang opsyonal na feature ng PDF42 sa Mac na kumokonekta sa isang server, at kapag ginamit mo lamang ang mga ito: humihiling ng pinagkakatiwalaang timestamp sa timestamp server na pinili mo (DigiCert bilang default); ang pag-validate o pag-extend ng digital signature ay nagda-download ng revocation data mula sa mga address na nakasulat sa mga certificate; ang remote signing ay nagpapadala ng hash ng dokumento — hindi kailanman ang dokumento mismo — sa signing service na kino-configure mo. Pinoproseso ng mga serbisyong ito ang iyong kahilingan ayon sa sarili nilang mga patakaran sa privacy."
+        ]
+      },
+      {
+        "title": "Ang web version",
+        "text": [
+          "Tumatakbo ang off42.cc/app sa iyong browser. Kapag na-load na ang page at ang engine nito, wala na itong ginagawang iba pang network request: nananatili sa iyong browser tab ang mga file na binubuksan mo at hindi kailanman ina-upload."
+        ]
+      },
+      {
+        "title": "Ang website",
+        "text": [
+          "Walang cookie, patalastas, o analytics script ang off42.cc. Naka-host ito sa Cloudflare, na nagpoproseso ng teknikal na data ng request gaya ng mga IP address para maihatid ang site at maprotektahan ito laban sa pang-aabuso. Ang mga download ay ibinibigay mula sa GitHub. Pareho silang kumikilos ayon sa sarili nilang mga patakaran sa privacy."
+        ]
+      },
+      {
+        "title": "Mga bata",
+        "text": [
+          "Angkop ang OFF42 para sa lahat ng edad at hindi ito nangongolekta ng data mula kaninuman, kabilang ang mga bata."
+        ]
+      },
+      {
+        "title": "Mga pagbabago at pakikipag-ugnayan",
+        "text": [
+          "Kung magbago ang patakarang ito, ilalathala ang bagong bersyon sa page na ito na may bagong petsa ng pagkabisa. Maaaring ipadala ang mga tanong tungkol sa privacy sa pamamagitan ng GitHub page ng proyekto."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Makipag-ugnayan sa amin sa GitHub"
+        }
+      }
+    ]
   },
   "seo": {
     "homeTitle": "OFF42 — Libreng Office para sa macOS at Windows, Walang Subscription",
@@ -438,7 +489,47 @@
     "downloadDescription": "OFF42 para sa macOS at Windows: source code, status ng release, gabay sa pag-build, at mga limitasyon. Suriin kung ano ang naipatupad at nasubok bago mag-install.",
     "aboutTitle": "Open-Source Office Suite na may MIT License | OFF42",
     "aboutDescription": "Ang OFF42 ay anim na native app para sa macOS at Windows na may lisensyang MIT. Tingnan sa GitHub ang source code, suporta sa platform, at mga limitasyon.",
-    "privacyTitle": "Privacy: Nananatili ang mga File sa Iyong Computer | OFF42",
-    "privacyDescription": "Ang pangunahing pag-edit ay ginagawa sa iyong computer nang hindi ina-upload ang mga file. Kailangan ng koneksyon ang mga opsyonal na online feature; nag-iiba ang availability ayon sa platform."
+    "privacyTitle": "Patakaran sa privacy ng OFF42 — walang kinokolektang data",
+    "privacyDescription": "Walang kinokolektang personal na data ang OFF42: walang account, analytics, o tracking. Nananatili sa iyong device ang mga dokumento mo sa bawat platform.",
+    "supportTitle": "Suporta ng OFF42 — tulong, mga tanong at pag-uulat ng problema",
+    "supportDescription": "Kumuha ng tulong sa OFF42 sa Mac, Windows, Linux, Android, iPad, iPhone at web: pag-install, dokumentasyon, at kung paano mag-ulat ng problema."
+  },
+  "support": {
+    "title": "Suporta",
+    "intro": "Tulong sa pag-install at paggamit ng OFF42 sa bawat platform.",
+    "sections": [
+      {
+        "title": "Pag-install at unang pagbukas",
+        "text": [
+          "I-download ang OFF42 para sa macOS, Windows o Linux mula sa page ng mga download, o i-install ito mula sa App Store o Google Play. Kung magbabala ang system tungkol sa app na na-download mula sa internet, ipinapaliwanag ng page ng mga download kung paano ito buksan."
+        ]
+      },
+      {
+        "title": "Magtanong o mag-ulat ng problema",
+        "text": [
+          "Magbukas ng issue sa GitHub at ilarawan kung ano ang ginawa mo, ano ang inaasahan mo, at ano ang nangyari. Isama ang iyong platform at bersyon ng app, at mag-attach lamang ng sample file kung wala itong anumang pribadong nilalaman."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Magbukas ng issue sa GitHub"
+        }
+      },
+      {
+        "title": "Dokumentasyon",
+        "text": [
+          "Nasa GitHub ang mga gabay sa feature, mga sinusuportahang format, at mga kilalang limitasyon para sa bawat platform."
+        ],
+        "link": {
+          "href": "{repo}#readme",
+          "text": "Basahin ang dokumentasyon"
+        }
+      },
+      {
+        "title": "Privacy",
+        "text": [
+          "Hindi kinokolekta ng OFF42 ang iyong data. Tingnan ang patakaran sa privacy para sa mga detalye."
+        ]
+      }
+    ]
   }
 }

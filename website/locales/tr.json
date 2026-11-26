@@ -164,7 +164,8 @@
     "screenshot": "macOS'ta ekran görüntüsü. Örnek belgeler, kurgusal şirketler.",
     "downloadZip": "ZIP indir",
     "downloadTarGz": "tar.gz indir",
-    "experimental": "Deneysel"
+    "experimental": "Deneysel",
+    "support": "Destek"
   },
   "apps": {
     "pdf": {
@@ -420,14 +421,64 @@
     "issues": "Sorun bildirin"
   },
   "privacy": {
-    "title": "Çalışmanız size yakın kalsın.",
-    "intro": "Bu web sitesi OFF42'yi tanıtır ve projenin kaynak kodu ile sürümlerine bağlantı verir. Belgelerinizi kabul etmez veya işlemez.",
-    "siteTitle": "Sade bir web sitesi",
-    "siteText": "Sitede reklam, analiz betikleri veya hesap sistemi yoktur. Barındırma sağlayıcıları, siteyi sunmak ve korumak için istek bilgilerini işleyebilir.",
-    "appTitle": "Yerel belgelerle çalışma",
-    "appText": "Temel düzenleme, dosyalar yüklenmeden bilgisayarınızda yerel olarak yapılır. İsteğe bağlı çevrimiçi özellikler bağlantı gerektirir; kullanılabilirlik platforma göre değişir.",
-    "linksTitle": "Dış bağlantılar",
-    "linksText": "GitHub ve bağlantı verilen diğer hizmetlerin kendi gizlilik politikaları vardır. Bu siteyi ziyaret etmeniz dosyalarınızı yüklemez."
+    "title": "Gizlilik politikası",
+    "intro": "OFF42, cihazınızda çalışmak üzere tasarlanmıştır. Uygulamalar kişisel veri toplamaz, saklamaz veya paylaşmaz ve belgelerinizi asla görmeyiz.",
+    "updated": "Yürürlük tarihi: 26 Kasım 2026",
+    "sections": [
+      {
+        "title": "Biz kimiz",
+        "text": [
+          "OFF42, geliştiricisi tarafından bağımsız bir proje olarak yayımlanan ücretsiz ve açık kaynaklı bir ofis paketidir. Bu politika; macOS, Windows, Linux, Android, iPad ve iPhone için OFF42 uygulamalarını, off42.cc/app adresindeki web sürümünü ve off42.cc web sitesini kapsar."
+        ]
+      },
+      {
+        "title": "Topladığımız veriler",
+        "text": [
+          "Hiçbiri. Uygulamalarda hesap, reklam, analiz, izleme veya çökme raporlama yoktur ve uygulamalar ne bize ne de başkasına kullanım verisi gönderir. Kişisel veri satmayız veya paylaşmayız, çünkü elimizde hiç yoktur."
+        ]
+      },
+      {
+        "title": "Belgeleriniz",
+        "text": [
+          "Dosyalarınız cihazınızda açılır, düzenlenir, dönüştürülür ve kaydedilir. Bize yüklenmez. İmzalar, damgalar, ayarlar, son kullanılan dosyalar ve kaydedilmemiş çalışmaların kurtarma kopyaları yalnızca cihazınızda, uygulamanın kendi depolama alanında tutulur; bunları dosyaları silerek veya uygulamayı kaldırarak istediğiniz zaman silebilirsiniz.",
+          "Mobil uygulamalar dosyaları yalnızca sistemin dosya seçicisi aracılığıyla veya onlarla bir dosya paylaştığınızda açar ve kaydeder; ağ erişimi istemez."
+        ]
+      },
+      {
+        "title": "İnternet kullanan özellikler",
+        "text": [
+          "Mac'teki birkaç isteğe bağlı PDF42 özelliği bir sunucuyla, yalnızca siz kullandığınızda iletişim kurar: güvenilir zaman damgası seçtiğiniz zaman damgası sunucusundan istenir (varsayılan olarak DigiCert); dijital imzayı doğrulamak veya genişletmek, sertifikalarda yazılı adreslerden iptal verilerini indirir; uzaktan imzalama, belgenin kendisini değil yalnızca belgenin özetini (hash) yapılandırdığınız imzalama hizmetine gönderir. Bu hizmetler isteğinizi kendi gizlilik politikalarına göre işler."
+        ]
+      },
+      {
+        "title": "Web sürümü",
+        "text": [
+          "off42.cc/app tarayıcınızda çalışır. Sayfa ve motoru yüklendikten sonra başka ağ isteği yapmaz: açtığınız dosyalar tarayıcı sekmenizde kalır ve asla yüklenmez."
+        ]
+      },
+      {
+        "title": "Web sitesi",
+        "text": [
+          "off42.cc'de çerez, reklam veya analiz betiği yoktur. Site Cloudflare tarafından barındırılır; Cloudflare, siteyi sunmak ve kötüye kullanıma karşı korumak için IP adresleri gibi teknik istek verilerini işler. İndirmeler GitHub üzerinden sunulur. Her ikisi de kendi gizlilik politikalarına göre hareket eder."
+        ]
+      },
+      {
+        "title": "Çocuklar",
+        "text": [
+          "OFF42 her yaş için uygundur ve çocuklar dahil hiç kimseden veri toplamaz."
+        ]
+      },
+      {
+        "title": "Değişiklikler ve iletişim",
+        "text": [
+          "Bu politika değişirse yeni sürüm, yeni bir yürürlük tarihiyle bu sayfada yayımlanır. Gizlilikle ilgili sorularınızı projenin GitHub sayfası üzerinden iletebilirsiniz."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "GitHub'da bize ulaşın"
+        }
+      }
+    ]
   },
   "seo": {
     "homeTitle": "OFF42 — macOS ve Windows için Ücretsiz Ofis Paketi, Abonelik Yok",
@@ -438,7 +489,47 @@
     "downloadDescription": "macOS ve Windows için OFF42: kaynak kodu, sürüm durumu, derleme yönergeleri ve platform sınırlamaları. Kurmadan önce nelerin uygulandığını ve test edildiğini kontrol edin.",
     "aboutTitle": "Açık Kaynak Ofis Paketi, MIT Lisanslı | OFF42",
     "aboutDescription": "OFF42, macOS ve Windows için MIT lisanslı altı yerel uygulamadan oluşur. Kaynak kodunu, platform desteğini ve sınırlamaları GitHub’da inceleyin.",
-    "privacyTitle": "Gizlilik: Dosyalarınız Bilgisayarınızda Kalır | OFF42",
-    "privacyDescription": "Temel düzenleme, dosyalar yüklenmeden bilgisayarınızda yerel olarak yapılır. İsteğe bağlı çevrimiçi özellikler bağlantı gerektirir; kullanılabilirlik platforma göre değişir."
+    "privacyTitle": "OFF42 gizlilik politikası — hiçbir veri toplanmaz",
+    "privacyDescription": "OFF42 kişisel veri toplamaz: hesap, analiz veya izleme yok. Belgeleriniz her platformda cihazınızda kalır.",
+    "supportTitle": "OFF42 destek — yardım, sorular ve sorun bildirimi",
+    "supportDescription": "Mac, Windows, Linux, Android, iPad, iPhone ve web'de OFF42 için yardım alın: kurulum, belgeler ve sorun bildirme."
+  },
+  "support": {
+    "title": "Destek",
+    "intro": "OFF42'yi her platformda yükleme ve kullanma konusunda yardım.",
+    "sections": [
+      {
+        "title": "Kurulum ve ilk açılış",
+        "text": [
+          "OFF42'yi macOS, Windows veya Linux için indirmeler sayfasından indirin ya da App Store veya Google Play'den yükleyin. Sistem internetten indirilen bir uygulama hakkında uyarı verirse, nasıl açılacağı indirmeler sayfasında açıklanır."
+        ]
+      },
+      {
+        "title": "Soru sorun veya sorun bildirin",
+        "text": [
+          "GitHub'da bir issue açın ve ne yaptığınızı, ne beklediğinizi ve ne olduğunu açıklayın. Platformunuzu ve uygulama sürümünü belirtin; örnek dosyayı yalnızca özel bir şey içermiyorsa ekleyin."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "GitHub'da issue açın"
+        }
+      },
+      {
+        "title": "Belgeler",
+        "text": [
+          "Özellik kılavuzları, desteklenen biçimler ve her platformun bilinen sınırlamaları GitHub'da yer alır."
+        ],
+        "link": {
+          "href": "{repo}#readme",
+          "text": "Belgeleri okuyun"
+        }
+      },
+      {
+        "title": "Gizlilik",
+        "text": [
+          "OFF42 verilerinizi toplamaz. Ayrıntılar için gizlilik politikasına bakın."
+        ]
+      }
+    ]
   }
 }

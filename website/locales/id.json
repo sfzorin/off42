@@ -164,7 +164,8 @@
     "screenshot": "Tangkapan layar di macOS. Contoh dokumen, perusahaan fiktif.",
     "downloadZip": "Unduh ZIP",
     "downloadTarGz": "Unduh tar.gz",
-    "experimental": "Eksperimental"
+    "experimental": "Eksperimental",
+    "support": "Dukungan"
   },
   "apps": {
     "pdf": {
@@ -420,14 +421,64 @@
     "issues": "Laporkan masalah"
   },
   "privacy": {
-    "title": "Jaga pekerjaan tetap dekat.",
-    "intro": "Situs ini memperkenalkan OFF42 dan menautkan sumber serta rilis proyek. Situs tidak menerima atau memproses dokumen Anda.",
-    "siteTitle": "Situs sederhana",
-    "siteText": "Situs tidak memiliki iklan, skrip analitik, atau sistem akun. Penyedia hosting dapat memproses informasi permintaan untuk menyediakan dan melindungi situs.",
-    "appTitle": "Pengerjaan dokumen secara lokal",
-    "appText": "Penyuntingan utama berjalan secara lokal di komputer Anda tanpa mengunggah file. Fitur daring opsional memerlukan koneksi; ketersediaannya berbeda menurut platform.",
-    "linksTitle": "Tautan eksternal",
-    "linksText": "GitHub dan layanan tertaut lainnya memiliki kebijakan privasi sendiri. File Anda tidak diunggah saat mengunjungi situs ini."
+    "title": "Kebijakan privasi",
+    "intro": "OFF42 dibuat untuk bekerja di perangkat Anda. Aplikasi tidak mengumpulkan, menyimpan, atau membagikan data pribadi, dan kami tidak pernah melihat dokumen Anda.",
+    "updated": "Berlaku sejak 26 November 2026",
+    "sections": [
+      {
+        "title": "Siapa kami",
+        "text": [
+          "OFF42 adalah paket aplikasi perkantoran gratis dan sumber terbuka yang diterbitkan oleh pengembangnya sebagai proyek independen. Kebijakan ini mencakup aplikasi OFF42 untuk macOS, Windows, Linux, Android, iPad, dan iPhone, versi web di off42.cc/app, serta situs web off42.cc."
+        ]
+      },
+      {
+        "title": "Data yang kami kumpulkan",
+        "text": [
+          "Tidak ada. Aplikasi tidak memiliki akun, iklan, analitik, pelacakan, atau pelaporan kerusakan, dan tidak mengirim data penggunaan kepada kami maupun kepada siapa pun. Kami tidak menjual atau membagikan data pribadi karena kami tidak memilikinya."
+        ]
+      },
+      {
+        "title": "Dokumen Anda",
+        "text": [
+          "File Anda dibuka, diedit, dikonversi, dan disimpan di perangkat Anda. File tidak diunggah ke kami. Tanda tangan, stempel, pengaturan, file terbaru, dan salinan pemulihan pekerjaan yang belum disimpan hanya disimpan di perangkat Anda, di penyimpanan milik aplikasi itu sendiri, dan Anda dapat menghapusnya kapan saja dengan menghapus file tersebut atau mencopot pemasangan aplikasi.",
+          "Aplikasi seluler hanya membuka dan menyimpan file melalui pemilih file sistem atau saat Anda membagikan file ke aplikasi tersebut, dan tidak meminta akses jaringan."
+        ]
+      },
+      {
+        "title": "Fitur yang menggunakan internet",
+        "text": [
+          "Beberapa fitur opsional PDF42 di Mac menghubungi server, dan hanya saat Anda menggunakannya: stempel waktu tepercaya diminta dari server stempel waktu yang Anda pilih (DigiCert secara default); memvalidasi atau memperpanjang tanda tangan digital akan mengunduh data pencabutan dari alamat yang tercantum dalam sertifikat; penandatanganan jarak jauh mengirimkan hash dokumen — tidak pernah dokumennya — ke layanan penandatanganan yang Anda konfigurasi. Layanan-layanan ini memproses permintaan Anda sesuai kebijakan privasi masing-masing."
+        ]
+      },
+      {
+        "title": "Versi web",
+        "text": [
+          "off42.cc/app berjalan di browser Anda. Setelah halaman dan mesinnya dimuat, tidak ada permintaan jaringan lain yang dilakukan: file yang Anda buka tetap berada di tab browser dan tidak pernah diunggah."
+        ]
+      },
+      {
+        "title": "Situs web",
+        "text": [
+          "off42.cc tidak memiliki cookie, iklan, atau skrip analitik. Situs ini di-hosting oleh Cloudflare, yang memproses data permintaan teknis seperti alamat IP untuk menyajikan situs dan melindunginya dari penyalahgunaan. Unduhan disediakan dari GitHub. Keduanya bertindak sesuai kebijakan privasi masing-masing."
+        ]
+      },
+      {
+        "title": "Anak-anak",
+        "text": [
+          "OFF42 cocok untuk segala usia dan tidak mengumpulkan data dari siapa pun, termasuk anak-anak."
+        ]
+      },
+      {
+        "title": "Perubahan dan kontak",
+        "text": [
+          "Jika kebijakan ini berubah, versi barunya akan diterbitkan di halaman ini dengan tanggal berlaku yang baru. Pertanyaan tentang privasi dapat dikirim melalui halaman GitHub proyek."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Hubungi kami di GitHub"
+        }
+      }
+    ]
   },
   "seo": {
     "homeTitle": "OFF42 — Aplikasi Office Gratis untuk macOS dan Windows Tanpa Langganan",
@@ -438,7 +489,47 @@
     "downloadDescription": "OFF42 untuk macOS dan Windows: kode sumber, status rilis, petunjuk build, dan batasan platform. Periksa apa yang telah diimplementasikan dan diuji sebelum memasang.",
     "aboutTitle": "Paket Office Sumber Terbuka, Berlisensi MIT | OFF42",
     "aboutDescription": "OFF42 terdiri dari enam aplikasi native untuk macOS dan Windows dengan lisensi MIT. Lihat kode sumber, dukungan platform, dan batasannya di GitHub.",
-    "privacyTitle": "Privasi: File Tetap di Komputer Anda | OFF42",
-    "privacyDescription": "Penyuntingan utama berjalan secara lokal di komputer Anda tanpa mengunggah file. Fitur daring opsional memerlukan koneksi; ketersediaannya berbeda menurut platform."
+    "privacyTitle": "Kebijakan privasi OFF42 — tidak ada data yang dikumpulkan",
+    "privacyDescription": "OFF42 tidak mengumpulkan data pribadi: tanpa akun, analitik, atau pelacakan. Dokumen Anda tetap di perangkat Anda di setiap platform.",
+    "supportTitle": "Dukungan OFF42 — bantuan, pertanyaan, dan laporan masalah",
+    "supportDescription": "Dapatkan bantuan OFF42 di Mac, Windows, Linux, Android, iPad, iPhone, dan web: pemasangan, dokumentasi, dan cara melaporkan masalah."
+  },
+  "support": {
+    "title": "Dukungan",
+    "intro": "Bantuan untuk memasang dan menggunakan OFF42 di setiap platform.",
+    "sections": [
+      {
+        "title": "Pemasangan dan peluncuran pertama",
+        "text": [
+          "Unduh OFF42 untuk macOS, Windows, atau Linux dari halaman unduhan, atau pasang dari App Store atau Google Play. Jika sistem memperingatkan tentang aplikasi yang diunduh dari internet, halaman unduhan menjelaskan cara membukanya."
+        ]
+      },
+      {
+        "title": "Ajukan pertanyaan atau laporkan masalah",
+        "text": [
+          "Buka issue di GitHub dan jelaskan apa yang Anda lakukan, apa yang Anda harapkan, dan apa yang terjadi. Sertakan platform dan versi aplikasi Anda, dan lampirkan file contoh hanya jika tidak berisi hal pribadi."
+        ],
+        "link": {
+          "href": "{repo}/issues",
+          "text": "Buka issue di GitHub"
+        }
+      },
+      {
+        "title": "Dokumentasi",
+        "text": [
+          "Panduan fitur, format yang didukung, dan batasan yang diketahui untuk setiap platform tersedia di GitHub."
+        ],
+        "link": {
+          "href": "{repo}#readme",
+          "text": "Baca dokumentasi"
+        }
+      },
+      {
+        "title": "Privasi",
+        "text": [
+          "OFF42 tidak mengumpulkan data Anda. Lihat kebijakan privasi untuk detailnya."
+        ]
+      }
+    ]
   }
 }
