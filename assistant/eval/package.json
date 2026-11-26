@@ -1,0 +1,11 @@
+{
+  "name": "off42-assistant-eval",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "selftest": "node selftest.mjs",
+    "eval": "node run.mjs",
+    "summary": "node summarize.mjs"
+  }
+}
