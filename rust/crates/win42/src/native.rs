@@ -50,6 +50,7 @@ const IMPORT_MARK: u16 = 65516;
 const INSERT_MARK: u16 = 65515;
 const CREATE_SIGNATURE: u16 = 65498;
 const CREATE_STAMP: u16 = 65497;
+const LEARN_SIGNATURE: u16 = 65499;
 const EXPORT_TECHNICAL: u16 = 65514;
 const CONFIGURE_CALIBRATION: u16 = 65513;
 const TOGGLE_CALIBRATION: u16 = 65512;
@@ -2035,7 +2036,8 @@ unsafe fn pick_image(hwnd: HWND, directory: &Path, title: &str) -> Result<Option
     result.map_err(|error| format!("Could not open the signature and stamp library: {error}"))
 }
 
-/// Create Signature… / Create Stamp…: settings, then generated variants chosen in the picker, kept in the library.
+/// Create Signature… / Learn Signature from Samples… / Create Stamp…: settings (or the user's own samples), then
+/// generated variants chosen in the picker, kept in the library.
 unsafe fn generator_command(hwnd: HWND, id: u16) -> Result<(), String> {
     use crate::generator;
     let library = crate::marks::library_directory()?;
@@ -2057,6 +2059,43 @@ unsafe fn generator_command(hwnd: HWND, id: u16) -> Result<(), String> {
         let request = generator::SignatureRequest::parse(&values)?;
         let images = request.variants(generator::VARIANTS, &mut marks42::SeededRandom::new(marks42::SeededRandom::fresh_seed()))?;
         (request.name, images)
+    } else if id == LEARN_SIGNATURE {
+        let pictures = crate::FileAction {
+            id: LEARN_SIGNATURE,
+            title: "Choose Pictures of Your Signature",
+            save: false,
+            extension: "png",
+            format: "PNG or JPEG image",
+            pattern: "*.png;*.jpg;*.jpeg",
+        };
+        let Some(paths) = pick_multiple_files(hwnd, pictures)? else {
+            return Ok(());
+        };
+        if paths.is_empty() {
+            return Ok(());
+        }
+        if paths.len() > generator::MAXIMUM_LEARN_SAMPLES {
+            return Err(crate::localization::text("Choose one to five pictures of your signature."));
+        }
+        let pictures = paths
+            .iter()
+            .map(|path| {
+                let name = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+                crate::marks::read_image(path).map(|image| (name, image))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        let samples = generator::learn_samples(&pictures)?;
+        let request = crate::InputRequest {
+            title: "Learn Signature",
+            fields: vec![("Pen:", "Ballpoint pen".into()), ("Ink:", "Blue ink".into())],
+        };
+        let choices = [(0, generator::pen_titles()), (1, generator::ink_titles())];
+        let Some(values) = crate::prompt::show_choices(hwnd, &request, false, false, &choices) else {
+            return Ok(());
+        };
+        let request = generator::LearnRequest::parse(&values)?;
+        let images = request.variants(&samples, generator::VARIANTS, &mut marks42::SeededRandom::new(marks42::SeededRandom::fresh_seed()))?;
+        (crate::localization::text("My Signature"), images)
     } else {
         let Some((title, images)) = generator::stamp_variants(hwnd)? else {
             return Ok(());
@@ -2064,14 +2103,15 @@ unsafe fn generator_command(hwnd: HWND, id: u16) -> Result<(), String> {
         (title, images)
     };
     let variants = generator::write_variants(&scratch, &stem, &images)?;
-    let Some(chosen) = pick_image(hwnd, &scratch, if id == CREATE_SIGNATURE { "Choose a Signature" } else { "Choose a Stamp" })? else {
+    let signature = id != CREATE_STAMP;
+    let Some(chosen) = pick_image(hwnd, &scratch, if signature { "Choose a Signature" } else { "Choose a Stamp" })? else {
         return Ok(());
     };
     let same = |a: &Path, b: &Path| matches!((a.canonicalize(), b.canonicalize()), (Ok(x), Ok(y)) if x == y);
     if !variants.iter().any(|path| same(path, &chosen)) {
         return Err("Choose one of the generated pictures.".into());
     }
-    let kind = if id == CREATE_SIGNATURE { "Signature" } else { "Stamp" };
+    let kind = if signature { "Signature" } else { "Stamp" };
     generator::keep_in_library(&chosen, &library, &format!("{} - {stem}", crate::localization::text(kind)))?;
     msg(hwnd, "Saved to the shared signature and stamp library.", MB_OK | MB_ICONINFORMATION);
     Ok(())
@@ -2890,6 +2930,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                     | IMPORT_MARK
                     | INSERT_MARK
                     | CREATE_SIGNATURE
+                    | LEARN_SIGNATURE
                     | CREATE_STAMP
                     | EXPORT_TECHNICAL
                     | INSERT_TECHNICAL
@@ -2902,7 +2943,7 @@ unsafe fn command(hwnd: HWND, id: u16, notify: u16) {
                     INSERT_TECHNICAL | EDIT_TECHNICAL => {
                         technical_command(hwnd, id == EDIT_TECHNICAL)
                     }
-                    CREATE_SIGNATURE | CREATE_STAMP => generator_command(hwnd, id),
+                    CREATE_SIGNATURE | LEARN_SIGNATURE | CREATE_STAMP => generator_command(hwnd, id),
                     _ => mark_command(hwnd, id),
                 };
                 if let Err(error) = result {
@@ -4097,6 +4138,7 @@ pub fn run(app: Box<dyn App>) {
         if app.supports_marks() {
             let menu = CreatePopupMenu();
             item(menu, CREATE_SIGNATURE, "Create Signature…");
+            item(menu, LEARN_SIGNATURE, "Learn Signature from Samples…");
             item(menu, CREATE_STAMP, "Create Stamp…");
             AppendMenuW(menu, MF_SEPARATOR, 0, null());
             item(menu, IMPORT_MARK, "Import to Library…");

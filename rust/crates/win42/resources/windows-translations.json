@@ -41,7 +41,12 @@
     "Show Rulers": "Показать линейки",
     "Unverified artwork: compare it with the official mark before use.": "Рисунок не сверен с официальным: перед использованием сравните его с оригиналом знака.",
     "Trademark or certification mark: use only with the owner's authorization for this product.": "Товарный знак или знак сертификации: используйте только с разрешения владельца для этого изделия.",
-    "Add the required registration or licence number next to the mark.": "Рядом со знаком укажите обязательный регистрационный номер или номер лицензии."
+    "Add the required registration or licence number next to the mark.": "Рядом со знаком укажите обязательный регистрационный номер или номер лицензии.",
+    "Learn Signature from Samples…": "Обучить подпись по образцам…",
+    "Learn Signature": "Обучение подписи",
+    "Choose Pictures of Your Signature": "Выберите картинки с вашей подписью",
+    "Choose one to five pictures of your signature.": "Выберите от одной до пяти картинок с вашей подписью.",
+    "Use dark ink on light paper, one signature per picture.": "Нужны тёмные чернила на светлой бумаге, одна подпись на картинке."
   },
   "zh-Hans": {
     "Symbol or Code": "符号或条码",
@@ -82,7 +87,12 @@
     "Skip All": "全部忽略",
     "Spelling check complete.": "拼写检查已完成。",
     "No supported spelling languages are installed in Windows": "Windows 未安装支持的拼写检查语言",
-    "Show Rulers": "显示标尺"
+    "Show Rulers": "显示标尺",
+    "Learn Signature from Samples…": "从样本学习签名…",
+    "Learn Signature": "学习签名",
+    "Choose Pictures of Your Signature": "选择您的签名图片",
+    "Choose one to five pictures of your signature.": "请选择一到五张您的签名图片。",
+    "Use dark ink on light paper, one signature per picture.": "请使用浅色纸上的深色墨迹，每张图片一个签名。"
   },
   "zh-Hant": {
     "Symbol or Code": "符號或條碼",
@@ -123,7 +133,12 @@
     "Skip All": "全部略過",
     "Spelling check complete.": "拼字檢查已完成。",
     "No supported spelling languages are installed in Windows": "Windows 未安裝支援的拼字檢查語言",
-    "Show Rulers": "顯示尺規"
+    "Show Rulers": "顯示尺規",
+    "Learn Signature from Samples…": "從樣本學習簽名…",
+    "Learn Signature": "學習簽名",
+    "Choose Pictures of Your Signature": "選擇您的簽名圖片",
+    "Choose one to five pictures of your signature.": "請選擇一到五張您的簽名圖片。",
+    "Use dark ink on light paper, one signature per picture.": "請使用淺色紙上的深色墨跡，每張圖片一個簽名。"
   },
   "es": {
     "Symbol or Code": "Símbolo o código",
@@ -164,7 +179,12 @@
     "Skip All": "Omitir todas",
     "Spelling check complete.": "La revisión ortográfica ha terminado.",
     "No supported spelling languages are installed in Windows": "Windows no tiene instalados idiomas de revisión ortográfica compatibles",
-    "Show Rulers": "Mostrar reglas"
+    "Show Rulers": "Mostrar reglas",
+    "Learn Signature from Samples…": "Aprender firma de muestras…",
+    "Learn Signature": "Aprender firma",
+    "Choose Pictures of Your Signature": "Elija imágenes de su firma",
+    "Choose one to five pictures of your signature.": "Elija de una a cinco imágenes de su firma.",
+    "Use dark ink on light paper, one signature per picture.": "Use tinta oscura sobre papel claro, una firma por imagen."
   },
   "ar": {
     "Symbol or Code": "رمز أو باركود",
@@ -205,7 +225,12 @@
     "Skip All": "تجاهل الكل",
     "Spelling check complete.": "اكتمل التدقيق الإملائي.",
     "No supported spelling languages are installed in Windows": "لا توجد لغات تدقيق إملائي مدعومة مثبتة في Windows",
-    "Show Rulers": "إظهار المساطر"
+    "Show Rulers": "إظهار المساطر",
+    "Learn Signature from Samples…": "تعلّم التوقيع من نماذج…",
+    "Learn Signature": "تعلّم التوقيع",
+    "Choose Pictures of Your Signature": "اختر صورًا لتوقيعك",
+    "Choose one to five pictures of your signature.": "اختر من صورة واحدة إلى خمس صور لتوقيعك.",
+    "Use dark ink on light paper, one signature per picture.": "استخدم حبرًا داكنًا على ورق فاتح، توقيعًا واحدًا في كل صورة."
   },
   "fr": {
     "Symbol or Code": "Symbole ou code",
@@ -246,7 +271,12 @@
     "Skip All": "Tout ignorer",
     "Spelling check complete.": "La vérification orthographique est terminée.",
     "No supported spelling languages are installed in Windows": "Aucune langue de vérification orthographique prise en charge n’est installée dans Windows",
-    "Show Rulers": "Afficher les règles"
+    "Show Rulers": "Afficher les règles",
+    "Learn Signature from Samples…": "Apprendre la signature à partir d’exemples…",
+    "Learn Signature": "Apprendre la signature",
+    "Choose Pictures of Your Signature": "Choisissez des images de votre signature",
+    "Choose one to five pictures of your signature.": "Choisissez d’une à cinq images de votre signature.",
+    "Use dark ink on light paper, one signature per picture.": "Utilisez une encre foncée sur papier clair, une signature par image."
   },
   "pt": {
     "Symbol or Code": "Símbolo ou código",
@@ -287,7 +317,12 @@
     "Skip All": "Ignorar todas",
     "Spelling check complete.": "A verificação ortográfica foi concluída.",
     "No supported spelling languages are installed in Windows": "O Windows não tem idiomas de verificação ortográfica compatíveis instalados",
-    "Show Rulers": "Mostrar réguas"
+    "Show Rulers": "Mostrar réguas",
+    "Learn Signature from Samples…": "Aprender assinatura com amostras…",
+    "Learn Signature": "Aprender assinatura",
+    "Choose Pictures of Your Signature": "Escolha imagens da sua assinatura",
+    "Choose one to five pictures of your signature.": "Escolha de uma a cinco imagens da sua assinatura.",
+    "Use dark ink on light paper, one signature per picture.": "Use tinta escura em papel claro, uma assinatura por imagem."
   },
   "id": {
     "Symbol or Code": "Simbol atau kode",
@@ -328,7 +363,12 @@
     "Skip All": "Lewati semua",
     "Spelling check complete.": "Pemeriksaan ejaan selesai.",
     "No supported spelling languages are installed in Windows": "Tidak ada bahasa pemeriksaan ejaan yang didukung terpasang di Windows",
-    "Show Rulers": "Tampilkan penggaris"
+    "Show Rulers": "Tampilkan penggaris",
+    "Learn Signature from Samples…": "Pelajari Tanda Tangan dari Contoh…",
+    "Learn Signature": "Pelajari Tanda Tangan",
+    "Choose Pictures of Your Signature": "Pilih Gambar Tanda Tangan Anda",
+    "Choose one to five pictures of your signature.": "Pilih satu hingga lima gambar tanda tangan Anda.",
+    "Use dark ink on light paper, one signature per picture.": "Gunakan tinta gelap di atas kertas terang, satu tanda tangan per gambar."
   },
   "de": {
     "Symbol or Code": "Symbol oder Code",
@@ -369,7 +409,12 @@
     "Skip All": "Alle überspringen",
     "Spelling check complete.": "Die Rechtschreibprüfung ist abgeschlossen.",
     "No supported spelling languages are installed in Windows": "In Windows sind keine unterstützten Sprachen für die Rechtschreibprüfung installiert",
-    "Show Rulers": "Lineale anzeigen"
+    "Show Rulers": "Lineale anzeigen",
+    "Learn Signature from Samples…": "Unterschrift aus Beispielen lernen…",
+    "Learn Signature": "Unterschrift lernen",
+    "Choose Pictures of Your Signature": "Bilder Ihrer Unterschrift auswählen",
+    "Choose one to five pictures of your signature.": "Wählen Sie ein bis fünf Bilder Ihrer Unterschrift.",
+    "Use dark ink on light paper, one signature per picture.": "Verwenden Sie dunkle Tinte auf hellem Papier, eine Unterschrift pro Bild."
   },
   "ja": {
     "Symbol or Code": "記号またはコード",
@@ -410,7 +455,12 @@
     "Skip All": "すべて無視",
     "Spelling check complete.": "スペルチェックが完了しました。",
     "No supported spelling languages are installed in Windows": "対応するスペルチェック言語が Windows にインストールされていません",
-    "Show Rulers": "ルーラーを表示"
+    "Show Rulers": "ルーラーを表示",
+    "Learn Signature from Samples…": "サンプルから署名を学習…",
+    "Learn Signature": "署名を学習",
+    "Choose Pictures of Your Signature": "署名の画像を選択",
+    "Choose one to five pictures of your signature.": "署名の画像を1～5枚選択してください。",
+    "Use dark ink on light paper, one signature per picture.": "明るい紙に濃いインクで、1枚の画像に1つの署名を使用してください。"
   },
   "vi": {
     "Symbol or Code": "Ký hiệu hoặc mã",
@@ -451,7 +501,12 @@
     "Skip All": "Bỏ qua tất cả",
     "Spelling check complete.": "Đã hoàn tất kiểm tra chính tả.",
     "No supported spelling languages are installed in Windows": "Windows chưa cài đặt ngôn ngữ kiểm tra chính tả được hỗ trợ",
-    "Show Rulers": "Hiện thước"
+    "Show Rulers": "Hiện thước",
+    "Learn Signature from Samples…": "Học chữ ký từ mẫu…",
+    "Learn Signature": "Học chữ ký",
+    "Choose Pictures of Your Signature": "Chọn ảnh chữ ký của bạn",
+    "Choose one to five pictures of your signature.": "Chọn từ một đến năm ảnh chữ ký của bạn.",
+    "Use dark ink on light paper, one signature per picture.": "Dùng mực đậm trên giấy sáng, mỗi ảnh một chữ ký."
   },
   "tr": {
     "Symbol or Code": "Sembol veya kod",
@@ -495,7 +550,12 @@
     "Show Rulers": "Cetvelleri göster",
     "Unverified artwork: compare it with the official mark before use.": "Doğrulanmamış çizim: kullanmadan önce resmî işaretle karşılaştırın.",
     "Trademark or certification mark: use only with the owner's authorization for this product.": "Ticari marka veya sertifika işareti: yalnızca sahibinin bu ürün için verdiği izinle kullanın.",
-    "Add the required registration or licence number next to the mark.": "İşaretin yanına gerekli kayıt veya lisans numarasını ekleyin."
+    "Add the required registration or licence number next to the mark.": "İşaretin yanına gerekli kayıt veya lisans numarasını ekleyin.",
+    "Learn Signature from Samples…": "Örneklerden İmza Öğren…",
+    "Learn Signature": "İmza Öğren",
+    "Choose Pictures of Your Signature": "İmzanızın Resimlerini Seçin",
+    "Choose one to five pictures of your signature.": "İmzanızın bir ile beş arasında resmini seçin.",
+    "Use dark ink on light paper, one signature per picture.": "Açık renkli kâğıtta koyu mürekkep kullanın, her resimde bir imza olsun."
   },
   "fil": {
     "Symbol or Code": "Simbolo o code",
@@ -536,7 +596,12 @@
     "Skip All": "Laktawan lahat",
     "Spelling check complete.": "Tapos na ang pagsusuri ng pagbaybay.",
     "No supported spelling languages are installed in Windows": "Walang naka-install na suportadong wika sa pagsusuri ng pagbaybay sa Windows",
-    "Show Rulers": "Ipakita ang mga ruler"
+    "Show Rulers": "Ipakita ang mga ruler",
+    "Learn Signature from Samples…": "Matutunan ang Lagda mula sa mga Sample…",
+    "Learn Signature": "Matutunan ang Lagda",
+    "Choose Pictures of Your Signature": "Pumili ng mga Larawan ng Iyong Lagda",
+    "Choose one to five pictures of your signature.": "Pumili ng isa hanggang limang larawan ng iyong lagda.",
+    "Use dark ink on light paper, one signature per picture.": "Gumamit ng madilim na tinta sa maliwanag na papel, isang lagda bawat larawan."
   },
   "ko": {
     "Symbol or Code": "기호 또는 코드",
@@ -577,7 +642,12 @@
     "Skip All": "모두 건너뛰기",
     "Spelling check complete.": "맞춤법 검사가 완료되었습니다.",
     "No supported spelling languages are installed in Windows": "Windows에 지원되는 맞춤법 검사 언어가 설치되어 있지 않습니다",
-    "Show Rulers": "눈금자 표시"
+    "Show Rulers": "눈금자 표시",
+    "Learn Signature from Samples…": "샘플에서 서명 학습…",
+    "Learn Signature": "서명 학습",
+    "Choose Pictures of Your Signature": "서명 이미지 선택",
+    "Choose one to five pictures of your signature.": "서명 이미지를 1~5개 선택하십시오.",
+    "Use dark ink on light paper, one signature per picture.": "밝은 종이에 진한 잉크를 사용하고, 이미지마다 서명 하나만 넣으십시오."
   },
   "th": {
     "Symbol or Code": "สัญลักษณ์หรือรหัส",
@@ -618,7 +688,12 @@
     "Skip All": "ข้ามทั้งหมด",
     "Spelling check complete.": "ตรวจการสะกดคำเสร็จแล้ว",
     "No supported spelling languages are installed in Windows": "ไม่ได้ติดตั้งภาษาที่รองรับการตรวจการสะกดคำใน Windows",
-    "Show Rulers": "แสดงไม้บรรทัด"
+    "Show Rulers": "แสดงไม้บรรทัด",
+    "Learn Signature from Samples…": "เรียนรู้ลายเซ็นจากตัวอย่าง…",
+    "Learn Signature": "เรียนรู้ลายเซ็น",
+    "Choose Pictures of Your Signature": "เลือกรูปภาพลายเซ็นของคุณ",
+    "Choose one to five pictures of your signature.": "เลือกรูปภาพลายเซ็นของคุณหนึ่งถึงห้ารูป",
+    "Use dark ink on light paper, one signature per picture.": "ใช้หมึกสีเข้มบนกระดาษสีอ่อน หนึ่งลายเซ็นต่อหนึ่งรูป"
   },
   "it": {
     "Symbol or Code": "Simbolo o codice",
@@ -659,7 +734,12 @@
     "Skip All": "Ignora tutto",
     "Spelling check complete.": "Il controllo ortografico è completato.",
     "No supported spelling languages are installed in Windows": "In Windows non sono installate lingue supportate per il controllo ortografico",
-    "Show Rulers": "Mostra righelli"
+    "Show Rulers": "Mostra righelli",
+    "Learn Signature from Samples…": "Impara la firma dagli esempi…",
+    "Learn Signature": "Impara la firma",
+    "Choose Pictures of Your Signature": "Scegli le immagini della tua firma",
+    "Choose one to five pictures of your signature.": "Scegli da una a cinque immagini della tua firma.",
+    "Use dark ink on light paper, one signature per picture.": "Usa inchiostro scuro su carta chiara, una firma per immagine."
   },
   "pl": {
     "Symbol or Code": "Symbol lub kod",
@@ -700,7 +780,12 @@
     "Skip All": "Pomiń wszystkie",
     "Spelling check complete.": "Sprawdzanie pisowni zakończone.",
     "No supported spelling languages are installed in Windows": "W systemie Windows nie zainstalowano obsługiwanych języków sprawdzania pisowni",
-    "Show Rulers": "Pokaż linijki"
+    "Show Rulers": "Pokaż linijki",
+    "Learn Signature from Samples…": "Naucz się podpisu z próbek…",
+    "Learn Signature": "Nauka podpisu",
+    "Choose Pictures of Your Signature": "Wybierz obrazy swojego podpisu",
+    "Choose one to five pictures of your signature.": "Wybierz od jednego do pięciu obrazów swojego podpisu.",
+    "Use dark ink on light paper, one signature per picture.": "Użyj ciemnego tuszu na jasnym papierze, jeden podpis na obraz."
   },
   "ms": {
     "Symbol or Code": "Simbol atau kod",
@@ -741,7 +826,12 @@
     "Skip All": "Langkau semua",
     "Spelling check complete.": "Semakan ejaan selesai.",
     "No supported spelling languages are installed in Windows": "Tiada bahasa semakan ejaan yang disokong dipasang dalam Windows",
-    "Show Rulers": "Tunjukkan pembaris"
+    "Show Rulers": "Tunjukkan pembaris",
+    "Learn Signature from Samples…": "Pelajari Tandatangan daripada Sampel…",
+    "Learn Signature": "Pelajari Tandatangan",
+    "Choose Pictures of Your Signature": "Pilih Gambar Tandatangan Anda",
+    "Choose one to five pictures of your signature.": "Pilih satu hingga lima gambar tandatangan anda.",
+    "Use dark ink on light paper, one signature per picture.": "Gunakan dakwat gelap di atas kertas cerah, satu tandatangan bagi setiap gambar."
   },
   "hu": {
     "Symbol or Code": "Szimbólum vagy kód",
@@ -782,6 +872,11 @@
     "Skip All": "Összes kihagyása",
     "Spelling check complete.": "A helyesírás-ellenőrzés befejeződött.",
     "No supported spelling languages are installed in Windows": "Nincs telepítve támogatott helyesírás-ellenőrzési nyelv a Windowsban",
-    "Show Rulers": "Vonalzók megjelenítése"
+    "Show Rulers": "Vonalzók megjelenítése",
+    "Learn Signature from Samples…": "Aláírás tanulása mintákból…",
+    "Learn Signature": "Aláírás tanulása",
+    "Choose Pictures of Your Signature": "Válasszon képeket az aláírásáról",
+    "Choose one to five pictures of your signature.": "Válasszon egy–öt képet az aláírásáról.",
+    "Use dark ink on light paper, one signature per picture.": "Használjon sötét tintát világos papíron, képenként egy aláírást."
   }
 }

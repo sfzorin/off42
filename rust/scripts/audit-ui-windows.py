@@ -6,6 +6,7 @@ import ctypes as c
 from ctypes import wintypes as w
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -413,12 +414,36 @@ def audit_generators(process, main, binary, output, results, local_app_data):
     red = sum(1 for i in range(0, len(pixels), 4) if pixels[i + 3] > 128 and pixels[i] > 2 * max(pixels[i + 1], pixels[i + 2]))
     assert red > ink // 2, ("red stamp-pad ink", red, ink)
 
+    # Learn Signature from Samples…: two pictures of one hand (a wave with a loop, dark ink on off-white paper),
+    # chosen together in the multi-select picker, traced, then six copies in the chosen pen and ink.
+    def sample(path, shift):
+        width, height, rows = 300, 120, bytearray()
+        for y in range(height):
+            for x in range(width):
+                wave = abs(y - (66 + 26 * math.sin((x - shift) / 22))) <= 3 and 30 <= x <= 270
+                ring = abs(math.hypot(x - 70, y - 44) - 20) <= 3
+                rows += bytes([25, 30, 90, 255] if wave or ring else [246, 244, 236, 255])
+        write_png(path, width, height, bytes(rows))
+    samples = [output / f"audit-learn-{uuid.uuid4().hex}-{i}.png" for i in range(2)]
+    for i, path in enumerate(samples):
+        sample(path, i * 3)
+    command(main, 65499)
+    choose_file(process, " ".join(f'"{path}"' for path in samples))
+    finish_prompt(process, "Learn Signature", ["Gel pen", "Violet ink"])
+    learned_choice = pick_variant(lambda name: name.startswith("My Signature "))
+    learned = wait_for(lambda: next(iter(library.glob("Signature - My Signature*.png")), None), "learned signature kept in the library", process)
+    assert learned.read_bytes() == learned_choice.read_bytes()
+    _, _, ink = inked(learned, 300)
+    _, _, pixels = png_pixels(learned)
+    violet = sum(1 for i in range(0, len(pixels), 4) if pixels[i + 3] > 128 and pixels[i + 2] > pixels[i + 1])
+    assert violet > ink // 2, ("violet ink of the learned copy", violet, ink)
+
     command(main, 65515)
     choose_file(process, signature)
     finish_prompt(process, "Place Signature or Stamp", ["4", "4", "40", "20"])
     wait_for(lambda: u.IsWindowEnabled(main), "generated signature placed", process)
     command(main, 4)
-    results["checks"].append("generated signatures and stamps: settings, six distinct variants, native picker, library copy, ink colour and placement")
+    results["checks"].append("generated signatures and stamps: settings, six distinct variants, native picker, library copy, ink colour and placement; signature learned from two picture samples (multi-select picker, tracing, six distinct copies, library copy, ink colour)")
 
 
 def audit_marks(process, main, binary, output, results, local_app_data):

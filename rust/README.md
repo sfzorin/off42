@@ -74,6 +74,12 @@ preservation varies by feature and source file; test important documents before 
 - **Signatures & Stamps → Create Signature…** draws six handwritten variants of a name or initials with a chosen
   pen and ink; **Create Stamp…** draws six impressions from one of 132 stamp templates.
   The chosen picture is kept in the shared library. They use the same generators as the macOS apps.
+- **Signatures & Stamps → Learn Signature from Samples…** learns your own signature from one to five PNG or JPEG
+  pictures (scans or photos, dark ink on light paper, one signature per picture, cropped to it). Each picture is
+  traced as on macOS; then choose a pen and ink and pick one of six new copies in your hand for the library. Copies
+  alternate between the samples' own ink, bent the way a hand varies (as the macOS app shows for pictures), and a
+  redraw of the traced strokes with the chosen pen, blending compatible samples. There is no drawing pad, and a photo
+  of a sheet signed several times is not split into samples on Windows; a picture with no signature is reported.
 
 ## Spreadsheet pictures
 
