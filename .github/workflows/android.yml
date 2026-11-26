@@ -161,7 +161,8 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           working-directory: android
-          script: ./gradlew --no-configuration-cache connectedDebugAndroidTest
+          # The runner executes each script line separately; keep this one line.
+          script: adb shell settings put global hide_error_dialogs 1 && adb shell input keyevent KEYCODE_HOME && ./gradlew --no-configuration-cache connectedDebugAndroidTest
       - name: Collect screenshots
         if: always()
         run: |

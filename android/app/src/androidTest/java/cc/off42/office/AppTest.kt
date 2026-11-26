@@ -57,6 +57,10 @@ class AppTest {
     @Before
     fun setUp() {
         Intents.init()
+        // Emulator system apps (the launcher) sometimes stall on CI machines; keep their "not responding" dialogs
+        // out of the tests and the screenshots.
+        shell("settings put global hide_error_dialogs 1")
+        shell("am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS")
         shell("cmd uimode night no")
     }
 
@@ -90,6 +94,7 @@ class AppTest {
     private fun node(tag: String): SemanticsNodeInteraction = compose.onNodeWithTag(tag, useUnmergedTree = true)
 
     private fun screenshot(name: String) {
+        shell("am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS")
         compose.waitForIdle()
         Thread.sleep(600)
         // The system screenshot (SurfaceFlinger), so nothing in the app is drawn on the test thread.
