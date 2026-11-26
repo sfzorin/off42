@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>OFF42 web app</title>
+    <script type="module" crossorigin src="./assets/index-DJxom_Km.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-djZhVyrc.css">
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">OFF42 <span data-i18n="app.preview">web preview</span></div>
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="files" aria-selected="true" data-i18n="tab.files">Files</button>
+        <button role="tab" data-tab="labels" aria-selected="false" data-i18n="tab.labels">Labels &amp; codes</button>
+        <button role="tab" data-tab="marks" aria-selected="false" data-i18n="tab.marks">Signatures &amp; stamps</button>
+      </nav>
+      <label class="language"><span class="visually-hidden" data-i18n="app.language">Language</span>
+        <select id="language" data-i18n-label="app.language"></select></label>
+    </header>
+
+    <main>
+      <p class="privacy" data-i18n="app.privacy">
+        Files are opened and converted in this browser tab by the OFF42 engine (WebAssembly).
+        Nothing is uploaded: this page makes no network requests after it has loaded.
+      </p>
+      <details class="limits"><summary data-i18n="app.limits">Limits of the web preview</summary>
+        <p data-i18n="app.limitsText"></p></details>
+      <div id="loading" class="notice" data-i18n="app.loading">Loading the OFF42 engine…</div>
+
+      <section id="files" class="panel" role="tabpanel">
+        <label class="drop" id="drop">
+          <input type="file" id="file-input"
+            accept=".docx,.odt,.rtf,.md,.markdown,.html,.htm,.txt,.xlsx,.ods,.xls,.csv,.pptx,.odp,.pdf" />
+          <strong data-i18n="files.open">Open a file</strong>
+          <span data-i18n="files.drop" data-i18n-formats="DOCX, ODT, RTF, Markdown, HTML, TXT, XLSX, ODS, XLS, CSV, PPTX, ODP, PDF">or drop it here — DOCX, ODT, RTF, Markdown, HTML, text, XLSX, ODS, XLS, CSV, PPTX, ODP, PDF</span>
+        </label>
+        <div id="file-view"></div>
+      </section>
+
+      <section id="labels" class="panel" role="tabpanel" hidden>
+        <div class="grid two">
+          <article class="card">
+            <h2 data-i18n="code.title">Barcode or QR code</h2>
+            <div class="form">
+              <label><span data-i18n="code.type">Type</span>
+                <select id="code-format">
+                  <option value="qr" data-i18n="code.qr">QR code</option>
+                  <option value="datamatrix">Data Matrix</option>
+                  <option value="code128">Code 128</option>
+                  <option value="aztec">Aztec</option>
+                </select>
+              </label>
+              <label><span data-i18n="code.content">Content</span> <input id="code-value" value="https://off42.cc" /></label>
+              <label><span data-i18n="common.widthMm">Width, mm</span> <input id="code-width" type="number" min="3" max="250" step="1" value="40" /></label>
+              <label class="check"><input id="code-caption" type="checkbox" /> <span data-i18n="code.caption">Print the content underneath (SVG)</span></label>
+            </div>
+            <div class="preview light" id="code-preview"></div>
+            <div class="actions">
+              <button id="code-png" data-i18n="common.downloadPng">Download PNG</button>
+              <button id="code-svg" data-i18n="common.downloadSvg">Download SVG</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <h2 data-i18n="labels.title">Label sheet (A4 PDF)</h2>
+            <div class="form">
+              <label><span data-i18n="labels.stock">Label stock</span> <select id="sheet-stock"></select></label>
+              <div class="row" id="sheet-custom" hidden>
+                <label><span data-i18n="common.widthMm">Width, mm</span> <input id="sheet-width" type="number" value="70" /></label>
+                <label><span data-i18n="common.heightMm">Height, mm</span> <input id="sheet-height" type="number" value="37" /></label>
+                <label><span data-i18n="labels.gapX">Gap X, mm</span> <input id="sheet-gapx" type="number" value="0" /></label>
+                <label><span data-i18n="labels.gapY">Gap Y, mm</span> <input id="sheet-gapy" type="number" value="0" /></label>
+              </div>
+              <label><span data-i18n="labels.first">Start at label</span> <input id="sheet-first" type="number" min="1" value="1" /></label>
+              <label><span data-i18n="labels.code">Code on each label</span>
+                <select id="sheet-code">
+                  <option value="" data-i18n="labels.none">None</option>
+                  <option value="qr" selected data-i18n="code.qr">QR code</option>
+                  <option value="datamatrix">Data Matrix</option>
+                  <option value="code128">Code 128</option>
+                  <option value="aztec">Aztec</option>
+                </select>
+              </label>
+              <label><span><span data-i18n="labels.lines">Labels — one per line:</span> <code data-i18n="labels.linesFormat">text | code | copies</code></span>
+                <textarea id="sheet-lines" rows="6">Box 1 | BOX-0001 | 2
+Box 2 | BOX-0002
+Spare parts</textarea>
+              </label>
+            </div>
+            <div class="actions"><button id="sheet-pdf" class="primary" data-i18n="common.downloadPdf">Download PDF</button></div>
+            <p class="status" id="sheet-status"></p>
+          </article>
+        </div>
+
+        <article class="card">
+          <h2 data-i18n="marks.title">Product marks</h2>
+          <p class="hint" data-i18n="marks.hint">Artwork only: placing a mark certifies nothing. Follow each mark's own rules of use.</p>
+          <div class="form row">
+            <label><span data-i18n="marks.search">Search</span> <input id="marks-search" data-i18n-placeholder="marks.searchPlaceholder" /></label>
+            <label><span data-i18n="marks.category">Category</span> <select id="marks-category"><option value="" data-i18n="marks.all">All</option></select></label>
+            <label><span data-i18n="common.widthMm">Width, mm</span> <input id="marks-width" type="number" min="3" max="250" value="20" /></label>
+          </div>
+          <div id="marks-detail" class="mark-detail" hidden></div>
+          <div id="marks-grid" class="marks"></div>
+        </article>
+      </section>
+
+      <section id="marks" class="panel" role="tabpanel" hidden>
+        <div class="grid two">
+          <article class="card">
+            <h2 data-i18n="sig.title">Handwritten signature</h2>
+            <div class="form">
+              <label><span data-i18n="sig.name">Name</span> <input id="sig-name" value="Anna Smith" /></label>
+              <div class="row">
+                <label><span data-i18n="sig.form">Form</span> <select id="sig-form"></select></label>
+                <label><span data-i18n="sig.pen">Pen</span> <select id="sig-pen"></select></label>
+                <label><span data-i18n="sig.ink">Ink</span> <select id="sig-ink"></select></label>
+              </div>
+            </div>
+            <div class="actions"><button id="sig-generate" class="primary" data-i18n="sig.generate">Generate</button></div>
+            <div id="sig-results" class="results"></div>
+          </article>
+
+          <article class="card">
+            <h2 data-i18n="stamp.title">Stamp</h2>
+            <div class="form">
+              <label><span data-i18n="stamp.template">Template</span> <select id="stamp-template"></select></label>
+              <div id="stamp-fields" class="form"></div>
+              <label><span data-i18n="sig.ink">Ink</span> <select id="stamp-ink"></select></label>
+            </div>
+            <div class="actions">
+              <button id="stamp-render" class="primary" data-i18n="stamp.draw">Draw stamp</button>
+              <button id="stamp-again" data-i18n="common.newImpression">New impression</button>
+              <button id="stamp-download" data-i18n="common.downloadPng">Download PNG</button>
+            </div>
+            <p class="hint" data-i18n="stamp.fonts"></p>
+            <div class="preview checker" id="stamp-preview"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span id="engine-version"></span> · <a id="site-link" href="../en/" data-i18n="app.site">About OFF42</a>
+    </footer>
+  </body>
+</html>
