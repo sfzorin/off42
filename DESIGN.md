@@ -48,7 +48,9 @@ and scope; detailed build logs, executable identities and installation history a
 ## Rust Windows workspace
 
 The separate Windows apps use `windows-rs` and shared `win42` native windows, command registry, menus, toolbars,
-dialogs and controls. App models own history and document state; shared save snapshots detect conflicts and use atomic
+dialogs and controls. The `App` contract between models and the host, its scene/print/dialog types and the portable
+app services (recovery, recents, preferences, localization, labels, generators, PDF/sheet/scan/slide helpers) live in
+`suite42-app`; `win42` re-exports the contract under its old names. App models own history and document state; shared save snapshots detect conflicts and use atomic
 replacement. Multi-file saves stage sidecars first with verified reuse and best-effort rollback, not OS-atomic
 replacement of the whole bundle. Async open retains the existing document/session through verification, cancellation
 and progress. The UI provides canvas drawing, rich text and scaled images, asynchronous jobs with generation-based
@@ -750,7 +752,7 @@ any rewrite. This prevents the independent match/document caps from multiplying 
 
 ### Windows vector paths
 
-`win42::SceneItem::VectorPath` carries compound Move/Line/Cubic/Close paths with independent optional fill
+`SceneItem::VectorPath` (`suite42_app`, re-exported by `win42`) carries compound Move/Line/Cubic/Close paths with independent optional fill
 and stroke. The GDI host uses an even-odd path at the destination resolution for canvas, show and printer
 output, with saved/restored DC state. PPT42 evaluates the shared preset catalog at the current shape size,
 then applies the existing object transform. Yellow handles edit a temporary drag object; pointer-up commits

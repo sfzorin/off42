@@ -37,6 +37,19 @@ packaging script requires a separately cross-built static OCR SDK and is not a v
 the source archive and excludes build outputs and local `AGENTS.md` and `STATUS.md`. Cross-building does not verify
 Windows runtime behavior. The Windows CI workflow also builds with MSVC.
 
+## Crate layout
+
+| Crates | Role |
+| --- | --- |
+| `crates/*-core`, `label42`, `marks42`, `suite42-core`, `suite42-pdf-text` | Formats and document engines |
+| `crates/suite42-app` | Portable app services shared by every shell: the `App` host contract, recovery, recents, preferences, localization catalogs, labels, signature generators and per-app helpers (PDF comparison and export, Goal Seek/Solver, scan naming, slide outlines, image batches). See [its README](crates/suite42-app/README.md) |
+| `crates/win42` | Win32 host: windows, menus, dialogs, drawing, clipboard, printing, PDFium loading, OCR engine, spelling, dark mode. Re-exports the `suite42-app` contract |
+| `crates/suite42-pdf-raster` | WinRT PDF rendering (Windows only) |
+| `apps/*` | One executable per app: the document model implementing `App`, plus Windows-only engines (PDFium editing, CryptoAPI signing, WIA, Windows OCR) |
+
+`cargo test -p suite42-app` runs on any host, and `cargo check -p suite42-app --target wasm32-unknown-unknown`
+checks the WebAssembly build. Stored preference, history and recovery formats are pinned by its tests.
+
 ## Implemented scope and limits
 
 | App | Current implementation | Important limits |
