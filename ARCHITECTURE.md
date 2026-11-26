@@ -186,7 +186,7 @@ An optional assistant panel in the web editors (documents and spreadsheets first
 | 3 | WebAssembly build of the core and the web UI | D5, D7 | Done: off42.cc/app (PR #8, #10) |
 | 4 | Move the Mac apps onto the core, one app at a time, behind the existing AppKit UI | phases 1–3, owner's go-ahead | — |
 | 5 | `off42-mobile` UniFFI bindings; Android app (Compose, tablets first) | D10 | Done (PR #13); not on Google Play yet (needs the owner's developer account and upload key) |
-| 6 | iPad/iPhone SwiftUI app over `off42-mobile` | D11, phase 5 bindings | In progress |
+| 6 | iPad/iPhone SwiftUI app over `off42-mobile` | D11, phase 5 bindings | Built on branch `phase6-ios` (pull request, not merged; not on the App Store); see below |
 | 7 | Mac App Store build variant (sandbox) and DMG notarization | D12, Apple Developer account | Prepared without an account: `APP_STORE` variant, `scripts/build-app-store.sh`, DMG notarization in `scripts/sign_and_notarize.sh` (appstore/README.md); signing, upload and sandbox runtime checks wait for the account |
 | 8 | Web editing (stage 2) with the shared command layer, then the AI assistant: Worker proxy, assistant panel, consent and policy updates | D13 | — |
 
@@ -216,6 +216,15 @@ because it changes the provenance hash of the published web app. The crate build
 the iOS build. Phase 6 reuses the crate, the Swift bindings and XCFramework from that script, the fixture set in
 `android/app/src/androidTest/assets/fixtures`, the Play listing texts as a base for the App Store listing, and the
 Android screen structure (sections, list/detail on large screens, save through the system dialog).
+
+Phase 6 result: `ios/` is the SwiftUI app (`cc.off42.office`, iOS/iPadOS 17+, iPad and iPhone), generated as an
+Xcode project by XcodeGen from `ios/project.yml`. It compiles the UniFFI Swift bindings and links the XCFramework from
+`rust/scripts/build-mobile-apple.sh`; `off42-mobile` is unchanged. The six sections and their features follow the
+Android app (a three-column `NavigationSplitView` that collapses to a stack on iPhone; PDF pages drawn by PDFKit). Its
+String Catalog is generated from the web and Android strings. `.github/workflows/ios.yml` (which took over the Android
+workflow's `apple` job) builds the engine, an unsigned Release archive with privacy checks, and runs XCTest unit tests
+and XCUITests on iPhone and iPad simulators, which also produce the App Store screenshots. Listing drafts and the
+owner's steps are in `appstore/ios/`.
 
 ## 6. Work in flight
 

@@ -83,10 +83,11 @@ enum Files {
         let fromName = normalizedExtension(name: name)
         if name.contains("."), fileKind(name: fromName) != nil { return fromName }
         guard let type else { return fromName }
-        for ext in ["docx", "odt", "rtf", "md", "html", "txt", "xlsx", "ods", "xls", "csv", "pptx", "odp", "pdf"] {
-            if let candidate = UTType(filenameExtension: ext), type.conforms(to: candidate) { return ext }
-        }
-        return fromName
+        // Exact type first, then the most specific supertype (CSV, Markdown and HTML are plain text too).
+        let known = ["docx", "odt", "rtf", "md", "html", "csv", "xlsx", "ods", "xls", "pptx", "odp", "pdf", "txt"]
+        let candidates = known.compactMap { ext in UTType(filenameExtension: ext).map { (ext, $0) } }
+        if let exact = candidates.first(where: { $0.1 == type }) { return exact.0 }
+        return candidates.first { type.conforms(to: $0.1) }?.0 ?? fromName
     }
 
     /// The content type of an engine extension, for the save dialog and sharing.
@@ -165,8 +166,10 @@ enum DocumentPage {
         <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src data:; \
         style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">\
         <meta name="viewport" content="width=device-width, initial-scale=1">\
-        <style>html{background:transparent}body{background:#fff;color:#1d1d1f;margin:0;padding:28px 24px;\
-        font:15px/1.5 -apple-system,system-ui,sans-serif;overflow-wrap:break-word}img{max-width:100%;height:auto}\
+        <style>html{background:transparent;padding:16px 12px 24px}body{background:#fff;color:#1d1d1f;\
+        max-width:760px;min-height:calc(100vh - 40px);box-sizing:border-box;margin:0 auto;padding:36px 32px;\
+        box-shadow:0 1px 4px rgba(0,0,0,.18);font:15px/1.5 -apple-system,system-ui,sans-serif;\
+        overflow-wrap:break-word}img{max-width:100%;height:auto}\
         table{border-collapse:collapse;max-width:100%}td,th{border:1px solid #c7c7cc;padding:4px 6px}</style>
         """
         if let range = html.range(of: "<head>", options: .caseInsensitive) {

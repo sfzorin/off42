@@ -17,14 +17,21 @@ done
 echo "Bundle id: $(plutil -extract CFBundleIdentifier raw -o - "$app/Info.plist")"
 echo "Localizations: $(ls -d "$app"/*.lproj | xargs -n1 basename | tr '\n' ' ')"
 
-# C functions of the required-reason categories (file timestamps, system boot time, disk space).
-reasons='^_(stat|fstat|fstatat|lstat|getattrlist|getattrlistbulk|fgetattrlist|getattrlistat|statfs|fstatfs|statvfs|fstatvfs|mach_absolute_time)(\$.*)?$'
-found=$(xcrun nm -u "$binary" | sed 's/^ *//' | grep -E "$reasons" || true)
-if [ -n "$found" ]; then
-  echo "Required-reason C APIs referenced by the binary (declare them in PrivacyInfo.xcprivacy):"
-  echo "$found"
-  status=1
-fi
+# C functions of the required-reason categories; each category must be declared in the privacy manifest.
+symbols=$(xcrun nm -u "$binary" | sed 's/^ *//')
+declared() { grep -q "$1" "$app/PrivacyInfo.xcprivacy"; }
+check_category() { # category, symbol pattern
+  found=$(echo "$symbols" | grep -E "^_($2)(\\\$.*)?$" || true)
+  if [ -n "$found" ]; then
+    echo "$1: $(echo $found)"
+    declared "$1" || { echo "  not declared in PrivacyInfo.xcprivacy"; status=1; }
+  elif declared "$1"; then
+    echo "$1 declared but no such symbol is referenced (remove it from PrivacyInfo.xcprivacy?)"
+  fi
+}
+check_category NSPrivacyAccessedAPICategoryFileTimestamp 'stat|fstat|fstatat|lstat|getattrlist|getattrlistbulk|fgetattrlist|getattrlistat'
+check_category NSPrivacyAccessedAPICategorySystemBootTime 'mach_absolute_time'
+check_category NSPrivacyAccessedAPICategoryDiskSpace 'statfs|fstatfs|statvfs|fstatvfs'
 # Foundation/UIKit APIs of those categories, user defaults and keyboards, by name.
 api=$(strings -a "$binary" | grep -E 'NSUserDefaults|UserDefaults|systemUptime|activeInputModes|volumeAvailableCapacity|creationDate|contentModificationDate|fileModificationDate' | sort -u || true)
 if [ -n "$api" ]; then

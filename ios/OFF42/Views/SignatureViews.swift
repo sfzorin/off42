@@ -123,7 +123,6 @@ private struct SignatureVariantRow: View {
             .buttonStyle(.borderless)
         }
         .padding(.vertical, 4)
-        .accessibilityIdentifier("signature-\(index)")
         .task(id: "\(name)|\(design)|\(impression)|\(ink)|\(pen)") {
             try? await Task.sleep(for: .milliseconds(100))
             guard !Task.isCancelled else { return }

@@ -199,6 +199,7 @@ struct SheetGrid: View {
                 }
             }
         }
+        .defaultScrollAnchor(.topLeading)
         .background(Color(.systemBackground))
         .accessibilityIdentifier("sheet-grid")
     }

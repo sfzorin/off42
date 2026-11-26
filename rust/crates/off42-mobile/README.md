@@ -36,8 +36,9 @@ are requested per build with `--crate-type`, as for off42-wasm:
 - Android: [`android/scripts/build-rust.sh`](../../../android/scripts/build-rust.sh) (cargo-ndk, `cdylib`).
 - iPadOS/iOS: [`rust/scripts/build-mobile-apple.sh`](../../scripts/build-mobile-apple.sh) builds `staticlib`s for
   `aarch64-apple-ios` and `aarch64-apple-ios-sim`, generates `Off42Mobile.swift`, `Off42MobileFFI.h` and the module
-  map, and with Xcode creates `Off42MobileFFI.xcframework` in `rust/build/apple`. CI runs it on `macos-latest` and
-  type-checks the Swift file against the simulator SDK.
+  map, and with Xcode creates `Off42MobileFFI.xcframework` in `rust/build/apple`. The iOS workflow
+  (`.github/workflows/ios.yml`) runs it on `macos-latest`, type-checks the Swift file against the simulator SDK and builds
+  and tests the app in [`ios/`](../../../ios).
 
 Bindings are generated in UniFFI library mode from a built library by the crate's own `uniffi-bindgen` binary
 (`--features cli`), so the generator always matches the pinned `uniffi` version (0.33.0). Package and module names are

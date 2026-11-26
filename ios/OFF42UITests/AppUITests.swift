@@ -20,13 +20,11 @@ final class AppUITests: XCTestCase {
         continueAfterFailure = false
         exports = FileManager.default.temporaryDirectory.appendingPathComponent("exports-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: exports, withIntermediateDirectories: true)
-        XCUIDevice.shared.appearance = .light
         // iPad screenshots are taken in landscape (2752 × 2064 on a 13-inch iPad), where all three columns show.
         XCUIDevice.shared.orientation = isPad ? .landscapeLeft : .portrait
     }
 
     override func tearDownWithError() throws {
-        XCUIDevice.shared.appearance = .light
         app?.terminate()
         try? FileManager.default.removeItem(at: exports)
     }
@@ -92,16 +90,55 @@ final class AppUITests: XCTestCase {
         row.tap()
     }
 
+    /// Shows a section's list: on iPhone back to the sections and into it, on iPad from the sidebar.
+    private func showSection(_ section: String, file: StaticString = #filePath, line: UInt = #line) {
+        let row = element("section-\(section)")
+        for _ in 0..<4 where !(row.exists && row.isHittable) {
+            back()
+            _ = row.waitForExistence(timeout: 3)
+        }
+        XCTAssertTrue(row.exists && row.isHittable, "section \(section) not reachable", file: file, line: line)
+        row.tap()
+    }
+
+    private func section(of name: String) -> String {
+        switch (name as NSString).pathExtension {
+        case "xlsx", "ods", "csv", "xls": return "spreadsheets"
+        case "pptx", "odp": return "presentations"
+        case "pdf": return "pdf"
+        default: return "documents"
+        }
+    }
+
     private func select(file name: String) {
-        tapRow("file-\(name)")
+        let row = element("file-\(name)")
+        if !(row.exists && row.isHittable) {
+            back()
+            if !row.waitForExistence(timeout: 3) || !row.isHittable { showSection(section(of: name)) }
+        }
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "file-\(name) not in the list")
+        row.tap()
         waitForTitle(name)
     }
 
     /// Scrolls until the element can be tapped (forms are lazy lists).
-    private func reveal(_ identifier: String, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
+    /// Scrolls the form that holds `anchor` (an element visible now) until the element can be tapped. The drag is
+    /// made at the anchor's column, so on iPad it scrolls the detail column, not the lists beside it.
+    private func reveal(_ identifier: String, from anchor: String? = nil, file: StaticString = #filePath,
+                        line: UInt = #line) -> XCUIElement {
         let target = element(identifier)
-        for _ in 0..<10 where !(target.exists && target.isHittable) {
-            app.swipeUp(velocity: .slow)
+        let window = app.windows.firstMatch.frame
+        var x = window.midX
+        if let anchor {
+            let frame = element(anchor).frame
+            if !frame.isEmpty { x = frame.midX }
+        }
+        let origin = app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+        for _ in 0..<12 where !(target.exists && target.isHittable) {
+            let start = origin.withOffset(CGVector(dx: x, dy: window.midY + window.height * 0.2))
+            let end = origin.withOffset(CGVector(dx: x, dy: window.midY - window.height * 0.2))
+            start.press(forDuration: 0.05, thenDragTo: end)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
         }
         XCTAssertTrue(target.exists && target.isHittable, "\(identifier) cannot be reached", file: file, line: line)
         return target
@@ -114,10 +151,33 @@ final class AppUITests: XCTestCase {
 
     private func replaceText(_ identifier: String, with text: String) {
         let field = wait(identifier)
-        field.tap()
+        // Tap at the end of the text so the deletes remove all of it.
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.5)).tap()
         let current = (field.value as? String) ?? ""
         if !current.isEmpty { field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2)) }
         field.typeText(text)
+        waitUntil(10, "\(identifier) is not \(text)") { (field.value as? String) == text }
+    }
+
+    /// The screen as the user sees it: XCUIScreen returns the portrait buffer, so landscape shots are turned upright.
+    private func upright(_ shot: XCUIScreenshot) -> UIImage {
+        let image = shot.image
+        guard let cg = image.cgImage, XCUIDevice.shared.orientation.isLandscape, cg.width < cg.height else { return image }
+        let width = CGFloat(cg.width), height = CGFloat(cg.height)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let clockwise = XCUIDevice.shared.orientation == .landscapeRight
+        return UIGraphicsImageRenderer(size: CGSize(width: height, height: width), format: format).image { context in
+            let c = context.cgContext
+            if clockwise {
+                c.translateBy(x: height, y: 0)
+                c.rotate(by: .pi / 2)
+            } else {
+                c.translateBy(x: 0, y: width)
+                c.rotate(by: -.pi / 2)
+            }
+            UIImage(cgImage: cg).draw(in: CGRect(x: 0, y: 0, width: width, height: height))
+        }
     }
 
     /// A menu item, by identifier when SwiftUI passes it to the menu, else by its label.
@@ -155,15 +215,15 @@ final class AppUITests: XCTestCase {
 
     private func screenshot(_ name: String) {
         RunLoop.current.run(until: Date().addingTimeInterval(1))
-        let shot = XCUIScreen.main.screenshot()
-        let attachment = XCTAttachment(screenshot: shot)
+        let image = upright(XCUIScreen.main.screenshot())
+        let attachment = XCTAttachment(image: image)
         attachment.name = "\(device)-\(name)"
         attachment.lifetime = .keepAlways
         add(attachment)
         if let folder = ProcessInfo.processInfo.environment["OFF42_SCREENSHOTS"] {
             let url = URL(fileURLWithPath: folder, isDirectory: true)
             try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-            try? shot.pngRepresentation.write(to: url.appendingPathComponent("\(device)-\(name).png"))
+            try? image.pngData()?.write(to: url.appendingPathComponent("\(device)-\(name).png"))
         }
     }
 
@@ -274,15 +334,15 @@ final class AppUITests: XCTestCase {
         dismissKeyboard()
         XCTAssertTrue(preview.waitForExistence(timeout: 10))
         screenshot("5-codes")
-        reveal("code-save-png").tap()
+        reveal("code-save-png", from: "code-preview").tap()
         let code = written("qr.png")
         XCTAssertEqual(code.prefix(4), png)
         XCTAssertNotNil(UIImage(data: code))
 
         tapRow("tool-labelSheet")
-        reveal("make-sheet").tap()
+        reveal("make-sheet", from: "stock-picker").tap()
         wait("sheet-status")
-        reveal("sheet-save").tap()
+        reveal("sheet-save", from: "make-sheet").tap()
         let sheet = written("labels.pdf")
         XCTAssertGreaterThanOrEqual((try? pdfInfo(bytes: sheet))?.pages ?? 0, 1)
 
@@ -294,7 +354,7 @@ final class AppUITests: XCTestCase {
         let mark = wait("mark-ce")
         if app.keyboards.count > 0, app.keyboards.buttons["search"].exists { app.keyboards.buttons["search"].tap() }
         mark.tap()
-        reveal("mark-save-png").tap()
+        reveal("mark-save-png", from: "done").tap()
         let markPNG = written("ce.png")
         XCTAssertEqual(markPNG.prefix(4), png)
     }
@@ -304,10 +364,12 @@ final class AppUITests: XCTestCase {
         let name = wait("sig-name")
         name.tap()
         name.typeText("Anna Smith\n")
-        reveal("sig-generate").tap()
+        reveal("sig-generate", from: "sig-name").tap()
+        // The variants follow the form: scroll to the first one.
+        let save = reveal("signature-save-0", from: "sig-generate")
         wait("signature-image-0")
         screenshot("6-signatures")
-        reveal("signature-save-0").tap()
+        save.tap()
         let signature = written("signature-Anna-Smith.png")
         XCTAssertEqual(signature.prefix(4), png)
         XCTAssertNotNil(UIImage(data: signature))
@@ -333,18 +395,23 @@ final class AppUITests: XCTestCase {
         XCTAssertEqual(wait("cell-0-0").value as? String, "Item")
     }
 
-    func testDarkModeFollowsTheSystem() {
+    /// Runs in a separate xcodebuild invocation after CI switched the simulator to dark mode
+    /// (`xcrun simctl ui <device> appearance dark`, TEST_RUNNER_OFF42_SYSTEM_APPEARANCE=dark); the light run checks
+    /// the opposite. Either way the app must follow the system: its bars are drawn dark or light.
+    func testAppearanceFollowsTheSystem() {
+        let dark = ProcessInfo.processInfo.environment["OFF42_SYSTEM_APPEARANCE"] == "dark"
         launch(open: ["sample.pptx"])
         wait("slide-canvas")
-        XCUIDevice.shared.appearance = .dark
-        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
-        waitForTitle("sample.pptx")
-        wait("slide-canvas")
-        // The navigation bar above the slide is drawn dark.
-        let image = XCUIScreen.main.screenshot().image
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        // The navigation bar above the slide and the canvas around it.
+        let image = upright(XCUIScreen.main.screenshot())
         let brightness = averageBrightness(image, rows: 0.07...0.10)
-        XCTAssertLessThan(brightness, 0.35, "navigation bar brightness \(brightness) in dark mode")
-        screenshot("8-dark")
+        if dark {
+            XCTAssertLessThan(brightness, 0.35, "bar brightness \(brightness) in dark mode")
+            screenshot("8-dark")
+        } else {
+            XCTAssertGreaterThan(brightness, 0.6, "bar brightness \(brightness) in light mode")
+        }
     }
 
     func testArabicIsRightToLeft() {
@@ -367,18 +434,18 @@ final class AppUITests: XCTestCase {
         let cancel = app.buttons["Cancel"].firstMatch
         XCTAssertTrue(cancel.waitForExistence(timeout: 30), "document picker did not appear")
         cancel.tap()
+        XCTAssertTrue(element("open-file").waitForExistence(timeout: 20))
+        waitUntil(20, "picker still shown") { element("open-file").isHittable }
 
         // Through the sections to a generator.
-        if !isPad { back() }
-        wait("section-presentations").tap()
+        showSection("presentations")
         wait("open-file")
-        if !isPad { back() }
-        wait("section-labels").tap()
+        showSection("labels")
         tapRow("tool-codes")
         wait("code-preview")
 
         // The real save dialog (fileExporter) comes up for Save PNG.
-        reveal("code-save-png").tap()
+        reveal("code-save-png", from: "code-preview").tap()
         let save = app.buttons["Cancel"].firstMatch
         XCTAssertTrue(save.waitForExistence(timeout: 30), "save dialog did not appear")
         save.tap()
