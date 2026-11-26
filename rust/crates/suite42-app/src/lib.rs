@@ -4,6 +4,7 @@
 //! platform storage locations; this crate owns the logic and data formats they share.
 pub mod grid_axis;
 pub mod grid_geometry;
+pub mod host;
 pub mod clipboard_envelope;
 pub mod generator;
 pub mod input;
