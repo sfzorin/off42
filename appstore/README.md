@@ -146,8 +146,26 @@ DEVELOPER_ID="Developer ID Application: <Name> (<TEAMID>)" NOTARY_PROFILE=suite4
 scripts/sign_and_notarize.sh
 ```
 
+`xcrun altool` (validate/upload) comes with Xcode only, so Xcode's license must be accepted once
+(`sudo xcodebuild -license accept`). The builds, `codesign`, `productbuild`, `notarytool` and `stapler` also work
+with the Command Line Tools (`DEVELOPER_DIR=/Library/Developer/CommandLineTools`), which is how the checks below
+were run while the Xcode license was not accepted.
+
 Every upload needs a higher `APP_STORE_BUILD_NUMBER`. After the first upload, test with TestFlight for macOS
 before submitting for review.
+
+## Checked so far (2026-11-26, macOS 27.0, Swift 6.3.1 from the Command Line Tools)
+
+- `scripts/build-app-store.sh` without identities: six ad-hoc signed, sandboxed bundles and unsigned .pkg files;
+  `codesign -d --entitlements :-` shows the entitlements above; bundle ids, `Suite42AppGroup`,
+  `ITSAppUsesNonExemptEncryption`, `PrivacyInfo.xcprivacy` present; no `Contents/Helpers`.
+- `--selftest` of the sandboxed bundles' PDF42, XLS42, IMG42, PPT42 and SCN42 (headless, inside the sandbox):
+  all passed, including the variant's own checks (no PKCS#11 modules or helper, no CryptoPro tool run, stamp library
+  and signing keys in the shared folder, 9 strings × 20 languages).
+- Same `--selftest` of the release build without the flag: all passed, no variant checks.
+- The DMG build compiles no variant code, but its executables are not byte-identical to the previous commit: the
+  empty `AppStoreEdition.swift` object adds 688 bytes, and the inserted `#if` lines shift source line numbers that
+  Swift embeds for runtime traps (plus the resulting LC_UUID and signature). P11Bridge42 is byte-identical.
 
 ## Not verified at runtime
 
