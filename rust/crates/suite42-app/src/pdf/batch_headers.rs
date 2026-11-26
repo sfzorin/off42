@@ -1,6 +1,8 @@
 //! Copies selected PDFs with continuous Bates numbers. Each successful file is published atomically.
 use pdf42_core::{decorations::HeaderFooter, PdfDocument, PdfOpenProbe};
 use std::{
+    cmp::Ordering as FileOrder,
+    ffi::OsStr,
     io::{Read, Write},
     path::{Path, PathBuf},
     sync::{
@@ -11,6 +13,9 @@ use std::{
 const MAX_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_OUTPUT: usize = 512 * 1024 * 1024;
 const MAX_PAGES: usize = 1000;
+/// Filename order used to number the inputs; shells pass their platform's natural order
+/// (Explorer's logical order on Windows, `host::natural_file_order` elsewhere).
+pub type NameOrder = fn(&OsStr, &OsStr) -> FileOrder;
 pub struct Entry {
     pub input: PathBuf,
     pub output: Option<PathBuf>,
@@ -23,10 +28,10 @@ pub struct Outcome {
     pub cancelled: bool,
 }
 impl Outcome {
-    pub fn report(&self) -> win42::ReportRequest {
+    pub fn report(&self) -> crate::report::ReportRequest {
         let written = self.entries.iter().filter(|e| e.output.is_some()).count();
-        win42::ReportRequest {
-            title: win42::localization::text("Batch Headers & Bates Numbers"),
+        crate::report::ReportRequest {
+            title: crate::localization::text("Batch Headers & Bates Numbers"),
             summary: format!(
                 "{} / {} PDFs saved as copies. {} Next Bates number: {}.",
                 written,
@@ -84,8 +89,9 @@ impl Worker {
         mut paths: Vec<PathBuf>,
         folder: PathBuf,
         settings: HeaderFooter,
+        order: NameOrder,
     ) -> Result<Self, String> {
-        prepare(&mut paths, &folder)?;
+        prepare(&mut paths, &folder, order)?;
         let (tx, rx) = mpsc::channel();
         let cancel = Arc::new(AtomicBool::new(false));
         let progress = Arc::new(AtomicUsize::new(0));
@@ -121,7 +127,7 @@ impl Worker {
         }
     }
 }
-fn prepare(paths: &mut [PathBuf], folder: &Path) -> Result<(), String> {
+fn prepare(paths: &mut [PathBuf], folder: &Path, order: NameOrder) -> Result<(), String> {
     if paths.is_empty() || paths.len() > 128 {
         return Err("Choose between 1 and 128 PDF files".into());
     }
@@ -132,7 +138,7 @@ fn prepare(paths: &mut [PathBuf], folder: &Path) -> Result<(), String> {
         return Err("Choose an existing output folder".into());
     }
     paths.sort_by(|a, b| {
-        win42::logical_file_order(
+        order(
             a.file_name().unwrap_or_default(),
             b.file_name().unwrap_or_default(),
         )
@@ -318,7 +324,7 @@ mod tests {
         std::fs::write(&bad, b"broken").unwrap();
         let originals = [std::fs::read(&a).unwrap(), std::fs::read(&b).unwrap()];
         let mut paths = vec![b.clone(), bad, a.clone()];
-        prepare(&mut paths, &out).unwrap();
+        prepare(&mut paths, &out, crate::host::natural_file_order).unwrap();
         assert_eq!(paths[0], a);
         assert_eq!(paths[2], b);
         let mut settings = HeaderFooter::default();
@@ -351,7 +357,7 @@ mod tests {
         }
         assert_eq!(std::fs::read(&a).unwrap(), originals[0]);
         assert_eq!(std::fs::read(&b).unwrap(), originals[1]);
-        assert!(prepare(&mut paths, &out).is_err());
+        assert!(prepare(&mut paths, &out, crate::host::natural_file_order).is_err());
     }
     #[test]
     fn cancel_and_output_races_do_not_consume_numbers_or_leave_temp_files() {
@@ -385,6 +391,6 @@ mod tests {
         assert_eq!(std::fs::read(out.join("a.pdf")).unwrap(), b"newer document");
         assert_eq!(std::fs::read_dir(&out).unwrap().count(), 1);
         let mut duplicate = vec![a, dir.path().join("elsewhere/a.pdf")];
-        assert!(prepare(&mut duplicate, &out).is_err());
+        assert!(prepare(&mut duplicate, &out, crate::host::natural_file_order).is_err());
     }
 }

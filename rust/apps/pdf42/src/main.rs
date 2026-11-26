@@ -2,10 +2,9 @@
 mod decorations;
 #[cfg(windows)]
 use suite42_app::pdf::label_region;
-use suite42_app::pdf::{merge, page_export};
+use suite42_app::pdf::{batch_headers, merge, page_export};
 mod comparison;
 mod ocr;
-mod batch_headers;
 mod text_export;
 #[cfg(any(windows, test))]
 mod signatures;
@@ -1038,6 +1037,7 @@ impl win42::App for Pdf {
                     inputs,
                     output,
                     self.decorations.batch_settings(),
+                    win42::logical_file_order,
                 )?);
                 self.operation_error = None;
                 return Ok(());
