@@ -398,10 +398,10 @@
     "web": "OFF42 a böngészőben",
     "webText": "Nincs mit telepíteni: egy előzetes, amely a böngészőlapon belül nyit meg, alakít át és hoz létre fájlokat. A dokumentumok még nem exportálhatók PDF-be, és a PDF-oldalak még nem jelennek meg.",
     "linux": "OFF42 Linuxra",
-    "linuxText": "Kísérleti előzetes x86_64-re. Mind a hat alkalmazás egyszerű ablakban nyílik meg, és parancssorból konvertál fájlokat. Az oldalnézet, a formázott szerkesztés, a nyomtatás, a szkennelés és az OCR Linuxon még nem érhető el.",
-    "linuxPreviewText": "Mind a hat alkalmazás kísérleti x86_64-es előzetese: egyszerű ablak és parancssori konvertálás. Az oldalnézet, a formázott szerkesztés, a nyomtatás, a szkennelés és az OCR Linuxon még nem érhető el.",
+    "linuxText": "Kísérleti x86_64-es előzetes: az off42 parancssor dokumentumokat, táblázatokat és bemutatókat konvertál, PDF-et exportál, valamint címkéket, vonalkódokat, jelöléseket, aláírásokat és bélyegzőket készít. A hat alkalmazás egyszerű ablakban nyílik meg. Az oldalnézet, a formázott szerkesztés, a nyomtatás, a szkennelés és az OCR Linuxon még nem érhető el.",
+    "linuxPreviewText": "Kísérleti x86_64-es előzetes: az off42 parancssor dokumentumokat, táblázatokat és bemutatókat konvertál, PDF-et exportál, valamint címkéket, vonalkódokat, jelöléseket, aláírásokat és bélyegzőket készít. A hat alkalmazás egyszerű ablakban nyílik meg. Az oldalnézet, a formázott szerkesztés, a nyomtatás, a szkennelés és az OCR Linuxon még nem érhető el.",
     "linuxBuild": "Fordítás és korlátok",
-    "installLinux": "Linux: bontsa ki az archívumot és indítson el egy alkalmazást, vagy futtassa a ./install.sh parancsot a menübejegyzésekhez. X11 vagy Wayland szükséges."
+    "installLinux": "Linux: bontsa ki az archívumot és futtassa a ./off42 --help parancsot, vagy a ./install.sh parancsot az alkalmazások menübe vételéhez. Az ablakokhoz X11 vagy Wayland szükséges."
   },
   "about": {
     "title": "Iroda, titkok nélkül.",

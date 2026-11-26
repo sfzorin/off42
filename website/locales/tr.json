@@ -398,10 +398,10 @@
     "web": "Tarayıcıda OFF42",
     "webText": "Kurulum gerekmez: dosyaları tarayıcı sekmenizin içinde açan, dönüştüren ve oluşturan bir önizleme. Belgeler henüz PDF'ye aktarılamaz ve PDF sayfaları henüz görüntülenmez.",
     "linux": "Linux için OFF42",
-    "linuxText": "x86_64 için deneysel önizleme. Altı uygulamanın tümü basit bir pencerede açılır ve komut satırından dosya dönüştürür. Sayfa görünümü, biçimli düzenleme, yazdırma, tarama ve OCR Linux'ta henüz yok.",
-    "linuxPreviewText": "Altı uygulamanın deneysel x86_64 önizlemesi: basit bir pencere ve komut satırından dönüştürme. Sayfa görünümü, biçimli düzenleme, yazdırma, tarama ve OCR Linux'ta henüz yok.",
+    "linuxText": "Deneysel x86_64 önizlemesi: off42 komut satırı belgeleri, tabloları ve sunuları dönüştürür, PDF dışa aktarır; etiket, barkod, işaret, imza ve kaşe oluşturur. Altı uygulama basit bir pencerede açılır. Sayfa görünümü, biçimli düzenleme, yazdırma, tarama ve OCR Linux'ta henüz yok.",
+    "linuxPreviewText": "Deneysel x86_64 önizlemesi: off42 komut satırı belgeleri, tabloları ve sunuları dönüştürür, PDF dışa aktarır; etiket, barkod, işaret, imza ve kaşe oluşturur. Altı uygulama basit bir pencerede açılır. Sayfa görünümü, biçimli düzenleme, yazdırma, tarama ve OCR Linux'ta henüz yok.",
     "linuxBuild": "Derleme ve sınırlar",
-    "installLinux": "Linux: arşivi açıp bir uygulamayı çalıştırın ya da menü girişleri eklemek için ./install.sh komutunu çalıştırın. X11 veya Wayland gerekir."
+    "installLinux": "Linux: arşivi açıp ./off42 --help komutunu ya da uygulamaları menüye eklemek için ./install.sh komutunu çalıştırın. Uygulama pencereleri X11 veya Wayland gerektirir."
   },
   "about": {
     "title": "Saklayacak şeyi olmayan bir ofis.",

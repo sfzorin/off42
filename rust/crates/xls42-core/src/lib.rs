@@ -313,6 +313,10 @@ impl Workbook {
         File::open(path)?
             .take((MAX_INPUT + 1) as u64)
             .read_to_end(&mut data)?;
+        Self::from_csv_bytes(&data)
+    }
+    /// Parse CSV bytes without file system access (used by the CLI and portable hosts).
+    pub fn from_csv_bytes(data: &[u8]) -> Result<Self, Error> {
         if data.len() > MAX_INPUT {
             return Err(Error::Limit);
         }

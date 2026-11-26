@@ -30,13 +30,14 @@ jobs:
           restore-keys: linux-${{ hashFiles('rust/Cargo.lock') }}-
       - name: Test portable crates and apps
         run: cargo test --locked --workspace
-      - name: Build six executables
-        run: cargo build --locked --release -p img42 -p doc42 -p xls42 -p ppt42 -p pdf42 -p scn42
+      - name: Build the off42 CLI and six experimental app windows
+        run: cargo build --locked --release -p off42-cli -p img42 -p doc42 -p xls42 -p ppt42 -p pdf42 -p scn42
       - name: Stage the Linux bundle
         run: |
           set -euo pipefail
           out=build/off42-linux
           mkdir -p "$out/licenses"
+          install -m 755 target/release/off42 "$out/off42"
           for app in img42 doc42 xls42 ppt42 pdf42 scn42; do
             install -m 755 "target/release/$app" "$out/$(echo "$app" | tr a-z A-Z)"
           done
@@ -58,6 +59,24 @@ jobs:
         with:
           name: off42-linux-x86_64
           path: rust/build/off42-linux-x86_64.tar.gz
+
+  cli-macos:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test and build the off42 CLI
+        run: |
+          cargo test --locked -p off42-cli -p suite42-pdf-text
+          cargo build --locked --release -p off42-cli
+          ./target/release/off42 --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: off42-cli-macos-arm64
+          path: rust/target/release/off42
 
   publish-preview:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && contains(github.ref_name, '-linux-preview.')
@@ -81,13 +100,15 @@ jobs:
           tar -tzf "$asset" > /dev/null
           digest=$(sha256sum "$asset" | cut -d' ' -f1)
           cat > release-notes.md <<EOF
-          Experimental Linux x86_64 preview of off42: PDF42, DOC42, XLS42, PPT42, IMG42 and SCN42.
+          Experimental Linux x86_64 preview of off42.
 
-          This is an early build. Each app opens a simple window (X11 or Wayland) with the document's page, sheet or
-          slide list, its text or cell table, image preview, commands and Save As; it also converts files from the
-          command line (\`DOC42 --convert in.md out.docx\`, \`XLS42 --table book.xlsx\`, \`--help\`).
-          Page canvases, rich-text editing, rulers, printing, scanning, OCR, PDF rendering and text extraction,
-          signing with system certificates and most settings dialogs are Windows-only for now.
+          The main tool is the \`off42\` command line over the shared document engines: convert DOCX/RTF/ODT/HTML/Markdown,
+          XLSX/ODS/CSV and PPTX/ODP, export them to plain-layout PDF, print text, merge and extract PDF pages, make
+          QR/Data Matrix/Code 128/Aztec barcodes and A4 label sheets, render 97 product and conformity marks, and
+          generate handwritten signatures and stamps (\`off42 --help\`).
+          PDF42, DOC42, XLS42, PPT42, IMG42 and SCN42 are also included as rough experimental windows (X11 or Wayland):
+          item list, text or cell table, image preview, commands and Save As. Page canvases, rich-text editing,
+          printing, scanning, OCR, PDF rendering and signing are Windows/macOS only for now.
 
           Extract the archive and run an app, or run \`./install.sh\` to add desktop entries for the current user.
           The executables are unsigned and need glibc, OpenGL and X11 or Wayland.

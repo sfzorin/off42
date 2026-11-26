@@ -123,7 +123,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Pop-Location
           $env:RUSTFLAGS = "-C target-feature=+crt-static -C link-arg=$((Resolve-Path scripts/windows-app.res).Path)"
-          cargo build --locked --release -p img42 -p doc42 -p xls42 -p ppt42 -p pdf42 -p scn42
+          cargo build --locked --release -p img42 -p doc42 -p xls42 -p ppt42 -p pdf42 -p scn42 -p off42-cli
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Stage PDFium runtime and licenses
@@ -138,6 +138,7 @@ jobs:
           foreach ($app in @('img42','doc42','xls42','ppt42','pdf42','scn42')) {
             Copy-Item "target/x86_64-pc-windows-msvc/$profile/$app.exe" "build/off42/$($app.ToUpper()).exe"
           }
+          if ($profile -eq 'release') { Copy-Item "target/x86_64-pc-windows-msvc/release/off42.exe" "build/off42/off42.exe" }
           cargo metadata --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc | Out-File -Encoding utf8 build/metadata.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/collect-licenses.py build/metadata.json build/off42/licenses

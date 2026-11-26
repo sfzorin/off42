@@ -1152,7 +1152,8 @@ impl PdfDocument {
         self.history.apply(state);
         Ok(())
     }
-    fn open_bytes(data: &[u8]) -> Result<Self, String> {
+    /// Open PDF bytes without file system access.
+    pub fn open_bytes(data: &[u8]) -> Result<Self, String> {
         let doc = Document::load_mem_with_options(
             data,
             LoadOptions {

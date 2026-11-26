@@ -398,10 +398,10 @@
     "web": "OFF42 trên trình duyệt",
     "webText": "Không cần cài đặt: bản xem trước mở, chuyển đổi và tạo tệp ngay trong thẻ trình duyệt. Hiện chưa thể xuất tài liệu sang PDF và chưa hiển thị trang PDF.",
     "linux": "OFF42 cho Linux",
-    "linuxText": "Bản xem trước thử nghiệm cho x86_64. Cả sáu ứng dụng mở trong một cửa sổ đơn giản và chuyển đổi tệp từ dòng lệnh. Xem trang, chỉnh sửa định dạng, in, quét và OCR chưa có trên Linux.",
-    "linuxPreviewText": "Bản xem trước thử nghiệm x86_64 của cả sáu ứng dụng: cửa sổ đơn giản và chuyển đổi từ dòng lệnh. Xem trang, chỉnh sửa định dạng, in, quét và OCR chưa có trên Linux.",
+    "linuxText": "Bản xem trước thử nghiệm x86_64: dòng lệnh off42 chuyển đổi tài liệu, bảng tính và bản trình chiếu, xuất PDF và tạo nhãn, mã vạch, dấu hiệu, chữ ký và con dấu. Sáu ứng dụng mở trong một cửa sổ đơn giản. Xem trang, chỉnh sửa định dạng, in, quét và OCR chưa có trên Linux.",
+    "linuxPreviewText": "Bản xem trước thử nghiệm x86_64: dòng lệnh off42 chuyển đổi tài liệu, bảng tính và bản trình chiếu, xuất PDF và tạo nhãn, mã vạch, dấu hiệu, chữ ký và con dấu. Sáu ứng dụng mở trong một cửa sổ đơn giản. Xem trang, chỉnh sửa định dạng, in, quét và OCR chưa có trên Linux.",
     "linuxBuild": "Biên dịch và giới hạn",
-    "installLinux": "Linux: giải nén tệp lưu trữ rồi chạy ứng dụng, hoặc chạy ./install.sh để thêm mục menu. Cần X11 hoặc Wayland."
+    "installLinux": "Linux: giải nén tệp lưu trữ rồi chạy ./off42 --help, hoặc ./install.sh để thêm ứng dụng vào menu. Cửa sổ ứng dụng cần X11 hoặc Wayland."
   },
   "about": {
     "title": "Một bộ văn phòng không giấu điều gì.",

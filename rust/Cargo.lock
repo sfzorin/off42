@@ -2660,6 +2660,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "off42-cli"
+version = "0.1.0"
+dependencies = [
+ "doc42-core",
+ "image",
+ "img42-core",
+ "label42",
+ "lopdf",
+ "marks42",
+ "pdf42-core",
+ "ppt42-core",
+ "suite42-pdf-text",
+ "tempfile",
+ "xls42-core",
+]
+
+[[package]]
 name = "off42-wasm"
 version = "0.1.0"
 dependencies = [

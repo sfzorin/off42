@@ -398,10 +398,10 @@
     "web": "OFF42 no navegador",
     "webText": "Nada para instalar: uma prévia que abre, converte e cria arquivos dentro da aba do navegador. Ainda não é possível exportar documentos para PDF nem exibir páginas de PDF.",
     "linux": "OFF42 para Linux",
-    "linuxText": "Prévia experimental para x86_64. Os seis apps abrem numa janela simples e convertem arquivos pela linha de comando. Visualização de páginas, edição formatada, impressão, digitalização e OCR ainda não estão disponíveis no Linux.",
-    "linuxPreviewText": "Prévia experimental x86_64 dos seis apps: uma janela simples e conversão pela linha de comando. Visualização de páginas, edição formatada, impressão, digitalização e OCR ainda não estão disponíveis no Linux.",
+    "linuxText": "Prévia experimental x86_64: a linha de comando off42 converte documentos, planilhas e apresentações, exporta PDF e cria etiquetas, códigos de barras, marcas, assinaturas e carimbos. Os seis apps abrem numa janela simples. Visualização de páginas, edição formatada, impressão, digitalização e OCR ainda não estão disponíveis no Linux.",
+    "linuxPreviewText": "Prévia experimental x86_64: a linha de comando off42 converte documentos, planilhas e apresentações, exporta PDF e cria etiquetas, códigos de barras, marcas, assinaturas e carimbos. Os seis apps abrem numa janela simples. Visualização de páginas, edição formatada, impressão, digitalização e OCR ainda não estão disponíveis no Linux.",
     "linuxBuild": "Compilação e limites",
-    "installLinux": "Linux: extraia o arquivo e abra um app, ou execute ./install.sh para adicionar itens ao menu. Requer X11 ou Wayland."
+    "installLinux": "Linux: extraia o arquivo e execute ./off42 --help, ou ./install.sh para adicionar os apps ao menu. As janelas dos apps exigem X11 ou Wayland."
   },
   "about": {
     "title": "Um escritório sem nada a esconder.",

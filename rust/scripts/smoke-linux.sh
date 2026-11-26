@@ -43,4 +43,25 @@ app PDF42 --items "$work/page.pdf" | expect "Page 1" "PDF42 page extraction"
 app PDF42 --export 81 "$pdf" "$work/pages.zip"
 test -s "$work/pages.zip" || { echo "FAIL: PDF42 split ZIP"; exit 1; }
 
+cli="$bin_dir/off42"
+"$cli" --version | expect "off42" "off42 --version"
+"$cli" convert "$work/a.md" "$work/cli.docx"
+"$cli" convert "$work/cli.docx" "$work/cli.pdf"
+"$cli" text "$work/cli.pdf" | expect "Linux preview text" "off42 DOCX to PDF"
+"$cli" convert "$work/s.csv" "$work/cli.ods"
+"$cli" text "$work/cli.ods" | expect "42" "off42 CSV to ODS formula"
+"$cli" pdf merge "$work/merged.pdf" "$pdf" "$work/cli.pdf"
+"$cli" info "$work/merged.pdf" | expect "pages: 4" "off42 pdf merge"
+"$cli" pdf extract "$work/merged.pdf" "4" "$work/last.pdf"
+"$cli" text "$work/last.pdf" | expect "Heading" "off42 pdf extract"
+"$cli" barcode datamatrix "SN-0001" "$work/code.png"
+"$cli" labels "$work/labels.pdf" --code code128 ITEM-0001 ITEM-0002
+"$cli" info "$work/labels.pdf" | expect "pages: 1" "off42 labels"
+"$cli" marks render ce "$work/ce.png"
+"$cli" signature "Ann Lee" "$work/sig" --count 2 --seed 7
+"$cli" stamp ru.simple "$work/stamp" --count 1 --seed 3
+for f in code.png ce.png sig-1.png sig-2.png stamp-1.png; do
+  test -s "$work/$f" || { echo "FAIL: off42 did not write $f"; exit 1; }
+done
+
 echo "Linux smoke checks passed"

@@ -398,10 +398,10 @@
     "web": "OFF42 sa browser",
     "webText": "Walang kailangang i-install: isang preview na nagbubukas, nagko-convert at gumagawa ng mga file sa loob ng iyong browser tab. Hindi pa ma-e-export sa PDF ang mga dokumento at hindi pa ipinapakita ang mga pahina ng PDF.",
     "linux": "OFF42 para sa Linux",
-    "linuxText": "Eksperimental na preview para sa x86_64. Bumubukas ang anim na app sa simpleng window at nagko-convert ng mga file mula sa command line. Wala pa sa Linux ang page view, rich editing, pag-print, pag-scan at OCR.",
-    "linuxPreviewText": "Eksperimental na x86_64 preview ng anim na app: simpleng window at conversion mula sa command line. Wala pa sa Linux ang page view, rich editing, pag-print, pag-scan at OCR.",
+    "linuxText": "Eksperimental na x86_64 preview: ang off42 command line ay nagko-convert ng mga dokumento, spreadsheet at presentasyon, nag-e-export ng PDF at gumagawa ng mga label, barcode, marka, lagda at tatak. Bumubukas ang anim na app sa simpleng window. Wala pa sa Linux ang page view, rich editing, pag-print, pag-scan at OCR.",
+    "linuxPreviewText": "Eksperimental na x86_64 preview: ang off42 command line ay nagko-convert ng mga dokumento, spreadsheet at presentasyon, nag-e-export ng PDF at gumagawa ng mga label, barcode, marka, lagda at tatak. Bumubukas ang anim na app sa simpleng window. Wala pa sa Linux ang page view, rich editing, pag-print, pag-scan at OCR.",
     "linuxBuild": "Build at mga limitasyon",
-    "installLinux": "Linux: i-extract ang archive at patakbuhin ang app, o patakbuhin ang ./install.sh para magdagdag ng mga menu entry. Kailangan ang X11 o Wayland."
+    "installLinux": "Linux: i-extract ang archive at patakbuhin ang ./off42 --help, o ang ./install.sh para idagdag ang mga app sa menu. Kailangan ng mga window ng app ang X11 o Wayland."
   },
   "about": {
     "title": "Isang opisinang walang itinatago.",

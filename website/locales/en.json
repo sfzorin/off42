@@ -398,10 +398,10 @@
     "web": "OFF42 in the browser",
     "webText": "Nothing to install: a preview that opens, converts and creates files inside your browser tab. Documents cannot be exported to PDF and PDF pages are not displayed yet.",
     "linux": "OFF42 for Linux",
-    "linuxText": "Experimental x86_64 preview. All six apps open in a simple window and convert files from the command line. Page views, rich editing, printing, scanning and OCR are not available on Linux yet.",
-    "linuxPreviewText": "Experimental x86_64 preview of all six apps: a simple window plus command-line conversion. Page views, rich editing, printing, scanning and OCR are not available on Linux yet.",
+    "linuxText": "Experimental x86_64 preview: the off42 command line converts documents, spreadsheets and presentations, exports PDF and makes labels, barcodes, marks, signatures and stamps. The six apps open in a simple window. Page views, rich editing, printing, scanning and OCR are not available on Linux yet.",
+    "linuxPreviewText": "Experimental x86_64 preview: the off42 command line converts documents, spreadsheets and presentations, exports PDF and makes labels, barcodes, marks, signatures and stamps. The six apps open in a simple window. Page views, rich editing, printing, scanning and OCR are not available on Linux yet.",
     "linuxBuild": "Build and limits",
-    "installLinux": "Linux: extract the archive and run an app, or run ./install.sh to add menu entries. Requires X11 or Wayland."
+    "installLinux": "Linux: extract the archive and run ./off42 --help, or run ./install.sh to add the apps to your menu. The app windows need X11 or Wayland."
   },
   "about": {
     "title": "An office with nothing to hide.",

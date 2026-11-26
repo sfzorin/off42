@@ -398,10 +398,10 @@
     "web": "OFF42 dans le navigateur",
     "webText": "Rien à installer : un aperçu qui ouvre, convertit et crée des fichiers dans l'onglet de votre navigateur. Les documents ne peuvent pas encore être exportés en PDF et les pages PDF ne sont pas encore affichées.",
     "linux": "OFF42 pour Linux",
-    "linuxText": "Préversion expérimentale pour x86_64. Les six apps s’ouvrent dans une fenêtre simple et convertissent des fichiers en ligne de commande. L’affichage des pages, l’édition enrichie, l’impression, la numérisation et l’OCR ne sont pas encore disponibles sous Linux.",
-    "linuxPreviewText": "Préversion expérimentale x86_64 des six apps : une fenêtre simple et la conversion en ligne de commande. L’affichage des pages, l’édition enrichie, l’impression, la numérisation et l’OCR ne sont pas encore disponibles sous Linux.",
+    "linuxText": "Préversion expérimentale x86_64 : la ligne de commande off42 convertit documents, feuilles de calcul et présentations, exporte en PDF et crée étiquettes, codes-barres, marquages, signatures et tampons. Les six apps s’ouvrent dans une fenêtre simple. L’affichage des pages, l’édition enrichie, l’impression, la numérisation et l’OCR ne sont pas encore disponibles sous Linux.",
+    "linuxPreviewText": "Préversion expérimentale x86_64 : la ligne de commande off42 convertit documents, feuilles de calcul et présentations, exporte en PDF et crée étiquettes, codes-barres, marquages, signatures et tampons. Les six apps s’ouvrent dans une fenêtre simple. L’affichage des pages, l’édition enrichie, l’impression, la numérisation et l’OCR ne sont pas encore disponibles sous Linux.",
     "linuxBuild": "Compilation et limites",
-    "installLinux": "Linux : extrayez l’archive et lancez une app, ou exécutez ./install.sh pour ajouter les entrées de menu. Nécessite X11 ou Wayland."
+    "installLinux": "Linux : extrayez l’archive et lancez ./off42 --help, ou ./install.sh pour ajouter les apps au menu. Les fenêtres des apps nécessitent X11 ou Wayland."
   },
   "about": {
     "title": "Un bureau qui n'a rien à cacher.",

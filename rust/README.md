@@ -1,6 +1,6 @@
 # off42 for Windows (and an experimental Linux preview)
 
-This separate Rust workspace implements six native Windows apps (see [Linux preview](#linux-preview) for the rough Linux build); the macOS Swift apps remain separate. The current
+This separate Rust workspace implements six native Windows apps (see [off42 command line and the Linux preview](#off42-command-line-and-the-linux-preview)); the macOS Swift apps remain separate. The current
 implementation is a work in progress, not a feature-parity or Windows release claim. Native interaction and saved output are checked on Windows CI; see [the parity tracker](PARITY.md) for evidence
 and failures. The Microsoft virtual PDF driver has been exercised; physical printing and scanner hardware still need testing.
 
@@ -50,42 +50,51 @@ Windows runtime behavior. The Windows CI workflow also builds with MSVC.
 `cargo test -p suite42-app` runs on any host, and `cargo check -p suite42-app --target wasm32-unknown-unknown`
 checks the WebAssembly build. Stored preference, history and recovery formats are pinned by its tests.
 
-## Linux preview
+## off42 command line and the Linux preview
 
-Experimental and rough. The same six Rust apps build for Linux x86_64; the document engines (DOCX/ODT/RTF/HTML/
-Markdown, XLSX/ODS/CSV with formulas, PPTX/ODP, PDF editing through lopdf, PNG/JPEG/TIFF/GIF/WebP, labels, barcodes and
-marks) are the portable crates also used on Windows. The Win32 interface in `crates/win42` is replaced off Windows by
-`crates/win42/src/portable.rs`: a simple egui window (X11 or Wayland) plus a headless command line.
+`apps/off42-cli` builds one `off42` executable on Windows, Linux and macOS from the platform-free core crates
+(`doc42-core`, `xls42-core`, `ppt42-core`, `pdf42-core`, `img42-core`, `label42`, `marks42`, `suite42-pdf-text`). It reads
+bytes, calls a core and writes bytes; no window system is involved.
 
-What works:
-- A window per app with the page/sheet/slide/frame list, document text (editable and applied back to the model),
-  the cell table for XLS42, the image for IMG42/SCN42, Undo/Redo, a Commands menu, an Export menu for file actions and
-  Save As where the format follows the file extension.
-- Command line in every app: `--convert IN OUT`, `--text FILE`, `--items FILE`, `--table FILE`,
-  `--export ID IN OUT` (IDs from `--formats`), `--formats`, `--commands`, `--help`, `--version`. Settings prompts take
-  their default values.
-- `cargo test --locked --workspace` and `scripts/smoke-linux.sh` (DOCX/ODT/RTF, XLSX/ODS with a formula, PNG/JPEG, PDF
-  save, page extraction and split) run on `ubuntu-latest` in `.github/workflows/rust-linux.yml`.
+| Command | What it does |
+| --- | --- |
+| `off42 convert IN OUT` | Documents doc42/DOCX/RTF/ODT/HTML/Markdown/TXT; sheets XLSX/ODS/CSV/xls42 (XLS read-only); slides PPTX/ODP/JSON; images PNG/JPEG/TIFF/GIF/WebP/BMP. Any document, sheet or slide deck to `.pdf` as plain text layout (A4, bundled Noto Sans). Package parts a target cannot hold are left out with a note. |
+| `off42 text IN` / `off42 info IN` | Text of documents, all sheets (calculated values, tab-separated), slide titles and bodies, PDF text (lopdf extraction, no layout); summary counts. |
+| `off42 pdf merge OUT IN...`, `off42 pdf extract IN PAGES OUT` | PDF42 merge and page extraction (`1,3-5`, reverse `5-3`). |
+| `off42 barcode FORMAT VALUE OUT.png [--width MM]` | QR, Data Matrix, Code 128, Aztec. |
+| `off42 labels OUT.pdf ...`, `off42 labels stocks` | A4 label sheets from arguments or `--from FILE` with built-in stocks or `--size WxH`, optional codes. |
+| `off42 marks list`, `off42 marks render ID OUT.png` | The 97 product and conformity marks. |
+| `off42 signature NAME OUT`, `off42 stamp list`, `off42 stamp ID OUT --set KEY=VALUE` | Handwritten signature and stamp variants (`OUT-1.png`...), `--seed` for repeatable output. |
 
-What does not work yet: DOC42 page canvas and WYSIWYG rich text, rulers, PPT42 slide canvas and slide shows, printing,
-scanner acquisition, OCR, PDFium-based PDF rendering, text search/extraction and text editing, signing with system
-certificates, clipboard integration, recent documents, recovery copies, most commands that open a Windows settings
-dialog, localization of the Linux window and file pickers (type paths). Commands that need these report
-"requires Windows" or "not available on Linux yet". Nothing here is checked on a real desktop session; CI has no display.
+Not in the CLI: OCR, scanning, printing, PDF rendering to images, PDF signing and verification, PDF form filling,
+watermarks/numbering, image editing, faithful (laid-out) document/slide/sheet PDF. `cargo test -p off42-cli` covers
+the conversions, PDF merge/extract, codes, labels, marks, signatures and stamps. The Windows ZIP includes `off42.exe`.
 
-Build and run on Debian/Ubuntu:
+### Linux preview
+
+Experimental. `.github/workflows/rust-linux.yml` runs `cargo test --locked --workspace` on `ubuntu-latest`, builds
+`off42` plus the six apps, runs `scripts/smoke-linux.sh` headlessly and packages `off42-linux-x86_64.tar.gz`; tags
+`v*-linux-preview.*` publish it as a prerelease. A macOS job builds and tests the same CLI.
+
+Besides the CLI, the tarball has PDF42, DOC42, XLS42, PPT42, IMG42 and SCN42 as rough windows: off Windows,
+`win42::run` uses `crates/win42/src/portable.rs`, a simple egui window (X11 or Wayland) with the item list, document text
+(editable), the cell table, the image, Undo/Redo, a Commands menu, Export and Save As by file extension, plus app
+options `--convert`, `--text`, `--items`, `--table`, `--export ID`, `--formats`. Page canvases, WYSIWYG rich text,
+rulers, slide shows, printing, scanning, OCR, PDFium rendering/search/text editing, system-certificate signing,
+clipboard, recents, recovery, localized UI, file pickers and most settings dialogs are missing; such commands report
+"requires Windows". The windows have not been exercised on a real Linux desktop (CI has no display).
 
 ```bash
 sudo apt-get install build-essential pkg-config libx11-dev libxcursor-dev libxrandr-dev libxi-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev libfontconfig1-dev
 cd rust
-cargo build --locked --release -p img42 -p doc42 -p xls42 -p ppt42 -p pdf42 -p scn42
-./target/release/doc42 --convert notes.md notes.docx
+cargo build --locked --release -p off42-cli -p img42 -p doc42 -p xls42 -p ppt42 -p pdf42 -p scn42
+./target/release/off42 convert notes.md notes.pdf
 ./target/release/xls42 book.xlsx
 scripts/smoke-linux.sh target/release
 ```
 
-Tags `v*-linux-preview.*` publish `off42-<version>-x86_64.tar.gz` with the six executables, licenses,
-`README-LINUX.txt` and `install.sh` (installs to `~/.local/opt/off42` with menu entries, no root).
+The CLI alone needs no window-system packages. In the tarball, `install.sh` copies everything to `~/.local/opt/off42`
+and adds menu entries and `~/.local/bin` links without root.
 
 ## Implemented scope and limits
 

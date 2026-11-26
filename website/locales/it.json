@@ -398,10 +398,10 @@
     "web": "OFF42 nel browser",
     "webText": "Niente da installare: un'anteprima che apre, converte e crea file nella scheda del browser. I documenti non possono ancora essere esportati in PDF e le pagine PDF non vengono ancora visualizzate.",
     "linux": "OFF42 per Linux",
-    "linuxText": "Anteprima sperimentale per x86_64. Tutte e sei le app si aprono in una finestra semplice e convertono file dalla riga di comando. Vista pagine, modifica formattata, stampa, scansione e OCR non sono ancora disponibili su Linux.",
-    "linuxPreviewText": "Anteprima sperimentale x86_64 di tutte e sei le app: una finestra semplice e conversione dalla riga di comando. Vista pagine, modifica formattata, stampa, scansione e OCR non sono ancora disponibili su Linux.",
+    "linuxText": "Anteprima sperimentale x86_64: la riga di comando off42 converte documenti, fogli di calcolo e presentazioni, esporta PDF e crea etichette, codici a barre, marchi, firme e timbri. Le sei app si aprono in una finestra semplice. Vista pagine, modifica formattata, stampa, scansione e OCR non sono ancora disponibili su Linux.",
+    "linuxPreviewText": "Anteprima sperimentale x86_64: la riga di comando off42 converte documenti, fogli di calcolo e presentazioni, esporta PDF e crea etichette, codici a barre, marchi, firme e timbri. Le sei app si aprono in una finestra semplice. Vista pagine, modifica formattata, stampa, scansione e OCR non sono ancora disponibili su Linux.",
     "linuxBuild": "Compilazione e limiti",
-    "installLinux": "Linux: estrai l’archivio e avvia un’app, oppure esegui ./install.sh per aggiungere le voci di menu. Richiede X11 o Wayland."
+    "installLinux": "Linux: estrai l’archivio ed esegui ./off42 --help, oppure ./install.sh per aggiungere le app al menu. Le finestre delle app richiedono X11 o Wayland."
   },
   "about": {
     "title": "Un ufficio che non ha nulla da nascondere.",

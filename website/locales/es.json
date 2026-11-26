@@ -398,10 +398,10 @@
     "web": "OFF42 en el navegador",
     "webText": "Nada que instalar: una vista previa que abre, convierte y crea archivos dentro de la pestaña del navegador. Los documentos aún no se pueden exportar a PDF y las páginas PDF aún no se muestran.",
     "linux": "OFF42 para Linux",
-    "linuxText": "Versión preliminar experimental para x86_64. Las seis apps se abren en una ventana sencilla y convierten archivos desde la línea de comandos. La vista de páginas, la edición con formato, la impresión, el escaneo y el OCR aún no están disponibles en Linux.",
-    "linuxPreviewText": "Versión preliminar experimental de las seis apps para x86_64: una ventana sencilla y conversión desde la línea de comandos. La vista de páginas, la edición con formato, la impresión, el escaneo y el OCR aún no están disponibles en Linux.",
+    "linuxText": "Versión preliminar experimental para x86_64: la línea de comandos off42 convierte documentos, hojas de cálculo y presentaciones, exporta PDF y crea etiquetas, códigos de barras, marcas, firmas y sellos. Las seis apps se abren en una ventana sencilla. La vista de páginas, la edición con formato, la impresión, el escaneo y el OCR aún no están disponibles en Linux.",
+    "linuxPreviewText": "Versión preliminar experimental para x86_64: la línea de comandos off42 convierte documentos, hojas de cálculo y presentaciones, exporta PDF y crea etiquetas, códigos de barras, marcas, firmas y sellos. Las seis apps se abren en una ventana sencilla. La vista de páginas, la edición con formato, la impresión, el escaneo y el OCR aún no están disponibles en Linux.",
     "linuxBuild": "Compilación y límites",
-    "installLinux": "Linux: extrae el archivo y abre una app, o ejecuta ./install.sh para añadir entradas al menú. Requiere X11 o Wayland."
+    "installLinux": "Linux: extrae el archivo y ejecuta ./off42 --help, o ./install.sh para añadir las apps al menú. Las ventanas de las apps requieren X11 o Wayland."
   },
   "about": {
     "title": "Una oficina sin nada que ocultar.",

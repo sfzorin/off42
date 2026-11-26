@@ -398,10 +398,10 @@
     "web": "OFF42 w przeglądarce",
     "webText": "Bez instalacji: wersja podglądowa, która otwiera, konwertuje i tworzy pliki w karcie przeglądarki. Eksport dokumentów do PDF i wyświetlanie stron PDF nie są jeszcze dostępne.",
     "linux": "OFF42 dla Linuksa",
-    "linuxText": "Eksperymentalna wersja zapoznawcza dla x86_64. Wszystkie sześć aplikacji otwiera się w prostym oknie i konwertuje pliki z wiersza poleceń. Widok stron, edycja z formatowaniem, drukowanie, skanowanie i OCR nie są jeszcze dostępne w Linuksie.",
-    "linuxPreviewText": "Eksperymentalna wersja x86_64 wszystkich sześciu aplikacji: proste okno i konwersja z wiersza poleceń. Widok stron, edycja z formatowaniem, drukowanie, skanowanie i OCR nie są jeszcze dostępne w Linuksie.",
+    "linuxText": "Eksperymentalna wersja x86_64: wiersz poleceń off42 konwertuje dokumenty, arkusze i prezentacje, eksportuje PDF oraz tworzy etykiety, kody kreskowe, znaki, podpisy i pieczątki. Sześć aplikacji otwiera się w prostym oknie. Widok stron, edycja z formatowaniem, drukowanie, skanowanie i OCR nie są jeszcze dostępne w Linuksie.",
+    "linuxPreviewText": "Eksperymentalna wersja x86_64: wiersz poleceń off42 konwertuje dokumenty, arkusze i prezentacje, eksportuje PDF oraz tworzy etykiety, kody kreskowe, znaki, podpisy i pieczątki. Sześć aplikacji otwiera się w prostym oknie. Widok stron, edycja z formatowaniem, drukowanie, skanowanie i OCR nie są jeszcze dostępne w Linuksie.",
     "linuxBuild": "Kompilacja i ograniczenia",
-    "installLinux": "Linux: rozpakuj archiwum i uruchom aplikację albo wykonaj ./install.sh, aby dodać pozycje menu. Wymaga X11 lub Wayland."
+    "installLinux": "Linux: rozpakuj archiwum i uruchom ./off42 --help albo ./install.sh, aby dodać aplikacje do menu. Okna aplikacji wymagają X11 lub Wayland."
   },
   "about": {
     "title": "Biuro bez tajemnic.",

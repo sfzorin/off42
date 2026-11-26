@@ -398,10 +398,10 @@
     "web": "OFF42 di browser",
     "webText": "Tanpa instalasi: pratinjau yang membuka, mengonversi, dan membuat file di dalam tab browser Anda. Dokumen belum dapat diekspor ke PDF dan halaman PDF belum ditampilkan.",
     "linux": "OFF42 untuk Linux",
-    "linuxText": "Pratinjau eksperimental untuk x86_64. Keenam aplikasi terbuka di jendela sederhana dan mengonversi file dari baris perintah. Tampilan halaman, pengeditan berformat, pencetakan, pemindaian, dan OCR belum tersedia di Linux.",
-    "linuxPreviewText": "Pratinjau eksperimental x86_64 untuk keenam aplikasi: jendela sederhana dan konversi dari baris perintah. Tampilan halaman, pengeditan berformat, pencetakan, pemindaian, dan OCR belum tersedia di Linux.",
+    "linuxText": "Pratinjau eksperimental x86_64: baris perintah off42 mengonversi dokumen, spreadsheet, dan presentasi, mengekspor PDF, serta membuat label, barcode, tanda, tanda tangan, dan stempel. Keenam aplikasi terbuka di jendela sederhana. Tampilan halaman, pengeditan berformat, pencetakan, pemindaian, dan OCR belum tersedia di Linux.",
+    "linuxPreviewText": "Pratinjau eksperimental x86_64: baris perintah off42 mengonversi dokumen, spreadsheet, dan presentasi, mengekspor PDF, serta membuat label, barcode, tanda, tanda tangan, dan stempel. Keenam aplikasi terbuka di jendela sederhana. Tampilan halaman, pengeditan berformat, pencetakan, pemindaian, dan OCR belum tersedia di Linux.",
     "linuxBuild": "Build dan batasan",
-    "installLinux": "Linux: ekstrak arsip lalu jalankan aplikasi, atau jalankan ./install.sh untuk menambahkan entri menu. Memerlukan X11 atau Wayland."
+    "installLinux": "Linux: ekstrak arsip lalu jalankan ./off42 --help, atau ./install.sh untuk menambahkan aplikasi ke menu. Jendela aplikasi memerlukan X11 atau Wayland."
   },
   "about": {
     "title": "Kantor tanpa hal yang disembunyikan.",

@@ -383,3 +383,99 @@ pub fn text_outline(text: &str, points: f64) -> Result<(String, f64), String> {
     }
     Ok((result, advance))
 }
+
+/// A4 PDF of plain text in the bundled font: lines wrap at the page width and pages break
+/// at the bottom margin. Characters the font lacks become `?`. Bytes out, no file system access.
+pub fn plain_text_pdf(title: &str, text: &str, font_size: f64) -> Result<Vec<u8>, String> {
+    let font_data = include_bytes!("../../doc42-layout-probe/fixtures/NotoSans.ttf");
+    let face = ttf_parser::Face::parse(font_data, 0).map_err(|e| format!("Invalid bundled font: {e:?}"))?;
+    let units = f64::from(face.units_per_em());
+    let clean: String = text
+        .replace("\r\n", "\n")
+        .chars()
+        .map(|c| match c {
+            '\t' => ' ',
+            '\n' => '\n',
+            c if c.is_control() => ' ',
+            c if face.glyph_index(c).is_some() => c,
+            _ => '?',
+        })
+        .collect();
+    let advance = |c: char| {
+        face.glyph_index(c)
+            .and_then(|g| face.glyph_hor_advance(g))
+            .map_or(units / 2.0, f64::from)
+            * font_size
+            / units
+    };
+    let (width, height, margin) = (595.276, 841.89, 56.0);
+    let leading = font_size * 1.35;
+    let usable = width - 2.0 * margin;
+    let mut lines = Vec::new();
+    for paragraph in clean.split('\n') {
+        let mut line = String::new();
+        let mut used = 0.0;
+        for word in paragraph.split_inclusive(' ') {
+            let w: f64 = word.chars().map(advance).sum();
+            if used + w > usable && !line.is_empty() {
+                lines.push(std::mem::take(&mut line));
+                used = 0.0;
+            }
+            for c in word.chars() {
+                let a = advance(c);
+                if used + a > usable && !line.is_empty() {
+                    lines.push(std::mem::take(&mut line));
+                    used = 0.0;
+                }
+                line.push(c);
+                used += a;
+            }
+        }
+        lines.push(line.trim_end().to_owned());
+    }
+    let per_page = (((height - 2.0 * margin) / leading).floor() as usize).max(1);
+    let mut doc = Document::with_version("1.7");
+    let mut glyphs: String = clean.chars().filter(|c| *c != '\n').collect();
+    glyphs.push(' ');
+    let font = PdfFont::embed_subset(&mut doc, &glyphs)?;
+    let pages_id = doc.new_object_id();
+    let mut kids = Vec::new();
+    for chunk in lines.chunks(per_page) {
+        let mut content = format!("BT /F1 {font_size:.2} Tf {leading:.2} TL {margin:.2} {:.2} Td\n", height - margin - font_size);
+        for line in chunk {
+            content.push_str(&format!("<{}> Tj T*\n", font.encode(line)?));
+        }
+        content.push_str("ET\n");
+        let content_id = doc.add_object(Stream::new(dictionary! {}, content.into_bytes()));
+        let page = doc.add_object(dictionary! {
+            "Type" => "Page",
+            "Parent" => pages_id,
+            "MediaBox" => vec![0.into(), 0.into(), Object::Real(width as f32), Object::Real(height as f32)],
+            "Contents" => content_id,
+            "Resources" => dictionary! {"Font" => dictionary! {"F1" => font.id}},
+        });
+        kids.push(Object::Reference(page));
+    }
+    let count = kids.len() as i64;
+    doc.objects.insert(pages_id, Object::Dictionary(dictionary! {"Type" => "Pages", "Kids" => kids, "Count" => count}));
+    let catalog = doc.add_object(dictionary! {"Type" => "Catalog", "Pages" => pages_id});
+    doc.trailer.set("Root", catalog);
+    let info = doc.add_object(dictionary! {"Title" => Object::string_literal(title.chars().filter(|c| c.is_ascii() && !c.is_control()).collect::<String>()), "Producer" => Object::string_literal("off42")});
+    doc.trailer.set("Info", info);
+    doc.compress();
+    let mut out = Vec::new();
+    doc.save_to(&mut out).map_err(|e| e.to_string())?;
+    Ok(out)
+}
+
+#[cfg(test)]
+mod plain_text_tests {
+    #[test]
+    fn writes_paged_text_pdf() {
+        let text = "Привет, off42!\n".repeat(200);
+        let bytes = super::plain_text_pdf("t", &text, 11.0).unwrap();
+        let doc = lopdf::Document::load_mem(&bytes).unwrap();
+        assert!(doc.get_pages().len() >= 3);
+        assert!(doc.extract_text(&[1]).unwrap().contains("off42"));
+    }
+}

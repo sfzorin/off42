@@ -398,10 +398,10 @@
     "web": "瀏覽器中的 OFF42",
     "webText": "不需安裝：在瀏覽器分頁內開啟、轉換和建立檔案的預覽版。目前文件無法匯出為 PDF，也不會顯示 PDF 頁面。",
     "linux": "OFF42 Linux 版",
-    "linuxText": "適用於 x86_64 的實驗性預覽版。六款 App 皆在簡易視窗中開啟，並可透過命令列轉換檔案。頁面檢視、格式化編輯、列印、掃描與 OCR 尚未支援 Linux。",
-    "linuxPreviewText": "六款 App 的實驗性 x86_64 預覽版：簡易視窗加上命令列轉換。頁面檢視、格式化編輯、列印、掃描與 OCR 尚未支援 Linux。",
+    "linuxText": "適用於 x86_64 的實驗性預覽版：off42 命令列可轉換文件、試算表與簡報、匯出 PDF，並產生標籤、條碼、標誌、簽名與印章。六款 App 在簡易視窗中開啟。頁面檢視、格式化編輯、列印、掃描與 OCR 尚未支援 Linux。",
+    "linuxPreviewText": "適用於 x86_64 的實驗性預覽版：off42 命令列可轉換文件、試算表與簡報、匯出 PDF，並產生標籤、條碼、標誌、簽名與印章。六款 App 在簡易視窗中開啟。頁面檢視、格式化編輯、列印、掃描與 OCR 尚未支援 Linux。",
     "linuxBuild": "建置與限制",
-    "installLinux": "Linux：解壓縮封存檔後執行 App，或執行 ./install.sh 新增選單項目。需要 X11 或 Wayland。"
+    "installLinux": "Linux：解壓縮封存檔後執行 ./off42 --help，或執行 ./install.sh 將 App 加入選單。App 視窗需要 X11 或 Wayland。"
   },
   "about": {
     "title": "一套坦誠開放的辦公工具。",
