@@ -321,7 +321,8 @@ standard commands to match their document model:
 
 Custom top-level menus (`Commands.swift`, localized in the app):
 
-- PDF42: Markup, Form, Page, Signature.
+- PDF42: Markup, Form, Page, Signature (signing and verification, then page marks for paper copies: Electronic
+  Signature Mark, Initial Every Page, Cross-Page Seal, Certification Note, then certificates).
 - DOC42: Review, Table.
 - XLS42: Table, Sheet, Data, Tools.
 - IMG42: Image, Markup.
@@ -390,7 +391,7 @@ documented by the app: PPT42 uses ⇧⌘P for Play from Current Slide and remove
 | `DocxWriter` | .docx writer (paragraphs, runs, tables, images) — the system writer drops tables |
 | `BannerView` | status bar (`info / success / warning / error`) |
 | `WelcomeWindowController` | start window |
-| `StampLibrary`, `StampLibraryViewController`, `ImageTools` | shared library of signatures and seals, background removal |
+| `StampLibrary`, `StampLibraryViewController`, `ImageTools` | shared library of signatures and seals, background removal; `K42_STAMP_LIBRARY=DIR` uses a separate library (audits) |
 | `SigmaLognormal`, `PenRenderer`, `PenType` | sigma-lognormal timing along a smooth line (geometry and time separated); ink from speed and direction for ballpoint, gel, fountain and felt-tip pens, paper fibres |
 | `SignatureBench` | measurement bench: fluency (normalized jerk, velocity peaks, hesitation), line wobble, DTW variability, Vision legibility, calibration references, `--check` thresholds |
 | `SignatureLearning`, `LearnedSignature`, `SignaturePad` | user's samples: timed pad strokes or traced picture strokes (threshold, Zhang–Suen thinning, good-continuation tracing); RDP via-points with captured or modelled durations; compatible samples blended into varied copies |
@@ -417,6 +418,11 @@ documented by the app: PPT42 uses ⇧⌘P for Play from Current Slide and remove
 - Dark mode: only semantic colours (`labelColor`, `separatorColor`, `controlAccentColor` …) in Kit42 drawing; layer
   colours (`cgColor`) are resolved again in `viewDidChangeEffectiveAppearance`. Paper-like things (stamp tiles,
   document pages) stay white on purpose.
+- Ink marks in PDF42 (signatures, stamps, page marks) are stamp annotations that draw with multiply blending:
+  `ImageStampAnnotation` (raster) and `VectorMarkAnnotation` (text and frames, e.g. the e-signature mark). Both take
+  the page's `/Rotate` so they read upright, and call `compensatePageRotation`, because PDFKit hands thumbnail renders
+  of rotated pages an unrotated context (PDFView and saving draw in the appearance space). Place them through
+  `PageMarks.pageRect` (displayed → page space). The e-signature mark is blue `#1F3D94` on an 85 mm rounded frame.
 - Shared defaults (`Theme.swift`): tool strip 42 pt, banner 36 pt, sidebar 180 pt, spacing 8 pt, corner radius 8 pt.
   Individual window controllers set their own sidebar/inspector minimums and maximums.
 - Strip: capsules fit their controls with 3 pt vertical / 4 pt horizontal padding (radius 8, 4.5 % label fill,

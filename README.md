@@ -262,6 +262,23 @@ lets you switch extensions off.
     `--gost-verify file.pdf`, `--gost-verify file --sig file.sig [--poa poa.xml]`,
     `--poa-check poa.xml [--sig document.sig] [--date YYYY-MM-DD]`. Unlike `--verify`, these return the verdict as the exit code:
     0 valid, 1 invalid, 2 intact but certificate not trusted, 3 not checked (no CSP), 4 power-of-attorney mismatch.
+- Page marks for paper copies (Signature menu). Every mark is an ordinary stamp annotation drawn like ink (multiply):
+  it can be moved, deleted or undone (each command is one Undo step) and is saved as an appearance stream other
+  viewers show. Marks sit upright and in the chosen corner on rotated pages too.
+  - **Electronic Signature Mark…** — the block for a printed copy of an e-signed document (GOST R 7.0.97 style):
+    "ДОКУМЕНТ ПОДПИСАН ЭЛЕКТРОННОЙ ПОДПИСЬЮ", certificate serial number, owner, validity dates and, when made from a
+    signature in the file, the signing time; English and Turkish wording too. Built from a digital signature already
+    in the PDF (including GOST signatures) or from a Keychain certificate; chosen corner of the current, all or
+    selected pages. Adding it changes a signed file, so print the copy or use Save As (saving over the file
+    invalidates the signature).
+  - **Initial Every Page…** — a signature or initials from the library in a chosen corner of every (or selected) page;
+    every copy is a new impression of a generated or imported mark.
+  - **Cross-Page Seal…** — one stamp impression cut into vertical strips along the right edges of all or selected
+    pages, the first page carrying the leftmost strip. Fanned out, each page a strip further right, the printed pages
+    show the whole seal (the Chinese 骑缝章 practice). Diameter and height are adjustable; needs at least two pages.
+  - **Certification Note…** — "Всего пронумеровано, прошнуровано и скреплено печатью N (N in words) листов" (or the
+    English/Turkish equivalent) at the bottom of the last page with the signatory line and date, a stamp over the
+    line and an optional signature. The sheet count defaults to the page count; enter sheets for two-sided printing.
 - Thumbnails: drag to reorder pages, multi-select, drop PDFs/images to insert.
 - OCR (⌥⌘T): Vision (ru/en/tr) adds an invisible searchable text layer to scans. It processes a captured document state,
   preserves the page's annotation appearance and avoids applying a stale result after intervening document changes.
@@ -1152,6 +1169,10 @@ scenario; the deterministic `--selftest` remains independent of model availabili
 a private native pasteboard and Print's save-to-PDF disposition; no job is sent to a physical printer. Run
 `IMG42 --selftest` and the independent image CLI suite alongside these native scenarios; observed results and limitations
 must accompany each tested build.
+PDF42 `page-marks` adds every page mark through the editor on a five-page file with a rotated page (a throwaway
+in-memory certificate signs a copy for the e-signature mark; a separate stamp library in `build/ui-audit/stamps`),
+checks placement, slices, fresh impressions, Undo/Redo, and the saved file reopened in PDFKit with multiply
+appearance streams; renders of live and saved pages and `page-marks-saved.pdf` go to the screenshots folder.
 PPT42 adds canvas manipulation, media-safe copy/paste, text/Find/table commands, document lifecycle, inspector
 controls with rendered fill/border checks, and slideshow navigation/builds.
 DOC42 checks dispatch native mouse events for ruler drags at 25–200% zoom, exercise section/column/header targeting,

@@ -130,6 +130,14 @@ enum Cmd {
     static let verify = Command(L("Verify Signatures"), #selector(W.verifySignaturesAction(_:)), shortcut: Shortcut("v", [.command, .option]))
     static let enableLTV = Command(L("Enable Long-Term Validation"), #selector(W.enableLTVAction(_:)))
     static let documentTimestamp = Command(L("Add Document Timestamp"), #selector(W.documentTimestampAction(_:)))
+    static let eSignatureMark = Command(L("Electronic Signature Mark…"), #selector(W.eSignatureMarkAction(_:)), symbol: "checkmark.seal.text.page",
+                                        toolTip: L("Add the mark for a printed copy of an electronically signed document"))
+    static let crossPageSeal = Command(L("Cross-Page Seal…"), #selector(W.crossPageSealAction(_:)), symbol: "seal",
+                                       toolTip: L("Split one stamp across the right edges of the pages"))
+    static let certificationNote = Command(L("Certification Note…"), #selector(W.certificationNoteAction(_:)), symbol: "text.badge.checkmark",
+                                           toolTip: L("“Numbered, bound and sealed” with a stamp on the last page"))
+    static let initialPages = Command(L("Initial Every Page…"), #selector(W.initialPagesAction(_:)), symbol: "signature",
+                                      toolTip: L("Put a signature or initials on every page"))
     static let importCertificate = Command(L("Import Certificate (.p12)…"), #selector(A.importCertificateAction(_:)))
     static let createCertificate = Command(L("Create Self-Signed Certificate…"), #selector(A.createCertificateAction(_:)))
     static let gostSignFile = Command(L("Sign Any File with GOST (.sig)…"), #selector(A.gostSignFileAction(_:)))
@@ -171,6 +179,7 @@ enum Cmd {
                           .command(removeWatermarks), .command(removeHeaderFooter)]),
             (L("Signature"), [.command(sign), .command(verify), .separator,
                          .command(enableLTV), .command(documentTimestamp), .separator,
+                         .command(eSignatureMark), .command(initialPages), .command(crossPageSeal), .command(certificationNote), .separator,
                          .command(importCertificate), .command(createCertificate), .separator,
                          .command(gostSignFile), .command(gostVerifyFile), .command(cryptoPro)]),
         ]

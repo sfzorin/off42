@@ -360,6 +360,8 @@ struct SignatureInfo {
     /// Signer certificate as parsed from the CMS (for GOST signatures).
     var certificate: CertificateInfo?
     var filter: String?
+    /// The signer's certificate (serial number and validity for the printed e-signature mark).
+    var signerCertificate: SecCertificate?
 
     var summary: String {
         switch status {
@@ -494,6 +496,8 @@ enum PDFSignatureVerifier {
         if let t = signer.signingTime { info.date = t }
         if let c = signer.certificate {
             info.certificate = c
+            // GOST certificates too: the printed e-signature mark reads serial, owner and validity from it.
+            if info.signerCertificate == nil { info.signerCertificate = SecCertificateCreateWithData(nil, c.der as CFData) }
             info.signer = c.displayName
             if let s = c.snils { info.details.append(L("SNILS %@", s)) }
             if let i = c.inn { info.details.append(L("INN %@", i)) }
@@ -545,6 +549,7 @@ enum PDFSignatureVerifier {
 
         var cert: SecCertificate?
         if CMSDecoderCopySignerCert(dec, 0, &cert) == errSecSuccess, let cert {
+            info.signerCertificate = cert
             info.signer = SecCertificateCopySubjectSummary(cert) as String? ?? info.signer
             var emails: CFArray?
             SecCertificateCopyEmailAddresses(cert, &emails)

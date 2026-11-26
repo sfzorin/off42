@@ -1335,7 +1335,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, NSMenu
             return !pendingRedactions.isEmpty
         case #selector(clearCompareHighlightsAction(_:)):
             return hasCompareHighlights
-        case #selector(splitAction(_:)):
+        case #selector(splitAction(_:)), #selector(crossPageSealAction(_:)):
             return pdf.pageCount > 1
         case #selector(showAttachmentsAction(_:)):
             menuItem?.state = sidebar.mode == .attachments ? .on : .off

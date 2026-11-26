@@ -193,8 +193,32 @@ def fixture(app, arguments):
         raise RuntimeError(result.stderr.decode(errors='replace'))
 
 
+def simple_pdf(path, pages=3):
+    """A small text-only PDF written directly, so PDF42 checks need no other app."""
+    objects = ['<< /Type /Catalog /Pages 2 0 R >>',
+               '<< /Type /Pages /Kids [%s] /Count %d >>' % (' '.join(f'{4 + 2 * i} 0 R' for i in range(pages)), pages),
+               '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>']
+    for i in range(pages):
+        text = f'BT /F1 18 Tf 72 760 Td (Page marks audit, page {i + 1}) Tj ET ' + \
+               ''.join(f'BT /F1 11 Tf 72 {720 - 16 * k} Td (Line {k + 1} of the body text on this page.) Tj ET ' for k in range(30))
+        objects.append(f'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents {5 + 2 * i} 0 R >>')
+        objects.append(f'<< /Length {len(text)} >>\nstream\n{text}\nendstream')
+    out, offsets = b'%PDF-1.4\n', []
+    for n, body in enumerate(objects, 1):
+        offsets.append(len(out))
+        out += f'{n} 0 obj\n{body}\nendobj\n'.encode()
+    xref = len(out)
+    out += f'xref\n0 {len(objects) + 1}\n0000000000 65535 f \n'.encode()
+    out += b''.join(f'{o:010d} 00000 n \n'.encode() for o in offsets)
+    out += f'trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n'.encode()
+    path.write_bytes(out)
+
+
 results = []
 if args.mode in ('all', 'tests'):
+    if 'PDF42' in binaries:
+        simple_pdf(out / 'page-marks.pdf')
+        shutil.rmtree(out / 'stamps', ignore_errors=True)   # seeded afresh by the page-marks run
     if 'DOC42' in binaries and not (out / 'sample.docx').exists():
         fixture('DOC42', ['--demo', out / 'sample.docx'])
     if 'PDF42' in binaries and not (out / 'sample.pdf').exists():
@@ -230,6 +254,9 @@ if args.mode in ('all', 'tests'):
         ('PDF42', 'pdf-files', (out / 'sample.pdf',), {'K42_AUDIT': 'files'}, 'PDF document lifecycle regressions:', True),
         ('PDF42', 'mark-samples', ('--mark-samples', out / 'marks'), {}, 'Mark samples: ', False),
         ('PDF42', 'signature-fidelity', ('--signature-fidelity-synthetic', out / 'signature-fidelity'), {}, 'Synthetic checks: passed', False),
+        ('PDF42', 'page-marks', (out / 'page-marks.pdf',), {'K42_DO': 'auditPageMarks', 'K42_SNAPSHOT_DELAY': '3', 'K42_SIZE': '1180x780',
+                                                              'K42_STAMP_LIBRARY': str(out / 'stamps')},
+         'PDF page marks UI regressions:', True),
         ('PPT42', 'ppt-notes', (), {'K42_NEW': '1', 'K42_DO': 'auditnotes', 'K42_AUDIT_RECENT': '1'}, 'PPT notes UI regressions: 6/6 passed', True),
         ('PPT42', 'ppt-editing', (), {'K42_NEW': '1', 'K42_DO': 'auditediting', 'K42_PASTEBOARD': '1'}, 'PPT editing UI regressions:', True),
         ('PPT42', 'ppt-text', (), {'K42_NEW': '1', 'K42_DO': 'audittext', 'K42_PASTEBOARD': '1'}, 'PPT text/table/show UI regressions:', True),
@@ -289,6 +316,10 @@ if args.mode in ('all', 'screenshots'):
                             'K42_GENERATOR_NAME': 'Анна Соколова\nEmma Clarke'},
                            'Generator paraph: PASS', snapshot=True))
         results.append(run('PDF42', 'pdf-properties', [out / 'sample.pdf'], {'K42_ACTION': 'propertiesAction'}, snapshot=True))
+        if not (out / 'page-marks.pdf').exists(): simple_pdf(out / 'page-marks.pdf')
+        for action in ('eSignatureMarkAction', 'crossPageSealAction', 'certificationNoteAction', 'initialPagesAction'):
+            results.append(run('PDF42', 'pdf-' + action, [out / 'page-marks.pdf'],
+                               {'K42_ACTION': action, 'K42_STAMP_LIBRARY': str(out / 'stamps')}, snapshot=True))
     if 'DOC42' in binaries:
         for name, script, appearance in [('doc-book', 'viewmode 1', 'light'),
                                           ('doc-columns', 'cols 2', 'dark'),
