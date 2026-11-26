@@ -41,7 +41,7 @@ Windows runtime behavior. The Windows CI workflow also builds with MSVC.
 
 | App | Current implementation | Important limits |
 | --- | --- | --- |
-| DOC42 | Rich text, lists, images and tables with merge/split, sizing and formatting; comments, notes, links, range bookmarks and linked TOC; DOCX, RTF, ODT, HTML and Markdown subsets; ruler, preview and print | Office adapters are bounded; individual table-edge styles and revisions are incomplete. TOC requires explicit refresh, which invalidates cached page numbers; unsupported annotation or TOC exports refuse fidelity loss. The editing canvas is not fully paginated. Markdown image sidecar saves are not OS-atomic. |
+| DOC42 | Rich text, lists, images and tables with merge/split, sizing and formatting; comments, notes, links, range bookmarks and linked TOC; DOCX, RTF, ODT, HTML and Markdown subsets; ruler, preview and print | Office adapters are bounded; individual table-edge styles and revisions are incomplete. TOC requires explicit refresh, which invalidates cached page numbers; unsupported annotation or TOC exports refuse fidelity loss. Print Layout shows separate sheets for single-section documents; multi-section documents keep the continuous editor. Markdown image sidecar saves are not OS-atomic. |
 | XLS42 | Native grid with sizing, frozen/hidden rows and columns, merged cells, selection, typed clipboard and inline editing; sheets, formulas, tables, styles, validation, charts, filters and paginated print; XLSX and ODS adapters | Pivot summaries are materialized, not interactive Excel pivots. Dynamic arrays, complex imported tables and structured references are incomplete; complex ODS changes, external filter reconfiguration and ODS print export are guarded. |
 | PPT42 | Mixed-run in-place text editing, 187 preset shapes with adjustment handles, native objects, multi-selection, grouping and rotation, slides, timed cut/fade/push-left slideshow transitions and printing; PPTX/ODP adapters | Complex source text and existing source-group structural edits are guarded. Complex source transforms and rotated source groups may be preserved without rendering. ODP transition duration is limited to 250/500/1000 ms. Object animation, full master/theme semantics, charts and media playback are incomplete. |
 | PDF42 | WinRT rendering; PDFium search, selection and supported top-level text-object edits; annotations, forms, nested bookmarks, attachments, password-prompted PDF open and AES-128 copy, compression, printing, image export and raster redaction | Complex text, forms and navigation remain guarded. Protected files use conservative permissions; new AES-128 passwords require 1–32 printable ASCII characters, and original permissions and encryption are not preserved. Encrypted interoperability is unverified. Redaction removes metadata, attachments, forms and navigation. Detached CMS integrity and Windows cached certificate-chain trust can be inspected. A first detached approval signature can be created in a separate copy. Trusted timestamps and PDF/A conformance remain open. |
@@ -316,6 +316,25 @@ artifact contains the six apps, PDFium and licenses. ZIP SHA-256:
 `ede6e36ba0dc3a81673ed79680d988e129fe307838db202d3a09cd8a3cbeac7c` (61,197,732 bytes).
 This is a development artifact, separate from the public preview.3 download; it is not a full parity claim.
 
+
+## DOC42 Print Layout (development branch)
+
+**View → Print Layout** shows the document as separate paper sheets on a grey desk, with gaps and shadows.
+Sheet size and margins come from the section's page settings, and headers, footers and page numbers are drawn
+in their bands as in Print Preview. Text flows from sheet to sheet: the sheets are the print paginator's pages,
+rendered from the live editor. The editor itself is placed over the body of the sheet that holds the caret, so
+typing, selection, spelling, Undo/Redo and saving work as in the continuous view and nothing is inserted into
+the document to make the gaps. Moving the caret past a page boundary, or typing that pushes text onto the next
+page, moves the editor to that sheet; clicking another sheet moves it there. The mouse wheel and scroll bar
+scroll the desk, and zoom applies to the sheets. Print Layout is off by default and is not saved with the
+document.
+
+Limits: only single-section documents are laid out as sheets (others stay in the continuous view); sheets other
+than the current one are redrawn about a quarter second after editing stops; a selection is highlighted only on
+the current sheet, and a mouse drag past the current sheet scrolls inside it; footnotes are not drawn on sheets
+(Print Preview places them, so its page count can be higher), and headers and footers are read-only;
+the current sheet's line breaks come from the screen layout, which can differ slightly from the printer layout
+used for the other sheets.
 
 ## Body statistics and statistical formulas (development branch)
 
