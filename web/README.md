@@ -14,26 +14,57 @@ setting; Arabic is laid out right to left.
 - **Top bar** (home and tool screens): ☰ opens a slide-in drawer with the six apps, a link to the site's download
   page, About/Privacy links and the engine version (scrim, Esc, focus kept inside); the app logo and name; a search
   over the recent files; a language menu with all 20 languages; Help opens About.
-- **Home screen** of a file app: an *Open from device* tile (or drop a file anywhere on the page; a file opened in
-  the wrong app goes to its own) and the *Recent* list with name, time opened and size. Only those three are stored,
-  in this browser's `localStorage`; the file contents are not. Files opened in this tab stay in memory and reopen
-  at once; an older entry asks for the file again with the file picker. Entries can be removed from the list. There
-  is no "blank document" tile: without editing (stage 2) a new empty file would be of no use.
+- **Home screen** of a file app: for documents and spreadsheets a *Blank document* / *Blank spreadsheet* tile first
+  (also File ▸ New in the editor; a new file is called "Untitled document.docx" / "Untitled spreadsheet.xlsx" until
+  renamed), an *Open from device* tile (or drop a file anywhere on the page; a file opened in the wrong app goes to
+  its own) and the *Recent* list with name, time opened and size. Only those three are stored, in this browser's
+  `localStorage`; the file contents are not. Files opened in this tab stay in memory and reopen at once; an older
+  entry asks for the file again with the file picker. Entries can be removed from the list. New files are not in the
+  list (they have no bytes until downloaded).
 - **Editor**: a title row (app logo back to the home screen, file name — renaming changes the name of downloads —,
-  format badge, "On this device", a *Download* pill that returns the file as opened), a menu bar (File, View, the
-  app's own menu, Help; keyboard navigable) and one rounded toolbar, then the content on a grey canvas. Menus and
-  toolbar carry only what works: Open, Download, *Download as ▸* every export format, Rename, Print, Close, zoom,
-  full screen, and per app the items below. Messages appear in one snackbar at the bottom start, above the sheet tabs in
-  spreadsheets; a new message replaces the previous one.
+  format badge, "On this device", "Edited"/"Saved" once something was edited, a *Download* pill), a menu bar (File,
+  Edit, View, Insert, Format and the app's own menus, Help; keyboard navigable) and one rounded toolbar, then the
+  content on a grey canvas. Menus and toolbar carry only what works: New, Open, Download, *Download as ▸* every export
+  format, Rename, Print, Close, Undo/Redo, clipboard, zoom, full screen, and per app the items below. *Download*
+  returns the file exactly as opened until it is edited, then saves the edited content in the file's format; any
+  download of the edited content turns "Edited" into "Saved". Closing an editor, opening another file in its place or
+  leaving the page with changes that were not downloaded asks first. Messages appear in one snackbar at the bottom
+  start, above the sheet tabs in spreadsheets; a new message replaces the previous one.
 - **Phone** (≤ 600 px): a compact bar (back, file name, download, ⋮). The ⋮ menu holds the same commands as the menu
   bar; the toolbar moves to the bottom; touch targets are at least 44 px.
 
 | Input | Shown as | Download as |
 | --- | --- | --- |
-| DOCX, ODT, RTF, Markdown, HTML, text | The HTML preview on an A4 page (sandboxed frame without scripts; links do not navigate); word count in the toolbar, *Document statistics* (words, characters, paragraphs, format, size); zoom; print | DOCX, ODT, RTF, Markdown, HTML, text |
-| XLSX, ODS, XLS (read-only), CSV | A full-width grid with column letters and row numbers, sticky headers and the selected row/column highlighted; a formula bar with the cell address (or range) and its displayed value; click, shift-click, drag and arrow-key selection with the sum and count of numbers in a status chip; sheet tabs at the bottom, a sheet list and a Sheet menu; calculated, formatted values; first 1000 rows × 100 columns; print of the current sheet | XLSX, ODS, CSV, displayed values of a sheet as CSV |
+| DOCX, ODT, RTF, Markdown, HTML, text, or a blank document | An editable A4 page drawn by the engine: paragraphs with their bold/italic/underline/strike, size, font and colour runs, headings, lists, alignment and indents, links (shown, not followed); tables and pictures are shown and not editable. Word count in the toolbar, *Document statistics* (words, characters, paragraphs, format, size); zoom; print. Documents with tracked changes open as before, as the core's HTML on a sandboxed page, marked *View only* | DOCX, ODT, RTF, Markdown, HTML, text |
+| XLSX, ODS, XLS (read-only), CSV, or a blank workbook | A full-width grid with column letters and row numbers, sticky headers and the selected row/column highlighted; a formula bar with the cell address (or range) and the cell's input (a formula, not its result), editable; click, shift-click, drag and arrow-key selection with the sum and count of numbers in a status chip; sheet tabs at the bottom, a sheet list and a Sheet menu; calculated, formatted values (bold, italic, underline shown); first 1000 rows × 100 columns; print of the current sheet | XLSX, ODS, CSV, displayed values of a sheet as CSV |
 | PPTX, ODP | A slide strip with the selected slide ringed, the slide as a 16:9 card (fit or zoomed) with its text, tables and picture placeholders, speaker notes below (can be hidden); arrow keys, Home/End and the Slide menu move between slides; print of all slides | PPTX, ODP |
 | PDF | A summary page (title, author, pages, size, properties, bookmarks as contents) with a one-line note that page rendering is not available; a side panel (toggle) with document properties, bookmark tree, attachments and form fields | — (Download returns the PDF) |
+
+### Editing
+
+Every change is a command of the editing layer (`rust/crates/edit42`, ARCHITECTURE.md D13), sent to an edit session
+in the engine; the page is then redrawn from the session's snapshot. One user action (or one paste, one toolbar
+click) is one request and one Undo step; consecutive typing at the caret is one step until the caret moves or another
+command runs. Sessions keep 100 steps. The same JSON commands are meant for the AI assistant.
+
+- **Documents**: typing, Enter (a new paragraph; after a heading it is normal text; in an empty list item it ends the
+  list), Backspace/Delete (characters, words with Alt/Ctrl, joining paragraphs; at the start of a heading or list item
+  it first makes the paragraph normal text), typing over a selection, paste of plain text (lines become paragraphs),
+  cut, input methods (the composed text is committed when composition ends). Toolbar: Undo, Redo, Print, zoom,
+  paragraph style (normal text, heading 1–3), bold, italic, underline (with a caret they apply to what is typed next),
+  align left/centre/right, bulleted and numbered list, word count. Edit menu: Undo, Redo, Cut, Copy, Paste (Paste
+  reads the clipboard through the browser, which may ask; Ctrl/⌘+V always works), Select all. Insert: today's date,
+  lists. Format: the styles, bold/italic/underline, the four alignments (justify too), lists. Shortcuts: Ctrl/⌘+Z,
+  Ctrl+Y or ⇧⌘Z, Ctrl/⌘+B/I/U.
+- **Spreadsheets**: typing in a selected cell replaces it, F2 or a double click edits its input, Enter/Tab (with
+  Shift: back) commit and move, arrows commit when typing started the edit, Escape cancels; the formula bar edits the
+  active cell (Enter commits); Delete/Backspace clear the selection; Ctrl/⌘+C/X/V copy, cut and paste displayed values
+  as tab-separated text. Toolbar: Undo, Redo, Print, zoom, currency (the interface language's currency: $, €, ₽, ¥, …),
+  percent, fewer/more decimal places, number formats (automatic, number, currency, percent), bold, italic, insert row
+  above, delete rows, insert column left, delete columns, sort A→Z and Z→A by the active column (a single cell sorts
+  the table around it, keeping a text header row). Edit, Insert (rows above/below, columns left/right), Format and Data
+  menus carry the same commands. Shortcuts: Ctrl/⌘+Z, Ctrl+Y or ⇧⌘Z, Ctrl/⌘+B/I. Inserted or deleted rows and columns
+  shift formula references (the core's structural edit). Commands act on the sheet shown.
 
 Print uses the browser's print dialog: the printable content (document, current sheet, slides) is placed in
 `#print-root` and print CSS hides the rest of the app.
@@ -61,8 +92,17 @@ English text appears before another language.
 
 ### Limitations
 
-- No editing yet: the editors view, convert, print and download files; editing and formatting commands are not in
-  the menus or the toolbar until they work.
+- Editing covers documents and spreadsheets. Presentations and PDFs are view-only (ppt42 slide text editing needs a
+  text-frame editing surface, which is not part of this stage). XLS workbooks are read-only.
+- Documents: no editing of tables, pictures, headers/footers, fonts, sizes or colours (they are shown and kept); no
+  tracked changes — documents that have them are view-only. Headings are saved as outline levels (Word's navigation
+  pane and tables of contents see them; a new DOCX has no heading styles, so Word may show them in the body style while
+  ODT, RTF, HTML and Markdown show them as headings). Markdown cannot hold alignment and refuses it with the core's
+  message. Rich clipboard content is pasted as plain text.
+- Spreadsheets: no fonts, colours, borders, merges, row/column sizes or sheet commands yet. XLSX and ODS files written
+  by other programs keep their original package in the core, which refuses sorting and filling there (and number
+  formats in ODS); files saved by off42 reopen fully editable. Currency formats use a symbol before or after the
+  number (`"€"#,##0.00`, `#,##0.00 "₽"`); bracketed locale codes (`[$€-407]`) are shown unformatted.
 - No page rendering or PDF output for documents, spreadsheets or presentations: the cores have no PDF writer for
   them (the desktop apps print through the operating system), and PDF page rendering needs PDFium for wasm32.
 - Presentations show their text, tables and picture placeholders, not rendered slides.
@@ -72,7 +112,7 @@ English text appears before another language.
 - Messages from the engine (conversion refusals, parse errors) are in English. Stamp template names exist in English,
   Russian and Turkish only, stamp categories and field names in English only; product mark names and descriptions
   exist in 11 languages (other languages show English).
-- The engine is one wasm file of 12.9 MB (5.3 MB with gzip, 5.1 MB with zstd -3, 4.1 MB with brotli -11). The
+- The engine is one wasm file of 13.2 MB (5.4 MB with gzip -9, 5.2 MB with zstd -3, 4.2 MB with brotli -11; measured with the editing layer of stage 2). The
   site-wide `Cache-Control: no-transform` is replaced for `/app/*` in `website/public/_headers`, so Cloudflare may
   compress it (its compression list includes `application/wasm`); whether it does can only be checked after
   deployment, by requesting the wasm file with `Accept-Encoding: br, gzip` and looking at `Content-Encoding`.
@@ -98,14 +138,21 @@ translated in the catalogs (keys `sig.form.<n>`, `sig.pen.<n>`, `ink.<name>`).
 - `web/src` — the page (`index.html`, `src/main.ts`, `src/style.css`, SVG line icons and app logos in
   `src/icons.ts`; system fonts only, no font downloads), the engine
   worker (`src/engine.worker.ts`) and its async wrapper (`src/engine.ts`: every export becomes
-  `call(name, ...args)`; after a wasm trap the worker is replaced); `src/wasm` is generated and not committed.
+  `call(name, ...args)`; after a wasm trap the worker is replaced, and open edit sessions are lost with it: the page
+  reports that the file must be opened again); `src/wasm` is generated and not committed.
 - `web/test/smoke.mjs` — Node loads the wasm package and exercises every export on fixtures.
 - `web/test/offline.mjs` — checks that the production build is self-contained (CSP, no remote URLs).
 - `web/test/ui.mjs` — headless Chromium (Playwright) drives the built page served at `/app/` with the headers of
   `website/public/_headers` (`test/serve.mjs`, so the site's Content-Security-Policy applies as on off42.cc): the
   loading screen and the worker; the home screen (no fake tiles, the tile opens the file picker); the drawer (focus
   trap, Esc, scrim, switching apps); About and the language menu (20 languages, current one checked, keyboard);
-  each editor through its menu bar, toolbar and keyboard — documents (original download, *Download as* DOCX, ODT,
+  each editor through its menu bar, toolbar and keyboard — creating and editing a blank document (typing, Enter,
+  Backspace, heading 1 from the style menu, bold with Ctrl/⌘+B, a bulleted list from the toolbar, Undo/Redo from the
+  toolbar, keyboard and Edit menu, Edited/Saved, the DOCX download reopened and checked for text, heading, bold and
+  list, HTML with the package-parts question, the close question for changes that were not downloaded) and a blank
+  workbook (values and a SUM formula typed with Enter, the formula bar, a row inserted above the summed range moving
+  and widening the formula, Tab, Undo/Redo, F2, Delete, the formula bar editing a cell, bold, currency format, the
+  XLSX download reopened and checked for values, formula, format and bold, values CSV); documents (original download, *Download as* DOCX, ODT,
   RTF, Markdown and HTML with their bytes, statistics, rename, print content and print CSS, zoom, menu keyboard
   navigation, DOCX → ODT package-parts confirmation), recent files (search, reopening from memory, re-prompt after
   a reload, removal), spreadsheets (formula bar, header highlight, range sum, XLSX/ODS/CSV, values CSV, a two-sheet
