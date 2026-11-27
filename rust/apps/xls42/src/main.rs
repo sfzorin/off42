@@ -85,6 +85,7 @@ impl suite42_app::App for Xls {
     fn poll_background(&mut self)->bool{let goal=self.goal_seek.poll();let solver=self.solver.poll(&mut self.book);goal||solver}
     fn take_pending_command(&mut self)->Option<u16>{self.goal_seek.take_command().or_else(||self.solver.take_command())}
     fn toolbar_command_visible(&self,id:u16)->bool{matches!(id,25|31|34|38|39|40|50)}
+    fn add_sheet_command(&self)->Option<(u16,&'static str)>{Some((20,"Add sheet"))}
     fn supports_technical_elements(&self) -> bool {
         true
     }
@@ -1690,7 +1691,10 @@ use win42::run as run_host;
 #[cfg(not(windows))]
 use egui42::run as run_host;
 fn main() {
-    run_host(Box::new(Xls {
+    run_host(Box::new(new_xls()))
+}
+fn new_xls() -> Xls {
+    Xls {
         goal_seek:Default::default(),
             solver:Default::default(),
         book: Workbook::new(20, 8).unwrap(),
@@ -1701,7 +1705,7 @@ fn main() {
         picture_cache: Default::default(),
             viewport: Default::default(),
         selected_picture: None,
-    }))
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -2635,5 +2639,20 @@ mod far_picture_geometry_regression {
         app.move_grid_picture(id,80.,20.).unwrap();let moved=app.book.images()[0].clone();
         assert_eq!((moved.row,moved.column),(1_048_575,16_383));assert_eq!((moved.offset_x,moved.offset_y),(0.,0.));assert_eq!(moved.data,original.data);
         app.action(4).unwrap();assert_eq!(app.book.images(),&[original]);app.action(5).unwrap();assert_eq!(app.book.images(),&[moved]);
+    }
+}
+
+#[cfg(all(test, not(windows)))]
+mod linux_window {
+    #[test]
+    fn linux_window_states() {
+        let dir = std::env::temp_dir().join(format!("off42-ui-{}-{}", env!("CARGO_PKG_NAME"), std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        #[allow(unused_variables)]
+        let sample: Option<std::path::PathBuf> = { let p = dir.join("November sales.csv");
+            std::fs::write(&p, "Item,Qty,Price,Total\nTea,20,350,=B2*C2\nPie,10,400,=B3*C3\nJam,30,250,=B4*C4\nCoffee,25,520,=B5*C5\nTotal,=SUM(B2:B5),,=SUM(D2:D5)\n").unwrap();
+            Some(p) };
+        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::new_xls()), sample.as_deref(), &["Sheets", "Formula bar", "Cells"]);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

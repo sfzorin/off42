@@ -92,6 +92,9 @@ impl suite42_app::App for Scn {
     fn view_actions(&self) -> &'static [(u16, &'static str)] {
         &[(SCAN_HISTORY, "Scan History…"), (CLEAR_SCAN_HISTORY, "Clear Scan History…")]
     }
+    fn toolbar_actions(&self) -> &'static [u16] {
+        &[19, 10, 18]
+    }
     fn dialog_request(&self, id: u16) -> Option<suite42_app::DialogRequest> {
         match id {
             SCAN_HISTORY if history::load().is_empty() => Some(suite42_app::DialogRequest::Information {
@@ -1152,8 +1155,11 @@ use win42::run as run_host;
 #[cfg(not(windows))]
 use egui42::run as run_host;
 fn main() {
+    run_host(Box::new(new_scn()))
+}
+fn new_scn() -> Scn {
     let settings = ocr_settings::load();
-    run_host(Box::new(Scn {
+    Scn {
         pending: None,
         pending_history_open: None,
         next_save: 0,
@@ -1176,7 +1182,7 @@ fn main() {
         print_pending: None,
         ocr_displayed: 0,
         ocr: None,
-    }))
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -1564,5 +1570,18 @@ mod rescan_tests {
         assert!(app.doc.pages().is_empty());
         assert!(!app.doc.is_dirty());
         assert!(app.scan_status.contains("discarded"));
+    }
+}
+
+#[cfg(all(test, not(windows)))]
+mod linux_window {
+    #[test]
+    fn linux_window_states() {
+        let dir = std::env::temp_dir().join(format!("off42-ui-{}-{}", env!("CARGO_PKG_NAME"), std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        #[allow(unused_variables)]
+        let sample: Option<std::path::PathBuf> = { Some(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/win42/fixtures/ocr-english.png")) };
+        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::new_scn()), sample.as_deref(), &["Picture"]);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

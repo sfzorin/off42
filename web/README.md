@@ -6,19 +6,37 @@ request leaves the page's own origin. The site serves it at https://off42.cc/app
 
 ## What it does
 
-The page is an app frame in the off42.cc identity: a sidebar (a top bar on phones) with Documents, Spreadsheets,
-Presentations, PDF, Labels & codes and Signatures & stamps, each with its app colour. Every file section starts
-with an empty state (Open file, or drop a file anywhere on the page; a file opened in the wrong section goes to
-its own) and lists the files opened in this tab; they are kept in memory only and are gone after a reload. The
-theme follows the system's light or dark setting. Sections have their own URL (`#documents`, `#spreadsheets`,
-`#presentations`, `#pdf`, `#labels`, `#signatures`).
+The page is an application shell in the off42.cc identity, one screen per app: Documents, Spreadsheets,
+Presentations, PDF, Labels & codes and Signatures & stamps, each with its app colour and its own URL (`#documents`,
+`#spreadsheets`, `#presentations`, `#pdf`, `#labels`, `#signatures`). The theme follows the system's light or dark
+setting; Arabic is laid out right to left.
 
-| Input | Shown as | Save as |
+- **Top bar** (home and tool screens): ☰ opens a slide-in drawer with the six apps, a link to the site's download
+  page, About/Privacy links and the engine version (scrim, Esc, focus kept inside); the app logo and name; a search
+  over the recent files; a language menu with all 20 languages; Help opens About.
+- **Home screen** of a file app: an *Open from device* tile (or drop a file anywhere on the page; a file opened in
+  the wrong app goes to its own) and the *Recent* list with name, time opened and size. Only those three are stored,
+  in this browser's `localStorage`; the file contents are not. Files opened in this tab stay in memory and reopen
+  at once; an older entry asks for the file again with the file picker. Entries can be removed from the list. There
+  is no "blank document" tile: without editing (stage 2) a new empty file would be of no use.
+- **Editor**: a title row (app logo back to the home screen, file name — renaming changes the name of downloads —,
+  format badge, "On this device", a *Download* pill that returns the file as opened), a menu bar (File, View, the
+  app's own menu, Help; keyboard navigable) and one rounded toolbar, then the content on a grey canvas. Menus and
+  toolbar carry only what works: Open, Download, *Download as ▸* every export format, Rename, Print, Close, zoom,
+  full screen, and per app the items below. Messages appear in one snackbar at the bottom start; a new message
+  replaces the previous one.
+- **Phone** (≤ 600 px): a compact bar (back, file name, download, ⋮). The ⋮ menu holds the same commands as the menu
+  bar; the toolbar moves to the bottom; touch targets are at least 44 px.
+
+| Input | Shown as | Download as |
 | --- | --- | --- |
-| DOCX, ODT, RTF, Markdown, HTML, text | The HTML preview on an A4-wide page (sandboxed frame without scripts; links do not navigate); words, characters and paragraphs in the status bar | DOCX, ODT, RTF, Markdown, HTML, text |
-| XLSX, ODS, XLS (read-only), CSV | A grid with column letters and row numbers, sticky headers, sheet tabs, right-aligned numbers and the selected cell's address and value; calculated, formatted values; first 1000 rows × 100 columns | XLSX, ODS, CSV, displayed values of a sheet as CSV |
-| PPTX, ODP | Slide thumbnails and the selected slide as a 16:9 card with its text, tables and picture placeholders; speaker notes; arrow keys move between slides | PPTX, ODP |
-| PDF | Pages, file size, document properties, bookmark tree, attachments and form fields; page view marked as coming | — |
+| DOCX, ODT, RTF, Markdown, HTML, text | The HTML preview on an A4 page (sandboxed frame without scripts; links do not navigate); word count in the toolbar, *Document statistics* (words, characters, paragraphs, format, size); zoom; print | DOCX, ODT, RTF, Markdown, HTML, text |
+| XLSX, ODS, XLS (read-only), CSV | A full-width grid with column letters and row numbers, sticky headers and the selected row/column highlighted; a formula bar with the cell address (or range) and its displayed value; click, shift-click, drag and arrow-key selection with the sum and count of numbers in a status chip; sheet tabs at the bottom, a sheet list and a Sheet menu; calculated, formatted values; first 1000 rows × 100 columns; print of the current sheet | XLSX, ODS, CSV, displayed values of a sheet as CSV |
+| PPTX, ODP | A slide strip with the selected slide ringed, the slide as a 16:9 card (fit or zoomed) with its text, tables and picture placeholders, speaker notes below (can be hidden); arrow keys, Home/End and the Slide menu move between slides; print of all slides | PPTX, ODP |
+| PDF | A summary page (title, author, pages, size, properties, bookmarks as contents) with a one-line note that page rendering is not available; a side panel (toggle) with document properties, bookmark tree, attachments and form fields | — (Download returns the PDF) |
+
+Print uses the browser's print dialog: the printable content (document, current sheet, slides) is placed in
+`#print-root` and print CSS hides the rest of the app.
 
 Conversions use the cores' own encoders and their fidelity rules: a conversion that would lose content the target
 format cannot carry is refused with the core's message (for example bookmarks to Markdown, or plain text from a
@@ -43,6 +61,8 @@ English text appears before another language.
 
 ### Limitations
 
+- No editing yet: the editors view, convert, print and download files; editing and formatting commands are not in
+  the menus or the toolbar until they work.
 - No page rendering or PDF output for documents, spreadsheets or presentations: the cores have no PDF writer for
   them (the desktop apps print through the operating system), and PDF page rendering needs PDFium for wasm32.
 - Presentations show their text, tables and picture placeholders, not rendered slides.
@@ -64,8 +84,8 @@ English text appears before another language.
 The interface uses the 20 languages of off42.cc: `src/locales/<code>.json` are flat catalogs with the same keys
 as `en.json` (English is the fallback for a missing key; `{name}` placeholders are filled in by `t()` in
 `src/i18n.ts`). The language comes from `?lang=<code>` (as linked from the site), otherwise from the browser's
-preferred languages (`zh-TW`/`zh-HK` → `zh-Hant`, `tl` → `fil`), otherwise English; the picker in the header
-reloads the page with `?lang=` and keeps the section. Arabic switches the page to right-to-left. Catalogs other than
+preferred languages (`zh-TW`/`zh-HK` → `zh-Hant`, `tl` → `fil`), otherwise English; the language menu in the top
+bar reloads the page with `?lang=` and keeps the app (open files are not kept). Arabic switches the page to right-to-left. Catalogs other than
 English are loaded as separate chunks; the page stays on a text-free loading screen until the catalog is in, while
 the engine downloads in parallel. The language is passed to the engine where the cores have translations: `productMarks(lang)`
 (label42 mark copy) and `stampTemplates(lang)` (marks42 template titles). Signature forms, pens and inks are
@@ -75,19 +95,28 @@ translated in the catalogs (keys `sig.form.<n>`, `sig.pen.<n>`, `ink.<name>`).
 
 - `rust/crates/off42-wasm` — the bytes-in/bytes-out API (plain Rust, tested natively with `cargo test`) and its
   wasm-bindgen exports (`src/bindings.rs`, compiled only for `wasm32`).
-- `web/src` — the page (`index.html`, `src/main.ts`, `src/style.css`, line icons in `src/icons.ts`), the engine
+- `web/src` — the page (`index.html`, `src/main.ts`, `src/style.css`, SVG line icons and app logos in
+  `src/icons.ts`; system fonts only, no font downloads), the engine
   worker (`src/engine.worker.ts`) and its async wrapper (`src/engine.ts`: every export becomes
   `call(name, ...args)`; after a wasm trap the worker is replaced); `src/wasm` is generated and not committed.
 - `web/test/smoke.mjs` — Node loads the wasm package and exercises every export on fixtures.
 - `web/test/offline.mjs` — checks that the production build is self-contained (CSP, no remote URLs).
 - `web/test/ui.mjs` — headless Chromium (Playwright) drives the built page served at `/app/` with the headers of
   `website/public/_headers` (`test/serve.mjs`, so the site's Content-Security-Policy applies as on off42.cc): the
-  loading screen and the worker, every section with its empty state, viewer and conversions (Markdown, DOCX with
-  the package-parts confirmation, CSV, XLSX, PPTX, ODP and the PDF fixture `test/fixtures/sample.pdf` with
-  properties, nested bookmarks, an attachment and a form field), routing of a file to its section, codes, label
-  sheets, marks, signature variants and the stamp editor; languages (`?lang=` with the catalog held back to show
-  that no English appears, picker, browser default, RTL layout, localized names from the cores), the dark theme
-  and the phone layout. It fails on any request outside the page's origin or any page error.
+  loading screen and the worker; the home screen (no fake tiles, the tile opens the file picker); the drawer (focus
+  trap, Esc, scrim, switching apps); About and the language menu (20 languages, current one checked, keyboard);
+  each editor through its menu bar, toolbar and keyboard — documents (original download, *Download as* DOCX, ODT,
+  RTF, Markdown and HTML with their bytes, statistics, rename, print content and print CSS, zoom, menu keyboard
+  navigation, DOCX → ODT package-parts confirmation), recent files (search, reopening from memory, re-prompt after
+  a reload, removal), spreadsheets (formula bar, header highlight, range sum, XLSX/ODS/CSV, values CSV, a two-sheet
+  workbook `test/fixtures/sheets.xlsx` with tabs, sheet list and Sheet menu, print), routing of a file to its app,
+  presentations (strip ring, 16:9, notes toggle, arrow keys, Slide menu, PPTX/ODP, print of every slide) and the
+  PDF fixture `test/fixtures/sample.pdf` (summary page, side panel sections and toggle, no conversions); one
+  snackbar replacing the previous message; codes, label sheets, marks, signature variants and the stamp editor;
+  languages (`?lang=` with the catalog held back to show that no English appears, language menu, browser default,
+  RTL drawer, bar and menus, localized names from the cores), the dark theme and the phone layout (bar sizes, ⋮
+  menu with the same commands, bottom toolbar, 44 px targets, no horizontal scrolling). It fails on any request
+  outside the page's origin or any page error.
   `--dir ../website/public/app` tests the published copy; `--url <app URL>` tests an app served elsewhere, for
   example by `npx wrangler dev` in `website/`; `--screenshots <dir>` saves screenshots of the main screens.
 - `web/scripts/publish-to-site.sh`, `web/scripts/site-build.mjs` — publishing to off42.cc (below).

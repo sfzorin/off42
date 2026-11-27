@@ -25,15 +25,15 @@ for (const label of labels) {
   }
   writeFileSync(join(here, 'results', label + '.json'), JSON.stringify({ label, probes, records: byModel }));
   console.log(`\n### Run ${label}\n`);
-  console.log('| Model | Tasks | Success | Docs | Sheets | Adversarial | Valid tool calls | Tasks all-valid | Median turns | Median latency/task | Mean cost/task | Cache hit | Reasoning tok/task |');
-  console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+  console.log('| Model | Tasks | Success | Docs | Sheets | Adversarial | Out of scope | In scope | Valid tool calls | Tasks all-valid | Median turns | Median latency/task | Mean cost/task | Cache hit | Reasoning tok/task |');
+  console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
   const rows = Object.entries(byModel).map(([m, rs]) => {
     const n = rs.length, okN = rs.filter((r) => r.ok).length;
     const cat = (p) => { const x = rs.filter(p); return `${x.filter((r) => r.ok).length}/${x.length}`; };
     const calls = rs.reduce((a, r) => a + r.calls, 0), valid = rs.reduce((a, r) => a + r.validCalls, 0);
     const prompt = rs.reduce((a, r) => a + r.usage.prompt, 0), cached = rs.reduce((a, r) => a + r.usage.cached, 0);
     const cost = rs.reduce((a, r) => a + r.usage.cost, 0);
-    return { m, n, okN, line: `| ${m} | ${n} | **${pct(okN, n)}** | ${cat((r) => !r.adversarial && !r.task.startsWith('xls'))} | ${cat((r) => !r.adversarial && r.task.startsWith('xls'))} | ${cat((r) => r.adversarial)} | ${pct(valid, calls)} (${valid}/${calls}) | ${pct(rs.filter((r) => r.firstTryValid).length, n)} | ${median(rs.map((r) => r.turns))} | ${(median(rs.map((r) => r.latencyMs)) / 1000).toFixed(1)} s | $${(cost / n).toFixed(5)} | ${pct(cached, prompt)} | ${Math.round(rs.reduce((a, r) => a + r.usage.reasoning, 0) / n)} |` };
+    return { m, n, okN, line: `| ${m} | ${n} | **${pct(okN, n)}** | ${cat((r) => !r.adversarial && !r.scope && !r.task.startsWith('xls'))} | ${cat((r) => !r.adversarial && r.task.startsWith('xls'))} | ${cat((r) => r.adversarial)} | ${cat((r) => r.scope === 'out')} | ${cat((r) => r.scope === 'in')} | ${pct(valid, calls)} (${valid}/${calls}) | ${pct(rs.filter((r) => r.firstTryValid).length, n)} | ${median(rs.map((r) => r.turns))} | ${(median(rs.map((r) => r.latencyMs)) / 1000).toFixed(1)} s | $${(cost / n).toFixed(5)} | ${pct(cached, prompt)} | ${Math.round(rs.reduce((a, r) => a + r.usage.reasoning, 0) / n)} |` };
   });
   rows.sort((a, b) => b.okN / b.n - a.okN / a.n);
   for (const r of rows) console.log(r.line);

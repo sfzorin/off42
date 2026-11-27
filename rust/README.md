@@ -84,15 +84,34 @@ Experimental. `.github/workflows/rust-linux.yml` runs `cargo test --locked --wor
 `off42` plus the six apps, runs `scripts/smoke-linux.sh` headlessly and packages `off42-linux-x86_64.tar.gz`; tags
 `v*-linux-preview.*` publish it as a prerelease. A macOS job builds and tests the same CLI.
 
-Besides the CLI, the tarball has PDF42, DOC42, XLS42, PPT42, IMG42 and SCN42 as rough windows: off Windows, each app
-runs in `crates/egui42`, a simple egui window (X11 or Wayland) with the item list, document text
-(editable), the cell table, the image, Undo/Redo, a Commands menu, Export and Save As by file extension, plus app
-options `--convert`, `--text`, `--items`, `--table`, `--export ID`, `--formats`. Page canvases, WYSIWYG rich text,
-rulers, slide shows, printing, scanning, OCR, PDFium rendering/search/text extraction/editing, system-certificate
-signing, clipboard, recents and recovery in the window, localized UI, file pickers and most settings dialogs are
-missing; such commands report "requires Windows". Shared stores (`suite42_app::storage::local_data`) use
-`$XDG_DATA_HOME/off42` or `~/.local/share/off42` on Linux and `~/Library/Application Support/off42` on macOS. The
-windows have not been exercised on a real Linux desktop (CI has no display).
+Besides the CLI, the tarball has PDF42, DOC42, XLS42, PPT42, IMG42 and SCN42 as experimental windows: off Windows,
+each app runs in `crates/egui42`, an egui window (X11 or Wayland) laid out like the web app (see
+[DESIGN.md](../DESIGN.md#linux-window-cratesegui42)):
+
+- **Home** when started without a file: Blank document and Open tiles, the recent-files list with search, an app
+  drawer that starts the other apps from the same folder, a language picker (applies after restart) and About.
+- **Document window**: file name, format badge and save state; a menu bar (File with New, Open, Open recent, Save,
+  Save as ▸ formats and exports, Import, Close; Edit; View with zoom, Appearance and Language; one menu per command
+  group; Help); one toolbar strip with Undo/Redo, zoom and the app's icon commands; a Save button; one snackbar.
+- **DOC42**: plain text on a white page. Edits reach the model after a pause or when the page loses focus; documents
+  with rich formatting refuse plain-text edits (the page reverts and says why). **XLS42**: formula bar with the cell
+  name, grid with column letters and row numbers, Shift-click ranges, sheet tabs with Add sheet, a Sum chip.
+  **PPT42**: slide thumbnails and the current slide drawn from the shared scene, with the slide's title/body text
+  below. **PDF42**: page strip and a placeholder page (no PDFium on Linux yet). **IMG42/SCN42**: the picture fitted.
+- In-window file chooser, input forms, confirmation, information, list-choice and colour dialogs; copy commands use
+  the system clipboard. Light and dark themes follow the system or View ▸ Appearance; Inter is bundled.
+
+App options: `--convert`, `--text`, `--items`, `--table`, `--export ID`, `--formats`, `--commands`. WYSIWYG rich text,
+rulers, slide shows, canvas editing with the mouse, printing, scanning, OCR, PDFium rendering/search/text
+extraction/editing, system-certificate signing, clipboard reads, recovery and the remaining settings dialogs are
+missing; such commands are disabled in menus ("Not available on Linux yet") or report it. Shared stores
+(`suite42_app::storage::local_data`) use `$XDG_DATA_HOME/off42` or `~/.local/share/off42` on Linux and
+`~/Library/Application Support/off42` on macOS.
+
+The `linux-ui-shots` CI job renders every app's home, language, drawer, document, File ▸ Save as and dark states
+headlessly (egui_kittest on Mesa's software Vulkan) and uploads the PNGs; the same tests, run by
+`cargo test --workspace`, assert the named regions and a few behaviours (typing and Undo on a blank page, slide and
+page selection, Add sheet). The windows have still not been exercised by hand on a real Linux desktop.
 
 ```bash
 sudo apt-get install build-essential pkg-config libx11-dev libxcursor-dev libxrandr-dev libxi-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev libfontconfig1-dev
@@ -364,8 +383,27 @@ mode the title bar, popup menus, toolbar buttons, sidebar list, status bar, inpu
 dark colours; print/label preview windows get a dark title bar. Switching the app mode while a window is open takes
 effect immediately. Document content (pages, the rich-text editor, sheets, slides, images and scans) keeps its own
 colours, so paper stays white. High contrast, older Windows builds, or a missing system entry point keep the light
-appearance. Limits: the menu bar, rulers, the spreadsheet grid and the report table stay light, and there is no
-in-app light/dark override.
+appearance. The menu bar, title row and toolbar strip follow dark mode as well. Limits: rulers, the spreadsheet
+grid, the DOC42 page desk and the report table stay light, and there is no in-app light/dark override.
+
+### Window layout (development branch)
+
+The six apps share the layout of the web apps (see [DESIGN.md](../DESIGN.md#windows-window-layout)):
+
+- Under the menu bar, a title row shows the file name, its format and whether it has unsaved edits, with a **Save**
+  button on the right.
+- One toolbar strip starts with **Undo**, **Redo** and **Print**, followed by each app's frequent commands: zoom,
+  rotate, select text, highlight and rectangle in PDF42; add slide, text box, shape, table and slide show in PPT42;
+  previous/next image, rotate and zoom in IMG42; scan, rotate and crop in SCN42; formatting in DOC42 and XLS42.
+  Icon buttons show their name as a tooltip. Commands that do not fit go to **More…**. **View → Show Toolbar** hides
+  the strip; the title row stays.
+- XLS42 has a formula bar (cell or range name, `fx`, cell text) above the grid and sheet tabs with **+** (Add sheet)
+  below it. PPT42 shows slide thumbnails in the side strip. PDF pages and slides sit on a grey canvas with a margin.
+- **File → Save As** opens a submenu: **Save As…** (all formats, `Ctrl+Shift+S`) and one entry per format.
+- After saving, a message at the bottom left confirms the file name for a few seconds.
+
+There is no start screen with recent files as in the web app; use **File → Open Recent**. PPT42 speaker notes stay
+in **Edit Speaker Notes…** rather than a panel under the slide, and XLS42 has no selection-sum indicator.
 
 
 ### Independent barcode QA

@@ -419,6 +419,7 @@ impl suite42_app::App for Img {
             .into_iter().map(|(id,title,accelerator)|suite42_app::CommandSpec{id,title,accelerator,group:"Live Text"}).collect()
     }
     fn toolbar_command_visible(&self,id:u16)->bool {matches!(id,44|49)}
+    fn toolbar_actions(&self)->&'static [u16]{&[37,38,10,11,12,13,14]}
     fn command_state(&self,id:u16)->suite42_app::CommandState {suite42_app::CommandState{enabled:self.enabled(id),checked:id==49&&self.tool==0}}
     fn clipboard_request(&self,id:u16)->Option<suite42_app::ClipboardRequest> {
         if !matches!(id,44|45)||(id==44&&self.tool!=0){return None;}
@@ -1451,5 +1452,18 @@ mod batch_option_tests {
                 .unwrap_err()
                 .contains("quality"));
         }
+    }
+}
+
+#[cfg(all(test, not(windows)))]
+mod linux_window {
+    #[test]
+    fn linux_window_states() {
+        let dir = std::env::temp_dir().join(format!("off42-ui-{}-{}", env!("CARGO_PKG_NAME"), std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        #[allow(unused_variables)]
+        let sample: Option<std::path::PathBuf> = { Some(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/win42/fixtures/ocr-english.png")) };
+        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::Img::default()), sample.as_deref(), &["Picture"]);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

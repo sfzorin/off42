@@ -1888,6 +1888,18 @@ impl suite42_app::App for Ppt {
     fn toolbar_command_visible(&self, id: u16) -> bool {
         !matches!(id, 74 | 75 | PRINT_LAYOUT)
     }
+    fn toolbar_actions(&self) -> &'static [u16] {
+        &[10, 23, 68, 33, 41]
+    }
+    fn list_thumbnail_size(&self) -> Option<(f64, f64)> {
+        Some((720.0, 405.0))
+    }
+    fn canvas_pages(&self) -> Vec<suite42_app::CanvasRect> {
+        if self.presenting || self.show.is_some() {
+            return Vec::new();
+        }
+        vec![suite42_app::CanvasRect { x: 0.0, y: 0.0, width: 720.0, height: 405.0 }]
+    }
     fn input_action(&mut self, id: u16, values: &[String]) -> Result<(), String> {
         match id {
             PRINT_LAYOUT => {
@@ -4005,3 +4017,27 @@ mod chart_ui_tests {
     }
 }
 
+#[cfg(all(test, not(windows)))]
+mod linux_window {
+    #[test]
+    fn linux_window_states() {
+        let dir = std::env::temp_dir().join(format!("off42-ui-{}-{}", env!("CARGO_PKG_NAME"), std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        #[allow(unused_variables)]
+        let sample: Option<std::path::PathBuf> = {
+            use suite42_app::App as _;
+            let p = dir.join("Quarterly results.json");
+            let mut app = super::Ppt::new(super::Presentation::new());
+            app.edit("Quarterly results\r\nRevenue +12%\r\nCosts flat\r\n148 new customers".into()).unwrap();
+            app.action(10).unwrap();
+            app.edit("Where growth came from\r\nSmall business\r\nNew regions".into()).unwrap();
+            app.action(10).unwrap();
+            app.edit("Next quarter\r\nBrowser version\r\nTablets".into()).unwrap();
+            app.select(0);
+            egui42::save_as(&mut app, &p).unwrap();
+            Some(p)
+        };
+        egui42::testing::capture_states(env!("CARGO_PKG_NAME"), || Box::new(super::Ppt::new(super::Presentation::new())), sample.as_deref(), &["Slides", "Slide", "Slide text"]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
