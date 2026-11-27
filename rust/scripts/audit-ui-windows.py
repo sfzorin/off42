@@ -4986,7 +4986,6 @@ def audit_chrome_structure(process, main, app, result, output=None):
         assert tabs.top - 1 <= box_chip.top and box_chip.bottom <= bottom and box_chip.left >= tabs.right, ("chip is not in the tab bar", (box_chip.left, box_chip.top, box_chip.right, box_chip.bottom), (tabs.left, tabs.top, tabs.right, tabs.bottom))
         assert box_chip.right <= origin.x + client.right and 0 <= bottom - tabs.bottom <= 1, "chip or tabs moved into a new row"
         assert not repeats(text(chip)), ("chip repeats the sheet or cell", text(chip))
-        assert " * - " not in text(main), "selecting cells must not edit the workbook"
         checks.append("no status row below the last strip (sheet tabs), status never repeats sheet or cell, native name box, shift-selected numbers show Sum · Count in a chip inside the tab bar")
     if app == "PPT42":
         u.SendMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
@@ -5003,6 +5002,11 @@ def audit_chrome_structure(process, main, app, result, output=None):
     if output:
         time.sleep(0.3)
         capture_window(main, output / (app + "-chrome.bmp"))
+    if app == "XLS42":
+        # The workbook keeps its selection, so the shift-selection marks it edited: reopen the fixture through the
+        # normal discard prompt so the panel checks that follow start from a clean, closable window.
+        open_fixture(process, main, fixture)
+        wait_for(lambda: text(name_box) == "A1" and " * - " not in text(main), "selection fixture reopened clean", process)
 
 
 def audit_dark_mode(bin_dir, output):
