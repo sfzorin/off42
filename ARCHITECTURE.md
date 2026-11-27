@@ -212,7 +212,7 @@ crate, `rust/crates/edit42`, rather than in `suite42-app` or `off42-wasm`.
 | 5 | `off42-mobile` UniFFI bindings; Android app (Compose, tablets first) | D10 | Done (PR #13); not on Google Play yet (needs the owner's developer account and upload key) |
 | 6 | iPad/iPhone SwiftUI app over `off42-mobile` | D11, phase 5 bindings | Built on branch `phase6-ios` (pull request, not merged; not on the App Store); see below |
 | 7 | Mac App Store build variant (sandbox) and DMG notarization | D12, Apple Developer account | Prepared without an account: `APP_STORE` variant, `scripts/build-app-store.sh`, DMG notarization in `scripts/sign_and_notarize.sh` (appstore/README.md); signing, upload and sandbox runtime checks wait for the account |
-| 8 | Web editing (stage 2) with the shared command layer, then the AI assistant: Worker proxy, assistant panel, consent and policy updates | D13 | Stage 2 (editing) built on branch `phase8-web-editing` (pull request, not merged); see below. Assistant next |
+| 8 | Web editing (stage 2) with the shared command layer, then the AI assistant: Worker proxy, assistant panel, consent and policy updates | D13 | Stage 2 (editing) in PR #25 (not merged); see below. Assistant next |
 
 Phase 1 result: `suite42-app` holds the `App` contract and every module listed in §1 that has no Win32 call; the
 crate's README lists them. Code that needs the platform is passed in by the shell: `platform::PdfText` (PDFium),
