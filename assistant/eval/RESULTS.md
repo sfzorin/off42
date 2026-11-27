@@ -365,3 +365,19 @@ node summarize.mjs myrun              # markdown tables + results/myrun.json (no
 
 The harness never prints the key. It stops a model after 10 tasks below 30% success or after 5 API errors, and it
 stops the run at `--budget` dollars (default 2).
+
+## Large-file web assistant — 2026-11-27
+
+Two consecutive runs used the production Worker code in Miniflare, the actual OpenRouter responses and the same WASM and command builder as the editor. Turnstile used a local fixture. Each run opened a generated 1,224-block DOCX and a 1,200-row, 240-column XLSX. Eight changes targeted records near the beginning, middle and end of the files or text deep inside one paragraph or cell. The ninth task asked for the sum of 1,199 cells. After every edit, the grader compared the whole editable file state with the expected edit, saved and reopened the file, and checked that one Undo restored the initial state.
+
+| Task | Passed / runs | USD across runs | USD per task (min–max) |
+| --- | ---: | ---: | ---: |
+| Document edit | 8 / 8 | 0.00133496 | 0.00011803–0.00035265 |
+| Spreadsheet edit | 8 / 8 | 0.00153813 | 0.00012860–0.00033544 |
+| Range sum | 2 / 2 | 0.00013464 | 0.00006710–0.00006755 |
+
+OpenRouter reported **$0.00300773 for the 18 final executions** across 67 model calls. This includes tool continuations and the effects of provider caching. The debugging runs plus both final runs cost $0.00934466. Prices are measured on these tasks. Results by task, token counts and tool sequences are in [large-context.json](results/large-context.json).
+
+At the initial caret or A1, the file-specific payload was 1,041 UTF-8 bytes for DOCX and 466 bytes for XLSX. The previous published client sent 45,475 and 7,562 bytes respectively on the same inputs. Its document payload ended inside a JSON record. The figures exclude instructions, tool schemas, user messages and subsequent reads.
+
+Run `node website/test/large-assistant.mjs` for the offline fixture and Undo checks after building the WASM package. Add `--live` to measure real OpenRouter charges using `OPENROUTER_API_KEY` or the local OFF42 key and the installed website dependencies.

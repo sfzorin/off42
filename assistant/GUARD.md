@@ -51,6 +51,9 @@ Requests (browser → Worker), checked before anything is forwarded:
    (`message_too_long`); the panel shows "Shorten your request". Requests are short commands or questions; long
    pasted text belongs in the document. Tool results and the file snapshot are not counted here; they have their
    own caps (snapshot 30,000 characters, one tool result 60,000, whole request 400,000).
+   The editor builds its initial map from whole records. It sends the document selection, nearby blocks and up to
+   six headings, or the active sheet bounds, nearby cells and headers. Each batch of tool results shares a
+   16,000-byte allowance. An oversized read returns a request for a smaller page as valid JSON.
 3. **Turn count.** At most 8 model turns per user message (the eval's limit) and at most 30 user messages per
    session; then the panel asks the user to start a new session.
 4. **Allowed roles.** Only `user`, `assistant` and `tool` messages after the Worker's system message; `tool`

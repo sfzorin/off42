@@ -3,10 +3,22 @@
     "type": "function",
     "function": {
       "name": "get_outline",
-      "description": "List the document's paragraphs in order: id, style, length in characters and the first 100 characters of text. Call again after inserting or deleting paragraphs.",
+      "description": "Page through blocks in document order. Returns stable ids, styles, lengths and short previews. Continue at next_offset until null. Refresh after structural edits.",
       "parameters": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "description": "Zero-based block index, default 0.",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Number of blocks. Default 16.",
+            "minimum": 1,
+            "maximum": 32
+          }
+        },
         "additionalProperties": false
       }
     }
@@ -15,19 +27,34 @@
     "type": "function",
     "function": {
       "name": "read_range",
-      "description": "Return the full text, style and character formatting (bold/italic/underline spans) of the given paragraphs.",
+      "description": "Return the full text, style and character formatting (bold/italic/underline spans) of the given paragraphs. Long text can be read in windows. Continue at next_start (null when complete). Formatting offsets are absolute.",
       "parameters": {
         "type": "object",
         "properties": {
           "ids": {
             "type": "array",
             "description": "Paragraph ids from get_outline or find, at most 50.",
-            "items": { "type": "integer" },
+            "items": {
+              "type": "integer"
+            },
             "minItems": 1,
             "maxItems": 50
+          },
+          "start": {
+            "type": "integer",
+            "description": "Zero-based Unicode character offset. Default 0.",
+            "minimum": 0
+          },
+          "length": {
+            "type": "integer",
+            "description": "Maximum characters per item. Default 1600.",
+            "minimum": 1,
+            "maximum": 4000
           }
         },
-        "required": ["ids"],
+        "required": [
+          "ids"
+        ],
         "additionalProperties": false
       }
     }

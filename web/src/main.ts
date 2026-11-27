@@ -6,6 +6,7 @@
 // switched with the ☰ drawer and the URL hash. A file app shows its home screen (open strip, recent files) until a
 // file is open, then an editor: title row, menu bar, one toolbar and the content on a grey canvas. Menus and the
 // toolbar carry only operations that work today.
+import type { Selection as AssistantSelection } from './assistant-context';
 import { fileAssistant } from './assistant';
 import { call, json, startEngine, type Progress } from './engine';
 import { appLogo, icon, placeIcons } from './icons';
@@ -1039,7 +1040,7 @@ class EditSession {
 }
 
 function editorAssistant(kind: 'document' | 'spreadsheet', session: EditSession,
-  context: () => { selection: unknown; sheet?: number }, redraw: () => Promise<void>) {
+  context: () => { selection: AssistantSelection; sheet?: number }, redraw: () => Promise<void>) {
   const panel = fileAssistant({
     kind,
     start: () => session.run(async () => ({
@@ -1683,11 +1684,7 @@ async function viewDocument(ctx: Context): Promise<Editor> {
 
   const assistant = editorAssistant('document', session, () => {
     const { start, end } = current();
-    const text = selectedIds().map(id => {
-      const chars = [...paragraphText(id)];
-      return chars.slice(id === start.id ? start.offset : 0, id === end.id ? end.offset : undefined).join('');
-    }).join('\n').slice(0,8000);
-    return { selection: { start, end, text } };
+    return { selection: { start, end } };
   }, async () => { draw(await session.snapshot<DocSnapshot>()); });
   draw(snap);
   if (snap.selection) select(snap.selection);

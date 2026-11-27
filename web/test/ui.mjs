@@ -759,6 +759,10 @@ try {
       let reply;
       if(!data.continuation){
         assert.equal(data.challenge,'fixture-token');assert.equal(data.kind,'spreadsheet');
+        const initial=JSON.parse(data.context);
+        assert.equal(initial.selection,'A1');
+        assert.ok(initial.near_selection.some(cell=>cell.address==='A1'));
+        assert.ok(Buffer.byteLength(data.context)<8192);
         reply={continuation:'one',commands:[{id:'1',name:'set_cells',args:{range:'A1',values:[[4]]}}]};
       }else if(data.continuation==='one'){
         reply={continuation:'two',commands:[{id:'2',name:'set_cells',args:{range:'B1',values:[['=A1*3']]}}]};

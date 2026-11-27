@@ -60,10 +60,6 @@ async function readBody(request,limit) {
 export function filterReply(message,kind,prompt,hadTools) {
   const fail=()=>({text:fixed(prompt),refused:true});
   if (!message || message.role!=='assistant') return fail();
-  let text=typeof message.content==='string'?message.content.trim():'';
-  const normalized=normal(text);
-  if(names.some(n=>normalized.includes(n)) || provider.test(text))return fail();
-  for(let i=0;i+40<=normalized.length;i++)if(windows.has(normalized.slice(i,i+40)))return fail();
   const calls=message.tool_calls??[];
   if(!Array.isArray(calls)||calls.length>24)return fail();
   const ids=new Set();
@@ -78,7 +74,12 @@ export function filterReply(message,kind,prompt,hadTools) {
       commands.push({id:call.id,name:spec.name,args});
     }catch{return fail();}
   }
+  // Tool-turn prose is discarded here and in the continuation; only validate what goes to the editor.
   if(commands.length)return {commands};
+  let text=typeof message.content==='string'?message.content.trim():'';
+  const normalized=normal(text);
+  if(names.some(n=>normalized.includes(n)) || provider.test(text))return fail();
+  for(let i=0;i+40<=normalized.length;i++)if(windows.has(normalized.slice(i,i+40)))return fail();
   if(!text)return fail();
   if(Object.values(refusal).some(s=>normal(s)===normalized))return fail();
   if(!hadTools && text.length>600){

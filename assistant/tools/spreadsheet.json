@@ -3,10 +3,59 @@
     "type": "function",
     "function": {
       "name": "get_sheet_info",
-      "description": "Describe the active sheet: name, used range and the first 5 rows of values (rows_not_shown tells how many rows follow). Call again after inserting or deleting rows or columns.",
+      "description": "Describe the active sheet and used range. Without focus, preview at most the first 5 rows and 6 columns. With focus, return row-one headers and a small addressed neighborhood around that range.",
       "parameters": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "focus": {
+            "type": "string",
+            "description": "A1 cell or range to preview."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "aggregate_cells",
+      "description": "Calculate a range statistic locally on the active sheet. Returns a number without changing cells or sending all values. For a result to insert, write a formula.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "range": { "type": "string", "description": "A1 range." },
+          "function": { "type": "string", "enum": ["SUM", "COUNT", "AVERAGE", "MIN", "MAX"] }
+        },
+        "required": ["range", "function"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "find_cells",
+      "description": "Find literal text inside displayed cell values on the active sheet, case-insensitive. Returns up to 12 matching addresses with previews in row order. Pass next_after as after for the next page.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "range": {
+            "type": "string",
+            "description": "Optional A1 search range."
+          },
+          "after": {
+            "type": "string",
+            "description": "Continue strictly after this cell address."
+          }
+        },
+        "required": [
+          "text"
+        ],
         "additionalProperties": false
       }
     }
@@ -15,13 +64,29 @@
     "type": "function",
     "function": {
       "name": "read_cells",
-      "description": "Read a range in A1 notation (at most 2000 cells). Returns calculated values row by row, plus the formulas and number formats of cells that have them.",
+      "description": "Read a range in A1 notation (at most 2000 cells). Returns calculated values row by row, plus the formulas and number formats of cells that have them. Long text can be read in windows. next_starts gives the next offset for each incomplete address.",
       "parameters": {
         "type": "object",
         "properties": {
-          "range": { "type": "string", "description": "For example A1:D20 or B3." }
+          "range": {
+            "type": "string",
+            "description": "For example A1:D20 or B3."
+          },
+          "start": {
+            "type": "integer",
+            "description": "Zero-based Unicode character offset. Default 0.",
+            "minimum": 0
+          },
+          "length": {
+            "type": "integer",
+            "description": "Maximum characters per item. Default 1600.",
+            "minimum": 1,
+            "maximum": 4000
+          }
         },
-        "required": ["range"],
+        "required": [
+          "range"
+        ],
         "additionalProperties": false
       }
     }

@@ -142,8 +142,9 @@ enum Command {
     /// New paragraphs after `after_id` (0: at the start).
     InsertParagraphs { after_id: u64, paragraphs: Vec<NewParagraph> },
     DeleteParagraphs { ids: Vec<u64> },
-    GetOutline,
-    ReadRange { ids: Vec<u64> },
+    DocumentContext { start: Option<Pos>, end: Option<Pos> },
+    GetOutline { offset: Option<usize>, limit: Option<usize> },
+    ReadRange { ids: Vec<u64>, start: Option<usize>, length: Option<usize> },
     Find {
         text: String,
         #[serde(default)]
@@ -153,7 +154,7 @@ enum Command {
 
 impl Command {
     fn reads_only(&self) -> bool {
-        matches!(self, Self::GetOutline | Self::ReadRange { .. } | Self::Find { .. })
+        matches!(self, Self::DocumentContext { .. } | Self::GetOutline { .. } | Self::ReadRange { .. } | Self::Find { .. })
     }
 }
 
@@ -214,8 +215,7 @@ impl DocumentSession {
             .map(|c| serde_json::from_value::<Command>(c).map_err(|e| format!("Invalid command: {e}")))
             .collect::<Result<Vec<_>>>()?;
         if commands.iter().all(Command::reads_only) {
-            let mut state = self.doc.state().clone();
-            return commands.iter().map(|c| run(&mut state, c).map(|(v, _)| v)).collect();
+            return commands.iter().map(|c| read(self.doc.state(), c)).collect();
         }
         if let Some(reason) = self.read_only_reason() {
             return Err(reason.into());
@@ -694,69 +694,155 @@ fn run(s: &mut State, command: &Command) -> Result<(Value, Option<Pos>)> {
             }
             Ok((json!({ "deleted": ids.len() }), None))
         }
-        Command::GetOutline => {
-            let items: Vec<Value> = s
-                .blocks
-                .iter()
-                .map(|b| match b {
-                    Block::Paragraph(p) => {
-                        let text = ops::text(p);
-                        json!({
-                            "id": p.id,
-                            "style": style_name(p),
-                            "length": text.chars().count(),
-                            "text": text.chars().take(100).collect::<String>(),
-                        })
-                    }
-                    Block::Table(t) => json!({ "id": t.id, "style": "table", "rows": t.rows.len(), "columns": t.rows[0].len() }),
-                    Block::Image(i) => json!({ "id": i.id, "style": "image", "alt": i.alt }),
-                    Block::SectionBreak => json!({ "style": "section_break" }),
-                })
-                .collect();
-            Ok((json!({ "paragraphs": items }), None))
+        command => Ok((read(s, command)?, None)),
+    }
+}
+
+fn block_preview(index: usize, block: &Block) -> Value {
+    match block {
+        Block::Paragraph(p) => {
+            let mut chars = p.runs.iter().flat_map(|r| r.text.chars());
+            let text: String = chars.by_ref().take(100).collect();
+            let length = text.chars().count() + chars.count();
+            json!({"index":index,"id":p.id,"style":style_name(p),"length":length,"text":text})
         }
-        Command::ReadRange { ids } => {
+        Block::Table(t) => {
+            json!({"index":index,"id":t.id,"style":"table","rows":t.rows.len(),"columns":t.rows.first().map_or(0,Vec::len)})
+        }
+        Block::Image(i) => {
+            json!({"index":index,"id":i.id,"style":"image","alt":i.alt.chars().take(80).collect::<String>()})
+        }
+        Block::SectionBreak => json!({"index":index,"style":"section_break"}),
+    }
+}
+
+/// Offsets in this protocol count Unicode characters, including in split formatted runs.
+fn document_context(s: &State, start: Option<&Pos>, end: Option<&Pos>) -> Result<Value> {
+    let total = s.blocks.len();
+    let headings: Vec<_> = s
+        .blocks
+        .iter()
+        .enumerate()
+        .filter(|(_, block)| matches!(block, Block::Paragraph(p) if p.style.outline_level.is_some()))
+        .collect();
+    // Sample the heading map across the whole file, including its last section.
+    let count = headings.len().min(6);
+    let map: Vec<_> = (0..count)
+        .map(|n| {
+            let (i, b) = headings[n * (headings.len() - 1) / count.saturating_sub(1).max(1)];
+            block_preview(i, b)
+        })
+        .collect();
+    let mut focus = 0;
+    let mut selection = Value::Null;
+    if let (Some(a), Some(b)) = (start, end) {
+        let (a, b) = ordered(s, a, b)?;
+        focus = order(s, &a)?.0;
+        let last = order(s, &b)?.0;
+        let mut selected = s.blocks[focus..=last]
+            .iter()
+            .filter_map(|block| match block {
+                Block::Paragraph(p) => Some(p),
+                _ => None,
+            })
+            .enumerate()
+            .flat_map(|(n, p)| {
+                let from = if p.id == a.id { a.offset } else { 0 };
+                let until = if p.id == b.id { b.offset } else { usize::MAX };
+                (n != 0)
+                    .then_some('\n')
+                    .into_iter()
+                    .chain(p.runs.iter().flat_map(|r| r.text.chars()).skip(from).take(until.saturating_sub(from)))
+            });
+        let text: String = selected.by_ref().take(320).collect();
+        selection = json!({"start":a,"end":b,"text":text,"truncated":selected.next().is_some()});
+        // The block preview starts at the top. A caret deep in a long paragraph needs the words at the caret.
+        if a.offset > 100 {
+            if let Block::Paragraph(paragraph) = &s.blocks[focus] {
+                let from = a.offset.saturating_sub(64);
+                let excerpt: String = paragraph.runs.iter().flat_map(|r| r.text.chars()).skip(from).take(128).collect();
+                selection["near_start"] = json!({"offset":from,"text":excerpt});
+            }
+        }
+    }
+    let near: Vec<_> = s
+        .blocks
+        .iter()
+        .enumerate()
+        .skip(focus.saturating_sub(1))
+        .take(if focus == 0 { 2 } else { 3 })
+        .map(|(i, b)| block_preview(i, b))
+        .collect();
+    let section = headings.iter().rev().find(|(i, _)| *i <= focus).map(|(i, b)| block_preview(*i, b));
+    Ok(json!({"kind":"document","block_count":total,"selection":selection,"section":section,
+        "near_selection":near,"headings":map,"headings_omitted":headings.len()-count}))
+}
+
+fn read(s: &State, command: &Command) -> Result<Value> {
+    match command {
+        Command::DocumentContext { start, end } => document_context(s, start.as_ref(), end.as_ref()),
+        Command::GetOutline { offset, limit } => {
+            let offset = offset.unwrap_or(0);
+            let limit = limit.unwrap_or(s.blocks.len());
+            let paragraphs: Vec<_> =
+                s.blocks.iter().enumerate().skip(offset).take(limit).map(|(i, b)| block_preview(i, b)).collect();
+            let end = offset.saturating_add(paragraphs.len());
+            Ok(
+                json!({"paragraphs":paragraphs,"block_count":s.blocks.len(),"next_offset":(end<s.blocks.len()).then_some(end)}),
+            )
+        }
+        Command::ReadRange { ids, start, length } => {
             if ids.len() > 50 {
                 return Err("Read at most 50 paragraphs at a time".into());
             }
-            let items = ids
-                .iter()
-                .map(|id| {
-                    let p = ops::paragraph(s, *id).ok_or_else(|| format!("No paragraph {id}"))?;
-                    let mut spans = Vec::new();
-                    let mut pos = 0;
-                    for run in &p.runs {
-                        let len = run.text.chars().count();
+            let from = start.unwrap_or(0);
+            let to = from.saturating_add(length.unwrap_or(usize::MAX));
+            let items = ids.iter().map(|id| {
+                let p = ops::paragraph(s,*id).ok_or_else(|| format!("No paragraph {id}"))?;
+                let mut spans = Vec::new();
+                let mut text = String::new();
+                let mut pos = 0;
+                for run in &p.runs {
+                    let len = run.text.chars().count();
+                    let left = from.max(pos);
+                    let right = to.min(pos+len);
+                    if left < right {
+                        text.extend(run.text.chars().skip(left-pos).take(right-left));
                         let st = &run.style;
-                        if len > 0 && (st.bold || st.italic || st.underline) {
-                            spans.push(json!({ "start": pos, "end": pos + len, "bold": st.bold, "italic": st.italic, "underline": st.underline }));
+                        if st.bold || st.italic || st.underline {
+                            spans.push(json!({"start":left,"end":right,"bold":st.bold,"italic":st.italic,"underline":st.underline}));
                         }
-                        pos += len;
                     }
-                    Ok(json!({ "id": id, "style": style_name(p), "text": ops::text(p), "spans": spans }))
-                })
-                .collect::<Result<Vec<_>>>()?;
-            Ok((json!({ "paragraphs": items }), None))
+                    pos += len;
+                }
+                Ok(json!({"id":id,"style":style_name(p),"text":text,"spans":spans,"start":from,"length":pos,
+                    "next_start":(to<pos).then_some(to)}))
+            }).collect::<Result<Vec<_>>>()?;
+            Ok(json!({"paragraphs":items}))
         }
         Command::Find { text, match_case } => {
             if text.is_empty() {
                 return Err("Give text to find".into());
             }
             let mut found = Vec::new();
-            'outer: for id in body_ids(s) {
-                let all = paragraph_text(s, id)?;
+            'outer: for block in &s.blocks {
+                let Block::Paragraph(p) = block else { continue };
+                let id = p.id;
+                let all = ops::text(p);
                 for range in matches(&all, text, *match_case) {
                     if found.len() == 50 {
                         break 'outer;
                     }
                     let offset = char_offset(&all, range.start);
-                    let before: String = all[..range.start].chars().rev().take(30).collect::<Vec<_>>().into_iter().rev().collect();
+                    let before: String =
+                        all[..range.start].chars().rev().take(30).collect::<Vec<_>>().into_iter().rev().collect();
                     let after: String = all[range.end..].chars().take(30).collect();
                     found.push(json!({ "id": id, "offset": offset, "context": format!("{before}{}{after}", &all[range.clone()]) }));
                 }
             }
-            Ok((json!({ "matches": found }), None))
+            Ok(json!({ "matches": found }))
         }
+        _ => Err("Not a document read command".into()),
     }
 }
 

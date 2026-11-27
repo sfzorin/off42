@@ -133,14 +133,14 @@ enum Command {
         descending: bool,
         has_header: bool,
     },
-    GetSheetInfo {
-        #[serde(default)]
-        sheet: Option<usize>,
-    },
+    GetSheetInfo { sheet: Option<usize>, focus: Option<String> },
+    AggregateCells { sheet: Option<usize>, range: String, function: String },
+    FindCells { sheet: Option<usize>, text: String, range: Option<String>, after: Option<String> },
     ReadCells {
-        #[serde(default)]
         sheet: Option<usize>,
         range: String,
+        start: Option<usize>,
+        length: Option<usize>,
     },
 }
 
@@ -157,12 +157,14 @@ impl Command {
             | Self::AdjustDecimals { sheet, .. }
             | Self::SetTextStyle { sheet, .. }
             | Self::SortRange { sheet, .. }
-            | Self::GetSheetInfo { sheet }
+            | Self::AggregateCells { sheet, .. }
+            | Self::FindCells { sheet, .. }
+            | Self::GetSheetInfo { sheet, .. }
             | Self::ReadCells { sheet, .. } => *sheet,
         }
     }
     fn reads_only(&self) -> bool {
-        matches!(self, Self::GetSheetInfo { .. } | Self::ReadCells { .. })
+        matches!(self, Self::AggregateCells { .. } | Self::FindCells { .. } | Self::GetSheetInfo { .. } | Self::ReadCells { .. })
     }
 }
 
@@ -561,34 +563,101 @@ fn write(w: &mut Workbook, command: &Command) -> Result<Value> {
                 .map_err(failed)?;
             Ok(json!({ "changed": changed }))
         }
-        Command::GetSheetInfo { .. } | Command::ReadCells { .. } => read(w, command),
+        Command::AggregateCells { .. } | Command::FindCells { .. } | Command::GetSheetInfo { .. } | Command::ReadCells { .. } => read(w, command),
     }
 }
 
 fn read(w: &Workbook, command: &Command) -> Result<Value> {
+    if let Command::AggregateCells { range, function, .. } = command {
+        let value = w.range_statistic(range_ref(range)?, function).map_err(str::to_owned)?;
+        return Ok(json!({"range":range,"function":function,"value":value}));
+    }
     let shown = w.display_cells();
     match command {
-        Command::GetSheetInfo { .. } => {
+        Command::GetSheetInfo { focus, .. } => {
             let used = shown.keys().fold(None, |acc: Option<(usize, usize)>, &(r, c)| {
                 Some(acc.map_or((r, c), |(mr, mc)| (mr.max(r), mc.max(c))))
             });
             let name = w.sheets().into_iter().find(|s| s.0 == w.active_sheet()).map(|s| s.1).unwrap_or_default();
             let (rows, cols) = used.map_or((0, 0), |(r, c)| (r + 1, c + 1));
+            let used_range = used.map(|(bottom, right)| range_text(Range { top: 0, left: 0, bottom, right }));
+            if let Some(focus) = focus {
+                let selection = range_ref(focus)?;
+                let (r, c) = (selection.top, selection.left);
+                let left = c.saturating_sub(1);
+                let right = (c + 1).min(MAX_COLS - 1);
+                let cell = |row, col| {
+                    let text = shown.get(&(row, col)).map(String::as_str).unwrap_or("");
+                    let mut chars = text.chars();
+                    let value: String = chars.by_ref().take(64).collect();
+                    json!({"address":a1(row,col),"value":value,"truncated":chars.next().is_some()})
+                };
+                let headers: Vec<_> = (left..=right).map(|col| cell(0, col)).collect();
+                let nearby: Vec<_> = (r.saturating_sub(1)..=(r + 1).min(MAX_ROWS - 1))
+                    .flat_map(|row| (left..=right).map(move |col| cell(row, col)))
+                    .collect();
+                return Ok(
+                    json!({"kind":"spreadsheet","sheet":name,"used_range":used_range,"selection":range_text(selection),
+                    "headers_row_1":headers,"near_selection":nearby}),
+                );
+            }
             let preview: Vec<Vec<String>> = (0..rows.min(5))
-                .map(|r| (0..cols).map(|c| shown.get(&(r, c)).cloned().unwrap_or_default()).collect())
+                .map(|r| {
+                    (0..cols.min(6))
+                        .map(|c| shown.get(&(r, c)).map(|v| v.chars().take(100).collect()).unwrap_or_default())
+                        .collect()
+                })
                 .collect();
             Ok(json!({
                 "name": name,
-                "used_range": if rows == 0 { Value::Null } else { range_text(Range { top: 0, left: 0, bottom: rows - 1, right: cols - 1 }).into() },
+                "used_range": used_range, "columns_not_shown":cols.saturating_sub(6),
                 "rows": preview,
                 "rows_not_shown": rows.saturating_sub(5),
             }))
         }
-        Command::ReadCells { range, .. } => {
+        Command::FindCells { text, range, after, .. } => {
+            if text.is_empty() {
+                return Err("Give text to find".into());
+            }
+            let needle = text.to_lowercase();
+            let area = range.as_deref().map(range_ref).transpose()?;
+            let after = after.as_deref().map(cell_ref).transpose()?;
+            let mut matches = Vec::new();
+            let mut next_after = None;
+            let mut last = String::new();
+            for (&(r, c), value) in &shown {
+                if after.is_some_and(|p| (r, c) <= p)
+                    || area.is_some_and(|a| r < a.top || r > a.bottom || c < a.left || c > a.right)
+                {
+                    continue;
+                }
+                if value.to_lowercase().contains(&needle) {
+                    if matches.len() == 12 {
+                        next_after = Some(last);
+                        break;
+                    }
+                    last = a1(r, c);
+                    matches.push(json!({"address":last,"preview":value.chars().take(100).collect::<String>()}));
+                }
+            }
+            Ok(json!({"matches":matches,"next_after":next_after}))
+        }
+        Command::ReadCells { range, start, length, .. } => {
             let r = range_ref(range)?;
             if cells(r) > 2000 {
                 return Err("Read at most 2000 cells at a time".into());
             }
+            let start = start.unwrap_or(0);
+            let length = length.unwrap_or(usize::MAX);
+            let mut next_starts = serde_json::Map::new();
+            let mut part = |text: &str, address: &str| {
+                let mut chars = text.chars().skip(start);
+                let result: String = chars.by_ref().take(length).collect();
+                if chars.next().is_some() {
+                    next_starts.insert(address.into(), json!(start.saturating_add(length)));
+                }
+                result
+            };
             let mut formulas = serde_json::Map::new();
             let mut formats = serde_json::Map::new();
             let values: Vec<Vec<String>> = (r.top..=r.bottom)
@@ -596,17 +665,19 @@ fn read(w: &Workbook, command: &Command) -> Result<Value> {
                     (r.left..=r.right)
                         .map(|col| {
                             if let Some(input) = w.cell(row, col).filter(|t| t.starts_with('=')) {
-                                formulas.insert(a1(row, col), input.into());
+                                formulas.insert(a1(row, col), part(input, &a1(row, col)).into());
                             }
                             if let Some(style) = w.style(row, col).filter(|s| !s.number_format.is_empty()) {
-                                formats.insert(a1(row, col), style.number_format.clone().into());
+                                formats.insert(a1(row, col), part(&style.number_format, &a1(row, col)).into());
                             }
-                            shown.get(&(row, col)).cloned().unwrap_or_default()
+                            shown.get(&(row, col)).map(|v| part(v, &a1(row, col))).unwrap_or_default()
                         })
                         .collect()
                 })
                 .collect();
-            Ok(json!({ "range": range_text(r), "values": values, "formulas": formulas, "formats": formats }))
+            Ok(
+                json!({ "range": range_text(r), "values": values, "formulas": formulas, "formats": formats, "next_starts":next_starts }),
+            )
         }
         _ => Err("Not a read command".into()),
     }

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import assert from 'node:assert/strict';
+import { toolResult } from '../src/assistant-context.ts';
 import * as off42 from '../src/wasm/off42_wasm.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -206,6 +207,14 @@ check('IMG42 rotates pixels and Undo restores their original dimensions', () => 
   assert.equal(info('redo').width,630);
   off42.imageClose(id);off42.imageClose(reopened);
 });
+check('assistant returns complete JSON for oversized reads and completed writes', () => {
+  const large = JSON.stringify({text:'😀'.repeat(5000)});
+  assert.match(JSON.parse(toolResult(large,1)).error,/smaller|fewer/);
+  assert.equal(JSON.parse(toolResult(large,1,true)).applied,true);
+  const small=JSON.stringify({value:0});
+  assert.equal(toolResult(small,24),small);
+});
+
 check('assistant preview keeps stable paragraph ids and a single live Undo', () => {
   const id=off42.editNew('document');
   const draft=off42.editFork(id);

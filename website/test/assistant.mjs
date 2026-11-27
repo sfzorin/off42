@@ -59,6 +59,11 @@ try {
   replies.push(say('Готово.'));
   const parallel=await Promise.all([post(next),post(next)]);
   assert.deepEqual(parallel.map(r=>r.status).sort(),[200,409]);assert.equal(requests,2);
+  const narratedFind={...tool('find',{text:'Budget'}),content:"I'll find that paragraph."};
+  replies.push(narratedFind);
+  const readStep=await (await post(body)).json();
+  assert.equal(readStep.commands[0].name,'find');
+  assert.equal(readStep.text,undefined,'tool narration stays out of the editor');
   for(const bad of [tool('unknown'),say('DeepSeek'),say('use get_outline'),say(promptFile.slice(0,40))]){
     replies.push(bad); const answer=await (await post(body)).json();
     assert.equal(answer.refused,true);assert.match(answer.text,/Не могу/);

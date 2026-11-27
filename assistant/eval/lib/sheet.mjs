@@ -188,10 +188,22 @@ function deleteAxis(s, axis, at, n) {
 }
 
 const MAX_CELLS = 2000;
-function info(s) {
+function info(s, focus) {
   const u = used(s);
+  if (focus) {
+    const {top,left} = parseRange(focus);
+    const headers = [], nearby = [];
+    const cell = (r,c) => {
+      const text = [...String(valueJSON(valueAt(s,r,c)) ?? '')];
+      return {address:addr(r,c), value:text.slice(0,64).join(''), truncated:text.length>64};
+    };
+    for (let c=Math.max(0,left-1); c<=Math.min(left+1,16383); c++) headers.push(cell(0,c));
+    for (let r=Math.max(0,top-1); r<=Math.min(top+1,1048575); r++)
+      for (let c=Math.max(0,left-1); c<=Math.min(left+1,16383); c++) nearby.push(cell(r,c));
+    return {kind:'spreadsheet',sheet:s.name,selection:focus,used_range:u.bottom<0?null:rangeText(u),headers_row_1:headers,near_selection:nearby};
+  }
   const preview = [];
-  for (let r = 0; r <= Math.min(u.bottom, 4); r++) { const row = []; for (let c = 0; c <= u.right; c++) row.push(valueJSON(valueAt(s, r, c))); preview.push(row); }
+  for (let r = 0; r <= Math.min(u.bottom, 4); r++) { const row = []; for (let c = 0; c <= Math.min(u.right,5); c++) row.push(valueJSON(valueAt(s, r, c))); preview.push(row); }
   const out = { sheet: s.name, used_range: u.bottom < 0 ? null : rangeText(u), rows: u.bottom + 1, columns: u.right + 1, first_rows: preview };
   // Say plainly when the preview is partial; models otherwise treat it as the whole table.
   if (u.bottom > 4) out.rows_not_shown = `${u.bottom - 4} more rows (6 to ${u.bottom + 1}); use read_cells`;
@@ -199,22 +211,48 @@ function info(s) {
 }
 
 export const sheetTools = {
-  get_sheet_info: (s) => info(s),
+  get_sheet_info: (s, args) => info(s,args?.focus),
 
-  read_cells(s, { range }) {
+  aggregate_cells(s, {range, function: fn}) {
+    return {range, function:fn, value:valueJSON(evalFormula(s,fn+'('+range+')',new Set()))};
+  },
+
+  find_cells(s, {text, range, after}) {
+    const area = range && parseRange(range);
+    const from = after && parseCell(after);
+    const matches = [];
+    const cells = [...s.cells.keys()].map(key=>key.split(',').map(Number)).sort(([r,c],[rr,cc])=>r-rr || c-cc);
+    for (const [r,c] of cells) {
+      if (from && (r<from.r || r===from.r && c<=from.c)) continue;
+      if (area && (r<area.top || r>area.bottom || c<area.left || c>area.right)) continue;
+      const value=String(valueJSON(valueAt(s,r,c)) ?? '');
+      if (!value.toLowerCase().includes(text.toLowerCase())) continue;
+      if (matches.length===12) return {matches,next_after:matches.at(-1).address};
+      matches.push({address:addr(r,c),preview:[...value].slice(0,100).join('')});
+    }
+    return {matches,next_after:null};
+  },
+
+  read_cells(s, { range, start=0, length=1600 }) {
     const g = parseRange(range);
     if ((g.bottom - g.top + 1) * (g.right - g.left + 1) > MAX_CELLS) throw new ToolError(`range too large (max ${MAX_CELLS} cells)`);
-    const values = [], formulas = {}, formats = {};
+    const values = [], formulas = {}, formats = {}, next_starts = {};
+    const part=(value,address)=>{
+      if (typeof value!=='string') return value;
+      const chars=[...value];
+      if (start+length<chars.length) next_starts[address]=start+length;
+      return chars.slice(start,start+length).join('');
+    };
     for (let r = g.top; r <= g.bottom; r++) {
       const row = [];
       for (let c = g.left; c <= g.right; c++) {
-        row.push(valueJSON(valueAt(s, r, c)));
-        const f = formulaAt(s, r, c); if (f) formulas[addr(r, c)] = f;
-        const n = formatAt(s, r, c); if (n) formats[addr(r, c)] = n;
+        row.push(part(valueJSON(valueAt(s, r, c)),addr(r,c)));
+        const f = formulaAt(s, r, c); if (f) formulas[addr(r, c)] = part(f,addr(r,c));
+        const n = formatAt(s, r, c); if (n) formats[addr(r, c)] = part(n,addr(r,c));
       }
       values.push(row);
     }
-    const out = { range: rangeText(g), values };
+    const out = { range: rangeText(g), values, next_starts };
     if (Object.keys(formulas).length) out.formulas = formulas;
     if (Object.keys(formats).length) out.formats = formats;
     return out;

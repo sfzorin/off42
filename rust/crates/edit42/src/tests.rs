@@ -243,7 +243,7 @@ fn assistant_commands_outline_read_find_replace_insert_delete() {
     let [title, body, one, two] = ids(&d)[..] else { panic!() };
     apply(&mut d, json!({ "command": "set_paragraph_style", "ids": [title], "style": "heading1" }));
     let outline = apply(&mut d, json!({ "command": "get_outline" }));
-    assert_eq!(outline["paragraphs"][0], json!({ "id": title, "style": "heading1", "length": 6, "text": "Report" }));
+    assert_eq!(outline["paragraphs"][0], json!({ "index":0, "id": title, "style": "heading1", "length": 6, "text": "Report" }));
     assert!(!d.can_redo() && d.can_undo());
     let found = apply(&mut d, json!({ "command": "find", "text": "o" }));
     assert_eq!(found["matches"].as_array().unwrap().len(), 5);
@@ -613,4 +613,63 @@ fn sessions_report_status_and_refuse_unknown_kinds() {
     let s = Session::blank("document").unwrap();
     assert_eq!(s.status(), r#"{"canRedo":false,"canUndo":false,"dirty":false}"#);
     assert!(s.snapshot("not json").is_err());
+}
+
+#[test]
+fn assistant_pages_long_selections_without_splitting_unicode() {
+    let mut doc = Session::blank("document").unwrap();
+    let body = format!("{}😀конец", "я".repeat(5000));
+    let mut paragraphs: Vec<_> = (0..200).map(|i| json!({"text":format!("Section {i}"),"style":"heading1"})).collect();
+    paragraphs.push(json!({"text":body,"style":"normal"}));
+    let added = apply(&mut doc, json!({"command":"insert_paragraphs","after_id":1,"paragraphs":paragraphs}));
+    let id = added["ids"][200].as_u64().unwrap();
+    let context = apply(
+        &mut doc,
+        json!({"command":"document_context","start":{"id":id,"offset":0},"end":{"id":id,"offset":5006}}),
+    );
+    assert!(context.to_string().len() < 8192);
+    assert_eq!(context["headings_omitted"], 194);
+    assert_eq!(context["section"]["text"], "Section 199");
+    assert_eq!(context["selection"]["truncated"], true);
+    let page = apply(&mut doc, json!({"command":"get_outline","offset":199,"limit":2}));
+    assert_eq!(page["next_offset"], 201);
+    let tail = apply(&mut doc, json!({"command":"get_outline","offset":201,"limit":2}));
+    assert!(tail["next_offset"].is_null());
+    assert_eq!(tail["paragraphs"][0]["id"], id);
+    let read = apply(&mut doc, json!({"command":"read_range","ids":[id],"start":4999,"length":2}));
+    assert_eq!(read["paragraphs"][0]["text"], "я😀");
+    assert_eq!(read["paragraphs"][0]["next_start"], 5001);
+    assert!(doc.undo());
+    assert!(!doc.can_undo());
+}
+
+#[test]
+fn assistant_reads_wide_sheets_by_address_and_aggregates_in_the_engine() {
+    let mut book = Session::open(b"amount,flag\n10,x\n20,y", "csv").unwrap();
+    let labels: Vec<_> = (1..=14).map(|i| json!([format!("Lot-{i}")])).collect();
+    apply(&mut book, json!({"command":"set_cells","range":"IF1","values":labels}));
+    apply(&mut book, json!({"command":"set_cells","range":"IF15","values":[["😀abcdef"]]}));
+    let context = apply(&mut book, json!({"command":"get_sheet_info","focus":"IF14:IF15"}));
+    assert_eq!(context["used_range"], "A1:IF15");
+    assert_eq!(context["selection"], "IF14:IF15");
+    assert!(context["near_selection"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|v| v["address"] == "IF15" && v["value"] == "😀abcdef"));
+    assert!(context.to_string().len() < 8192);
+    let first = apply(&mut book, json!({"command":"find_cells","text":"lot-","range":"IF1:IF15"}));
+    assert_eq!(first["next_after"], "IF12");
+    let last = apply(&mut book, json!({"command":"find_cells","text":"lot-","after":"IF12"}));
+    assert_eq!(last["matches"][1]["address"], "IF14");
+    assert!(last["next_after"].is_null());
+    let fragment = apply(&mut book, json!({"command":"read_cells","range":"IF15","length":2}));
+    assert_eq!(fragment["values"][0][0], "😀a");
+    assert_eq!(fragment["next_starts"]["IF15"], 2);
+    let rest = apply(&mut book, json!({"command":"read_cells","range":"IF15","start":2,"length":10}));
+    assert_eq!(rest["values"][0][0], "bcdef");
+    assert_eq!(rest["next_starts"], json!({}));
+    assert_eq!(apply(&mut book, json!({"command":"aggregate_cells","range":"A1:A3","function":"SUM"}))["value"], 30.0);
+    assert!(book.undo());
+    assert_eq!(shown(&book, "IF15"), "");
 }

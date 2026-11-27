@@ -88,14 +88,21 @@ export function outline(doc) {
 }
 
 export const docTools = {
-  get_outline(doc) { return outline(doc); },
+  get_outline(doc, {offset = 0, limit = 16} = {}) {
+    const {paragraphs} = outline(doc);
+    const end = offset + limit;
+    return {paragraphs:paragraphs.slice(offset,end), block_count:paragraphs.length, next_offset:end<paragraphs.length?end:null};
+  },
 
-  read_range(doc, { ids }) {
+  read_range(doc, { ids, start = 0, length = 1600 }) {
     return {
       paragraphs: ids.map((id) => {
         const p = para(doc, id);
-        const out = { id, style: p.style, text: textOf(p) };
-        const f = formatting(p);
+        const chars = [...textOf(p)];
+        const end = start + length;
+        const out = { id, style: p.style, text: chars.slice(start,end).join(''), start, length:chars.length, next_start:end<chars.length?end:null };
+        const f = formatting(p).filter(span=>span.end>start && span.start<end)
+          .map(span=>({...span,start:Math.max(start,span.start),end:Math.min(end,span.end)}));
         if (f.length) out.formatting = f;
         return out;
       }),

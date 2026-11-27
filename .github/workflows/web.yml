@@ -92,7 +92,9 @@ jobs:
         run: npm run build
       - name: Smoke test (Node loads the wasm and converts fixtures; build is self-contained)
         working-directory: web
-        run: npm test
+        run: |
+          npm test
+          node ../website/test/large-assistant.mjs
       - name: Headless browser test
         working-directory: web
         run: |

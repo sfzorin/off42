@@ -2303,6 +2303,41 @@ fn calc(a: Value, b: Value, op: u8) -> Value {
     }
 }
 
+impl Workbook {
+    /// Evaluate a range aggregate as a worksheet formula without changing any cell or the Undo history.
+    pub fn range_statistic(&self, range: crate::Range, function: &str) -> Result<f64, &'static str> {
+        if !matches!(function, "SUM" | "COUNT" | "AVERAGE" | "MIN" | "MAX") {
+            return Err("Unsupported range statistic");
+        }
+        if !range.valid(self.history.current().sheet()) {
+            return Err("Range outside the active sheet");
+        }
+        let expr = format!(
+            "{}({}{}:{}{})",
+            function,
+            crate::office::col_name(range.left),
+            range.top + 1,
+            crate::office::col_name(range.right),
+            range.bottom + 1
+        );
+        let mut eval = Eval::new(self, chrono::Local::now().naive_local());
+        let mut parser = Parser {
+            input: expr.as_bytes(),
+            pos: 0,
+            eval: &mut eval,
+            depth: 0,
+            sheet: self.active_sheet(),
+            origin: (0, 0),
+            locals: HashMap::new(),
+        };
+        match parser.comparison() {
+            Value::Number(value) if value.is_finite() => Ok(value),
+            Value::Error(error) => Err(error),
+            _ => Err("Could not evaluate the range"),
+        }
+    }
+}
+
 pub(super) struct Calculation {
     pub values: std::collections::BTreeMap<(usize, usize), Value>,
     pub spills: std::collections::BTreeMap<(usize, usize), crate::Range>,

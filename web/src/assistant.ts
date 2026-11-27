@@ -1,19 +1,18 @@
-import { call, json } from './engine';
+import { call } from './engine';
+import { contextCommand, toolCommand, toolResult, readTools, type Command, type Selection } from './assistant-context';
 import { t, language } from './i18n';
 import docTools from '../../assistant/tools/document.json';
 import sheetTools from '../../assistant/tools/spreadsheet.json';
 import { validate } from '../../assistant/eval/lib/schema.mjs';
 
 type Kind = 'document' | 'spreadsheet';
-type Command = Record<string, unknown> & { command: string };
 type Options = {
   kind: Kind;
-  start: () => Promise<{ draft: number; version: number; sheet?: number; selection: unknown }>;
+  start: () => Promise<{ draft: number; version: number; sheet?: number; selection: Selection }>;
   commit: (commands: Command[], version: number, signal: AbortSignal) => Promise<void>;
 };
 type Reply = { continuation?: string; commands?: {id:string; name:string; args:Record<string,unknown>}[];
   text?:string; refused?:boolean; error?:string; sitekey?:string };
-const reads = new Set(['get_outline','read_range','find','get_sheet_info','read_cells']);
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, text = '') {
   const node = document.createElement(tag); node.textContent = text; return node;
 }
@@ -108,9 +107,7 @@ export function fileAssistant(options: Options) {
     const {draft,version,sheet,selection}=await options.start();
     try {
       signal.throwIfAborted();
-      const contextCommand=options.kind==='document'?{command:'get_outline'}:{command:'get_sheet_info',sheet};
-      const outline=await json('editApply',draft,JSON.stringify(contextCommand));
-      const context=JSON.stringify({selection,outline}).slice(0,30000);
+      const context=await call<string>('editApply',draft,JSON.stringify(contextCommand(selection,sheet)));
       let request: object={id:await spendingId(signal),session,kind:options.kind,context,prompt:question,challenge:token};
       messages++;
       const writes: Command[]=[];
@@ -127,13 +124,14 @@ export function fileAssistant(options: Options) {
           signal.throwIfAborted();
           const spec=(options.kind==='document'?docTools:sheetTools).find(x=>x.function.name===name);
           if(!spec||validate(spec.function.parameters,args).length)throw new Error('ai.error');
-          const command: Command={...args,command:name,...(sheet===undefined?{}:{sheet})};
+          const command=toolCommand(name,args,sheet);
           let content;
+          let applied=false;
           try {
             content=await call<string>('editApply',draft,JSON.stringify(command));
-            if(!reads.has(name))writes.push(command);
+            if(!readTools.has(name)){writes.push(command);applied=true;}
           } catch(error) {content=JSON.stringify({error:error instanceof Error?error.message:'Command failed'});}
-          results.push({id,content:content.slice(0,60000)});
+          results.push({id,content:toolResult(content,reply.commands.length,applied)});
         }
         request={continuation:reply.continuation,results};
       }

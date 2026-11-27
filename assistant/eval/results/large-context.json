@@ -1,0 +1,306 @@
+{
+  "date": "2026-11-27",
+  "models": [
+    "deepseek/deepseek-v4.1-flash"
+  ],
+  "docx_blocks": 1224,
+  "xlsx_used_range": "A1:IF1200",
+  "usd": "0.0030077316",
+  "tasks": [
+    {
+      "task": "Договор-0007",
+      "category": "Document edit",
+      "initial_context_bytes": 1041,
+      "runs": [
+        {
+          "passed": true,
+          "usd": "0.0001521648",
+          "model_calls": 4,
+          "input_tokens": 11804,
+          "output_tokens": 200,
+          "tools": [
+            "find",
+            "read_range",
+            "replace_text"
+          ],
+          "http_errors": []
+        },
+        {
+          "passed": true,
+          "usd": "0.0001180260",
+          "model_calls": 4,
+          "input_tokens": 11777,
+          "output_tokens": 206,
+          "tools": [
+            "find",
+            "read_range",
+            "replace_text"
+          ],
+          "http_errors": []
+        }
+      ]
+    },
+    {
+      "task": "Договор-0603",
+      "category": "Document edit",
+      "initial_context_bytes": 1041,
+      "runs": [
+        {
+          "passed": true,
+          "usd": "0.0001199160",
+          "model_calls": 4,
+          "input_tokens": 11810,
+          "output_tokens": 203,
+          "tools": [
+            "find",
+            "read_range",
+            "replace_text"
+          ],
+          "http_errors": []
+        },
+        {
+          "passed": true,
+          "usd": "0.0001500948",
+          "model_calls": 4,
+          "input_tokens": 11777,
+          "output_tokens": 201,
+          "tools": [
+            "find",
+            "read_range",
+            "replace_text"
+          ],
+          "http_errors": []
+        }
+      ]
+    },
+    {
+      "task": "Договор-1198",
+      "category": "Document edit",
+      "initial_context_bytes": 1041,
+      "runs": [
+        {
+          "passed": true,
+          "usd": "0.0001227960",
+          "model_calls": 4,
+          "input_tokens": 11818,
+          "output_tokens": 209,
+          "tools": [
+            "find",
+            "read_range",
+            "replace_text"
+          ],
+          "http_errors": []
+        },
+        {
+          "passed": true,
+          "usd": "0.0001217160",
+          "model_calls": 4,
+          "input_tokens": 11818,
+          "output_tokens": 206,
+          "tools": [
+            "find",
+            "read_range",
+            "replace_text"
+          ],
+          "http_errors": []
+        }
+      ]
+    },
+    {
+      "task": "Заказ-0140",
+      "category": "Spreadsheet edit",
+      "initial_context_bytes": 466,
+      "runs": [
+        {
+          "passed": true,
+          "usd": "0.0001671156",
+          "model_calls": 4,
+          "input_tokens": 11949,
+          "output_tokens": 268,
+          "tools": [
+            "find_cells",
+            "set_cells",
+            "read_cells",
+            "read_cells"
+          ],
+          "http_errors": []
+        },
+        {
+          "passed": true,
+          "usd": "0.0001904364",
+          "model_calls": 4,
+          "input_tokens": 12227,
+          "output_tokens": 326,
+          "tools": [
+            "find_cells",
+            "read_cells",
+            "read_cells",
+            "set_cells"
+          ],
+          "http_errors": []
+        }
+      ]
+    },
+    {
+      "task": "Заказ-0367",
+      "category": "Spreadsheet edit",
+      "initial_context_bytes": 466,
+      "runs": [
+        {
+          "passed": true,
+          "usd": "0.0001672560",
+          "model_calls": 4,
+          "input_tokens": 12016,
+          "output_tokens": 283,
+          "tools": [
+            "find_cells",
+            "read_cells",
+            "set_cells"
+          ],
+          "http_errors": []
+        },
+        {
+          "passed": true,
+          "usd": "0.0001639656",
+          "model_calls": 4,
+          "input_tokens": 11962,
+          "output_tokens": 256,
+          "tools": [
+            "find_cells",
+            "read_cells",
+            "set_cells"
+          ],
+          "http_errors": []
+        }
+      ]
+    },
+    {
+      "task": "Заказ-0225",
+      "category": "Spreadsheet edit",
+      "initial_context_bytes": 466,
+      "runs": [
+        {
+          "passed": true,
+          "usd": "0.0003354372",
+          "model_calls": 5,
+          "input_tokens": 16377,
+          "output_tokens": 538,
+          "tools": [
+            "find_cells",
+            "read_cells",
+            "read_cells",
+            "set_cells"
+          ],
+          "http_errors": []
+        },
+        {
+          "passed": true,
+          "usd": "0.0001786356",
+          "model_calls": 4,
+          "input_tokens": 11997,
+          "output_tokens": 288,
+          "tools": [
+            "find_cells",
+            "read_cells",
+            "set_cells"
+          ],
+          "http_errors": []
+        }
+      ]
+    },
+    {
+      "task": "long-selection",
+      "category": "Document edit",
+      "initial_context_bytes": 1591,
+      "runs": [
+        {
+          "passed": true,
+          "usd": "0.0003526488",
+          "model_calls": 4,
+          "input_tokens": 13826,
+          "output_tokens": 565,
+          "tools": [
+            "find",
+            "read_range",
+            "replace_text",
+            "read_range"
+          ],
+          "http_errors": []
+        },
+        {
+          "passed": true,
+          "usd": "0.0001975968",
+          "model_calls": 4,
+          "input_tokens": 12472,
+          "output_tokens": 316,
+          "tools": [
+            "find",
+            "read_range",
+            "replace_text"
+          ],
+          "http_errors": []
+        }
+      ]
+    },
+    {
+      "task": "long-cell",
+      "category": "Spreadsheet edit",
+      "initial_context_bytes": 865,
+      "runs": [
+        {
+          "passed": true,
+          "usd": "0.0001286028",
+          "model_calls": 3,
+          "input_tokens": 10815,
+          "output_tokens": 225,
+          "tools": [
+            "read_cells",
+            "set_cells"
+          ],
+          "http_errors": []
+        },
+        {
+          "passed": true,
+          "usd": "0.0002066796",
+          "model_calls": 3,
+          "input_tokens": 10787,
+          "output_tokens": 198,
+          "tools": [
+            "read_cells",
+            "set_cells"
+          ],
+          "http_errors": []
+        }
+      ]
+    },
+    {
+      "task": "sum",
+      "category": "Range sum",
+      "initial_context_bytes": 466,
+      "runs": [
+        {
+          "passed": true,
+          "usd": "0.0000675468",
+          "model_calls": 2,
+          "input_tokens": 5695,
+          "output_tokens": 81,
+          "tools": [
+            "aggregate_cells"
+          ],
+          "http_errors": []
+        },
+        {
+          "passed": true,
+          "usd": "0.0000670968",
+          "model_calls": 2,
+          "input_tokens": 5694,
+          "output_tokens": 80,
+          "tools": [
+            "aggregate_cells"
+          ],
+          "http_errors": []
+        }
+      ]
+    }
+  ]
+}
