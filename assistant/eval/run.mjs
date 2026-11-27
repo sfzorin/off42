@@ -9,6 +9,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { documentTasks } from './tasks/documents.mjs';
 import { spreadsheetTasks } from './tasks/spreadsheets.mjs';
+import { scopeTasks } from './tasks/scope.mjs';
 import { TOOLS, initialMessages, execute } from './lib/harness.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -41,7 +42,7 @@ const wantModels = opt('models', null);
 let models = wantModels ? config.filter((m) => wantModels.split(',').includes(m.id)) : config;
 // --provider-order a,b pins every selected model to those providers (to exercise fallback providers).
 if (opt('provider-order', null)) models = models.map((m) => ({ ...m, provider: { order: opt('provider-order').split(','), allow_fallbacks: false } }));
-const allTasks = [...documentTasks, ...spreadsheetTasks];
+const allTasks = [...documentTasks, ...spreadsheetTasks, ...scopeTasks];
 const wantTasks = opt('tasks', null);
 const picked = wantTasks ? allTasks.filter((t) => wantTasks.split(',').some((w) => t.id.startsWith(w))) : allTasks;
 // --repeat-each N runs every task N times back to back (cache measurements).
@@ -108,7 +109,7 @@ async function runTask(model, task, dataCollection) {
   const initial = task.make();
   const state = task.make();
   const messages = initialMessages(state, task.prompt, CACHE_CONTROL === 'off' ? false : !!model.cacheControl);
-  const rec = { model: model.id, task: task.id, lang: task.lang, adversarial: !!task.adversarial, turns: 0, calls: 0, validCalls: 0, toolErrors: 0, firstTryValid: true, requests: [], usage: { prompt: 0, completion: 0, cached: 0, cacheWrite: 0, reasoning: 0, cost: 0 }, errors: [], latencyMs: 0 };
+  const rec = { model: model.id, task: task.id, lang: task.lang, adversarial: !!task.adversarial, scope: task.scope, turns: 0, calls: 0, validCalls: 0, toolErrors: 0, firstTryValid: true, requests: [], usage: { prompt: 0, completion: 0, cached: 0, cacheWrite: 0, reasoning: 0, cost: 0 }, errors: [], latencyMs: 0 };
   let reply = '';
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     if (spent > BUDGET) { rec.errors.push('budget exhausted'); break; }
@@ -138,7 +139,7 @@ async function runTask(model, task, dataCollection) {
     }
     if (turn === MAX_TURNS - 1) rec.errors.push('turn limit reached');
   }
-  const g = task.grade(state, reply, initial);
+  const g = task.grade(state, reply, initial, { calls: rec.calls });
   rec.ok = !!g.ok && !rec.errors.some((e) => /^HTTP|budget|no choices|turn limit/.test(e));
   rec.why = g.ok ? undefined : g.why;
   rec.reply = reply.slice(0, 400);
