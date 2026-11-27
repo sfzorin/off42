@@ -81,11 +81,20 @@ def main():
         fields, filled, cleared = [out / name for name in ['fields.pdf', 'filled.pdf', 'cleared.pdf']]
         run('--add-field', source, fields)
         run('--fill', fields, filled, 'Name=A=B', 'Agree=yes', 'Colour=Green')
-        values = PdfReader(filled).get_fields()
+        def field_values(path):
+            pdf = PdfReader(path)
+            catalog = pdf.trailer['/Root']['/AcroForm']['/Fields']
+            widgets = [ref for page in pdf.pages for ref in page.get('/Annots', [])
+                       if ref.get_object().get('/Subtype') == '/Widget']
+            require(sorted(ref.idnum for ref in catalog) == sorted(ref.idnum for ref in widgets),
+                    f'{path.name}: catalog fields {[ref.idnum for ref in catalog]}, page widgets {[ref.idnum for ref in widgets]}')
+            return pdf.get_fields()
+
+        values = field_values(filled)
         require(len(values) == 3, 'expected three catalog form fields')
         require(str(values['Name']['/V']) == 'A=B' and str(values['Agree']['/V']) == '/Yes' and str(values['Colour']['/V']) == 'Green', values)
         run('--fill', filled, cleared, 'Name=', 'Agree=off')
-        values = PdfReader(cleared).get_fields()
+        values = field_values(cleared)
         require(str(values['Name'].get('/V', '')) == '' and str(values['Agree']['/V']) == '/Off', values)
         return 'text/checkbox/choice values and explicit empty text survive reopen'
     check('Fillable form fields', forms)

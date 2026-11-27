@@ -38,3 +38,14 @@ jobs:
           python scripts/audit-pdf-cli.py
           python scripts/audit-printer-files.py
           python scripts/audit-printer-pdf-geometry.py
+      - name: Keep synthetic form fixtures when a check fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-form-fixtures
+          path: |
+            build/pdf-cli-audit/fields.pdf
+            build/pdf-cli-audit/filled.pdf
+            build/pdf-cli-audit/cleared.pdf
+          if-no-files-found: ignore
+          retention-days: 3
