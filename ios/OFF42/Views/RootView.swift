@@ -84,10 +84,18 @@ struct RootView: View {
 
 private struct Sidebar: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
-        @Bindable var model = model
-        List(selection: $model.section) {
+        // In the iPhone stack, choosing a section shows its list rather than jumping into the file last open there.
+        let selection = Binding<AppSection?>(get: { model.section }, set: { section in
+            if sizeClass == .compact, let section {
+                model.selectedFile[section] = nil
+                model.selectedTool[section] = nil
+            }
+            model.section = section
+        })
+        List(selection: selection) {
             Section {
                 ForEach(AppSection.allCases) { section in
                     NavigationLink(value: section) {

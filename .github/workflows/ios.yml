@@ -227,7 +227,7 @@ jobs:
             -destination "id=${{ steps.simulator.outputs.udid }}" -derivedDataPath build/dd \
             -resultBundlePath build/OFF42-${{ matrix.device }}.xcresult -parallel-testing-enabled NO \
             test-without-building 2>&1 | tee build/test.log | grep -E '^(Test Case|Test Suite|.*error:|\*\* )' || true
-          grep -q '\*\* TEST SUCCEEDED \*\*' build/test.log
+          grep -qE '\*\* TEST (EXECUTE )?SUCCEEDED \*\*' build/test.log
       - name: Dark mode (${{ matrix.device }})
         env:
           TEST_RUNNER_OFF42_SCREENSHOTS: ${{ runner.temp }}/screenshots
@@ -242,7 +242,7 @@ jobs:
             test-without-building 2>&1 | tee build/test-dark.log | grep -E '^(Test Case|.*error:|\*\* )' || true
           xcrun simctl ui "${{ steps.simulator.outputs.udid }}" appearance light
           cat build/test-dark.log >> build/test.log
-          grep -q '\*\* TEST SUCCEEDED \*\*' build/test-dark.log
+          grep -qE '\*\* TEST (EXECUTE )?SUCCEEDED \*\*' build/test-dark.log
       - name: Test summary
         if: always()
         run: |
