@@ -2113,12 +2113,13 @@ async function viewSpreadsheet(ctx: Context): Promise<Editor> {
   const textTool = (text: string, label: string, action: () => unknown) => {
     const b = tool('', label, action, text);
     b.classList.add('text-tool');
+    b.dir = 'ltr'; // ".00" and "123" read left to right in right-to-left languages too
     b.querySelector('svg')?.remove();
     return b;
   };
   const [currencySymbol] = CURRENCY[language] ?? CURRENCY.en;
   const formatsButton = el('button', { type: 'button', className: 'tool with-text', title: t('format.numberFormats'),
-    aria: { label: t('format.numberFormats') } }, el('span', { textContent: '123' }), icon('down', 'icon small'));
+    aria: { label: t('format.numberFormats') } }, el('span', { textContent: '123', dir: 'ltr' }), icon('down', 'icon small'));
   const formatItems = (): MenuItem[] => {
     const now = activeStyle()?.format ?? '';
     return [
