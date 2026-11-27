@@ -14,6 +14,7 @@ use windows_sys::Win32::{
         Com::{CoInitializeEx, CoTaskMemFree, CoUninitialize, COINIT_APARTMENTTHREADED},
         LibraryLoader::{GetModuleHandleW, LoadLibraryW},
         Memory::{GlobalLock,GlobalUnlock,GlobalSize},
+        SystemServices::{SS_CENTER, SS_CENTERIMAGE, SS_ENDELLIPSIS, SS_LEFT, SS_NOPREFIX},
     },
     UI::{
         Controls::{Dialogs::*, *},
@@ -64,6 +65,8 @@ const CHECK_SPELLING:u16=65504;
 const TOGGLE_SIDEBAR:u16=65503;
 const TOGGLE_TOOLBAR:u16=65502;
 const TOGGLE_STATUS:u16=65501;
+/// Control id of the formula-bar name box.
+const NAME_BOX: u16 = 104;
 const TOGGLE_RULERS:u16=65500;
 const TOGGLE_PRINT_LAYOUT: u16 = 65496;
 const LANGUAGE_FIRST: u16 = 64000;
@@ -102,6 +105,8 @@ struct State {
     edit: HWND,
     canvas: HWND,
     status: HWND,
+    /// Formula-bar name box (XLS42): the active cell or the selected range, as a native static control.
+    name_box: HWND,
     menu: HMENU,
     recent_menu: HMENU,
     recent_paths: Vec<PathBuf>,
@@ -133,26 +138,40 @@ struct ChromeFrame {
     formula: Option<RECT>,
     name_box: Option<RECT>,
     footer_line: Option<RECT>,
+    /// Sheet-tab bar (XLS42): the last strip of the window; the status chip sits at its right end.
+    tab_bar: Option<RECT>,
+    /// Rounded status chip at the right end of the tab bar, when the spreadsheet has something to report.
+    status_chip: Option<RECT>,
 }
 impl State {
     fn dirty(&self) -> bool {
         self.app.dirty() || self.recovery_unsaved
     }
     fn status_text(&self) -> String {
-        if self.async_open.is_some() {
-            format!("{} · Opening… (Esc to cancel)", self.app.status())
+        let extra = if self.async_open.is_some() {
+            Some(crate::localization::text("Opening… (Esc to cancel)"))
         } else if let Some(error) = &self.recovery_error {
-            format!("{} · {}: {error}",self.app.status(),crate::localization::text("Recovery"))
+            Some(format!("{}: {error}", crate::localization::text("Recovery")))
         } else if self.recovery_unsaved {
-            format!(
-                "{} · {}",
-                self.app.status(),
-                crate::localization::text("Recovered copy; save to keep your changes")
-            )
-        } else if let Some(page) = self.page_status() {
-            format!("{} · {page}", self.app.status())
+            Some(crate::localization::text("Recovered copy; save to keep your changes"))
         } else {
-            self.app.status()
+            self.page_status()
+        };
+        // An empty app status (a spreadsheet with nothing to report) leaves no stray separator.
+        [self.app.status(), extra.unwrap_or_default()]
+            .into_iter()
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join(" · ")
+    }
+    /// Name box text: the active cell, or the selected range ("B2:D5").
+    fn name_box_text(&self) -> String {
+        let label = |row: usize, col: usize| format!("{}{}", crate::grid::col_label(col), self.app.grid_row_label(row));
+        match self.app.grid_selection() {
+            Some(r) if r.top != r.bottom || r.left != r.right => {
+                format!("{}:{}", label(r.top, r.left), label(r.bottom, r.right))
+            }
+            _ => self.app.selected_cell().map(|(row, col)| label(row, col)).unwrap_or_default(),
         }
     }
     fn page_status(&self) -> Option<String> {
@@ -790,6 +809,7 @@ unsafe fn refresh() {
     REFRESHING.with(|x| x.set(true));
     SetWindowTextW(hwnd, wide(&title).as_ptr());
     SetWindowTextW(status, wide(&info).as_ptr());
+    sync_spreadsheet_chrome(hwnd);
     let rich = STATE.with(|s| s.borrow().as_ref().unwrap().app.rich_text());
     let focus_rich = rich.is_some() && IsWindowVisible(edit) == 0;
     if let Some(rtf) = rich {
@@ -1135,12 +1155,12 @@ unsafe fn layout(hwnd: HWND) {
             .is_some()
     });
     if presenting {
-        let (save_button, sheet_add) = STATE.with(|s| {
+        let (save_button, sheet_add, name_box) = STATE.with(|s| {
             let s = s.borrow();
             let s = s.as_ref().unwrap();
-            (s.save_button, s.sheet_add)
+            (s.save_button, s.sheet_add, s.name_box)
         });
-        for control in [list, table, edit, status, save_button, sheet_add] {
+        for control in [list, table, edit, status, save_button, sheet_add, name_box] {
             if !control.is_null() {
                 ShowWindow(control, SW_HIDE);
             }
@@ -1165,12 +1185,13 @@ unsafe fn layout(hwnd: HWND) {
     presenter::hide();
     let dpi = GetDpiForWindow(hwnd) as i32;
     let px = |v: i32| crate::chrome::scale(dpi, v);
-    let (save_button, sheet_add, has_sheets, thumbnails, info) = STATE.with(|s| {
+    let (save_button, sheet_add, name_box, has_sheets, thumbnails, info) = STATE.with(|s| {
         let s = s.borrow();
         let s = s.as_ref().unwrap();
         (
             s.save_button,
             s.sheet_add,
+            s.name_box,
             s.app.grid_sheets().is_some(),
             s.app.list_thumbnail_size().is_some(),
             s.toolbar_info.clone(),
@@ -1186,8 +1207,12 @@ unsafe fn layout(hwnd: HWND) {
         ShowWindow(save_button, SW_SHOW);
     }
     let mut top = title_height;
-    ShowWindow(status, if panels.status { SW_SHOW } else { SW_HIDE });
-    let sh = if panels.status { px(26) } else { 0 };
+    // Spreadsheets (the windows with a name box) have no status row: their status is a chip in the tab bar.
+    let chips = !name_box.is_null();
+    if !chips {
+        ShowWindow(status, if panels.status { SW_SHOW } else { SW_HIDE });
+    }
+    let sh = if panels.status && !chips { px(26) } else { 0 };
     // One rounded toolbar strip; buttons that do not fit go to "More…".
     let toolbar_len = if panels.toolbar { toolbar.len() } else { 0 };
     if toolbar_len > 0 {
@@ -1242,7 +1267,9 @@ unsafe fn layout(hwnd: HWND) {
         top += px(4);
     }
     let bottom = (r.bottom - sh).max(top);
-    MoveWindow(status, px(12), (r.bottom - sh).max(0), (r.right - px(12)).max(0), sh, 1);
+    if !chips {
+        MoveWindow(status, px(12), (r.bottom - sh).max(0), (r.right - px(12)).max(0), sh, 1);
+    }
     if grid {
         if !ruler_horizontal.is_null() {
             ShowWindow(ruler_horizontal, SW_HIDE);
@@ -1252,6 +1279,10 @@ unsafe fn layout(hwnd: HWND) {
         let formula = RECT { left: 0, top, right: r.right, bottom: top + px(32) };
         frame.formula = Some(formula);
         frame.name_box = Some(RECT { left: 0, top, right: px(84), bottom: formula.bottom });
+        if chips {
+            MoveWindow(name_box, px(12), top + px(4), px(84) - px(16), px(24), 1);
+            ShowWindow(name_box, SW_SHOW);
+        }
         let editor_left = px(128) + px(8);
         MoveWindow(edit, editor_left, top + px(5), (r.right - editor_left - px(8)).max(1), px(22), 1);
         let tabs = visible && has_sheets;
@@ -1264,20 +1295,24 @@ unsafe fn layout(hwnd: HWND) {
         }
         if tabs {
             frame.footer_line = Some(RECT { left: 0, top: footer_top, right: r.right, bottom: footer_top + 1 });
-            let mut x = px(8);
+            frame.tab_bar = Some(RECT { left: 0, top: footer_top, right: r.right, bottom: footer_top + footer });
             if !sheet_add.is_null() {
-                MoveWindow(sheet_add, x, footer_top + px(4), px(32), px(32), 1);
-                x += px(40);
+                MoveWindow(sheet_add, px(8), footer_top + px(4), px(32), px(32), 1);
             }
             SendMessageW(list, LB_SETCOLUMNWIDTH, px(132) as usize, 0);
-            MoveWindow(list, x, footer_top + 1, (r.right - x - px(8)).max(0), footer - 1, 1);
         }
         STATE.with(|s| s.borrow_mut().as_mut().unwrap().frame = frame);
+        place_status_chip(hwnd);
         InvalidateRect(hwnd, null(), 0);
         return;
     }
     if !sheet_add.is_null() {
         ShowWindow(sheet_add, SW_HIDE);
+    }
+    if chips {
+        // A spreadsheet without its grid (a chart preview) has no tab bar to hold the chip.
+        ShowWindow(status, SW_HIDE);
+        ShowWindow(name_box, SW_HIDE);
     }
     ShowWindow(list, if visible { SW_SHOW } else { SW_HIDE });
     let left = if visible { px(if thumbnails { 212 } else { 240 }).min(r.right / 2) } else { 0 };
@@ -3528,6 +3563,7 @@ unsafe fn update_caption() {
     }
     SetWindowTextW(h, wide(&title).as_ptr());
     SetWindowTextW(status, wide(&info).as_ptr());
+    sync_spreadsheet_chrome(h);
     EnableMenuItem(
         menu,
         UNDO as u32,
@@ -3548,6 +3584,75 @@ unsafe fn update_caption() {
     );
     sync_panel_menu();
     DrawMenuBar(h);
+}
+/// Spreadsheet chrome that follows the selection: the name box text and the status chip in the tab bar.
+unsafe fn sync_spreadsheet_chrome(hwnd: HWND) {
+    let Some((name_box, text)) = STATE.with(|s| {
+        let s = s.try_borrow().ok()?;
+        let s = s.as_ref()?;
+        (!s.name_box.is_null()).then(|| (s.name_box, s.name_box_text()))
+    }) else {
+        return;
+    };
+    if window_text(name_box) != text {
+        SetWindowTextW(name_box, wide(&text).as_ptr());
+    }
+    place_status_chip(hwnd);
+}
+/// Sizes the status chip to its text at the right end of the sheet-tab bar and gives the tabs the rest of the
+/// row. Nothing to report, a hidden status (View > Show Status Bar) or no tab bar hides the chip.
+unsafe fn place_status_chip(hwnd: HWND) {
+    let Some((status, list, sheet_add, bar, shown, previous)) = STATE.with(|s| {
+        let s = s.try_borrow().ok()?;
+        let s = s.as_ref()?;
+        (!s.name_box.is_null()).then(|| {
+            (s.status, s.list, s.sheet_add, s.frame.tab_bar, s.panels.status, s.frame.status_chip)
+        })
+    }) else {
+        return;
+    };
+    let Some(bar) = bar else {
+        ShowWindow(status, SW_HIDE);
+        STATE.with(|s| {
+            if let Some(s) = s.borrow_mut().as_mut() {
+                s.frame.status_chip = None;
+            }
+        });
+        return;
+    };
+    let dpi = GetDpiForWindow(hwnd).max(96) as i32;
+    let px = |v: i32| crate::chrome::scale(dpi, v);
+    // The text refresh() and update_caption() just set; recomputing it would repeat the selection sum.
+    let text = window_text(status);
+    let end = bar.right - px(8);
+    let chip = (shown && !text.is_empty()).then(|| {
+        let font = crate::chrome::font(px(crate::chrome::SMALL), 400);
+        let width = (crate::chrome::measure(status, font, &text).cx + px(24)).clamp(px(48), ((bar.right - bar.left) / 2).max(px(48)));
+        RECT { left: end - width, top: bar.top + px(7), right: end, bottom: bar.top + px(31) }
+    });
+    match chip {
+        Some(chip) => {
+            MoveWindow(status, chip.left + px(10), chip.top + px(2), chip.right - chip.left - px(20), chip.bottom - chip.top - px(4), 1);
+            ShowWindow(status, SW_SHOW);
+        }
+        None => {
+            // Parked with no width at the end of the bar, so the chip never covers the tabs.
+            ShowWindow(status, SW_HIDE);
+            MoveWindow(status, end, bar.top + px(9), 0, px(20), 0);
+        }
+    }
+    let left = px(8) + if sheet_add.is_null() { 0 } else { px(40) };
+    let right = chip.map_or(end, |c| c.left - px(8));
+    MoveWindow(list, left, bar.top + 1, (right - left).max(0), bar.bottom - bar.top - 1, 1);
+    let key = |r: Option<RECT>| r.map(|r| (r.left, r.top, r.right, r.bottom));
+    if key(chip) != key(previous) {
+        STATE.with(|s| {
+            if let Some(s) = s.borrow_mut().as_mut() {
+                s.frame.status_chip = chip;
+            }
+        });
+        InvalidateRect(hwnd, &bar, 0);
+    }
 }
 unsafe fn select_grid_cell(row: usize, col: Option<usize>) {
     let next = STATE.with(|s| {
@@ -4355,6 +4460,7 @@ pub fn run(app: Box<dyn App>) {
                 edit: null_mut(),
                 canvas: null_mut(),
                 status: null_mut(),
+                name_box: null_mut(),
                 menu: bar,
                 recent_menu,
                 recent_paths: Vec::new(),
@@ -4545,11 +4651,13 @@ pub fn run(app: Box<dyn App>) {
             crate::rich_edit::notify_changes(edit);
             crate::rich_edit::set_proofing(edit, true);
         }
+        // Spreadsheets have no status row: the status is a centred chip at the end of the sheet-tab bar.
+        let chip_style = if sheet_tabs { SS_CENTER | SS_CENTERIMAGE | SS_NOPREFIX | SS_ENDELLIPSIS } else { 0 };
         let status = CreateWindowExW(
             0,
             wide("STATIC").as_ptr(),
             null(),
-            WS_CHILD | WS_VISIBLE,
+            WS_CHILD | WS_VISIBLE | chip_style,
             0,
             0,
             0,
@@ -4559,6 +4667,24 @@ pub fn run(app: Box<dyn App>) {
             instance,
             null(),
         );
+        let name_box = if sheet_tabs {
+            CreateWindowExW(
+                0,
+                wide("STATIC").as_ptr(),
+                null(),
+                WS_CHILD | WS_VISIBLE | SS_LEFT | SS_CENTERIMAGE | SS_NOPREFIX | SS_ENDELLIPSIS,
+                0,
+                0,
+                0,
+                0,
+                h,
+                NAME_BOX as HMENU,
+                instance,
+                null(),
+            )
+        } else {
+            null_mut()
+        };
         let save_button = CreateWindowExW(
             0,
             wide("BUTTON").as_ptr(),
@@ -4598,7 +4724,7 @@ pub fn run(app: Box<dyn App>) {
             SendMessageW(control, WM_SETFONT, font, 1);
         }
         // Sidebar, status bar and toolbar follow the system appearance; the document editor, table and canvas do not.
-        crate::theme::chrome(&[list, status, toolbar_more, save_button, sheet_add]);
+        crate::theme::chrome(&[list, status, name_box, toolbar_more, save_button, sheet_add]);
         crate::theme::chrome(&toolbar.iter().map(|&(_, b)| b).collect::<Vec<_>>());
         if sheet_tabs && !rich {
             // The formula bar's editor is part of the chrome strip.
@@ -4652,6 +4778,7 @@ pub fn run(app: Box<dyn App>) {
             s.edit = edit;
             s.canvas = canvas;
             s.status = status;
+            s.name_box = name_box;
             s.toolbar = toolbar;
             s.toolbar_more = toolbar_more;
             s.toolbar_info = toolbar_info;
@@ -6732,17 +6859,20 @@ unsafe fn apply_fonts(h: HWND) {
     let px = |v: i32| crate::chrome::scale(dpi, v);
     let body = crate::chrome::font(px(crate::chrome::BODY), 400) as usize;
     let small = crate::chrome::font(px(crate::chrome::SMALL), 400) as usize;
-    let Some((list, table, edit, status, buttons, rich, custom_grid)) = STATE.with(|s| {
+    let Some((list, table, edit, status, name_box, buttons, rich, custom_grid)) = STATE.with(|s| {
         s.borrow().as_ref().map(|s| {
             let mut buttons: Vec<HWND> = s.toolbar.iter().map(|&(_, b)| b).collect();
             buttons.extend([s.toolbar_more, s.save_button, s.sheet_add]);
-            (s.list, s.table, s.edit, s.status, buttons, s.app.uses_rich_edit(), s.app.uses_custom_grid())
+            (s.list, s.table, s.edit, s.status, s.name_box, buttons, s.app.uses_rich_edit(), s.app.uses_custom_grid())
         })
     }) else {
         return;
     };
     SendMessageW(list, WM_SETFONT, small, 1);
     SendMessageW(status, WM_SETFONT, small, 1);
+    if !name_box.is_null() {
+        SendMessageW(name_box, WM_SETFONT, small, 1);
+    }
     for button in buttons.into_iter().filter(|b| !b.is_null()) {
         SendMessageW(button, WM_SETFONT, body, 1);
     }
@@ -6792,7 +6922,6 @@ struct TitleView {
     name: String,
     badge: String,
     note: Option<String>,
-    cell: Option<String>,
     save_left: Option<i32>,
 }
 
@@ -6814,15 +6943,6 @@ unsafe fn title_view(hwnd: HWND) -> Option<TitleView> {
         } else {
             None
         };
-        let cell = s.app.uses_custom_grid().then(|| {
-            let label = |row: usize, col: usize| format!("{}{}", crate::grid::col_label(col), s.app.grid_row_label(row));
-            match s.app.grid_selection() {
-                Some(r) if r.top != r.bottom || r.left != r.right => {
-                    format!("{}:{}", label(r.top, r.left), label(r.bottom, r.right))
-                }
-                _ => s.app.selected_cell().map(|(row, col)| label(row, col)).unwrap_or_default(),
-            }
-        });
         Some(TitleView {
             frame: s.frame.clone(),
             presenting: s.app.presentation_size().is_some(),
@@ -6830,7 +6950,6 @@ unsafe fn title_view(hwnd: HWND) -> Option<TitleView> {
             name,
             badge: badge.unwrap_or_else(|| format!(".{}", s.app.extension())),
             note,
-            cell,
             save_left: (!s.save_button.is_null() && IsWindowVisible(s.save_button) != 0).then_some(s.save_button).map(|b| {
                 let mut r: RECT = zeroed();
                 GetWindowRect(b, &mut r);
@@ -6891,13 +7010,18 @@ unsafe fn paint_chrome(hwnd: HWND, dc: HDC, client: RECT) {
         if let Some(name) = view.frame.name_box {
             ui::fill(dc, &RECT { left: name.right, top: name.top, right: name.right + 1, bottom: name.bottom }, p.separator);
             ui::fill(dc, &RECT { left: px(128), top: name.top, right: px(128) + 1, bottom: name.bottom }, p.separator);
+            // The cell or range itself is the native name-box control laid over this field.
             let body = ui::font(px(ui::SMALL), 400);
-            ui::text(dc, RECT { left: px(12), right: name.right - px(4), ..name }, view.cell.as_deref().unwrap_or(""), p.text, body, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
             ui::text(dc, RECT { left: name.right, right: px(128), ..name }, "fx", p.secondary, body, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
         }
     }
     if let Some(line) = view.frame.footer_line {
         ui::fill(dc, &line, p.separator);
+    }
+    // Status chip in the sheet-tab bar: a rounded pill behind the native static that carries its text.
+    if let Some(chip) = view.frame.status_chip {
+        let (w, h) = (f64::from(chip.right - chip.left), f64::from(chip.bottom - chip.top));
+        ui::paint(dc, chip, p.strip, 255, |s| s.round_rect(0.0, 0.0, w, h, h / 2.0));
     }
 }
 
@@ -6939,17 +7063,22 @@ unsafe fn draw_app_mark(dc: HDC, area: RECT, accent: crate::chrome::Rgb, app: &s
 /// Chrome colours for the side list, status line and the formula-bar editor.
 unsafe fn chrome_ctlcolor(m: u32, w: WPARAM, l: LPARAM) -> Option<LRESULT> {
     let control = l as HWND;
-    let (list, status, edit, formula) = STATE.with(|s| {
+    let (list, status, name_box, edit, formula) = STATE.with(|s| {
         let s = s.try_borrow().ok()?;
         let s = s.as_ref()?;
-        Some((s.list, s.status, s.edit, s.frame.formula.is_some()))
+        Some((s.list, s.status, s.name_box, s.edit, s.frame.formula.is_some()))
     })?;
     let p = crate::chrome::palette();
     let dc = w as HDC;
     let (background, text) = if control == list && m == WM_CTLCOLORLISTBOX {
         (p.background, p.text)
+    } else if control == status && m == WM_CTLCOLORSTATIC && !name_box.is_null() {
+        // Spreadsheet status chip: the toolbar-strip pill painted behind it by the window.
+        (p.strip, p.text)
     } else if control == status && m == WM_CTLCOLORSTATIC {
         (p.background, p.secondary)
+    } else if control == name_box && !name_box.is_null() && m == WM_CTLCOLORSTATIC {
+        (if crate::theme::is_dark() { crate::theme::FIELD } else { [255; 3] }, p.text)
     } else if control == edit && formula && matches!(m, WM_CTLCOLOREDIT | WM_CTLCOLORSTATIC) {
         (if crate::theme::is_dark() { crate::theme::FIELD } else { [255; 3] }, p.text)
     } else if control == edit && m == WM_CTLCOLORSTATIC {
@@ -7138,16 +7267,23 @@ unsafe fn draw_list_item(item: &DRAWITEMSTRUCT) {
 
 /// One transient "Saved: name" message after a successful save.
 unsafe fn notify_saved(hwnd: HWND) {
-    let Some((name, status)) = STATE.with(|s| {
+    let Some((name, status, tab_bar)) = STATE.with(|s| {
         let s = s.try_borrow().ok()?;
         let s = s.as_ref()?;
         let name = s.path.as_ref()?.file_name()?.to_string_lossy().into_owned();
-        Some((name, s.panels.status))
+        Some((name, s.panels.status && s.name_box.is_null(), s.frame.tab_bar))
     }) else {
         return;
     };
     let dpi = GetDpiForWindow(hwnd).max(96) as i32;
-    let bottom = if status { crate::chrome::scale(dpi, 26) } else { 0 };
+    let mut client: RECT = zeroed();
+    GetClientRect(hwnd, &mut client);
+    // Above the status row, or above the sheet-tab bar that is the spreadsheet's last strip.
+    let bottom = match tab_bar {
+        Some(bar) => (client.bottom - bar.top).max(0),
+        None if status => crate::chrome::scale(dpi, 26),
+        None => 0,
+    };
     crate::chrome::snackbar::show(hwnd, &format!("{}: {name}", crate::localization::text("Saved")), bottom);
 }
 

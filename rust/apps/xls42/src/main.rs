@@ -67,6 +67,32 @@ impl Xls {
         }
         self.selection_range()
     }
+    /// Sum and count of the selected range, only when it holds at least two numbers (the web app's chip).
+    fn selection_summary(&self) -> Option<(f64, usize, usize)> {
+        if self.preview.is_some() {
+            return None;
+        }
+        let r = self.selection_range();
+        if r.top == r.bottom && r.left == r.right {
+            return None;
+        }
+        let rows = self.visible_rows();
+        let cells = self.book.calculated_cells();
+        let (mut sum, mut numbers, mut filled) = (0.0, 0, 0);
+        for (&(row, col), value) in cells.range((r.top, 0)..=(r.bottom, usize::MAX)) {
+            if col < r.left || col > r.right || rows.binary_search(&row).is_err() || value.trim().is_empty() {
+                continue;
+            }
+            filled += 1;
+            if let Ok(n) = value.trim().parse::<f64>() {
+                if n.is_finite() {
+                    sum += n;
+                    numbers += 1;
+                }
+            }
+        }
+        (numbers >= 2).then_some((sum, numbers, filled))
+    }
     fn selection_range(&self) -> Range {
         let r = self.viewport.borrow().selection.filter(|(id,_)|*id==self.book.active_sheet()).map(|(_,r)|r).unwrap_or_else(||self.book.selection());
         if self.row >= r.top && self.row <= r.bottom && self.col >= r.left && self.col <= r.right {
@@ -278,7 +304,7 @@ impl suite42_app::App for Xls {
     fn new_document(&mut self) -> Result<(), String> {
         self.goal_seek.cancel();
         self.solver.cancel();
-        self.book = Workbook::new(20, 8).map_err(|e| e.to_string())?;
+        self.book = new_workbook(20, 8).map_err(|e| e.to_string())?;
         self.viewport.borrow_mut().reset();
         self.selected_picture = None;
         self.clear_visible_cache();
@@ -1408,21 +1434,10 @@ impl suite42_app::App for Xls {
     fn status(&self) -> String {
         if self.solver.running(){return format!("{}…",suite42_app::localization::text("Solver"));}
         if self.goal_seek.running(){return format!("{}…",suite42_app::localization::text("Goal Seek"));}
-        let sheet = self
-            .book
-            .sheets()
-            .into_iter()
-            .find(|(id, _)| *id == self.book.active_sheet())
-            .map(|(_, name)| name)
-            .unwrap_or_default();
         status_line(&StatusParts {
             read_only: self.book.is_read_only(),
             external: self.book.has_external_source(),
-            sheet: &sheet,
-            row: self.row,
-            col: self.col,
-            charts: self.book.charts().len(),
-            pivots: self.book.pivots().len(),
+            selection: self.selection_summary(),
             preview: self.preview.is_some(),
         })
     }
@@ -1671,7 +1686,7 @@ fn new_xls() -> Xls {
     Xls {
         goal_seek:Default::default(),
             solver:Default::default(),
-        book: Workbook::new(20, 8).unwrap(),
+        book: new_workbook(20, 8).unwrap(),
         row: 0,
         col: 0,
         preview: None,
@@ -2616,33 +2631,62 @@ mod far_picture_geometry_regression {
     }
 }
 
-/// What the status line reports: the state that matters to a reader, without empty lists or ids.
-struct StatusParts<'a> {
+/// A new workbook whose first sheet carries the UI language's default name ("Sheet1", "Лист1"). Opened files
+/// keep their own names; this applies only to workbooks created here.
+fn new_workbook(rows: usize, cols: usize) -> Result<Workbook, xls42_core::Error> {
+    Workbook::new_named(rows, cols, &default_sheet_name(&suite42_app::localization::text("Sheet%d")))
+        .or_else(|_| Workbook::new(rows, cols))
+}
+
+/// "Sheet%d" from the UI catalog with the first sheet number filled in.
+fn default_sheet_name(pattern: &str) -> String {
+    if pattern.contains("%d") {
+        pattern.replacen("%d", "1", 1)
+    } else {
+        "Sheet1".into()
+    }
+}
+
+/// What the status chips in the sheet-tab bar report: only state that the tabs and the formula bar do not show.
+#[derive(Clone, Copy)]
+struct StatusParts {
     read_only: bool,
     external: bool,
-    sheet: &'a str,
-    row: usize,
-    col: usize,
-    charts: usize,
-    pivots: usize,
+    /// (sum, numeric cells, filled cells) of a multi-cell selection with at least two numbers.
+    selection: Option<(f64, usize, usize)>,
     preview: bool,
 }
 
-/// Spreadsheet column letters for a zero-based index (0 → A, 26 → AA).
-fn column_letters(mut col: usize) -> String {
-    let mut out = Vec::new();
-    loop {
-        out.push(b'A' + (col % 26) as u8);
-        if col < 26 {
-            break;
-        }
-        col = col / 26 - 1;
+/// A number in the UI language's digit grouping, rounded to ten decimals ("31 500", "31,500", "1.234,5").
+fn localized_number(value: f64, language: &str) -> String {
+    let (group, decimal) = match language {
+        "ru" | "fr" | "pl" | "hu" | "pt" | "vi" => ("\u{a0}", ","),
+        "de" | "es" | "it" | "id" | "tr" => (".", ","),
+        _ => (",", "."),
+    };
+    let rounded = (value * 1e10).round() / 1e10;
+    let text = format!("{:.10}", rounded.abs());
+    let (whole, fraction) = text.split_once('.').unwrap_or((&text, ""));
+    let fraction = fraction.trim_end_matches('0');
+    let digits: Vec<char> = whole.chars().collect();
+    let mut out = String::new();
+    if rounded < 0.0 {
+        out.push('-');
     }
-    out.reverse();
-    String::from_utf8(out).unwrap_or_default()
+    for (i, digit) in digits.iter().enumerate() {
+        if i > 0 && (digits.len() - i) % 3 == 0 {
+            out.push_str(group);
+        }
+        out.push(*digit);
+    }
+    if !fraction.is_empty() {
+        out.push_str(decimal);
+        out.push_str(fraction);
+    }
+    out
 }
 
-/// "Sheet1 · B3", with "Read only", chart and pivot counts and "Chart preview" only when they apply.
+/// "Sum: 31 500 · Count: 4", "Read only" and "Chart preview" only when they apply; empty otherwise.
 fn status_line(p: &StatusParts) -> String {
     let text = suite42_app::localization::text;
     let mut parts = Vec::new();
@@ -2651,15 +2695,10 @@ fn status_line(p: &StatusParts) -> String {
     } else if p.external {
         parts.push(text("External source: structural edits limited"));
     }
-    if !p.sheet.is_empty() {
-        parts.push(p.sheet.to_string());
-    }
-    parts.push(format!("{}{}", column_letters(p.col), p.row + 1));
-    if p.charts > 0 {
-        parts.push(format!("{}: {}", text("Charts"), p.charts));
-    }
-    if p.pivots > 0 {
-        parts.push(format!("{}: {}", text("Pivot summaries"), p.pivots));
+    if let Some((sum, _, filled)) = p.selection {
+        let language = suite42_app::localization::current().code;
+        parts.push(format!("{}: {}", text("Sum"), localized_number(sum, language)));
+        parts.push(format!("{}: {}", text("Count"), localized_number(filled as f64, language)));
     }
     if p.preview {
         parts.push(text("Chart preview"));
@@ -2670,21 +2709,36 @@ fn status_line(p: &StatusParts) -> String {
 #[cfg(test)]
 mod status_tests {
     use super::*;
+    use suite42_app::App;
 
     #[test]
-    fn status_line_shows_sheet_and_cell_without_empty_lists() {
-        let base = StatusParts { read_only: false, external: false, sheet: "Sheet1", row: 0, col: 0, charts: 0, pivots: 0, preview: false };
-        assert_eq!(status_line(&base), "Sheet1 · A1");
-        let busy = StatusParts { row: 9, col: 27, charts: 2, pivots: 1, preview: true, ..base };
-        let line = status_line(&busy);
-        assert_eq!(line, "Sheet1 · AB10 · Charts: 2 · Pivot summaries: 1 · Chart preview");
-        for line in [status_line(&base), line] {
-            assert!(!line.contains('|') && !line.contains('['), "{line}");
+    fn status_repeats_neither_sheet_nor_cell_and_sums_numeric_selections() {
+        let base = StatusParts { read_only: false, external: false, selection: None, preview: false };
+        assert_eq!(status_line(&base), "");
+        let busy = StatusParts { selection: Some((31500.0, 4, 4)), preview: true, ..base };
+        assert_eq!(status_line(&busy), "Sum: 31,500 · Count: 4 · Chart preview");
+        assert_eq!(status_line(&StatusParts { read_only: true, ..base }), "Read only");
+        assert_eq!(localized_number(31500.0, "ru"), "31\u{a0}500");
+        assert_eq!(localized_number(-1234567.25, "de"), "-1.234.567,25");
+        assert_eq!(localized_number(0.1 + 0.2, "en"), "0.3");
+        assert_eq!(localized_number(999.0, "en"), "999");
+        assert_eq!(default_sheet_name("Лист%d"), "Лист1");
+        assert_eq!(default_sheet_name("Sheet"), "Sheet1");
+
+        let mut book = Workbook::new(6, 3).unwrap();
+        for (row, value) in ["Tea", "7000", "8000", "=B2+B3", "9500"].iter().enumerate() {
+            book.set_cell(row, 1, value.to_string()).unwrap();
         }
-        assert_eq!(column_letters(25), "Z");
-        assert_eq!(column_letters(26), "AA");
-        assert_eq!(column_letters(701), "ZZ");
-        assert_eq!(column_letters(702), "AAA");
+        let mut app = super::new_xls();
+        app.book = book;
+        app.select_grid_range(suite42_app::GridRange { top: 0, left: 1, bottom: 4, right: 1 });
+        assert_eq!(app.selection_summary(), Some((39500.0, 4, 5)));
+        let status = app.status();
+        assert!(!status.contains("Sheet") && !status.contains("B1") && !status.contains("B5"), "{status}");
+        app.select_grid_range(suite42_app::GridRange { top: 1, left: 1, bottom: 1, right: 1 });
+        assert!(app.selection_summary().is_none());
+        app.select_grid_range(suite42_app::GridRange { top: 0, left: 0, bottom: 1, right: 1 });
+        assert!(app.selection_summary().is_none(), "one number is not a summary");
     }
 }
 

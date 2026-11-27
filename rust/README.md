@@ -984,8 +984,10 @@ Native engine/range and actual DOC correction/format/table/image/history/reopen 
 
 ### Shared window panels
 
-View offers checked entries for the sidebar, toolbar, status bar and available document rulers. Hidden panels
-release their space to the document; normal application commands stay in their menus. Each app remembers these
+View offers checked entries for the sidebar, toolbar, status bar and available document rulers. On Windows XLS42 has
+no status row: its status is a chip at the right end of the sheet-tab bar ("Sum: … · Count: …" for a selection with
+at least two numbers, read-only, external-source or chart-preview state), and Show Status Bar hides that chip.
+Hidden panels release their space to the document; normal application commands stay in their menus. Each app remembers these
 choices with its window placement without changing document contents or Undo history. Old placement files keep
 all panels enabled by default; unavailable panels are disabled in the menu. Fullscreen slide shows retain their
 existing presentation layout. Portable preference round trips/corruption checks pass; native six-app toggle,

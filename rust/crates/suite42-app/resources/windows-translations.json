@@ -46,7 +46,11 @@
     "Learn Signature": "Обучение подписи",
     "Choose Pictures of Your Signature": "Выберите картинки с вашей подписью",
     "Choose one to five pictures of your signature.": "Выберите от одной до пяти картинок с вашей подписью.",
-    "Use dark ink on light paper, one signature per picture.": "Нужны тёмные чернила на светлой бумаге, одна подпись на картинке."
+    "Use dark ink on light paper, one signature per picture.": "Нужны тёмные чернила на светлой бумаге, одна подпись на картинке.",
+    "Read only": "Только чтение",
+    "External source: structural edits limited": "Внешний источник: структурные изменения ограничены",
+    "Chart preview": "Предпросмотр диаграммы",
+    "Opening… (Esc to cancel)": "Открытие… (Esc — отмена)"
   },
   "zh-Hans": {
     "Symbol or Code": "符号或条码",
@@ -92,7 +96,11 @@
     "Learn Signature": "学习签名",
     "Choose Pictures of Your Signature": "选择您的签名图片",
     "Choose one to five pictures of your signature.": "请选择一到五张您的签名图片。",
-    "Use dark ink on light paper, one signature per picture.": "请使用浅色纸上的深色墨迹，每张图片一个签名。"
+    "Use dark ink on light paper, one signature per picture.": "请使用浅色纸上的深色墨迹，每张图片一个签名。",
+    "Read only": "只读",
+    "External source: structural edits limited": "外部来源：结构编辑受限",
+    "Chart preview": "图表预览",
+    "Opening… (Esc to cancel)": "正在打开…（按 Esc 取消）"
   },
   "zh-Hant": {
     "Symbol or Code": "符號或條碼",
@@ -138,7 +146,11 @@
     "Learn Signature": "學習簽名",
     "Choose Pictures of Your Signature": "選擇您的簽名圖片",
     "Choose one to five pictures of your signature.": "請選擇一到五張您的簽名圖片。",
-    "Use dark ink on light paper, one signature per picture.": "請使用淺色紙上的深色墨跡，每張圖片一個簽名。"
+    "Use dark ink on light paper, one signature per picture.": "請使用淺色紙上的深色墨跡，每張圖片一個簽名。",
+    "Read only": "唯讀",
+    "External source: structural edits limited": "外部來源：結構編輯受限",
+    "Chart preview": "圖表預覽",
+    "Opening… (Esc to cancel)": "正在開啟…（按 Esc 取消）"
   },
   "es": {
     "Symbol or Code": "Símbolo o código",
@@ -184,7 +196,11 @@
     "Learn Signature": "Aprender firma",
     "Choose Pictures of Your Signature": "Elija imágenes de su firma",
     "Choose one to five pictures of your signature.": "Elija de una a cinco imágenes de su firma.",
-    "Use dark ink on light paper, one signature per picture.": "Use tinta oscura sobre papel claro, una firma por imagen."
+    "Use dark ink on light paper, one signature per picture.": "Use tinta oscura sobre papel claro, una firma por imagen.",
+    "Read only": "Solo lectura",
+    "External source: structural edits limited": "Origen externo: ediciones estructurales limitadas",
+    "Chart preview": "Vista previa del gráfico",
+    "Opening… (Esc to cancel)": "Abriendo… (Esc para cancelar)"
   },
   "ar": {
     "Symbol or Code": "رمز أو باركود",
@@ -230,7 +246,11 @@
     "Learn Signature": "تعلّم التوقيع",
     "Choose Pictures of Your Signature": "اختر صورًا لتوقيعك",
     "Choose one to five pictures of your signature.": "اختر من صورة واحدة إلى خمس صور لتوقيعك.",
-    "Use dark ink on light paper, one signature per picture.": "استخدم حبرًا داكنًا على ورق فاتح، توقيعًا واحدًا في كل صورة."
+    "Use dark ink on light paper, one signature per picture.": "استخدم حبرًا داكنًا على ورق فاتح، توقيعًا واحدًا في كل صورة.",
+    "Read only": "للقراءة فقط",
+    "External source: structural edits limited": "مصدر خارجي: التعديلات الهيكلية محدودة",
+    "Chart preview": "معاينة المخطط",
+    "Opening… (Esc to cancel)": "جارٍ الفتح… (Esc للإلغاء)"
   },
   "fr": {
     "Symbol or Code": "Symbole ou code",
@@ -276,7 +296,11 @@
     "Learn Signature": "Apprendre la signature",
     "Choose Pictures of Your Signature": "Choisissez des images de votre signature",
     "Choose one to five pictures of your signature.": "Choisissez d’une à cinq images de votre signature.",
-    "Use dark ink on light paper, one signature per picture.": "Utilisez une encre foncée sur papier clair, une signature par image."
+    "Use dark ink on light paper, one signature per picture.": "Utilisez une encre foncée sur papier clair, une signature par image.",
+    "Read only": "Lecture seule",
+    "External source: structural edits limited": "Source externe : modifications structurelles limitées",
+    "Chart preview": "Aperçu du graphique",
+    "Opening… (Esc to cancel)": "Ouverture… (Échap pour annuler)"
   },
   "pt": {
     "Symbol or Code": "Símbolo ou código",
@@ -322,7 +346,11 @@
     "Learn Signature": "Aprender assinatura",
     "Choose Pictures of Your Signature": "Escolha imagens da sua assinatura",
     "Choose one to five pictures of your signature.": "Escolha de uma a cinco imagens da sua assinatura.",
-    "Use dark ink on light paper, one signature per picture.": "Use tinta escura em papel claro, uma assinatura por imagem."
+    "Use dark ink on light paper, one signature per picture.": "Use tinta escura em papel claro, uma assinatura por imagem.",
+    "Read only": "Somente leitura",
+    "External source: structural edits limited": "Fonte externa: edições estruturais limitadas",
+    "Chart preview": "Pré-visualização do gráfico",
+    "Opening… (Esc to cancel)": "Abrindo… (Esc para cancelar)"
   },
   "id": {
     "Symbol or Code": "Simbol atau kode",
@@ -368,7 +396,11 @@
     "Learn Signature": "Pelajari Tanda Tangan",
     "Choose Pictures of Your Signature": "Pilih Gambar Tanda Tangan Anda",
     "Choose one to five pictures of your signature.": "Pilih satu hingga lima gambar tanda tangan Anda.",
-    "Use dark ink on light paper, one signature per picture.": "Gunakan tinta gelap di atas kertas terang, satu tanda tangan per gambar."
+    "Use dark ink on light paper, one signature per picture.": "Gunakan tinta gelap di atas kertas terang, satu tanda tangan per gambar.",
+    "Read only": "Hanya baca",
+    "External source: structural edits limited": "Sumber eksternal: pengeditan struktur dibatasi",
+    "Chart preview": "Pratinjau bagan",
+    "Opening… (Esc to cancel)": "Membuka… (Esc untuk membatalkan)"
   },
   "de": {
     "Symbol or Code": "Symbol oder Code",
@@ -414,7 +446,11 @@
     "Learn Signature": "Unterschrift lernen",
     "Choose Pictures of Your Signature": "Bilder Ihrer Unterschrift auswählen",
     "Choose one to five pictures of your signature.": "Wählen Sie ein bis fünf Bilder Ihrer Unterschrift.",
-    "Use dark ink on light paper, one signature per picture.": "Verwenden Sie dunkle Tinte auf hellem Papier, eine Unterschrift pro Bild."
+    "Use dark ink on light paper, one signature per picture.": "Verwenden Sie dunkle Tinte auf hellem Papier, eine Unterschrift pro Bild.",
+    "Read only": "Schreibgeschützt",
+    "External source: structural edits limited": "Externe Quelle: strukturelle Änderungen eingeschränkt",
+    "Chart preview": "Diagrammvorschau",
+    "Opening… (Esc to cancel)": "Wird geöffnet… (Esc zum Abbrechen)"
   },
   "ja": {
     "Symbol or Code": "記号またはコード",
@@ -460,7 +496,11 @@
     "Learn Signature": "署名を学習",
     "Choose Pictures of Your Signature": "署名の画像を選択",
     "Choose one to five pictures of your signature.": "署名の画像を1～5枚選択してください。",
-    "Use dark ink on light paper, one signature per picture.": "明るい紙に濃いインクで、1枚の画像に1つの署名を使用してください。"
+    "Use dark ink on light paper, one signature per picture.": "明るい紙に濃いインクで、1枚の画像に1つの署名を使用してください。",
+    "Read only": "読み取り専用",
+    "External source: structural edits limited": "外部ソース：構造の編集は制限されています",
+    "Chart preview": "グラフのプレビュー",
+    "Opening… (Esc to cancel)": "開いています…（Esc でキャンセル）"
   },
   "vi": {
     "Symbol or Code": "Ký hiệu hoặc mã",
@@ -506,7 +546,11 @@
     "Learn Signature": "Học chữ ký",
     "Choose Pictures of Your Signature": "Chọn ảnh chữ ký của bạn",
     "Choose one to five pictures of your signature.": "Chọn từ một đến năm ảnh chữ ký của bạn.",
-    "Use dark ink on light paper, one signature per picture.": "Dùng mực đậm trên giấy sáng, mỗi ảnh một chữ ký."
+    "Use dark ink on light paper, one signature per picture.": "Dùng mực đậm trên giấy sáng, mỗi ảnh một chữ ký.",
+    "Read only": "Chỉ đọc",
+    "External source: structural edits limited": "Nguồn bên ngoài: hạn chế chỉnh sửa cấu trúc",
+    "Chart preview": "Xem trước biểu đồ",
+    "Opening… (Esc to cancel)": "Đang mở… (Esc để hủy)"
   },
   "tr": {
     "Symbol or Code": "Sembol veya kod",
@@ -555,7 +599,11 @@
     "Learn Signature": "İmza Öğren",
     "Choose Pictures of Your Signature": "İmzanızın Resimlerini Seçin",
     "Choose one to five pictures of your signature.": "İmzanızın bir ile beş arasında resmini seçin.",
-    "Use dark ink on light paper, one signature per picture.": "Açık renkli kâğıtta koyu mürekkep kullanın, her resimde bir imza olsun."
+    "Use dark ink on light paper, one signature per picture.": "Açık renkli kâğıtta koyu mürekkep kullanın, her resimde bir imza olsun.",
+    "Read only": "Salt okunur",
+    "External source: structural edits limited": "Dış kaynak: yapısal düzenlemeler sınırlı",
+    "Chart preview": "Grafik önizlemesi",
+    "Opening… (Esc to cancel)": "Açılıyor… (İptal için Esc)"
   },
   "fil": {
     "Symbol or Code": "Simbolo o code",
@@ -601,7 +649,11 @@
     "Learn Signature": "Matutunan ang Lagda",
     "Choose Pictures of Your Signature": "Pumili ng mga Larawan ng Iyong Lagda",
     "Choose one to five pictures of your signature.": "Pumili ng isa hanggang limang larawan ng iyong lagda.",
-    "Use dark ink on light paper, one signature per picture.": "Gumamit ng madilim na tinta sa maliwanag na papel, isang lagda bawat larawan."
+    "Use dark ink on light paper, one signature per picture.": "Gumamit ng madilim na tinta sa maliwanag na papel, isang lagda bawat larawan.",
+    "Read only": "Basahin lamang",
+    "External source: structural edits limited": "Panlabas na source: limitado ang mga pagbabago sa istruktura",
+    "Chart preview": "Preview ng chart",
+    "Opening… (Esc to cancel)": "Binubuksan… (Esc para kanselahin)"
   },
   "ko": {
     "Symbol or Code": "기호 또는 코드",
@@ -647,7 +699,11 @@
     "Learn Signature": "서명 학습",
     "Choose Pictures of Your Signature": "서명 이미지 선택",
     "Choose one to five pictures of your signature.": "서명 이미지를 1~5개 선택하십시오.",
-    "Use dark ink on light paper, one signature per picture.": "밝은 종이에 진한 잉크를 사용하고, 이미지마다 서명 하나만 넣으십시오."
+    "Use dark ink on light paper, one signature per picture.": "밝은 종이에 진한 잉크를 사용하고, 이미지마다 서명 하나만 넣으십시오.",
+    "Read only": "읽기 전용",
+    "External source: structural edits limited": "외부 원본: 구조 편집이 제한됨",
+    "Chart preview": "차트 미리 보기",
+    "Opening… (Esc to cancel)": "여는 중…(취소하려면 Esc)"
   },
   "th": {
     "Symbol or Code": "สัญลักษณ์หรือรหัส",
@@ -693,7 +749,11 @@
     "Learn Signature": "เรียนรู้ลายเซ็น",
     "Choose Pictures of Your Signature": "เลือกรูปภาพลายเซ็นของคุณ",
     "Choose one to five pictures of your signature.": "เลือกรูปภาพลายเซ็นของคุณหนึ่งถึงห้ารูป",
-    "Use dark ink on light paper, one signature per picture.": "ใช้หมึกสีเข้มบนกระดาษสีอ่อน หนึ่งลายเซ็นต่อหนึ่งรูป"
+    "Use dark ink on light paper, one signature per picture.": "ใช้หมึกสีเข้มบนกระดาษสีอ่อน หนึ่งลายเซ็นต่อหนึ่งรูป",
+    "Read only": "อ่านอย่างเดียว",
+    "External source: structural edits limited": "แหล่งข้อมูลภายนอก: จำกัดการแก้ไขโครงสร้าง",
+    "Chart preview": "ตัวอย่างแผนภูมิ",
+    "Opening… (Esc to cancel)": "กำลังเปิด… (กด Esc เพื่อยกเลิก)"
   },
   "it": {
     "Symbol or Code": "Simbolo o codice",
@@ -739,7 +799,11 @@
     "Learn Signature": "Impara la firma",
     "Choose Pictures of Your Signature": "Scegli le immagini della tua firma",
     "Choose one to five pictures of your signature.": "Scegli da una a cinque immagini della tua firma.",
-    "Use dark ink on light paper, one signature per picture.": "Usa inchiostro scuro su carta chiara, una firma per immagine."
+    "Use dark ink on light paper, one signature per picture.": "Usa inchiostro scuro su carta chiara, una firma per immagine.",
+    "Read only": "Sola lettura",
+    "External source: structural edits limited": "Origine esterna: modifiche strutturali limitate",
+    "Chart preview": "Anteprima grafico",
+    "Opening… (Esc to cancel)": "Apertura… (Esc per annullare)"
   },
   "pl": {
     "Symbol or Code": "Symbol lub kod",
@@ -785,7 +849,11 @@
     "Learn Signature": "Nauka podpisu",
     "Choose Pictures of Your Signature": "Wybierz obrazy swojego podpisu",
     "Choose one to five pictures of your signature.": "Wybierz od jednego do pięciu obrazów swojego podpisu.",
-    "Use dark ink on light paper, one signature per picture.": "Użyj ciemnego tuszu na jasnym papierze, jeden podpis na obraz."
+    "Use dark ink on light paper, one signature per picture.": "Użyj ciemnego tuszu na jasnym papierze, jeden podpis na obraz.",
+    "Read only": "Tylko do odczytu",
+    "External source: structural edits limited": "Źródło zewnętrzne: ograniczone zmiany struktury",
+    "Chart preview": "Podgląd wykresu",
+    "Opening… (Esc to cancel)": "Otwieranie… (Esc, aby anulować)"
   },
   "ms": {
     "Symbol or Code": "Simbol atau kod",
@@ -831,7 +899,11 @@
     "Learn Signature": "Pelajari Tandatangan",
     "Choose Pictures of Your Signature": "Pilih Gambar Tandatangan Anda",
     "Choose one to five pictures of your signature.": "Pilih satu hingga lima gambar tandatangan anda.",
-    "Use dark ink on light paper, one signature per picture.": "Gunakan dakwat gelap di atas kertas cerah, satu tandatangan bagi setiap gambar."
+    "Use dark ink on light paper, one signature per picture.": "Gunakan dakwat gelap di atas kertas cerah, satu tandatangan bagi setiap gambar.",
+    "Read only": "Baca sahaja",
+    "External source: structural edits limited": "Sumber luaran: suntingan struktur terhad",
+    "Chart preview": "Pratonton carta",
+    "Opening… (Esc to cancel)": "Membuka… (Esc untuk batal)"
   },
   "hu": {
     "Symbol or Code": "Szimbólum vagy kód",
@@ -877,6 +949,10 @@
     "Learn Signature": "Aláírás tanulása",
     "Choose Pictures of Your Signature": "Válasszon képeket az aláírásáról",
     "Choose one to five pictures of your signature.": "Válasszon egy–öt képet az aláírásáról.",
-    "Use dark ink on light paper, one signature per picture.": "Használjon sötét tintát világos papíron, képenként egy aláírást."
+    "Use dark ink on light paper, one signature per picture.": "Használjon sötét tintát világos papíron, képenként egy aláírást.",
+    "Read only": "Csak olvasható",
+    "External source: structural edits limited": "Külső forrás: a szerkezeti módosítások korlátozottak",
+    "Chart preview": "Diagram előnézete",
+    "Opening… (Esc to cancel)": "Megnyitás… (Esc: mégse)"
   }
 }
