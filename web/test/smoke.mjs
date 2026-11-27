@@ -181,4 +181,42 @@ check('edit sessions: a blank workbook with a formula, an inserted row and a cur
   off42.editClose(book);
 });
 
+check('new two-slide deck saves title, text and notes in PPTX and ODP', () => {
+  const draft=[{title:'План',body:'Первый пункт',notes:'Говорить медленно'},{title:'Итоги',body:'',notes:''}];
+  for(const ext of ['pptx','odp']) {
+    const bytes=off42.presentationCreate(JSON.stringify(draft),ext);
+    const opened=JSON.parse(off42.presentationOutline(bytes,ext)).slides;
+    assert.equal(opened.length,2);
+    for(const [index,slide] of opened.entries()){
+      assert(JSON.stringify(slide).includes(draft[index].title));
+      assert(JSON.stringify(slide).includes(draft[index].body));
+      assert.equal(slide.notes,draft[index].notes);
+    }
+  }
+});
+check('IMG42 rotates pixels and Undo restores their original dimensions', () => {
+  const id=off42.imageOpen(repoFile('website/public/assets/og-image.jpg'));
+  const info=action=>JSON.parse(off42.imageEdit(id,action));
+  assert.equal(info('info').width,1200);
+  assert.equal(info('rotate').height,1200);
+  const png=off42.imageSave(id,'png',false);
+  const reopened=off42.imageOpen(png);
+  assert.equal(JSON.parse(off42.imageEdit(reopened,'info')).width,630);
+  assert.equal(info('undo').width,1200);
+  assert.equal(info('redo').width,630);
+  off42.imageClose(id);off42.imageClose(reopened);
+});
+check('assistant preview keeps stable paragraph ids and a single live Undo', () => {
+  const id=off42.editNew('document');
+  const draft=off42.editFork(id);
+  const commands=[{command:'insert_paragraphs',after_id:1,paragraphs:[{text:'Budget',style:'normal'}]},
+    {command:'set_paragraph_style',ids:[2],style:'heading1'}];
+  for(const command of commands)off42.editApply(draft,JSON.stringify(command));
+  const outline=key=>off42.editApply(key,JSON.stringify({command:'get_outline'}));
+  assert(!outline(id).includes('Budget'));
+  off42.editApply(id,JSON.stringify(commands));assert.equal(outline(id),outline(draft));
+  off42.editUndo(id);assert(!outline(id).includes('Budget'));
+  off42.editClose(draft);off42.editClose(id);
+});
+
 console.log(`\n${passed} checks passed`);

@@ -31,8 +31,8 @@ export function matchLanguage(tag: string): string | undefined {
   return CODES.find((code) => code === primary);
 }
 
-export function chooseLanguage(search = location.search, preferred = navigator.languages): string {
-  const requested = new URLSearchParams(search).get('lang');
+export function chooseLanguage(path = location.pathname, preferred = navigator.languages): string {
+  const requested = path.split('/')[2];
   if (requested) {
     const match = matchLanguage(requested);
     if (match) return match;
@@ -75,6 +75,6 @@ export function translatePage(root: ParentNode = document) {
 /** Reloads the page in another language (`?lang=`); the app and its hash survive, open files do not. */
 export function switchLanguage(code: string) {
   const url = new URL(location.href);
-  url.searchParams.set('lang', code);
+  url.pathname = '/app/' + code + '/' + (url.pathname.split('/')[3] || 'documents') + '/';
   location.assign(url.toString());
 }

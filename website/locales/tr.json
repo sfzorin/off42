@@ -113,7 +113,7 @@
   "web": {
     "label": "TARAYICIDA OFF42",
     "title": "Dosyaları doğrudan tarayıcınızda açın, dönüştürün ve oluşturun.",
-    "text": "Web uygulaması, WebAssembly'ye derlenmiş OFF42 motorunu çalıştırır. Dosyalar tarayıcı sekmesinin içinde işlenir ve size indirme olarak geri sunulur: hiçbir şey yüklenmez, hiçbir şey kurulmaz.",
+    "text": "Cihazınızdan dosya açın ve çalışmalarınızı tarayıcıda indirin. Desteklenen biçimleri ve düzenleme özelliklerini görmek için bir araç seçin.",
     "points": [
       "DOCX, ODT, RTF, Markdown, HTML ve metin dosyalarını önizleyin ve bu biçimlerden bir diğerinde kaydedin",
       "XLSX, ODS, XLS ve CSV tablolarını hesaplanmış değerleriyle görüntüleyin ve XLSX, ODS veya CSV olarak kaydedin",
@@ -425,8 +425,8 @@
   },
   "privacy": {
     "title": "Gizlilik politikası",
-    "intro": "OFF42, cihazınızda çalışmak üzere tasarlanmıştır. Uygulamalar kişisel veri toplamaz, saklamaz veya paylaşmaz ve belgelerinizi asla görmeyiz.",
-    "updated": "Yürürlük tarihi: 26 Kasım 2026",
+    "intro": "OFF42, dosyaları cihazınızda açar ve düzenler. Dosya asistanından yardım istediğinizde açık bir web belgesinin veya e-tablosunun bölümlerini paylaşmayı seçebilirsiniz.",
+    "updated": "Yürürlük tarihi: 27 Kasım 2026",
     "sections": [
       {
         "title": "Biz kimiz",
@@ -437,13 +437,13 @@
       {
         "title": "Topladığımız veriler",
         "text": [
-          "Hiçbiri. Uygulamalarda hesap, reklam, analiz, izleme veya çökme raporlama yoktur ve uygulamalar ne bize ne de başkasına kullanım verisi gönderir. Kişisel veri satmayız veya paylaşmayız, çünkü elimizde hiç yoktur."
+          "Yerel uygulamalarda hesap, reklam, analiz, izleme veya çökme raporlama yoktur. Web düzenleyicilerinde isteğe bağlı dosya asistanı, ücretsiz kotasını kullanılabilir tutmak için günlük model maliyetlerini ölçer. OFF42 kişisel verileri satmaz."
         ]
       },
       {
         "title": "Belgeleriniz",
         "text": [
-          "Dosyalarınız cihazınızda açılır, düzenlenir, dönüştürülür ve kaydedilir. Bize yüklenmez. İmzalar, damgalar, ayarlar, son kullanılan dosyalar ve kaydedilmemiş çalışmaların kurtarma kopyaları yalnızca cihazınızda, uygulamanın kendi depolama alanında tutulur; bunları dosyaları silerek veya uygulamayı kaldırarak istediğiniz zaman silebilirsiniz.",
+          "Dosyalarınız cihazınızda açılır, düzenlenir, dönüştürülür ve kaydedilir. İmzalar, damgalar, son dosyalar, ayarlar ve kurtarma kopyaları yerel depolamada kalır. Web asistanı, aşağıda açıklanan bölümleri yalnızca onayınızdan sonra gönderir.",
           "Mobil uygulamalar dosyaları yalnızca sistemin dosya seçicisi aracılığıyla veya onlarla bir dosya paylaştığınızda açar ve kaydeder; ağ erişimi istemez."
         ]
       },
@@ -456,19 +456,20 @@
       {
         "title": "Web sürümü",
         "text": [
-          "off42.cc/app tarayıcınızda çalışır. Sayfa ve motoru yüklendikten sonra başka ağ isteği yapmaz: açtığınız dosyalar tarayıcı sekmenizde kalır ve asla yüklenmez."
+          "Dosya açma, düzenleme ve dışa aktarma tarayıcınızda çalışır. Asistan isteğe bağlıdır. Site ayrıca istendiğinde arayüz çevirilerini ve diğer kaynakları sunar.",
+          "Web belge ve elektronik tablo düzenleyicilerinde dosya asistanını kullanmayı seçebilirsiniz. Onayladıktan sonra isteğiniz, seçim, ana hat ve görev için istenen metinler Cloudflare üzerinden OpenRouter ve model sağlayıcılarına gönderilir. OFF42, günlük kullanım toplamlarını anonim bir tarayıcı kimliği ve günlük IP karmasıyla saklar. Asistanı istediğiniz zaman kapatın veya onayınızı geri çekin."
         ]
       },
       {
         "title": "Web sitesi",
         "text": [
-          "off42.cc'de çerez, reklam veya analiz betiği yoktur. Site Cloudflare tarafından barındırılır; Cloudflare, siteyi sunmak ve kötüye kullanıma karşı korumak için IP adresleri gibi teknik istek verilerini işler. İndirmeler GitHub üzerinden sunulur. Her ikisi de kendi gizlilik politikalarına göre hareket eder."
+          "Cloudflare, off42.cc'yi barındırır ve siteyi sunmak ve kötüye kullanıma karşı korumak için IP adresleri gibi teknik istek verilerini işler. Web asistanını kullandığınızda Turnstile çalışır. İndirmeler GitHub tarafından sunulur. Bu hizmetlerin kendi gizlilik politikaları vardır."
         ]
       },
       {
         "title": "Çocuklar",
         "text": [
-          "OFF42 her yaş için uygundur ve çocuklar dahil hiç kimseden veri toplamaz."
+          "Aynı yerel düzenleme ve isteğe bağlı asistan ayarları her yaştan kullanıcı için geçerlidir."
         ]
       },
       {
@@ -494,7 +495,7 @@
     "aboutTitle": "Açık Kaynak Ofis Paketi, MIT Lisanslı | OFF42",
     "aboutDescription": "OFF42, macOS ve Windows için MIT lisanslı altı yerel uygulamadan oluşur. Kaynak kodunu, platform desteğini ve sınırlamaları GitHub’da inceleyin.",
     "privacyTitle": "OFF42 gizlilik politikası — hiçbir veri toplanmaz",
-    "privacyDescription": "OFF42 kişisel veri toplamaz: hesap, analiz veya izleme yok. Belgeleriniz her platformda cihazınızda kalır.",
+    "privacyDescription": "OFF42, dosyaları cihazınızda açar ve düzenler. Dosya asistanından yardım istediğinizde açık bir web belgesinin veya e-tablosunun bölümlerini paylaşmayı seçebilirsiniz.",
     "supportTitle": "OFF42 destek — yardım, sorular ve sorun bildirimi",
     "supportDescription": "Mac, Windows, Linux, Android, iPad, iPhone ve web'de OFF42 için yardım alın: kurulum, belgeler ve sorun bildirme."
   },

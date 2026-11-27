@@ -113,7 +113,7 @@
   "web": {
     "label": "OFF42 SA BROWSER",
     "title": "Magbukas, mag-convert at gumawa ng mga file mismo sa iyong browser.",
-    "text": "Pinapatakbo ng web app ang OFF42 engine na na-compile sa WebAssembly. Pinoproseso ang mga file sa loob ng browser tab at ibinabalik bilang download: walang ina-upload at walang ini-install.",
+    "text": "Buksan ang mga file mula sa iyong device at i-download ang iyong trabaho sa browser. Pumili ng tool para makita ang mga sinusuportahang format at feature sa pag-edit nito.",
     "points": [
       "I-preview ang mga DOCX, ODT, RTF, Markdown, HTML at text file at i-save ang mga ito sa ibang format mula sa listahang ito",
       "Tingnan ang mga XLSX, ODS, XLS at CSV sheet na may kalkuladong value at i-save bilang XLSX, ODS o CSV",
@@ -425,8 +425,8 @@
   },
   "privacy": {
     "title": "Patakaran sa privacy",
-    "intro": "Ginawa ang OFF42 para gumana sa iyong device. Hindi nangongolekta, nag-iimbak, o nagbabahagi ng personal na data ang mga app, at hindi namin kailanman nakikita ang iyong mga dokumento.",
-    "updated": "Epektibo simula Nobyembre 26, 2026",
+    "intro": "Binubuksan at ine-edit ng OFF42 ang mga file sa iyong device. Maaari mong piliing ibahagi ang mga bahagi ng bukas na web document o spreadsheet kapag humihingi ka ng tulong sa file assistant.",
+    "updated": "Epektibo noong 27 Nobyembre 2026",
     "sections": [
       {
         "title": "Sino kami",
@@ -437,13 +437,13 @@
       {
         "title": "Data na kinokolekta namin",
         "text": [
-          "Wala. Walang account, patalastas, analytics, tracking, o crash reporting ang mga app, at hindi sila nagpapadala ng data ng paggamit sa amin o kaninuman. Hindi kami nagbebenta o nagbabahagi ng personal na data dahil wala kaming anumang ganoong data."
+          "Walang account, advertising, analytics, tracking o crash reporting ang mga native app. Sa mga web editor, sinusukat ng opsyonal na file assistant ang pang-araw-araw na gastos ng modelo upang manatiling available ang libreng allowance nito. Hindi nagbebenta ang OFF42 ng personal na data."
         ]
       },
       {
         "title": "Ang iyong mga dokumento",
         "text": [
-          "Binubuksan, ine-edit, kino-convert, at sine-save ang iyong mga file sa iyong device. Hindi ina-upload ang mga ito sa amin. Ang mga lagda, stamp, setting, kamakailang file, at recovery copy ng hindi pa naka-save na trabaho ay itinatago lamang sa iyong device, sa sariling storage ng app, at maaari mo itong burahin anumang oras sa pamamagitan ng pagbura sa mga file o pag-uninstall ng app.",
+          "Binubuksan, ine-edit, kino-convert at sine-save ang iyong mga file sa iyong device. Ang mga signature, stamp, recent file, setting at recovery copy ay nananatili sa local storage. Ipinapadala ng web assistant ang mga excerpt na inilarawan sa ibaba pagkatapos lamang ng pahintulot.",
           "Nagbubukas at nagse-save ng mga file ang mga mobile app sa pamamagitan lamang ng file picker ng system o kapag nagbahagi ka ng file sa mga ito, at hindi sila humihingi ng network access."
         ]
       },
@@ -456,19 +456,20 @@
       {
         "title": "Ang web version",
         "text": [
-          "Tumatakbo ang off42.cc/app sa iyong browser. Kapag na-load na ang page at ang engine nito, wala na itong ginagawang iba pang network request: nananatili sa iyong browser tab ang mga file na binubuksan mo at hindi kailanman ina-upload."
+          "Ang pagbubukas, pag-edit at pag-export ng file ay tumatakbo sa iyong browser. Opsyonal ang assistant. Naghahatid din ang site ng mga salin ng interface at iba pang resource kapag hiniling.",
+          "Sa mga editor ng web document at spreadsheet, maaari mong piliing gamitin ang file assistant. Pagkatapos mong sumang-ayon, ang iyong kahilingan, seleksyon, outline at tekstong hiniling para sa gawain ay dadaan sa Cloudflare papunta sa OpenRouter at sa mga provider ng modelo nito. Iniimbak ng OFF42 ang pang-araw-araw na kabuuang paggamit gamit ang anonymous na browser ID at pang-araw-araw na IP hash. Isara ang assistant o bawiin ang iyong pahintulot anumang oras."
         ]
       },
       {
         "title": "Ang website",
         "text": [
-          "Walang cookie, patalastas, o analytics script ang off42.cc. Naka-host ito sa Cloudflare, na nagpoproseso ng teknikal na data ng request gaya ng mga IP address para maihatid ang site at maprotektahan ito laban sa pang-aabuso. Ang mga download ay ibinibigay mula sa GitHub. Pareho silang kumikilos ayon sa sarili nilang mga patakaran sa privacy."
+          "Hinohost ng Cloudflare ang off42.cc at pinoproseso ang teknikal na data ng request gaya ng mga IP address para maihatid ang site at maprotektahan ito mula sa abuse. Tumatakbo ang Turnstile kapag ginagamit mo ang web assistant. Ang mga download ay inihahatid ng GitHub. May sariling privacy policy ang mga serbisyong ito."
         ]
       },
       {
         "title": "Mga bata",
         "text": [
-          "Angkop ang OFF42 para sa lahat ng edad at hindi ito nangongolekta ng data mula kaninuman, kabilang ang mga bata."
+          "Pareho ang lokal na pag-edit at opsyonal na setting ng assistant para sa mga user sa lahat ng edad."
         ]
       },
       {
@@ -494,7 +495,7 @@
     "aboutTitle": "Open-Source Office Suite na may MIT License | OFF42",
     "aboutDescription": "Ang OFF42 ay anim na native app para sa macOS at Windows na may lisensyang MIT. Tingnan sa GitHub ang source code, suporta sa platform, at mga limitasyon.",
     "privacyTitle": "Patakaran sa privacy ng OFF42 — walang kinokolektang data",
-    "privacyDescription": "Walang kinokolektang personal na data ang OFF42: walang account, analytics, o tracking. Nananatili sa iyong device ang mga dokumento mo sa bawat platform.",
+    "privacyDescription": "Binubuksan at ine-edit ng OFF42 ang mga file sa iyong device. Maaari mong piliing ibahagi ang mga bahagi ng bukas na web document o spreadsheet kapag humihingi ka ng tulong sa file assistant.",
     "supportTitle": "Suporta ng OFF42 — tulong, mga tanong at pag-uulat ng problema",
     "supportDescription": "Kumuha ng tulong sa OFF42 sa Mac, Windows, Linux, Android, iPad, iPhone at web: pag-install, dokumentasyon, at kung paano mag-ulat ng problema."
   },

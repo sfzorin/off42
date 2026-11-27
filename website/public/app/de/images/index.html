@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="de" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1b1c1f" media="(prefers-color-scheme: dark)" />
+    <title>Bilder – OFF42</title>
+<meta name="description" content="Öffnen Sie ein PNG-, JPEG-, BMP- oder statisches WebP-Bild. Zeigen Sie es in Originalgröße an, drehen oder spiegeln Sie es, machen Sie Änderungen rückgängig und exportieren Sie eine PNG- oder JPEG-Kopie.">
+<link rel="canonical" href="https://off42.cc/app/de/images/">
+<link rel="alternate" hreflang="ar" href="https://off42.cc/app/ar/images/">
+<link rel="alternate" hreflang="de" href="https://off42.cc/app/de/images/">
+<link rel="alternate" hreflang="en" href="https://off42.cc/app/en/images/">
+<link rel="alternate" hreflang="es" href="https://off42.cc/app/es/images/">
+<link rel="alternate" hreflang="fil" href="https://off42.cc/app/fil/images/">
+<link rel="alternate" hreflang="fr" href="https://off42.cc/app/fr/images/">
+<link rel="alternate" hreflang="hu" href="https://off42.cc/app/hu/images/">
+<link rel="alternate" hreflang="id" href="https://off42.cc/app/id/images/">
+<link rel="alternate" hreflang="it" href="https://off42.cc/app/it/images/">
+<link rel="alternate" hreflang="ja" href="https://off42.cc/app/ja/images/">
+<link rel="alternate" hreflang="ko" href="https://off42.cc/app/ko/images/">
+<link rel="alternate" hreflang="ms" href="https://off42.cc/app/ms/images/">
+<link rel="alternate" hreflang="pl" href="https://off42.cc/app/pl/images/">
+<link rel="alternate" hreflang="pt" href="https://off42.cc/app/pt/images/">
+<link rel="alternate" hreflang="ru" href="https://off42.cc/app/ru/images/">
+<link rel="alternate" hreflang="th" href="https://off42.cc/app/th/images/">
+<link rel="alternate" hreflang="tr" href="https://off42.cc/app/tr/images/">
+<link rel="alternate" hreflang="vi" href="https://off42.cc/app/vi/images/">
+<link rel="alternate" hreflang="zh-Hans" href="https://off42.cc/app/zh-Hans/images/">
+<link rel="alternate" hreflang="zh-Hant" href="https://off42.cc/app/zh-Hant/images/">
+<link rel="alternate" hreflang="x-default" href="https://off42.cc/app/en/images/">
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+    <script type="module" crossorigin src="/app/assets/index-Dkhm1aD1.js"></script>
+    <link rel="stylesheet" crossorigin href="/app/assets/index-D-69XKwX.css">
+  </head>
+  <body><main id="tool-entry"><h1>Bilder</h1><p>Öffnen Sie ein PNG-, JPEG-, BMP- oder statisches WebP-Bild. Zeigen Sie es in Originalgröße an, drehen oder spiegeln Sie es, machen Sie Änderungen rückgängig und exportieren Sie eine PNG- oder JPEG-Kopie.</p><nav aria-label="Hauptmenü"><a href="/app/de/documents/">Dokumente</a> <a href="/app/de/spreadsheets/">Tabellen</a> <a href="/app/de/presentations/">Präsentationen</a> <a href="/app/de/pdf/">PDF</a> <a href="/app/de/images/">Bilder</a> <a href="/app/de/labels/">Etiketten und Codes</a> <a href="/app/de/signatures/">Unterschriften und Stempel</a></nav></main>
+    <!-- Language-neutral until the interface catalog is loaded: no English flashes before another language. -->
+    <div id="splash" class="splash" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="splash-inner">
+        <span class="wordmark large" dir="ltr" aria-label="OFF42">off<span class="wm-n">42<svg class="wm-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1"/></svg></span></span>
+        <div class="splash-bar"><div id="splash-fill" class="splash-fill"></div></div>
+        <p id="splash-text" class="splash-text"></p>
+        <p id="splash-note" class="splash-note"></p>
+      </div>
+    </div>
+
+    <!-- Every app is a screen: Documents, Spreadsheets, Presentations and PDF (home screen and editor) are built
+         by main.ts; the two tools below get their top bar from main.ts. -->
+    <div id="app" class="app" hidden>
+      <section id="labels" class="screen tool-screen app-labels" hidden>
+        <div class="tabs" role="tablist" data-tabs="labels">
+          <button role="tab" data-pane="codes" data-i18n="labels.tab.codes">Codes</button>
+          <button role="tab" data-pane="sheets" data-i18n="labels.tab.sheets">Label sheets</button>
+          <button role="tab" data-pane="marks" data-i18n="marks.title">Product marks</button>
+        </div>
+
+        <div class="pane split" data-pane="codes">
+          <div class="settings">
+            <div class="field"><span class="field-label" data-i18n="code.type">Type</span>
+              <div class="chips" id="code-format" role="radiogroup">
+                <button role="radio" data-value="qr" data-i18n="code.qr">QR code</button>
+                <button role="radio" data-value="datamatrix">Data Matrix</button>
+                <button role="radio" data-value="code128">Code 128</button>
+                <button role="radio" data-value="aztec">Aztec</button>
+              </div>
+            </div>
+            <label class="field"><span class="field-label" data-i18n="code.content">Content</span>
+              <textarea id="code-value" rows="3">https://off42.cc</textarea></label>
+            <label class="field"><span class="field-label"><span data-i18n="common.widthMm">Width, mm</span> <output id="code-width-out"></output></span>
+              <input id="code-width" type="range" min="10" max="120" step="1" value="40" /></label>
+            <label class="check"><input id="code-caption" type="checkbox" /> <span data-i18n="code.caption">Print the content underneath (SVG)</span></label>
+          </div>
+          <div class="canvas tool-canvas">
+            <div class="paper-stage" id="code-preview" aria-live="polite"></div>
+            <p class="stage-caption" id="code-size"></p>
+            <div class="actions center">
+              <button id="code-png" class="pill-button"><span data-icon="download"></span><span data-i18n="common.downloadPng">Download PNG</span></button>
+              <button id="code-svg" class="outline-button"><span data-icon="download"></span><span data-i18n="common.downloadSvg">Download SVG</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane split" data-pane="sheets" hidden>
+          <div class="settings">
+            <label class="field"><span class="field-label" data-i18n="labels.stock">Label stock</span> <select id="sheet-stock"></select></label>
+            <div class="row" id="sheet-custom" hidden>
+              <label class="field"><span class="field-label" data-i18n="common.widthMm">Width, mm</span> <input id="sheet-width" type="number" min="5" max="200" value="70" /></label>
+              <label class="field"><span class="field-label" data-i18n="common.heightMm">Height, mm</span> <input id="sheet-height" type="number" min="5" max="280" value="37" /></label>
+              <label class="field"><span class="field-label" data-i18n="labels.gapX">Gap X, mm</span> <input id="sheet-gapx" type="number" min="0" value="0" /></label>
+              <label class="field"><span class="field-label" data-i18n="labels.gapY">Gap Y, mm</span> <input id="sheet-gapy" type="number" min="0" value="0" /></label>
+            </div>
+            <div class="row">
+              <label class="field"><span class="field-label" data-i18n="labels.first">Start at label</span> <input id="sheet-first" type="number" min="1" value="1" /></label>
+              <label class="field"><span class="field-label" data-i18n="labels.code">Code on each label</span>
+                <select id="sheet-code">
+                  <option value="" data-i18n="labels.none">None</option>
+                  <option value="qr" selected data-i18n="code.qr">QR code</option>
+                  <option value="datamatrix">Data Matrix</option>
+                  <option value="code128">Code 128</option>
+                  <option value="aztec">Aztec</option>
+                </select>
+              </label>
+            </div>
+            <label class="field"><span class="field-label"><span data-i18n="labels.lines">Labels — one per line:</span> <code data-i18n="labels.linesFormat">text | code | copies</code></span>
+              <textarea id="sheet-lines" rows="7">Box 1 | BOX-0001 | 2
+Box 2 | BOX-0002
+Spare parts</textarea>
+            </label>
+          </div>
+          <div class="canvas tool-canvas">
+            <div id="sheet-preview" class="sheet-preview" dir="ltr"></div>
+            <p class="stage-caption" id="sheet-summary"></p>
+            <div class="actions center">
+              <button id="sheet-pdf" class="pill-button"><span data-icon="download"></span><span data-i18n="labels.downloadSheet">Download PDF sheet</span></button>
+            </div>
+            <p class="stage-caption" id="sheet-status" role="status"></p>
+          </div>
+        </div>
+
+        <div class="pane split" data-pane="marks" hidden>
+          <div class="settings">
+            <label class="search-field"><span data-icon="search"></span><span class="visually-hidden" data-i18n="marks.search">Search</span>
+              <input id="marks-search" type="search" data-i18n-placeholder="marks.searchPlaceholder" /></label>
+            <p class="count" id="marks-count"></p>
+            <div class="category-list" id="marks-category" role="radiogroup"></div>
+            <p class="note" data-i18n="marks.hint">Artwork only: placing a mark certifies nothing. Follow each mark's own rules of use.</p>
+          </div>
+          <div class="canvas marks-canvas">
+            <div id="marks-grid" class="marks-grid"></div>
+          </div>
+          <aside id="marks-detail" class="side-panel mark-detail" hidden></aside>
+        </div>
+      </section>
+
+      <section id="signatures" class="screen tool-screen app-signatures" hidden>
+        <div class="tabs" role="tablist" data-tabs="signatures">
+          <button role="tab" data-pane="signature" data-i18n="sig.title">Handwritten signature</button>
+          <button role="tab" data-pane="stamp" data-i18n="stamp.title">Stamp</button>
+        </div>
+
+        <div class="pane split" data-pane="signature">
+          <div class="settings">
+            <label class="field"><span class="field-label" data-i18n="sig.name">Name</span> <input id="sig-name" value="Anna Smith" autocomplete="off" /></label>
+            <label class="field"><span class="field-label" data-i18n="sig.form">Form</span> <select id="sig-form"></select></label>
+            <div class="field"><span class="field-label" data-i18n="sig.pen">Pen</span><div class="chips" id="sig-pen" role="radiogroup"></div></div>
+            <div class="field"><span class="field-label" data-i18n="sig.ink">Ink</span><div class="swatches" id="sig-ink" role="radiogroup"></div></div>
+            <div class="actions"><button id="sig-generate" class="pill-button"><span data-icon="refresh"></span><span data-i18n="sig.newVariants">New variants</span></button></div>
+          </div>
+          <div class="canvas variants-canvas">
+            <div id="sig-results" class="variants" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div class="pane split" data-pane="stamp" hidden>
+          <div class="settings">
+            <label class="field"><span class="field-label" data-i18n="stamp.template">Template</span> <select id="stamp-template"></select></label>
+            <div id="stamp-fields" class="fields-stack"></div>
+            <label class="field"><span class="field-label" data-i18n="sig.ink">Ink</span> <select id="stamp-ink"></select></label>
+            <p class="note" data-i18n="stamp.fonts"></p>
+          </div>
+          <div class="canvas tool-canvas">
+            <div class="paper-stage checker" id="stamp-preview" aria-live="polite"></div>
+            <div class="actions center">
+              <button id="stamp-again" class="outline-button"><span data-icon="refresh"></span><span data-i18n="common.newImpression">New impression</span></button>
+              <button id="stamp-download" class="pill-button"><span data-icon="download"></span><span data-i18n="common.downloadPng">Download PNG</span></button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <dialog id="drawer" class="drawer" data-i18n-label="drawer.label">
+      <div class="drawer-head"><span class="wordmark" dir="ltr" aria-label="OFF42">off<span class="wm-n">42<svg class="wm-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1"/></svg></span></span></div>
+      <nav class="drawer-apps" id="drawer-apps"></nav>
+      <div class="drawer-sep"></div>
+      <a class="drawer-link" id="drawer-download" href="/de/download/"><span data-icon="download"></span><span data-i18n="drawer.download">Download for Mac, Windows, Linux</span></a>
+      <div class="drawer-foot">
+        <p><a id="drawer-about" href="/de/about/" data-i18n="app.site">About OFF42</a> · <a id="drawer-privacy" href="/de/privacy/" data-i18n="drawer.privacy">Privacy</a></p>
+        <p id="engine-version" class="engine-version"></p>
+      </div>
+    </dialog>
+
+    <dialog id="about" class="dialog">
+      <div class="dialog-head"><span class="wordmark" dir="ltr" aria-label="OFF42">off<span class="wm-n">42<svg class="wm-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1"/></svg></span></span></div>
+      <p id="about-version" class="muted"></p>
+      <p class="about-privacy"><span data-icon="lock"></span><span data-i18n="home.privacy"></span></p>
+      <p class="about-links"><a id="about-site" href="/de/" target="_blank" rel="noopener" data-i18n="menu.website">OFF42 website</a> · <a id="about-privacy-link" href="/de/privacy/" target="_blank" rel="noopener" data-i18n="drawer.privacy">Privacy</a> · <a id="about-download" href="/de/download/" target="_blank" rel="noopener" data-i18n="drawer.download">Download for Mac, Windows, Linux</a></p>
+      <div class="actions end"><button class="text-button" data-close data-i18n="files.close">Close</button></div>
+    </dialog>
+
+    <dialog id="stats" class="dialog">
+      <h2 data-i18n="stats.title">Document statistics</h2>
+      <dl id="stats-list" class="stats-list"></dl>
+      <div class="actions end"><button class="text-button" data-close data-i18n="files.close">Close</button></div>
+    </dialog>
+
+    <dialog id="confirm" class="dialog">
+      <p id="confirm-text"></p>
+      <div class="actions end">
+        <button id="confirm-cancel" class="text-button" data-i18n="common.cancel">Cancel</button>
+        <button class="pill-button" id="confirm-ok" data-i18n="common.convertAnyway">Convert anyway</button>
+      </div>
+    </dialog>
+
+    <div id="snackbar" class="snackbar" role="status" aria-live="polite" hidden></div>
+    <div id="print-root" class="print-root"></div>
+    <div id="drop-overlay" class="drop-overlay" hidden><div><span data-icon="open"></span><p data-i18n="files.dropAnywhere">Drop to open</p></div></div>
+    <noscript><p class="noscript">OFF42 needs JavaScript and WebAssembly.</p></noscript>
+  </body>
+</html>

@@ -43,6 +43,11 @@ export async function serveApp(dir, headersFile) {
   const headersFor = parseHeaders(await readFile(headersFile, 'utf8'));
   const server = createServer(async (request, response) => {
     const path = decodeURIComponent(new URL(request.url, 'http://x').pathname);
+    if (path === '/favicon.ico' || path === '/assets/favicon.svg') {
+      const icon = new URL('../../website/public' + path, import.meta.url);
+      response.writeHead(200, {'content-type':path.endsWith('.svg')?'image/svg+xml':'image/x-icon'});
+      return response.end(await readFile(icon));
+    }
     if (!path.startsWith('/app/')) {
       response.writeHead(path === '/app' ? 307 : 404, path === '/app' ? { Location: '/app/' } : {});
       return response.end();

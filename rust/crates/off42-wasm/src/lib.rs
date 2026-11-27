@@ -263,10 +263,17 @@ pub fn edit_image(id: u32, image: u64) -> Result<Vec<u8>> {
     })
 }
 
+pub fn edit_fork(id: u32) -> Result<u32> {
+    let copy = with_session(id, |s| Ok(s.editing_copy()))?;
+    keep(copy)
+}
+
 /// Closes a session and frees its memory.
 pub fn edit_close(id: u32) {
     sessions().open.remove(&id);
 }
+
+pub mod media;
 
 // MARK: - Presentations (ppt42-core)
 

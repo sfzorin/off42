@@ -168,3 +168,19 @@ pub fn stamp_templates(language: &str) -> String {
 pub fn stamp_png(template: &str, values: &str, ink: &str, impression: &str, pixel_scale: f64) -> JsResult<Vec<u8>> {
     js(crate::stamp_png(template, values, ink, impression, pixel_scale))
 }
+
+#[wasm_bindgen(js_name = presentationCreate)]
+pub fn presentation_create(slides: &str, format: &str) -> JsResult<Vec<u8>> {
+    js(crate::media::presentation_create(slides, format))
+}
+#[wasm_bindgen(js_name = imageOpen)]
+pub fn image_open(bytes: &[u8]) -> JsResult<u32> { js(crate::media::image_open(bytes)) }
+#[wasm_bindgen(js_name = imageEdit)]
+pub fn image_edit(id: u32, action: &str) -> JsResult<String> { js(crate::media::image_edit(id, action)) }
+#[wasm_bindgen(js_name = imageSave)]
+pub fn image_save(id: u32, format: &str, mark: bool) -> JsResult<Vec<u8>> { js(crate::media::image_save(id, format, mark)) }
+#[wasm_bindgen(js_name = imageClose)]
+pub fn image_close(id: u32) { crate::media::image_close(id); }
+
+#[wasm_bindgen(js_name = editFork)]
+pub fn edit_fork(id: u32) -> JsResult<u32> { js(crate::edit_fork(id)) }

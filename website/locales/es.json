@@ -113,7 +113,7 @@
   "web": {
     "label": "OFF42 EN EL NAVEGADOR",
     "title": "Abre, convierte y crea archivos directamente en tu navegador.",
-    "text": "La aplicación web ejecuta el motor de OFF42 compilado a WebAssembly. Los archivos se procesan dentro de la pestaña del navegador y se te devuelven como descargas: no se sube nada y no se instala nada.",
+    "text": "Abre archivos de tu dispositivo y descarga tu trabajo en el navegador. Elige una herramienta para ver los formatos compatibles y las funciones de edición.",
     "points": [
       "Vista previa de archivos DOCX, ODT, RTF, Markdown, HTML y de texto, y guardado en otro de estos formatos",
       "Hojas XLSX, ODS, XLS y CSV con valores calculados, que puedes guardar como XLSX, ODS o CSV",
@@ -425,8 +425,8 @@
   },
   "privacy": {
     "title": "Política de privacidad",
-    "intro": "OFF42 está hecho para funcionar en tu dispositivo. Las apps no recopilan, almacenan ni comparten datos personales, y nunca vemos tus documentos.",
-    "updated": "En vigor desde el 26 de noviembre de 2026",
+    "intro": "OFF42 abre y edita archivos en tu dispositivo. Puedes compartir partes de un documento web o una hoja de cálculo abiertos cuando pidas ayuda al asistente de archivos.",
+    "updated": "En vigor desde el 27 de noviembre de 2026",
     "sections": [
       {
         "title": "Quiénes somos",
@@ -437,13 +437,13 @@
       {
         "title": "Datos que recopilamos",
         "text": [
-          "Ninguno. Las apps no tienen cuentas, publicidad, analítica, seguimiento ni informes de fallos, y no envían datos de uso ni a nosotros ni a nadie más. No vendemos ni compartimos datos personales porque no tenemos ninguno."
+          "Las aplicaciones nativas no tienen cuentas, publicidad, analítica, seguimiento ni informes de fallos. En los editores web, el asistente de archivos opcional mide los costes diarios del modelo para mantener disponible su límite gratuito. OFF42 no vende datos personales."
         ]
       },
       {
         "title": "Tus documentos",
         "text": [
-          "Tus archivos se abren, editan, convierten y guardan en tu dispositivo. No se suben a nuestros servidores. Las firmas, sellos, ajustes, archivos recientes y copias de recuperación del trabajo sin guardar se conservan solo en tu dispositivo, en el almacenamiento propio de la app, y puedes eliminarlos en cualquier momento borrando los archivos o desinstalando la app.",
+          "Tus archivos se abren, editan, convierten y guardan en tu dispositivo. Las firmas, sellos, archivos recientes, ajustes y copias de recuperación permanecen en el almacenamiento local. El asistente web envía los extractos descritos a continuación solo tras el consentimiento.",
           "Las apps móviles abren y guardan archivos solo mediante el selector de archivos del sistema o cuando compartes un archivo con ellas, y no solicitan acceso a la red."
         ]
       },
@@ -456,19 +456,20 @@
       {
         "title": "La versión web",
         "text": [
-          "off42.cc/app se ejecuta en tu navegador. Una vez cargados la página y su motor, no realiza más solicitudes de red: los archivos que abres permanecen en la pestaña del navegador y nunca se suben."
+          "La apertura, edición y exportación de archivos se ejecutan en tu navegador. El asistente es opcional. El sitio también entrega traducciones de la interfaz y otros recursos cuando se solicitan.",
+          "En los editores web de documentos y hojas de cálculo, puedes optar por usar el asistente de archivos. Cuando aceptas, tu solicitud, la selección, el esquema y el texto solicitado para la tarea pasan por Cloudflare hacia OpenRouter y sus proveedores de modelos. OFF42 guarda los totales de uso diario con un ID de navegador anónimo y un hash diario de IP. Puedes cerrar el asistente o retirar tu consentimiento en cualquier momento."
         ]
       },
       {
         "title": "El sitio web",
         "text": [
-          "off42.cc no usa cookies, publicidad ni scripts de analítica. Está alojado en Cloudflare, que procesa datos técnicos de las solicitudes, como las direcciones IP, para servir el sitio y protegerlo frente a abusos. Las descargas se sirven desde GitHub. Ambos actúan conforme a sus propias políticas de privacidad."
+          "Cloudflare aloja off42.cc y procesa datos técnicos de las solicitudes, como direcciones IP, para entregar el sitio y protegerlo del abuso. Turnstile se ejecuta cuando usas el asistente web. Las descargas las sirve GitHub. Estos servicios tienen sus propias políticas de privacidad."
         ]
       },
       {
         "title": "Menores",
         "text": [
-          "OFF42 es apto para todas las edades y no recopila datos de nadie, tampoco de menores."
+          "La misma edición local y los ajustes opcionales del asistente se aplican a usuarios de todas las edades."
         ]
       },
       {
@@ -494,7 +495,7 @@
     "aboutTitle": "Suite ofimática de código abierto, licencia MIT | OFF42",
     "aboutDescription": "OFF42 reúne seis aplicaciones nativas para macOS y Windows con licencia MIT. Consulta el código, la compatibilidad y las limitaciones de cada plataforma en GitHub.",
     "privacyTitle": "Política de privacidad de OFF42 — no se recopilan datos",
-    "privacyDescription": "OFF42 no recopila datos personales: sin cuentas, analítica ni seguimiento. Tus documentos se quedan en tu dispositivo en todas las plataformas.",
+    "privacyDescription": "OFF42 abre y edita archivos en tu dispositivo. Puedes compartir partes de un documento web o una hoja de cálculo abiertos cuando pidas ayuda al asistente de archivos.",
     "supportTitle": "Soporte de OFF42 — ayuda, preguntas e informes de problemas",
     "supportDescription": "Obtén ayuda con OFF42 en Mac, Windows, Linux, Android, iPad, iPhone y la web: instalación, documentación y cómo informar de un problema."
   },

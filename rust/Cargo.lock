@@ -3380,6 +3380,7 @@ version = "0.1.0"
 dependencies = [
  "doc42-core",
  "edit42",
+ "img42-core",
  "label42",
  "marks42",
  "pdf42-core",

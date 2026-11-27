@@ -168,6 +168,10 @@ fn failed(e: DocError) -> String {
 }
 
 impl DocumentSession {
+    pub(crate) fn editing_copy(&self) -> Self {
+        Self { doc: self.doc.editing_copy(), typing: None }
+    }
+
     pub fn blank() -> Self {
         let mut doc = RichDocument::new();
         doc.set_history_limit(crate::HISTORY_DEPTH);

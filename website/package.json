@@ -7,6 +7,11 @@
     "build": "node scripts/build.mjs",
     "check": "node scripts/check.mjs",
     "preview": "node scripts/serve.mjs",
-    "release:sync": "node scripts/sync-releases.mjs"
+    "release:sync": "node scripts/sync-releases.mjs",
+    "test:assistant": "node test/assistant.mjs"
+  },
+  "devDependencies": {
+    "miniflare": "5.20260930.0-alpha",
+    "wrangler": "4.145.0"
   }
 }

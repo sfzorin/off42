@@ -1336,13 +1336,7 @@ The snapshots render AppKit views; native material layers may require checking t
 ## Structure
 
 - `rust/` — the separate native Windows workspace; see [its README](rust/README.md) for crates, build instructions and limits.
-- `web/` — the web version: a TypeScript app (documents, spreadsheets, presentations, PDF, labels & codes,
-  signatures & stamps) over the Rust cores compiled to WebAssembly (`rust/crates/off42-wasm`), run in a Web Worker.
-  Documents and spreadsheets can be created and edited (blank files, typing, styles, lists, formulas, rows and columns,
-  number formats, sorting, Undo/Redo) through the shared command layer `rust/crates/edit42`; presentations and PDFs
-  are view-only. Files are processed in the browser and never uploaded. Published at
-  https://off42.cc/app/ in the site's 20 languages; see [web/README.md](web/README.md) for what it does, its limits
-  and build steps.
+- `web/` contains seven browser tools backed by the Rust WebAssembly engine. Create documents, spreadsheets and presentations, inspect PDFs, edit images, make labels and generate signatures. Every tool has its own localized entry page, such as [Presentations](https://off42.cc/app/en/presentations/) or [Images](https://off42.cc/app/en/images/). The optional document and spreadsheet assistant uses the shared editing commands and applies one Undo step per request. See [the web guide](web/README.md).
 - `android/` — the Android app (Kotlin, Jetpack Compose) over the cores through the UniFFI crate
   `rust/crates/off42-mobile`, which also builds the Swift bindings for the iPad/iPhone app; see
   [android/README.md](android/README.md).

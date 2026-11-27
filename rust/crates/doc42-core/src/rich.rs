@@ -428,6 +428,9 @@ impl RichDocument {
             history: SnapshotHistory::new(State::default(), 8),
         }
     }
+    pub fn editing_copy(&self) -> Self {
+        Self { history: SnapshotHistory::new(self.snapshot(), 0) }
+    }
     pub fn state(&self) -> &State {
         self.history.current()
     }

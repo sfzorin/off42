@@ -113,7 +113,7 @@
   "web": {
     "label": "OFF42 A BÖNGÉSZŐBEN",
     "title": "Nyiss meg, alakíts át és hozz létre fájlokat közvetlenül a böngésződben.",
-    "text": "A webalkalmazás a WebAssemblyre fordított OFF42 motort futtatja. A fájlok feldolgozása a böngészőlapon belül történik, az eredményt letöltésként kapod vissza: semmi sem kerül feltöltésre, és semmit sem kell telepíteni.",
+    "text": "Nyisson meg fájlokat az eszközéről, és töltse le munkáját a böngészőben. Válasszon egy eszközt a támogatott formátumok és szerkesztési funkciók megtekintéséhez.",
     "points": [
       "DOCX, ODT, RTF, Markdown, HTML és szöveges fájlok előnézete és mentése ezek egy másik formátumába",
       "XLSX, ODS, XLS és CSV táblázatok megtekintése kiszámított értékekkel, mentés XLSX, ODS vagy CSV formátumba",
@@ -425,8 +425,8 @@
   },
   "privacy": {
     "title": "Adatvédelmi irányelvek",
-    "intro": "Az OFF42 arra készült, hogy a saját eszközödön működjön. Az alkalmazások nem gyűjtenek, nem tárolnak és nem osztanak meg személyes adatokat, és mi soha nem látjuk a dokumentumaidat.",
-    "updated": "Hatályos: 2026. november 26.",
+    "intro": "Az OFF42 megnyitja és szerkeszti a fájlokat az eszközén. Ha segítséget kér a fájlasszisztenstől, eldöntheti, hogy megosztja-e egy megnyitott webes dokumentum vagy táblázat részeit.",
+    "updated": "Hatályos: 2026. november 27.",
     "sections": [
       {
         "title": "Kik vagyunk",
@@ -437,13 +437,13 @@
       {
         "title": "Milyen adatokat gyűjtünk",
         "text": [
-          "Semmilyet. Az alkalmazásokban nincs fiók, reklám, elemzés, követés vagy összeomlás-jelentés, és nem küldenek használati adatokat sem nekünk, sem másnak. Nem adunk el és nem osztunk meg személyes adatokat, mert nincsenek ilyenek nálunk."
+          "A natív alkalmazásokban nincsenek fiókok, hirdetések, analitika, nyomkövetés vagy összeomlásjelentés. A webes szerkesztőkben az opcionális fájlasszisztens a napi modellköltségeket méri, hogy az ingyenes keret elérhető maradjon. Az OFF42 nem ad el személyes adatokat."
         ]
       },
       {
         "title": "A dokumentumaid",
         "text": [
-          "A fájljaid megnyitása, szerkesztése, konvertálása és mentése az eszközödön történik. Nem töltődnek fel hozzánk. Az aláírások, bélyegzők, beállítások, legutóbbi fájlok és a nem mentett munka helyreállítási másolatai kizárólag az eszközödön, az alkalmazás saját tárhelyén maradnak, és bármikor törölheted őket a fájlok törlésével vagy az alkalmazás eltávolításával.",
+          "A fájlokat az eszközén nyitja meg, szerkeszti, alakítja át és menti. Az aláírások, bélyegzők, legutóbbi fájlok, beállítások és helyreállítási másolatok a helyi tárolóban maradnak. A webes asszisztens csak hozzájárulás után küldi el az alább leírt részleteket.",
           "A mobilalkalmazások csak a rendszer fájlválasztóján keresztül, vagy amikor megosztasz velük egy fájlt, nyitnak meg és mentenek fájlokat, és nem kérnek hálózati hozzáférést."
         ]
       },
@@ -456,19 +456,20 @@
       {
         "title": "A webes változat",
         "text": [
-          "Az off42.cc/app a böngésződben fut. Miután az oldal és a motorja betöltődött, nem indít további hálózati kéréseket: a megnyitott fájlok a böngészőlapon maradnak, és soha nem töltődnek fel."
+          "A fájlok megnyitása, szerkesztése és exportálása a böngészőben fut. Az asszisztens opcionális. A webhely kérésre felületi fordításokat és egyéb erőforrásokat is kiszolgál.",
+          "A webes dokumentum- és táblázatszerkesztőkben választhatja a fájlasszisztens használatát. Hozzájárulása után a kérése, a kijelölés, a vázlat és a feladathoz kért szöveg a Cloudflare-en keresztül az OpenRouterhez és modellszolgáltatóihoz jut. Az OFF42 névtelen böngészőazonosítóval és napi IP-hash-sel tárolja a napi használati összesítéseket. Az asszisztenst bármikor bezárhatja, vagy visszavonhatja hozzájárulását."
         ]
       },
       {
         "title": "A webhely",
         "text": [
-          "Az off42.cc nem használ sütiket, reklámokat vagy elemzőszkripteket. A tárhelyet a Cloudflare biztosítja, amely technikai kérésadatokat, például IP-címeket kezel a webhely kiszolgálása és a visszaélések elleni védelem érdekében. A letöltéseket a GitHub szolgálja ki. Mindkettő saját adatvédelmi irányelvei szerint jár el."
+          "A Cloudflare üzemelteti az off42.cc oldalt, és technikai kérésadatokat – például IP-címeket – kezel a webhely kiszolgálásához és a visszaélések elleni védelemhez. A Turnstile a webes asszisztens használatakor fut. A letöltéseket a GitHub szolgálja ki. Ezeknek a szolgáltatásoknak saját adatvédelmi irányelveik vannak."
         ]
       },
       {
         "title": "Gyermekek",
         "text": [
-          "Az OFF42 minden korosztály számára alkalmas, és senkitől sem gyűjt adatot, a gyermekeket is beleértve."
+          "A helyi szerkesztés és az opcionális asszisztens beállításai minden korosztályra ugyanúgy vonatkoznak."
         ]
       },
       {
@@ -494,7 +495,7 @@
     "aboutTitle": "Nyílt forráskódú irodai csomag, MIT-licenc | OFF42",
     "aboutDescription": "Az OFF42 hat natív alkalmazás macOS és Windows rendszerre, MIT-licenccel. A forráskód, a platformtámogatás és a korlátok a GitHubon olvashatók.",
     "privacyTitle": "OFF42 adatvédelmi irányelvek — nincs adatgyűjtés",
-    "privacyDescription": "Az OFF42 nem gyűjt személyes adatokat: nincs fiók, elemzés vagy követés. A dokumentumaid minden platformon az eszközödön maradnak.",
+    "privacyDescription": "Az OFF42 megnyitja és szerkeszti a fájlokat az eszközén. Ha segítséget kér a fájlasszisztenstől, eldöntheti, hogy megosztja-e egy megnyitott webes dokumentum vagy táblázat részeit.",
     "supportTitle": "OFF42 támogatás — segítség, kérdések és hibabejelentés",
     "supportDescription": "Segítség az OFF42-höz Macen, Windowson, Linuxon, Androidon, iPaden, iPhone-on és a weben: telepítés, dokumentáció és hibabejelentés."
   },

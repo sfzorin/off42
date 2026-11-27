@@ -1,20 +1,15 @@
 # off42 web
 
-A web app over the off42 Rust cores compiled to WebAssembly (ARCHITECTURE.md, decisions D4 and D5). Files are read with the browser's file picker, processed inside the tab and offered back as downloads. Nothing is
-uploaded: the built page carries a Content Security Policy with `connect-src 'self'`, and the tests check that no
-request leaves the page's own origin. The site serves it at https://off42.cc/app/ (see *Publishing on off42.cc*).
+OFF42 opens and saves files in the browser with its Rust cores compiled to WebAssembly. Documents and spreadsheets also have an optional file assistant. After consent, the editor sends the request and limited file context to its same-origin Worker. Turnstile runs in a separate verification frame. Editing files without the assistant works offline once the editor has loaded.
 
 ## What it does
 
-The page is an application shell in the off42.cc identity, one screen per app: Documents, Spreadsheets,
-Presentations, PDF, Labels & codes and Signatures & stamps, each with its app colour and its own URL (`#documents`,
-`#spreadsheets`, `#presentations`, `#pdf`, `#labels`, `#signatures`). The theme follows the system's light or dark
-setting; Arabic is laid out right to left.
+Each tool has a localized entry page at `/app/<language>/<tool>/`. The tool names are `documents`, `spreadsheets`, `presentations`, `pdf`, `images`, `labels` and `signatures`. Each page includes the tool description, canonical URL, language alternates and navigation in its initial HTML. The drawer switches tools while preserving open files in the tab.
 
-- **Top bar** (home and tool screens): ☰ opens a slide-in drawer with the six apps, a link to the site's download
+- **Top bar** (home and tool screens): ☰ opens a slide-in drawer with the seven tools, a link to the site's download
   page, About/Privacy links and the engine version (scrim, Esc, focus kept inside); the app logo and name; a search
   over the recent files; a language menu with all 20 languages; Help opens About.
-- **Home screen** of a file app: for documents and spreadsheets a *Blank document* / *Blank spreadsheet* tile first
+- **Home screen** of a file app: for documents, spreadsheets and presentations a *Blank document* / *Blank spreadsheet* tile first
   (also File ▸ New in the editor; a new file is called "Untitled document.docx" / "Untitled spreadsheet.xlsx" until
   renamed), an *Open from device* tile (or drop a file anywhere on the page; a file opened in the wrong app goes to
   its own) and the *Recent* list with name, time opened and size. Only those three are stored, in this browser's
@@ -92,8 +87,8 @@ English text appears before another language.
 
 ### Limitations
 
-- Editing covers documents and spreadsheets. Presentations and PDFs are view-only (ppt42 slide text editing needs a
-  text-frame editing surface, which is not part of this stage). XLS workbooks are read-only.
+- New presentations support slide titles, body text, speaker notes, adding slides and PPTX/ODP downloads. Imported decks open in outline view. PDFs and older XLS workbooks open for viewing.
+- The image editor opens individual PNG, JPEG, BMP and still WebP images. It rotates, flips and exports them using IMG42, with Undo and Redo. Animated images require the native app.
 - Documents: no editing of tables, pictures, headers/footers, fonts, sizes or colours (they are shown and kept); no
   tracked changes — documents that have them are view-only. Headings are saved as outline levels (Word's navigation
   pane and tables of contents see them; a new DOCX has no heading styles, so Word may show them in the body style while
@@ -123,11 +118,7 @@ English text appears before another language.
 
 The interface uses the 20 languages of off42.cc: `src/locales/<code>.json` are flat catalogs with the same keys
 as `en.json` (English is the fallback for a missing key; `{name}` placeholders are filled in by `t()` in
-`src/i18n.ts`). The language comes from `?lang=<code>` (as linked from the site), otherwise from the browser's
-preferred languages (`zh-TW`/`zh-HK` → `zh-Hant`, `tl` → `fil`), otherwise English; the language menu in the top
-bar reloads the page with `?lang=` and keeps the app (open files are not kept). Arabic switches the page to right-to-left. Catalogs other than
-English are loaded as separate chunks; the page stays on a text-free loading screen until the catalog is in, while
-the engine downloads in parallel. The language is passed to the engine where the cores have translations: `productMarks(lang)`
+`src/i18n.ts`). The localized tool path sets the language. At the generic entry the app uses the browser preference and falls back to English. The language menu opens the same tool in the selected language. Arabic uses right-to-left layout. The entry description is already in the initial HTML while the engine downloads in parallel. The language is passed to the engine where the cores have translations: `productMarks(lang)`
 (label42 mark copy) and `stampTemplates(lang)` (marks42 template titles). Signature forms, pens and inks are
 translated in the catalogs (keys `sig.form.<n>`, `sig.pen.<n>`, `ink.<name>`).
 
@@ -160,7 +151,7 @@ translated in the catalogs (keys `sig.form.<n>`, `sig.pen.<n>`, `ink.<name>`).
   presentations (strip ring, 16:9, notes toggle, arrow keys, Slide menu, PPTX/ODP, print of every slide) and the
   PDF fixture `test/fixtures/sample.pdf` (summary page, side panel sections and toggle, no conversions); one
   snackbar replacing the previous message; codes, label sheets, marks, signature variants and the stamp editor;
-  languages (`?lang=` with the catalog held back to show that no English appears, language menu, browser default,
+  languages (language path with the catalog held back to show that no English appears, language menu, browser default,
   RTL drawer, bar and menus, localized names from the cores), the dark theme and the phone layout (bar sizes, ⋮
   menu with the same commands, bottom toolbar, 44 px targets, no horizontal scrolling); the snackbar never overlaps
   the sheet-tab bar or the phone toolbar. It fails on any request
@@ -215,12 +206,9 @@ cd ../website && node scripts/build.mjs && node scripts/check.mjs
 `BUILD.txt` records a SHA-256 over the sources (web/ without tests and generated files, and the off42-wasm crate
 without its tests) and the hash and size of every published file. CI (`.github/workflows/web.yml`, job `site-app`)
 runs `node web/scripts/site-build.mjs check website/public/app` and fails when the sources changed without
-republishing, a published file was edited, or a file exceeds Cloudflare's 25 MiB static asset limit. Changes to
-the core crates that off42-wasm links (doc42-core, xls42-core, …) are not part of the hash: republish after such
-changes when they should reach the site. Each republish adds a new 13 MB wasm file to the Git history.
+republishing, a published file was edited, or a file exceeds Cloudflare's 25 MiB static asset limit. The source hash includes the app, its tool schemas, the Rust dependency crates and their embedded resources. Rebuild when those inputs change.
 
-Asset names are content-hashed and referenced relative to the page (`base: './'`), so the same build works at
-`/app/` and anywhere else. The site's Worker runs only for `/assets/video/*`; everything under `/app/` is served
+The bundle uses shared assets under `/app/assets/`. The Worker handles video ranges and `/api/assistant`. Localized tool pages are served
 as static assets, whose MIME type follows the file extension (`.wasm` → `application/wasm`, checked with
 `wrangler dev` 4.166 and the browser test). Responses carry the site-wide headers from `website/public/_headers`;
 its Content-Security-Policy allows `'wasm-unsafe-eval'` and `blob:` images for the app, and the page's own

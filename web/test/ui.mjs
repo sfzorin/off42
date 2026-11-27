@@ -93,7 +93,15 @@ function driver(page) {
   };
   const downloadAs = (section, label) => downloadBytes(() => menu(section, ['File', 'Download as', label]));
   const go = async (id) => {
-    await page.evaluate((id) => (location.hash = id), id);
+    await page.locator('.screen:not([hidden]) .menu-button:visible, .screen:not([hidden]) .back-button:visible').first().evaluate((button, id) => {
+      if (button.classList.contains('back-button')) {
+        const link = document.querySelector('#drawer .drawer-app[data-app="' + id + '"]');
+        link.click();
+      } else {
+        button.click();
+        document.querySelector('#drawer .drawer-app[data-app="' + id + '"]').click();
+      }
+    }, id);
     await page.waitForSelector(`#${id}:not([hidden])`);
   };
   return { open, opened, downloadBytes, menu, downloadAs, go };
@@ -135,9 +143,9 @@ try {
     const drawer = page.locator('#drawer');
     await page.click('#documents .menu-button');
     await page.waitForSelector('#drawer[open]');
-    assert.equal(await page.locator('#drawer .drawer-app').count(), 6);
+    assert.equal(await page.locator('#drawer .drawer-app').count(), 7);
     assert.equal(await page.getAttribute('#drawer .drawer-app[data-app="documents"]', 'aria-current'), 'page');
-    assert.match(await page.getAttribute('#drawer-download', 'href'), /\.\.\/en\/download\/$/);
+    assert.match(await page.getAttribute('#drawer-download', 'href'), /^\/en\/download\/$/);
     assert.match(await page.textContent('#drawer .engine-version'), /OFF42 engine \d+\.\d+\.\d+ · WebAssembly/);
     for (let i = 0; i < 12; i++) await page.keyboard.press('Tab');
     assert.ok(await page.evaluate(() => document.getElementById('drawer').contains(document.activeElement)), 'focus stays in the drawer');
@@ -152,13 +160,13 @@ try {
     await drawer.waitFor({ state: 'hidden' });
     await page.click('#documents .menu-button');
     await page.click('#drawer .drawer-app[data-app="spreadsheets"]');
-    await page.waitForURL(/#spreadsheets$/);
+    await page.waitForURL(/\/spreadsheets\/$/);
     await drawer.waitFor({ state: 'hidden' });
     await page.waitForSelector('#spreadsheets .home .app-title h1:text-is("Spreadsheets")');
     assert.ok(await page.locator('#documents').isHidden());
     await page.click('#spreadsheets .menu-button');
     await page.click('#drawer .drawer-app[data-app="documents"]');
-    await page.waitForURL(/#documents$/);
+    await page.waitForURL(/\/documents\/$/);
   });
 
   await step('help opens About with the engine version; the language menu lists 20 languages with a check', async () => {
@@ -414,7 +422,7 @@ try {
   await step('a file opened in the wrong app goes to its own (CSV from Documents → Spreadsheets)', async () => {
     await go('documents');
     await open('documents', 'sample.csv');
-    await page.waitForURL(/#spreadsheets$/);
+    await page.waitForURL(/\/spreadsheets\/$/);
     await opened('spreadsheets', 'sample.csv');
   });
 
@@ -747,6 +755,81 @@ try {
     assert.equal(png.bytes.subarray(1, 4).toString(), 'PNG');
   });
 
+  await step('assistant consent, local tools, formula export and one Undo for a multi-turn edit', async () => {
+    await page.goto(app+'en/spreadsheets/');
+    await ready(page);
+    let apiCalls=0, modelTurns=0;
+    await page.route('**/api/assistant',async route=>{
+      apiCalls++;
+      if(route.request().method()==='GET')return route.fulfill({json:{sitekey:'fixture'}});
+      const data=route.request().postDataJSON();
+      let reply;
+      if(!data.continuation){
+        assert.equal(data.challenge,'fixture-token');assert.equal(data.kind,'spreadsheet');
+        reply={continuation:'one',commands:[{id:'1',name:'set_cells',args:{range:'A1',values:[[4]]}}]};
+      }else if(data.continuation==='one'){
+        reply={continuation:'two',commands:[{id:'2',name:'set_cells',args:{range:'B1',values:[['=A1*3']]}}]};
+      }else{assert.equal(data.continuation,'two');reply={text:'Completed.'};}
+      modelTurns++;
+      return route.fulfill({json:reply});
+    });
+    await page.route('**/app/challenge/?*',route=>route.fulfill({contentType:'text/html',body:'<script>parent.postMessage({off42Challenge:"fixture-token"},location.origin)</script>'}));
+    await page.click('#spreadsheets .blank-tile');
+    await page.getByRole('button',{name:'File assistant',exact:true}).click();
+    assert.equal(apiCalls,0,'no assistant requests before consent');
+    await page.getByRole('button',{name:'Agree and continue'}).click();
+    await page.locator('.assistant-dialog textarea').fill('Fill A1 and calculate B1');
+    await page.getByRole('button',{name:'Send',exact:true}).click();
+    await page.waitForSelector('.assistant-dialog [role="status"]:text-is("Completed.")');
+    assert.equal(modelTurns,3);
+    await page.getByRole('button',{name:'Close assistant'}).click();
+    await page.waitForSelector('#spreadsheets td:text-is("12")');
+    const saved=await downloadBytes(()=>page.click('#spreadsheets .download-pill'));
+    assert.equal(saved.name,'Untitled spreadsheet.xlsx');
+    await page.locator('#spreadsheets .toolbar button[title^="Undo"]').click();
+    await page.waitForFunction(()=>![...document.querySelectorAll('#spreadsheets td')].some(c=>['4','12'].includes(c.textContent)));
+    await page.getByRole('button',{name:'File assistant',exact:true}).click();
+    await page.getByRole('button',{name:'Withdraw consent'}).click();
+    assert.equal(await page.locator('.assistant-dialog form').isHidden(),true);
+    await page.getByRole('button',{name:'Close assistant'}).click();
+    await page.unrouteAll();
+  });
+
+  await step('direct presentation entry: author two slides, download and reopen the PPTX', async () => {
+    await page.goto(app+'ru/presentations/');
+    await ready(page);
+    await page.click('#presentations .blank-tile');
+    await page.getByRole('textbox',{name:'Заголовок слайда'}).fill('Отчёт');
+    await page.getByRole('textbox',{name:'Текст слайда'}).fill('Выручка и расходы');
+    await page.getByRole('textbox',{name:'Заметки докладчика'}).fill('Показать итоги.');
+    await page.getByRole('button',{name:'Добавить слайд',exact:true}).click();
+    await page.getByRole('textbox',{name:'Заголовок слайда'}).fill('Итоги');
+    await shoot(page,'presentation-create-ru');
+    const deck=await downloadBytes(()=>page.click('#presentations .download-pill'));
+    await open('presentations',deck.name,deck.bytes);
+    await page.waitForSelector('#presentations .slide-stage h2:text-is("Отчёт")');
+    assert.equal(await page.textContent('#presentations .notes-text'),'Показать итоги.');
+    assert.equal(await page.locator('#presentations .thumb').count(),2);
+  });
+
+  await step('image editor: rotate a landscape image, undo and reopen the exported JPEG', async () => {
+    await page.goto(app+'ru/images/');
+    await ready(page);
+    await open('images','landscape.jpg',readFileSync(join(root,'../website/public/assets/og-image.jpg')));
+    await page.waitForSelector('#images .image-stage img');
+    assert.equal(await page.textContent('#images .slide-position'),'1200 × 630');
+    await page.getByRole('button',{name:'Повернуть по часовой стрелке'}).click();
+    await page.waitForSelector('#images .slide-position:text-is("630 × 1200")');
+    await page.getByRole('button',{name:'Отменить',exact:true}).click();
+    await page.waitForSelector('#images .slide-position:text-is("1200 × 630")');
+    await page.getByRole('button',{name:'Повторить',exact:true}).click();
+    await page.waitForSelector('#images .slide-position:text-is("630 × 1200")');
+    await shoot(page,'image-editor-ru');
+    const jpg=await downloadBytes(()=>page.click('#images .download-pill'));
+    await open('images',jpg.name,jpg.bytes);
+    await page.waitForSelector('#images .slide-position:text-is("630 × 1200")');
+  });
+
   await step('German from ?lang=: no English before the catalog, translated shell; the language menu switches', async () => {
     // Hold the German catalog: until it arrives the loading screen shows no text and the app stays hidden.
     let release;
@@ -755,7 +838,7 @@ try {
       await held;
       await route.continue();
     });
-    await page.goto(`${app}?lang=de#signatures`);
+    await page.goto(`${app}de/signatures/`);
     await page.waitForSelector('#splash');
     await page.waitForTimeout(300);
     assert.equal(await page.textContent('#splash-text'), '');
@@ -772,16 +855,16 @@ try {
     await page.keyboard.press('Escape');
     await page.click('#signatures .language-button');
     assert.equal(await page.textContent('.menu [role="menuitemradio"][aria-checked="true"]'), 'Deutsch');
-    await Promise.all([page.waitForURL(/lang=fr/), page.click('.menu .menu-item:has-text("Français")')]);
+    await Promise.all([page.waitForURL(/\/app\/fr\//), page.click('.menu .menu-item:has-text("Français")')]);
     await ready(page);
     assert.equal(await page.getAttribute('html', 'lang'), 'fr');
-    assert.match(page.url(), /#signatures$/, 'the app survives a language change');
+    assert.match(page.url(), /\/signatures\/$/, 'the app survives a language change');
     await open('documents', 'sample.md');
     await page.waitForSelector('#documents .menubar-item:text-is("Fichier")');
   });
 
   await step('Arabic is right-to-left (drawer, bar, menus); Japanese mark and Russian stamp names come from the cores', async () => {
-    await page.goto(`${app}?lang=ar`);
+    await page.goto(`${app}ar/documents/`);
     await ready(page);
     assert.equal(await page.getAttribute('html', 'dir'), 'rtl');
     assert.ok((await page.locator('#documents .menu-button').boundingBox()).x > 1300, '☰ at the right');
@@ -799,12 +882,12 @@ try {
     assert.ok(Math.abs(list.x + list.width - (file.x + file.width)) < 2, 'the menu is aligned to the right edge of its title');
     await page.keyboard.press('Escape');
     await shoot(page, '15-arabic-rtl');
-    await page.goto(`${app}?lang=ja#labels`);
+    await page.goto(`${app}ja/labels/`);
     await ready(page);
     await page.click('[data-tabs="labels"] [data-pane="marks"]');
     await page.waitForSelector('.mark-tile');
     assert.ok(await page.locator('.mark-name', { hasText: /[぀-ヿ一-鿿]/ }).count() > 10, 'Japanese mark names');
-    await page.goto(`${app}?lang=ru#signatures`);
+    await page.goto(`${app}ru/signatures/`);
     await ready(page);
     await page.click('[data-tabs="signatures"] [data-pane="stamp"]');
     await page.waitForSelector('#stamp-preview img');
@@ -822,7 +905,7 @@ try {
 
   await step('dark theme follows the system: dark chrome, white slide', async () => {
     const dark = await newPage({ colorScheme: 'dark' });
-    await dark.goto(`${app}#presentations`);
+    await dark.goto(`${app}en/presentations/`);
     await ready(dark);
     const background = await dark.evaluate(() => getComputedStyle(document.body).backgroundColor);
     assert.equal(background, 'rgb(27, 28, 31)', 'dark background');
@@ -838,7 +921,7 @@ try {
   await step('phone width: compact bars, no menu bar but a ⋮ menu with the same commands, 44 px targets', async () => {
     const phone = await newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     const d = driver(phone);
-    await phone.goto(`${app}#documents`);
+    await phone.goto(`${app}en/documents/`);
     await ready(phone);
     const bar = await phone.locator('#documents .topbar').boundingBox();
     assert.ok(bar.width >= 380 && bar.height <= 56, `top bar ${JSON.stringify(bar)}`);
@@ -878,7 +961,7 @@ try {
     await phone.click('#documents .back-button');
     await phone.waitForSelector('#documents .home:not([hidden])');
     // Spreadsheets on a phone: the snackbar clears both the sheet-tab bar and the bottom toolbar.
-    await phone.goto(`${app}#spreadsheets`);
+    await phone.goto(`${app}en/spreadsheets/`);
     await ready(phone);
     await d.open('spreadsheets', 'sheets.xlsx');
     await d.opened('spreadsheets', 'sheets.xlsx');

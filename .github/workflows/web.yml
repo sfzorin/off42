@@ -2,9 +2,9 @@ name: Web
 on:
   push:
     branches: ['main']
-    paths: ['web/**', 'rust/**', 'website/public/app/**', 'website/public/_headers', '.github/workflows/web.yml']
+    paths: ['web/**', 'rust/**', 'website/**', 'assistant/**', '.github/workflows/web.yml']
   pull_request:
-    paths: ['web/**', 'rust/**', 'website/public/app/**', 'website/public/_headers', '.github/workflows/web.yml']
+    paths: ['web/**', 'rust/**', 'website/**', 'assistant/**', '.github/workflows/web.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -20,6 +20,19 @@ jobs:
           node-version: 22
       - name: website/public/app is up to date with web/ and off42-wasm
         run: node web/scripts/site-build.mjs check website/public/app
+  website:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run build && npm run check
+      - run: npm run test:assistant
   wasm:
     runs-on: ubuntu-latest
     env:
@@ -75,7 +88,11 @@ jobs:
           npm run test:ui
       - name: Headless browser test of the copy published on the site (website/public/app)
         working-directory: web
-        run: npm run test:ui -- --dir ../website/public/app
+        run: npm run test:ui -- --dir ../website/public/app --screenshots ../build/web-screenshots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-screenshots
+          path: build/web-screenshots
       - uses: actions/upload-artifact@v4
         with:
           name: off42-web

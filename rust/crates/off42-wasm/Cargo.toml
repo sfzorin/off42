@@ -11,6 +11,7 @@ description = "Bytes-in/bytes-out API over the off42 cores for the browser (WebA
 crate-type = ["rlib"]
 
 [dependencies]
+img42-core = { path = "../img42-core" }
 doc42-core = { path = "../doc42-core" }
 xls42-core = { path = "../xls42-core" }
 edit42 = { path = "../edit42" }

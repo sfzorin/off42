@@ -113,7 +113,7 @@
   "web": {
     "label": "OFF42 IN THE BROWSER",
     "title": "Open, convert and create files right in your browser.",
-    "text": "The web app runs the OFF42 engine compiled to WebAssembly. Files are processed inside the browser tab and offered back as downloads: nothing is uploaded and nothing is installed.",
+    "text": "Open files from your device and download your work in the browser. Choose a tool to see its supported formats and editing features.",
     "points": [
       "Preview DOCX, ODT, RTF, Markdown, HTML and text files and save them in another of these formats",
       "View XLSX, ODS, XLS and CSV sheets with calculated values and save them as XLSX, ODS or CSV",
@@ -425,8 +425,8 @@
   },
   "privacy": {
     "title": "Privacy policy",
-    "intro": "OFF42 is built to work on your device. The apps do not collect, store or share personal data, and we never see your documents.",
-    "updated": "Effective 26 November 2026",
+    "intro": "OFF42 opens and edits files on your device. You can choose to share parts of an open web document or spreadsheet when you ask the file assistant for help.",
+    "updated": "Effective 27 November 2026",
     "sections": [
       {
         "title": "Who we are",
@@ -437,13 +437,13 @@
       {
         "title": "Data we collect",
         "text": [
-          "None. The apps have no accounts, advertising, analytics, tracking or crash reporting, and they do not send usage data to us or to anyone else. We do not sell or share personal data because we do not have any."
+          "The native apps have no accounts, advertising, analytics, tracking or crash reporting. In the web editors, the optional file assistant measures daily model costs to keep its free allowance available. OFF42 does not sell personal data."
         ]
       },
       {
         "title": "Your documents",
         "text": [
-          "Your files are opened, edited, converted and saved on your device. They are not uploaded to us. Signatures, stamps, settings, recent files and recovery copies of unsaved work are kept only on your device, in the app's own storage, and you can delete them at any time by deleting the files or uninstalling the app.",
+          "Your files are opened, edited, converted and saved on your device. Signatures, stamps, recent files, settings and recovery copies stay in local storage. The web assistant sends the excerpts described below only after consent.",
           "The mobile apps open and save files only through the system's file picker or when you share a file to them, and they do not request network access."
         ]
       },
@@ -456,19 +456,20 @@
       {
         "title": "The web version",
         "text": [
-          "off42.cc/app runs in your browser. After the page and its engine have loaded, it makes no further network requests: the files you open stay in your browser tab and are never uploaded."
+          "File opening, editing and export run in your browser. The assistant is optional. The site also serves interface translations and other resources when requested.",
+          "In the web document and spreadsheet editors, you can choose to use the file assistant. After you agree, your request, selection, outline and text requested for the task go through Cloudflare to OpenRouter and its model providers. OFF42 stores daily usage totals with an anonymous browser ID and a daily IP hash. Close the assistant or withdraw your consent at any time."
         ]
       },
       {
         "title": "The website",
         "text": [
-          "off42.cc has no cookies, advertising or analytics scripts. It is hosted by Cloudflare, which processes technical request data such as IP addresses to deliver the site and protect it from abuse. Downloads are served from GitHub. Both act under their own privacy policies."
+          "Cloudflare hosts off42.cc and processes technical request data such as IP addresses to deliver the site and protect it from abuse. Turnstile runs when you use the web assistant. Downloads are served by GitHub. These services have their own privacy policies."
         ]
       },
       {
         "title": "Children",
         "text": [
-          "OFF42 is suitable for all ages and collects no data from anyone, including children."
+          "The same local editing and optional assistant settings apply to users of all ages."
         ]
       },
       {
@@ -494,7 +495,7 @@
     "aboutTitle": "Open-Source Office Suite, MIT Licensed | OFF42",
     "aboutDescription": "OFF42 is a family of six native apps for macOS and Windows under the MIT license. Explore the source, platform support and limitations on GitHub.",
     "privacyTitle": "OFF42 privacy policy — no data collected",
-    "privacyDescription": "OFF42 collects no personal data: no accounts, analytics or tracking. Your documents stay on your device on every platform.",
+    "privacyDescription": "OFF42 opens and edits files on your device. You can choose to share parts of an open web document or spreadsheet when you ask the file assistant for help.",
     "supportTitle": "OFF42 support — help, questions and problem reports",
     "supportDescription": "Get help with OFF42 on Mac, Windows, Linux, Android, iPad, iPhone and the web: installation, documentation and how to report a problem."
   },

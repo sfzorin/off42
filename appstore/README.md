@@ -76,6 +76,8 @@ declaration) App Store Connect asks for.
 
 ## Privacy
 
+The optional file assistant runs in the web document and spreadsheet editors. The native store builds do not include its network integration. The website privacy policy describes its consent flow, data sent to OpenRouter and daily usage accounting.
+
 - Privacy Policy URL: `https://off42.cc/en/privacy/` (localized at `/<lang>/privacy/`); Support URL:
   `https://off42.cc/en/support/`; contact: tr.zorin@gmail.com.
 - App Privacy ("nutrition label"): **Data Not Collected**. The only network features are PDF42's timestamps from the

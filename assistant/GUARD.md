@@ -18,7 +18,7 @@ The prompt gives these as examples next to sample questions ("Wie spät ist es i
 Listing them only by language name was not enough: without visible reasoning, DeepSeek answered short German
 questions with the English sentence in up to 8 of 10 probes.
 
-A prompt is not a guarantee. The Worker (`off42.cc/api/assistant`, D13; not built yet) adds a deterministic safety
+A prompt is not a guarantee. The Worker (`off42.cc/api/assistant`, D13) adds a deterministic safety
 net. It must stay simple: no second model call, no classifier, no logging of document text.
 
 ## Models and data policy
@@ -63,7 +63,7 @@ Responses (OpenRouter → Worker → browser), checked before the reply reaches 
 7. **Echo filter.** The reply is compared with the system prompt: if it contains any **40-character window** of
    `system.md` (after collapsing whitespace and lower-casing), or any tool name from the tool list (for example
    `set_cells`, `get_outline`), the whole text is replaced by the fixed reply in the user's language. The windows
-   are precomputed once at start-up as a set of hashes, so the check is linear in the reply length. Tool names
+   are precomputed once at start-up as a set of normalized strings, so the check is linear in the reply length. Tool names
    inside actual `tool_calls` are of course allowed; the check covers only the visible text.
 8. **Provider names.** Visible text that matches a short deny-list (model and provider names: DeepSeek, GLM, Zhipu,
    Z.AI, Alibaba, Qwen, OpenRouter, OpenAI, GPT, Claude, Anthropic, Llama, Gemini, Mistral) is replaced by the fixed
@@ -81,7 +81,7 @@ What the Worker does **not** do: it does not inspect document content, does not 
 question as on- or off-topic (the model does that), and does not rewrite replies except by the substitutions above.
 Each substitution increments a counter (no content logged), so a rise after a model or prompt change is visible.
 
-## Tests for the Worker (when it is built)
+## Worker regression cases
 
 - A 2,001-character user message → 400; 2,000 → forwarded.
 - A mocked model reply that quotes a 40-character slice of `system.md` → fixed reply; one that quotes 39

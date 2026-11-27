@@ -449,6 +449,23 @@ impl ImageDocument {
             let (mut pages, _) = Self::open_frames(path)?;
             return pages.pop().ok_or(Error::InvalidImage);
         }
+        Self::decode_raster(&bytes, format)
+    }
+
+    /// Open a single raster in a browser or another host without a filesystem.
+    pub fn open_raster_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        if bytes.len() as u64 > MAX_FILE_BYTES { return Err(Error::TooLarge); }
+        let format = image::guess_format(bytes).map_err(|_| Error::UnsupportedFormat)?;
+        if !matches!(format, ImageFormat::Png | ImageFormat::Jpeg | ImageFormat::Bmp | ImageFormat::WebP) {
+            return Err(Error::UnsupportedFormat);
+        }
+        if format == ImageFormat::Png && image::codecs::png::PngDecoder::new(Cursor::new(bytes))?.is_apng()? {
+            return Err(Error::MultiframeRequiresNavigation);
+        }
+        Self::decode_raster(bytes, format)
+    }
+
+    fn decode_raster(bytes: &[u8], format: ImageFormat) -> Result<Self, Error> {
         if !matches!(
             format,
             ImageFormat::Png
@@ -530,7 +547,7 @@ impl ImageDocument {
         } else {
             Raster::new(w, h, image.into_rgba8().into_raw())?.orient(orientation)
         };
-        raster.dpi = Self::source_dpi(path)?;
+        raster.dpi = Self::raster_dpi(bytes, format)?;
         Ok(Self {
             exif,
             png_color: if format == ImageFormat::Png {
@@ -562,6 +579,10 @@ impl ImageDocument {
             return Ok(Some((96, 96)));
         }
         let format = image::guess_format(&bytes).map_err(|_| Error::UnsupportedFormat)?;
+        Self::raster_dpi(&bytes, format)
+    }
+
+    fn raster_dpi(bytes: &[u8], format: ImageFormat) -> Result<Option<(u32, u32)>, Error> {
         let mut dpi = None;
         let exif = exif::Reader::new()
             .read_from_container(&mut BufReader::new(Cursor::new(&bytes)))

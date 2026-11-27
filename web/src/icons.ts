@@ -33,6 +33,7 @@ const ICONS: Record<string, string> = {
   warn: 'M12 3 22 20H2z M12 9v5 M12 17h.01',
   refresh: 'M20 8a8 8 0 1 0 .8 6 M20 3v5h-5',
   notes: 'M6 3h12v18H6z M9 8h6 M9 12h6 M9 16h4',
+  flip: 'M12 2v20 M9 5 3 18h6z M15 5l6 13h-6z',
   picture: 'M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M9 8a2 2 0 1 0 0 4a2 2 0 1 0 0-4z M21 16l-5-5-9 9',
   fullscreen: 'M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5',
   rename: 'M4 20h4L19 9l-4-4L4 16z M13.5 6.5l4 4',
@@ -96,6 +97,7 @@ export function icon(name: string, className = 'icon'): SVGSVGElement {
 const LOGOS: Record<string, { color: string; fold: string; glyph: string }> = {
   doc: { color: '#2f6fde', fold: '#a9c2f2', glyph: '<path d="M8 15h12M8 19h12M8 23h8" stroke="#fff" stroke-width="2"/>' },
   xls: { color: '#1e8e4f', fold: '#9fd6b5', glyph: '<path d="M7.5 14h13v10h-13zM7.5 19h13M14 14v10" stroke="#fff" stroke-width="1.8" fill="none"/>' },
+  img: { color: '#7360b7', fold: '#c9bdea', glyph: '<path d="m7 23 5-7 3 4 3-3 3 6z" fill="white"/>' },
   ppt: { color: '#e0891b', fold: '#f6cf98', glyph: '<rect x="7.5" y="14" width="13" height="9" rx="1" stroke="#fff" stroke-width="1.8" fill="none"/>' },
   pdf: { color: '#d23f31', fold: '#f2aaa2', glyph: '<path d="M8 14h12M8 18h8" stroke="#fff" stroke-width="2"/><rect x="7" y="21" width="14" height="4.5" rx="1" fill="#fff"/>' },
   labels: { color: '#0b8a8a', fold: '#95d3d0', glyph: '<path d="M8 14h4v4H8zM16 14h4v4h-4zM8 22h4v4H8z" fill="#fff"/><path d="M16 22h1.6v1.6H16zM18.4 24.4H20V26h-1.6z" fill="#fff"/>' },

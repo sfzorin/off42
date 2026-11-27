@@ -1288,3 +1288,7 @@ guarded. Unchanged style definitions and unknown ZIP parts survive value-only ex
 ## macOS format adapters
 
 The document and presentation importers preserve the source when converting reflowable EPUB or editable Keynote content. The spreadsheet XML adapter reads and writes the Excel 2003 XML format. IMG42 uses the OpenRaster merged preview and writes flattened images. PDF42 converts supported raster printer jobs to and from pages through Kit42 codecs.
+
+## Browser tool entry pages
+
+Each tool opens at `/app/<language>/<tool>/`. The entry page explains the available operations beside the open and create controls. The drawer and browser history switch tools in the current tab. Document, spreadsheet and presentation editors offer a blank file. The image editor shows the opened image, its pixel dimensions, rotation, horizontal reflection and Undo/Redo.

@@ -1,0 +1,129 @@
+import { call, json } from './engine';
+import { t, language } from './i18n';
+import docTools from '../../assistant/tools/document.json';
+import sheetTools from '../../assistant/tools/spreadsheet.json';
+import { validate } from '../../assistant/eval/lib/schema.mjs';
+
+type Kind = 'document' | 'spreadsheet';
+type Command = Record<string, unknown> & { command: string };
+type Options = {
+  kind: Kind;
+  start: () => Promise<{ draft: number; version: number; sheet?: number; selection: unknown }>;
+  commit: (commands: Command[], version: number, signal: AbortSignal) => Promise<void>;
+};
+type Reply = { continuation?: string; commands?: {id:string; name:string; args:Record<string,unknown>}[];
+  text?:string; refused?:boolean; error?:string; sitekey?:string };
+const reads = new Set(['get_outline','read_range','find','get_sheet_info','read_cells']);
+function element<K extends keyof HTMLElementTagNameMap>(tag: K, text = '') {
+  const node = document.createElement(tag); node.textContent = text; return node;
+}
+function stored(key: string) { try { return localStorage.getItem(key); } catch { return null; } }
+function store(key: string,value: string|null) { try { if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value); } catch { /* tab-only consent */ } }
+const consentKey = 'off42.assistant.consent.v1';
+const idKey = 'off42.assistant.id';
+let consent = stored(consentKey)==='yes';
+let anonymousId = stored(idKey);
+async function api(signal: AbortSignal, body?: object): Promise<Reply> {
+  const result = await fetch('/api/assistant',{method:body?'POST':'GET',signal,cache:'no-store',
+    ...(body?{headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}:{})});
+  const data: Reply = await result.json();
+  if(!result.ok) throw new Error(['limit','session'].includes(data.error??'')?'ai.'+data.error:'ai.error');
+  return data;
+}
+
+function challenge(host: HTMLElement,key: string,signal: AbortSignal): Promise<string> {
+  signal.throwIfAborted();
+  return new Promise((resolve,reject)=>{
+    const frame=element('iframe');
+    frame.title='Cloudflare Turnstile';
+    frame.src='/app/challenge/?'+new URLSearchParams({key,lang:language});
+    const cleanup=()=>{window.removeEventListener('message',message);signal.removeEventListener('abort',abort);clearTimeout(timer);frame.remove();};
+    const abort=()=>{cleanup();reject(new Error('ai.error'));};
+    const message=(event: MessageEvent)=>{
+      if(event.source!==frame.contentWindow||event.origin!==location.origin||typeof event.data?.off42Challenge!=='string')return;
+      const token=event.data.off42Challenge;cleanup();
+      if(token)resolve(token);else reject(new Error('ai.error'));
+    };
+    const timer=setTimeout(abort,120000);
+    window.addEventListener('message',message);signal.addEventListener('abort',abort,{once:true});
+    host.replaceChildren(frame);
+  });
+}
+
+export function fileAssistant(options: Options) {
+  let active: AbortController|undefined;
+  let session = crypto.randomUUID();
+  let messages = 0;
+  const dialog=element('dialog'); dialog.className='dialog assistant-dialog';
+  const heading=element('h2',t('ai.title')); dialog.setAttribute('aria-label',t('ai.title'));
+  const policy=element('p',t('ai.consent'));
+  const agree=element('button',t('ai.agree'));agree.className='pill-button';
+  const prompt=element('textarea');prompt.placeholder=t('ai.placeholder');prompt.setAttribute('aria-label',t('ai.placeholder'));prompt.maxLength=2000;
+  const send=element('button',t('ai.send'));send.className='pill-button';
+  const revoke=element('button',t('ai.revoke'));revoke.className='text-button';
+  const close=element('button',t('ai.stop'));close.className='text-button';
+  const output=element('p');output.setAttribute('role','status');
+  const widget=element('div');
+  const form=element('form');form.append(prompt,send);
+  const actions=element('div');actions.className='actions end';actions.append(revoke,close);
+  dialog.append(heading,policy,agree,form,widget,output,actions);
+  const display=()=>{policy.hidden=consent;agree.hidden=consent;form.hidden=!consent;revoke.hidden=!consent;};
+  close.onclick=()=>dialog.close();
+  dialog.addEventListener('close',()=>{active?.abort();});
+  agree.onclick=()=>{consent=true;store(consentKey,'yes');display();prompt.focus();};
+  revoke.onclick=()=>{active?.abort();consent=false;store(consentKey,null);store(idKey,null);anonymousId=null;
+    prompt.value='';output.textContent='';messages=0;session=crypto.randomUUID();display();};
+  async function run(signal: AbortSignal) {
+    const question=prompt.value.trim();
+    if(!question)return;
+    if(messages>=30) {messages=0;session=crypto.randomUUID();throw new Error('ai.session');}
+    const {sitekey}=await api(signal);if(!sitekey)throw new Error('ai.error');
+    const token=await challenge(widget,sitekey,signal);
+    const {draft,version,sheet,selection}=await options.start();
+    try {
+      signal.throwIfAborted();
+      const contextCommand=options.kind==='document'?{command:'get_outline'}:{command:'get_sheet_info',sheet};
+      const outline=await json('editApply',draft,JSON.stringify(contextCommand));
+      const context=JSON.stringify({selection,outline}).slice(0,30000);
+      if(!anonymousId){anonymousId=crypto.randomUUID();store(idKey,anonymousId);}
+      let request: object={id:anonymousId,session,kind:options.kind,context,prompt:question,challenge:token};
+      messages++;
+      const writes: Command[]=[];
+      for(let turn=0;turn<8;turn++){
+        const reply=await api(signal,request);
+        if(!reply.commands){
+          if(typeof reply.text!=='string')throw new Error('ai.error');
+          if(!reply.refused && writes.length)await options.commit(writes,version,signal);
+          signal.throwIfAborted();output.textContent=reply.text;return;
+        }
+        if(!reply.continuation || !reply.commands.length || reply.commands.length>24)throw new Error('ai.error');
+        const results=[];
+        for(const {name,args,id} of reply.commands){
+          signal.throwIfAborted();
+          const spec=(options.kind==='document'?docTools:sheetTools).find(x=>x.function.name===name);
+          if(!spec||validate(spec.function.parameters,args).length)throw new Error('ai.error');
+          const command: Command={...args,command:name,...(sheet===undefined?{}:{sheet})};
+          let content;
+          try {
+            content=await call<string>('editApply',draft,JSON.stringify(command));
+            if(!reads.has(name))writes.push(command);
+          } catch(error) {content=JSON.stringify({error:error instanceof Error?error.message:'Command failed'});}
+          results.push({id,content:content.slice(0,60000)});
+        }
+        request={continuation:reply.continuation,results};
+      }
+      throw new Error('ai.error');
+    } finally {await call('editClose',draft);}
+  }
+  form.onsubmit=async event=>{
+    event.preventDefault();if(!consent||active||!prompt.value.trim())return;
+    const task=new AbortController();active=task;send.disabled=true;output.textContent=t('ai.wait');
+    try {await run(task.signal);}
+    catch(error){if(!task.signal.aborted){const key=error instanceof Error?error.message:'';output.textContent=t(['ai.session','ai.limit','ai.stale'].includes(key)?key:'ai.error');}}
+    finally {if(active===task){active=undefined;send.disabled=false;}}
+  };
+  return {
+    open(){if(!dialog.isConnected)document.body.append(dialog);display();output.textContent='';dialog.showModal();(consent?prompt:agree).focus();},
+    dispose(){active?.abort();dialog.remove();},
+  };
+}

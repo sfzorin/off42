@@ -1014,7 +1014,16 @@ impl Workbook {
             return Err(Error::Bounds);
         }
         state.active = id;
-        let view = Workbook {
+        Ok(read(&self.copy_with_state(state)))
+    }
+
+    /// A private editing copy with the same cell identities and Office fidelity checks.
+    pub fn editing_copy(&self) -> Self {
+        self.copy_with_state(self.history.current().clone())
+    }
+
+    fn copy_with_state(&self, state: State) -> Self {
+        Workbook {
             history: SnapshotHistory::new(state, 0),
             snapshots: Default::default(),
             next_revision: 1,
@@ -1022,8 +1031,7 @@ impl Workbook {
             external_baseline: self.external_baseline.clone(),
             external_format: self.external_format.clone(),
             external_cache: self.external_cache.clone(),
-        };
-        Ok(read(&view))
+        }
     }
     /// How many Undo steps are kept (8 by default).
     pub fn set_history_limit(&mut self, limit: usize) {

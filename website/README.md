@@ -21,11 +21,10 @@ source and privacy. Arabic uses RTL. Language links preserve the current route.
 
 `public/app/` is the OFF42 web app (built from `web/`, see `web/README.md`), served at `/app/`. It is committed
 as built output because the Cloudflare build cannot compile Rust; do not edit it by hand: run
-`sh web/scripts/publish-to-site.sh`. The navigation, a home page section and the downloads page link to it with
-`/app/?lang=<page language>`. It is a tool page, not one of the 280 localized pages, and is not in the sitemap.
+`sh web/scripts/publish-to-site.sh`. The site links to seven tools at `/app/<language>/<tool>/`. Their 140 entry pages include static text and appear in the sitemap alongside the 300 website pages.
 
 The generator fails on missing locale files. `--partial` is exclusively for local
-translation work and must never be deployed; `npm run check` requires all 280
+translation work and must never be deployed; `npm run check` requires all 300
 localized pages. Edit `locales/en.json` and every other locale together.
 
 ## Hosting
@@ -56,7 +55,7 @@ connect `sfzorin/off42` to the existing `off42` Worker with these settings:
 | Preview builds | Disabled |
 | Build watch paths | `website/**` |
 
-`wrangler.jsonc` deploys only `dist/` and keeps the existing HTML and 404 handling.
+`wrangler.jsonc` deploys the Worker, its SQLite Durable Object binding and the `dist/` assets and keeps the existing HTML and 404 handling.
 Requests for `/assets/video/*` go first to `worker/index.js`, which answers `Range` requests with 206 Partial
 Content (Workers Static Assets return the whole file with 200, and Safari then refuses to play the video); every other
 path is served directly as a static asset.
@@ -98,10 +97,10 @@ No placeholder URL is offered as a real download.
 
 ## Verification
 
-`npm run check` verifies the full locale schema, 280 unique page titles and
+`npm run check` verifies the full locale schema, 300 unique page titles and
 canonicals, 20-language alternates and x-default, local links and fragment targets,
 assets, valid JSON-LD, sitemap, 404 noindex and configured release states. For the web app it checks that every
-page links `/app/?lang=<lang>`, that `dist/app/index.html` and every asset it references exist, that there is one
+page links `/app/<lang>/documents/`, that `dist/app/index.html` and every asset it references exist, that there is one
 hashed wasm file loaded by the script and under 25 MiB, that every language has a catalog, that `BUILD.txt` is
 present, and that both the page's and the site's Content-Security-Policy allow `'wasm-unsafe-eval'`. Whether the
 committed app matches its sources is checked in CI (`web/scripts/site-build.mjs check`).
@@ -115,7 +114,7 @@ by professional native speakers of all 20 languages.
 Each page takes its `<title>` and meta description from the locale's `seo` block (home, features, downloads,
 open source, privacy) or a feature's `seoTitle`/`seoDescription`. They use the phrases people search for
 (“free PDF editor for Mac”, “compress PDF”) and differ from the visible headings, which keep the brand voice.
-Titles carry the OFF42 name and must stay unique across all 280 pages. JSON-LD adds `SoftwareApplication`
+Titles carry the OFF42 name and must stay unique across all 300 pages. JSON-LD adds `SoftwareApplication`
 (free offer, MIT license), with macOS and Windows in the general product metadata and macOS scope on feature pages.
 It also adds `FAQPage` on the home and feature pages, plus `BreadcrumbList` on feature pages. The home page follows the product story: promise, demo video, the six apps, screenshots, formats, features, then QR
 codes and marks, signatures, the name, privacy, languages and open source. It also lists the formats each app opens and saves and answers common questions;

@@ -29,6 +29,14 @@ pub enum Session {
 }
 
 impl Session {
+    /// Run provisional commands without changing the live editor or its Undo history.
+    pub fn editing_copy(&self) -> Self {
+        match self {
+            Self::Document(d) => Self::Document(d.editing_copy()),
+            Self::Spreadsheet(s) => Self::Spreadsheet(SpreadsheetSession { book: s.book.editing_copy() }),
+        }
+    }
+
     /// A blank document (`"document"`) or workbook (`"spreadsheet"`).
     pub fn blank(kind: &str) -> Result<Self> {
         match kind {

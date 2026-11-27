@@ -113,7 +113,7 @@
   "web": {
     "label": "OFF42 DI BROWSER",
     "title": "Buka, konversi, dan buat file langsung di browser Anda.",
-    "text": "Aplikasi web menjalankan mesin OFF42 yang dikompilasi ke WebAssembly. File diproses di dalam tab browser dan diberikan kembali sebagai unduhan: tidak ada yang diunggah dan tidak ada yang dipasang.",
+    "text": "Buka file dari perangkat Anda dan unduh hasil kerja Anda di browser. Pilih alat untuk melihat format yang didukung dan fitur pengeditannya.",
     "points": [
       "Pratinjau file DOCX, ODT, RTF, Markdown, HTML, dan teks, lalu simpan dalam format lain dari daftar ini",
       "Lihat sheet XLSX, ODS, XLS, dan CSV dengan nilai hasil perhitungan, lalu simpan sebagai XLSX, ODS, atau CSV",
@@ -425,8 +425,8 @@
   },
   "privacy": {
     "title": "Kebijakan privasi",
-    "intro": "OFF42 dibuat untuk bekerja di perangkat Anda. Aplikasi tidak mengumpulkan, menyimpan, atau membagikan data pribadi, dan kami tidak pernah melihat dokumen Anda.",
-    "updated": "Berlaku sejak 26 November 2026",
+    "intro": "OFF42 membuka dan mengedit file di perangkat Anda. Anda dapat memilih untuk membagikan sebagian dokumen web atau spreadsheet yang terbuka saat meminta bantuan asisten file.",
+    "updated": "Berlaku 27 November 2026",
     "sections": [
       {
         "title": "Siapa kami",
@@ -437,13 +437,13 @@
       {
         "title": "Data yang kami kumpulkan",
         "text": [
-          "Tidak ada. Aplikasi tidak memiliki akun, iklan, analitik, pelacakan, atau pelaporan kerusakan, dan tidak mengirim data penggunaan kepada kami maupun kepada siapa pun. Kami tidak menjual atau membagikan data pribadi karena kami tidak memilikinya."
+          "Aplikasi native tidak memiliki akun, iklan, analitik, pelacakan, atau pelaporan crash. Di editor web, asisten file opsional mengukur biaya model harian agar kuota gratisnya tetap tersedia. OFF42 tidak menjual data pribadi."
         ]
       },
       {
         "title": "Dokumen Anda",
         "text": [
-          "File Anda dibuka, diedit, dikonversi, dan disimpan di perangkat Anda. File tidak diunggah ke kami. Tanda tangan, stempel, pengaturan, file terbaru, dan salinan pemulihan pekerjaan yang belum disimpan hanya disimpan di perangkat Anda, di penyimpanan milik aplikasi itu sendiri, dan Anda dapat menghapusnya kapan saja dengan menghapus file tersebut atau mencopot pemasangan aplikasi.",
+          "File Anda dibuka, diedit, dikonversi, dan disimpan di perangkat Anda. Tanda tangan, stempel, file terbaru, pengaturan, dan salinan pemulihan tetap di penyimpanan lokal. Asisten web mengirim kutipan yang dijelaskan di bawah hanya setelah persetujuan.",
           "Aplikasi seluler hanya membuka dan menyimpan file melalui pemilih file sistem atau saat Anda membagikan file ke aplikasi tersebut, dan tidak meminta akses jaringan."
         ]
       },
@@ -456,19 +456,20 @@
       {
         "title": "Versi web",
         "text": [
-          "off42.cc/app berjalan di browser Anda. Setelah halaman dan mesinnya dimuat, tidak ada permintaan jaringan lain yang dilakukan: file yang Anda buka tetap berada di tab browser dan tidak pernah diunggah."
+          "Pembukaan, pengeditan, dan ekspor file berjalan di browser Anda. Asisten bersifat opsional. Situs juga menyajikan terjemahan antarmuka dan sumber daya lain saat diminta.",
+          "Di editor dokumen dan spreadsheet web, Anda dapat memilih menggunakan asisten file. Setelah Anda setuju, permintaan, pilihan, kerangka, dan teks yang diminta untuk tugas dikirim melalui Cloudflare ke OpenRouter dan penyedia modelnya. OFF42 menyimpan total penggunaan harian dengan ID browser anonim dan hash IP harian. Tutup asisten atau tarik persetujuan Anda kapan saja."
         ]
       },
       {
         "title": "Situs web",
         "text": [
-          "off42.cc tidak memiliki cookie, iklan, atau skrip analitik. Situs ini di-hosting oleh Cloudflare, yang memproses data permintaan teknis seperti alamat IP untuk menyajikan situs dan melindunginya dari penyalahgunaan. Unduhan disediakan dari GitHub. Keduanya bertindak sesuai kebijakan privasi masing-masing."
+          "Cloudflare menjadi host bagi off42.cc dan memproses data permintaan teknis seperti alamat IP untuk menyajikan situs dan melindunginya dari penyalahgunaan. Turnstile berjalan saat Anda menggunakan asisten web. Unduhan disajikan oleh GitHub. Layanan ini memiliki kebijakan privasinya sendiri."
         ]
       },
       {
         "title": "Anak-anak",
         "text": [
-          "OFF42 cocok untuk segala usia dan tidak mengumpulkan data dari siapa pun, termasuk anak-anak."
+          "Pengeditan lokal dan pengaturan asisten opsional yang sama berlaku untuk pengguna semua usia."
         ]
       },
       {
@@ -494,7 +495,7 @@
     "aboutTitle": "Paket Office Sumber Terbuka, Berlisensi MIT | OFF42",
     "aboutDescription": "OFF42 terdiri dari enam aplikasi native untuk macOS dan Windows dengan lisensi MIT. Lihat kode sumber, dukungan platform, dan batasannya di GitHub.",
     "privacyTitle": "Kebijakan privasi OFF42 — tidak ada data yang dikumpulkan",
-    "privacyDescription": "OFF42 tidak mengumpulkan data pribadi: tanpa akun, analitik, atau pelacakan. Dokumen Anda tetap di perangkat Anda di setiap platform.",
+    "privacyDescription": "OFF42 membuka dan mengedit file di perangkat Anda. Anda dapat memilih untuk membagikan sebagian dokumen web atau spreadsheet yang terbuka saat meminta bantuan asisten file.",
     "supportTitle": "Dukungan OFF42 — bantuan, pertanyaan, dan laporan masalah",
     "supportDescription": "Dapatkan bantuan OFF42 di Mac, Windows, Linux, Android, iPad, iPhone, dan web: pemasangan, dokumentasi, dan cara melaporkan masalah."
   },

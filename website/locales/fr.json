@@ -113,7 +113,7 @@
   "web": {
     "label": "OFF42 DANS LE NAVIGATEUR",
     "title": "Ouvrez, convertissez et créez des fichiers directement dans votre navigateur.",
-    "text": "L'application web exécute le moteur OFF42 compilé en WebAssembly. Les fichiers sont traités dans l'onglet du navigateur et vous sont rendus sous forme de téléchargements : rien n'est envoyé en ligne et rien n'est installé.",
+    "text": "Ouvrez des fichiers depuis votre appareil et téléchargez votre travail dans le navigateur. Choisissez un outil pour voir ses formats pris en charge et ses fonctionnalités de modification.",
     "points": [
       "Aperçu des fichiers DOCX, ODT, RTF, Markdown, HTML et texte, et enregistrement dans un autre de ces formats",
       "Affichage des feuilles XLSX, ODS, XLS et CSV avec les valeurs calculées, et enregistrement en XLSX, ODS ou CSV",
@@ -425,8 +425,8 @@
   },
   "privacy": {
     "title": "Politique de confidentialité",
-    "intro": "OFF42 est conçu pour fonctionner sur votre appareil. Les apps ne collectent, ne stockent ni ne partagent aucune donnée personnelle, et nous ne voyons jamais vos documents.",
-    "updated": "En vigueur à compter du 26 novembre 2026",
+    "intro": "OFF42 ouvre et modifie des fichiers sur votre appareil. Vous pouvez partager des parties d’un document web ou d’une feuille de calcul ouverte lorsque vous demandez de l’aide à l’assistant de fichiers.",
+    "updated": "En vigueur le 27 novembre 2026",
     "sections": [
       {
         "title": "Qui sommes-nous",
@@ -437,13 +437,13 @@
       {
         "title": "Données que nous collectons",
         "text": [
-          "Aucune. Les apps n'ont ni comptes, ni publicité, ni outils d'analyse, ni suivi, ni rapports de plantage, et elles n'envoient aucune donnée d'utilisation, ni à nous ni à qui que ce soit. Nous ne vendons ni ne partageons de données personnelles, car nous n'en avons aucune."
+          "Les applications natives n’ont pas de comptes, publicité, analyse, suivi ni rapports de plantage. Dans les éditeurs web, l’assistant de fichiers facultatif mesure les coûts quotidiens du modèle pour maintenir son quota gratuit disponible. OFF42 ne vend pas de données personnelles."
         ]
       },
       {
         "title": "Vos documents",
         "text": [
-          "Vos fichiers sont ouverts, modifiés, convertis et enregistrés sur votre appareil. Ils ne nous sont pas transmis. Les signatures, tampons, réglages, fichiers récents et copies de récupération du travail non enregistré sont conservés uniquement sur votre appareil, dans le stockage propre de l'app, et vous pouvez les supprimer à tout moment en supprimant les fichiers ou en désinstallant l'app.",
+          "Vos fichiers sont ouverts, modifiés, convertis et enregistrés sur votre appareil. Les signatures, tampons, fichiers récents, paramètres et copies de récupération restent dans le stockage local. L’assistant web n’envoie les extraits décrits ci-dessous qu’après consentement.",
           "Les apps mobiles ouvrent et enregistrent des fichiers uniquement via le sélecteur de fichiers du système ou lorsque vous leur partagez un fichier, et elles ne demandent pas d'accès au réseau."
         ]
       },
@@ -456,19 +456,20 @@
       {
         "title": "La version web",
         "text": [
-          "off42.cc/app fonctionne dans votre navigateur. Une fois la page et son moteur chargés, elle n'effectue plus aucune requête réseau : les fichiers que vous ouvrez restent dans votre onglet et ne sont jamais envoyés."
+          "L’ouverture, la modification et l’exportation de fichiers se font dans votre navigateur. L’assistant est facultatif. Le site fournit aussi les traductions de l’interface et d’autres ressources lorsqu’elles sont demandées.",
+          "Dans les éditeurs web de documents et de feuilles de calcul, vous pouvez choisir d’utiliser l’assistant de fichier. Après votre accord, votre demande, la sélection, le plan et le texte demandé pour la tâche sont transmis via Cloudflare à OpenRouter et à ses fournisseurs de modèles. OFF42 conserve les totaux d’utilisation quotidiens avec un identifiant de navigateur anonyme et un hachage IP quotidien. Fermez l’assistant ou retirez votre consentement à tout moment."
         ]
       },
       {
         "title": "Le site web",
         "text": [
-          "off42.cc n'utilise ni cookies, ni publicité, ni scripts d'analyse. Il est hébergé par Cloudflare, qui traite des données techniques de requête, comme les adresses IP, pour diffuser le site et le protéger contre les abus. Les téléchargements sont fournis par GitHub. Tous deux agissent selon leurs propres politiques de confidentialité."
+          "Cloudflare héberge off42.cc et traite les données techniques des requêtes, comme les adresses IP, pour fournir le site et le protéger contre les abus. Turnstile s’exécute lorsque vous utilisez l’assistant web. Les téléchargements sont servis par GitHub. Ces services ont leurs propres politiques de confidentialité."
         ]
       },
       {
         "title": "Enfants",
         "text": [
-          "OFF42 convient à tous les âges et ne collecte de données auprès de personne, y compris les enfants."
+          "Les mêmes paramètres de modification locale et d’assistant facultatif s’appliquent aux utilisateurs de tous âges."
         ]
       },
       {
@@ -494,7 +495,7 @@
     "aboutTitle": "Suite bureautique open source sous licence MIT | OFF42",
     "aboutDescription": "OFF42 réunit six applications natives pour macOS et Windows sous licence MIT. Consultez le code, les plateformes prises en charge et leurs limites sur GitHub.",
     "privacyTitle": "Politique de confidentialité d'OFF42 — aucune donnée collectée",
-    "privacyDescription": "OFF42 ne collecte aucune donnée personnelle : ni comptes, ni analyse, ni suivi. Vos documents restent sur votre appareil, sur toutes les plateformes.",
+    "privacyDescription": "OFF42 ouvre et modifie des fichiers sur votre appareil. Vous pouvez partager des parties d’un document web ou d’une feuille de calcul ouverte lorsque vous demandez de l’aide à l’assistant de fichiers.",
     "supportTitle": "Assistance OFF42 — aide, questions et signalement de problèmes",
     "supportDescription": "Obtenez de l'aide pour OFF42 sur Mac, Windows, Linux, Android, iPad, iPhone et le web : installation, documentation et signalement d'un problème."
   },

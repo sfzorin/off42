@@ -36,7 +36,7 @@ const wasm = new URL('./src/wasm/off42_wasm_bg.wasm', import.meta.url);
 const wasmSize = existsSync(wasm) ? statSync(wasm).size : 0;
 
 export default defineConfig({
-  base: './',
+  base: '/app/',
   plugins: [contentSecurityPolicy()],
   define: { __WASM_SIZE__: JSON.stringify(wasmSize) },
   worker: { format: 'es' },

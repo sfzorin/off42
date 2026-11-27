@@ -113,7 +113,7 @@
   "web": {
     "label": "OFF42 TRÊN TRÌNH DUYỆT",
     "title": "Mở, chuyển đổi và tạo tệp ngay trong trình duyệt.",
-    "text": "Ứng dụng web chạy lõi OFF42 được biên dịch sang WebAssembly. Tệp được xử lý ngay trong thẻ trình duyệt và trả lại cho bạn dưới dạng tệp tải xuống: không tải gì lên mạng và không cần cài đặt gì.",
+    "text": "Mở tệp từ thiết bị của bạn và tải xuống kết quả làm việc trong trình duyệt. Chọn một công cụ để xem các định dạng được hỗ trợ và tính năng chỉnh sửa.",
     "points": [
       "Xem trước tệp DOCX, ODT, RTF, Markdown, HTML và văn bản thuần, rồi lưu sang một định dạng khác trong số này",
       "Xem trang tính XLSX, ODS, XLS và CSV với giá trị đã tính, rồi lưu thành XLSX, ODS hoặc CSV",
@@ -425,8 +425,8 @@
   },
   "privacy": {
     "title": "Chính sách quyền riêng tư",
-    "intro": "OFF42 được xây dựng để hoạt động trên thiết bị của bạn. Các ứng dụng không thu thập, lưu trữ hay chia sẻ dữ liệu cá nhân, và chúng tôi không bao giờ thấy tài liệu của bạn.",
-    "updated": "Có hiệu lực từ ngày 26 tháng 11 năm 2026",
+    "intro": "OFF42 mở và chỉnh sửa tệp trên thiết bị của bạn. Bạn có thể chọn chia sẻ một phần tài liệu web hoặc bảng tính đang mở khi yêu cầu trợ lý tệp hỗ trợ.",
+    "updated": "Có hiệu lực từ ngày 27 tháng 11 năm 2026",
     "sections": [
       {
         "title": "Chúng tôi là ai",
@@ -437,13 +437,13 @@
       {
         "title": "Dữ liệu chúng tôi thu thập",
         "text": [
-          "Không có. Các ứng dụng không có tài khoản, quảng cáo, phân tích, theo dõi hay báo cáo sự cố, và không gửi dữ liệu sử dụng cho chúng tôi hay bất kỳ ai khác. Chúng tôi không bán hay chia sẻ dữ liệu cá nhân vì chúng tôi không có bất kỳ dữ liệu nào như vậy."
+          "Các ứng dụng gốc không có tài khoản, quảng cáo, phân tích, theo dõi hay báo cáo sự cố. Trong trình soạn thảo web, trợ lý tệp tùy chọn đo chi phí mô hình hằng ngày để duy trì hạn mức miễn phí. OFF42 không bán dữ liệu cá nhân."
         ]
       },
       {
         "title": "Tài liệu của bạn",
         "text": [
-          "Tệp của bạn được mở, chỉnh sửa, chuyển đổi và lưu trên thiết bị của bạn. Chúng không được tải lên cho chúng tôi. Chữ ký, con dấu, cài đặt, tệp gần đây và bản sao khôi phục của công việc chưa lưu chỉ được giữ trên thiết bị của bạn, trong bộ nhớ riêng của ứng dụng, và bạn có thể xóa chúng bất cứ lúc nào bằng cách xóa các tệp đó hoặc gỡ cài đặt ứng dụng.",
+          "Tệp của bạn được mở, chỉnh sửa, chuyển đổi và lưu trên thiết bị. Chữ ký, con dấu, tệp gần đây, cài đặt và bản sao khôi phục được giữ trong bộ nhớ cục bộ. Trợ lý web chỉ gửi các đoạn trích được mô tả bên dưới sau khi bạn đồng ý.",
           "Các ứng dụng di động chỉ mở và lưu tệp thông qua trình chọn tệp của hệ thống hoặc khi bạn chia sẻ tệp vào ứng dụng, và không yêu cầu quyền truy cập mạng."
         ]
       },
@@ -456,19 +456,20 @@
       {
         "title": "Phiên bản web",
         "text": [
-          "off42.cc/app chạy trong trình duyệt của bạn. Sau khi trang và công cụ xử lý của nó đã tải xong, nó không thực hiện thêm yêu cầu mạng nào: các tệp bạn mở vẫn nằm trong thẻ trình duyệt và không bao giờ được tải lên."
+          "Việc mở, chỉnh sửa và xuất tệp diễn ra trong trình duyệt của bạn. Trợ lý là tùy chọn. Trang web cũng cung cấp bản dịch giao diện và các tài nguyên khác khi được yêu cầu.",
+          "Trong trình soạn thảo tài liệu và bảng tính trên web, bạn có thể chọn sử dụng trợ lý tệp. Sau khi đồng ý, yêu cầu, phần đã chọn, dàn ý và văn bản được yêu cầu cho tác vụ sẽ đi qua Cloudflare đến OpenRouter và các nhà cung cấp mô hình. OFF42 lưu tổng lượt dùng hằng ngày bằng ID trình duyệt ẩn danh và hàm băm IP theo ngày. Bạn có thể đóng trợ lý hoặc rút lại sự đồng ý bất cứ lúc nào."
         ]
       },
       {
         "title": "Trang web",
         "text": [
-          "off42.cc không có cookie, quảng cáo hay mã phân tích. Trang được lưu trữ bởi Cloudflare, đơn vị xử lý dữ liệu yêu cầu kỹ thuật như địa chỉ IP để cung cấp trang web và bảo vệ trang khỏi hành vi lạm dụng. Các bản tải xuống được cung cấp từ GitHub. Cả hai hoạt động theo chính sách quyền riêng tư của riêng họ."
+          "Cloudflare lưu trữ off42.cc và xử lý dữ liệu yêu cầu kỹ thuật như địa chỉ IP để phân phối trang web và bảo vệ trang khỏi bị lạm dụng. Turnstile chạy khi bạn sử dụng trợ lý web. GitHub phân phối các bản tải xuống. Các dịch vụ này có chính sách quyền riêng tư riêng."
         ]
       },
       {
         "title": "Trẻ em",
         "text": [
-          "OFF42 phù hợp với mọi lứa tuổi và không thu thập dữ liệu từ bất kỳ ai, kể cả trẻ em."
+          "Người dùng mọi lứa tuổi đều có cùng cài đặt chỉnh sửa cục bộ và trợ lý tùy chọn."
         ]
       },
       {
@@ -494,7 +495,7 @@
     "aboutTitle": "Bộ văn phòng mã nguồn mở, giấy phép MIT | OFF42",
     "aboutDescription": "OFF42 gồm sáu ứng dụng gốc cho macOS và Windows theo giấy phép MIT. Xem mã nguồn, hỗ trợ nền tảng và giới hạn trên GitHub.",
     "privacyTitle": "Chính sách quyền riêng tư của OFF42 — không thu thập dữ liệu",
-    "privacyDescription": "OFF42 không thu thập dữ liệu cá nhân: không tài khoản, không phân tích, không theo dõi. Tài liệu của bạn luôn ở trên thiết bị của bạn trên mọi nền tảng.",
+    "privacyDescription": "OFF42 mở và chỉnh sửa tệp trên thiết bị của bạn. Bạn có thể chọn chia sẻ một phần tài liệu web hoặc bảng tính đang mở khi yêu cầu trợ lý tệp hỗ trợ.",
     "supportTitle": "Hỗ trợ OFF42 — trợ giúp, câu hỏi và báo cáo sự cố",
     "supportDescription": "Nhận trợ giúp về OFF42 trên Mac, Windows, Linux, Android, iPad, iPhone và web: cài đặt, tài liệu hướng dẫn và cách báo cáo sự cố."
   },

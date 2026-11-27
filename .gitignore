@@ -9,3 +9,5 @@ Resources/*/AppIcon.iconset/
 # Local audit history and working instructions.
 /STATUS.md
 /AGENTS.md
+
+/.wrangler/

@@ -113,7 +113,7 @@
   "web": {
     "label": "OFF42 DALAM PELAYAR",
     "title": "Buka, tukar dan cipta fail terus dalam pelayar anda.",
-    "text": "Aplikasi web menjalankan enjin OFF42 yang dikompil kepada WebAssembly. Fail diproses dalam tab pelayar dan diberikan semula sebagai muat turun: tiada apa-apa dimuat naik dan tiada apa-apa dipasang.",
+    "text": "Buka fail daripada peranti anda dan muat turun hasil kerja anda dalam pelayar. Pilih alat untuk melihat format yang disokong dan ciri pengeditannya.",
     "points": [
       "Pratonton fail DOCX, ODT, RTF, Markdown, HTML dan teks, dan simpan dalam format lain daripada senarai ini",
       "Lihat helaian XLSX, ODS, XLS dan CSV dengan nilai yang dikira, dan simpan sebagai XLSX, ODS atau CSV",
@@ -425,8 +425,8 @@
   },
   "privacy": {
     "title": "Dasar privasi",
-    "intro": "OFF42 dibina untuk berfungsi pada peranti anda. Aplikasi tidak mengumpul, menyimpan atau berkongsi data peribadi, dan kami tidak pernah melihat dokumen anda.",
-    "updated": "Berkuat kuasa mulai 26 November 2026",
+    "intro": "OFF42 membuka dan mengedit fail pada peranti anda. Anda boleh memilih untuk berkongsi bahagian dokumen web atau hamparan terbuka apabila anda meminta bantuan pembantu fail.",
+    "updated": "Berkuat kuasa 27 November 2026",
     "sections": [
       {
         "title": "Siapa kami",
@@ -437,13 +437,13 @@
       {
         "title": "Data yang kami kumpul",
         "text": [
-          "Tiada. Aplikasi tidak mempunyai akaun, iklan, analitik, penjejakan atau laporan ranap, dan tidak menghantar data penggunaan kepada kami atau kepada sesiapa pun. Kami tidak menjual atau berkongsi data peribadi kerana kami tidak memilikinya."
+          "Apl natif tiada akaun, pengiklanan, analitik, penjejakan atau laporan ranap. Dalam editor web, pembantu fail pilihan mengukur kos model harian untuk memastikan kuota percumanya kekal tersedia. OFF42 tidak menjual data peribadi."
         ]
       },
       {
         "title": "Dokumen anda",
         "text": [
-          "Fail anda dibuka, disunting, ditukar dan disimpan pada peranti anda. Fail tidak dimuat naik kepada kami. Tandatangan, cop, tetapan, fail terkini dan salinan pemulihan kerja yang belum disimpan hanya disimpan pada peranti anda, dalam storan aplikasi itu sendiri, dan anda boleh memadamkannya pada bila-bila masa dengan memadamkan fail tersebut atau menyahpasang aplikasi.",
+          "Fail anda dibuka, diedit, ditukar dan disimpan pada peranti anda. Tandatangan, setem, fail terkini, tetapan dan salinan pemulihan kekal dalam storan setempat. Pembantu web menghantar petikan yang diterangkan di bawah hanya selepas persetujuan.",
           "Aplikasi mudah alih membuka dan menyimpan fail hanya melalui pemilih fail sistem atau apabila anda berkongsi fail kepadanya, dan tidak meminta akses rangkaian."
         ]
       },
@@ -456,19 +456,20 @@
       {
         "title": "Versi web",
         "text": [
-          "off42.cc/app berjalan dalam pelayar anda. Selepas halaman dan enjinnya dimuatkan, tiada lagi permintaan rangkaian dibuat: fail yang anda buka kekal dalam tab pelayar dan tidak pernah dimuat naik."
+          "Pembukaan, pengeditan dan eksport fail berjalan dalam pelayar anda. Pembantu bersifat pilihan. Laman turut menyediakan terjemahan antara muka dan sumber lain apabila diminta.",
+          "Dalam editor dokumen dan hamparan web, anda boleh memilih untuk menggunakan pembantu fail. Selepas anda bersetuju, permintaan, kandungan yang dipilih, rangka dan teks yang diminta untuk tugasan anda melalui Cloudflare ke OpenRouter dan penyedia modelnya. OFF42 menyimpan jumlah penggunaan harian dengan ID pelayar tanpa nama dan cincangan IP harian. Tutup pembantu atau tarik balik persetujuan anda pada bila-bila masa."
         ]
       },
       {
         "title": "Laman web",
         "text": [
-          "off42.cc tiada kuki, iklan atau skrip analitik. Laman ini dihoskan oleh Cloudflare, yang memproses data permintaan teknikal seperti alamat IP untuk menyampaikan laman dan melindunginya daripada penyalahgunaan. Muat turun disediakan daripada GitHub. Kedua-duanya bertindak mengikut dasar privasi masing-masing."
+          "Cloudflare mengehos off42.cc dan memproses data permintaan teknikal seperti alamat IP untuk menyampaikan laman dan melindunginya daripada penyalahgunaan. Turnstile berjalan apabila anda menggunakan pembantu web. Muat turun disediakan oleh GitHub. Perkhidmatan ini mempunyai dasar privasi masing-masing."
         ]
       },
       {
         "title": "Kanak-kanak",
         "text": [
-          "OFF42 sesuai untuk semua peringkat umur dan tidak mengumpul data daripada sesiapa pun, termasuk kanak-kanak."
+          "Pengeditan setempat dan tetapan pembantu pilihan yang sama terpakai kepada pengguna semua peringkat umur."
         ]
       },
       {
@@ -494,7 +495,7 @@
     "aboutTitle": "Pakej Pejabat Sumber Terbuka, Berlesen MIT | OFF42",
     "aboutDescription": "OFF42 terdiri daripada enam aplikasi natif untuk macOS dan Windows di bawah lesen MIT. Terokai kod sumber, sokongan platform dan batasan di GitHub.",
     "privacyTitle": "Dasar privasi OFF42 — tiada data dikumpul",
-    "privacyDescription": "OFF42 tidak mengumpul data peribadi: tiada akaun, analitik atau penjejakan. Dokumen anda kekal pada peranti anda di setiap platform.",
+    "privacyDescription": "OFF42 membuka dan mengedit fail pada peranti anda. Anda boleh memilih untuk berkongsi bahagian dokumen web atau hamparan terbuka apabila anda meminta bantuan pembantu fail.",
     "supportTitle": "Sokongan OFF42 — bantuan, soalan dan laporan masalah",
     "supportDescription": "Dapatkan bantuan untuk OFF42 pada Mac, Windows, Linux, Android, iPad, iPhone dan web: pemasangan, dokumentasi dan cara melaporkan masalah."
   },

@@ -6,6 +6,7 @@
 // switched with the ☰ drawer and the URL hash. A file app shows its home screen (open strip, recent files) until a
 // file is open, then an editor: title row, menu bar, one toolbar and the content on a grey canvas. Menus and the
 // toolbar carry only operations that work today.
+import { fileAssistant } from './assistant';
 import { call, json, startEngine, type Progress } from './engine';
 import { appLogo, icon, placeIcons } from './icons';
 import { chooseLanguage, language, LANGUAGES, loadLanguage, switchLanguage, t, translatePage } from './i18n';
@@ -89,6 +90,7 @@ const MIME: Record<string, string> = {
   pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   odp: 'application/vnd.oasis.opendocument.presentation',
   pdf: 'application/pdf',
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', bmp: 'image/bmp',
   png: 'image/png',
   svg: 'image/svg+xml',
 };
@@ -437,11 +439,12 @@ window.addEventListener('resize', () => closeMenus(0));
 
 // MARK: - Apps, drawer and routing
 
-type AppId = 'documents' | 'spreadsheets' | 'presentations' | 'pdf' | 'labels' | 'signatures';
+type AppId = 'documents' | 'spreadsheets' | 'presentations' | 'images' | 'pdf' | 'labels' | 'signatures';
 const APPS: { id: AppId; logo: string; name: () => string }[] = [
   { id: 'documents', logo: 'doc', name: () => t('nav.documents') },
   { id: 'spreadsheets', logo: 'xls', name: () => t('nav.spreadsheets') },
   { id: 'presentations', logo: 'ppt', name: () => t('nav.presentations') },
+  { id: 'images', logo: 'img', name: () => t('nav.images') },
   { id: 'pdf', logo: 'pdf', name: () => 'PDF' },
   { id: 'labels', logo: 'labels', name: () => t('tab.labels') },
   { id: 'signatures', logo: 'signatures', name: () => t('tab.marks') },
@@ -452,7 +455,7 @@ const initialised = new Set<string>();
 let current: AppId = 'documents';
 
 function route() {
-  const requested = location.hash.slice(1) as AppId;
+  const requested = location.pathname.split('/')[3] as AppId;
   const id = APPS.some((a) => a.id === requested) ? requested : 'documents';
   current = id;
   closeMenus(0);
@@ -461,22 +464,41 @@ function route() {
     if (a.dataset.app === id) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
-  document.title = `${appInfo(id).name()} – OFF42`;
+  const path = toolPath(id);
+  if (location.pathname === '/app/' || location.pathname === '/') history.replaceState(null, '', path);
+  document.title = appInfo(id).name() + ' – OFF42';
+  document.querySelector('meta[name="description"]')?.setAttribute('content', t('landing.' + id));
+  document.querySelector('link[rel="canonical"]')?.setAttribute('href', location.origin + path);
+  document.querySelectorAll<HTMLLinkElement>('link[hreflang]').forEach(link => {
+    link.href = toolPath(id, link.hreflang === 'x-default' ? 'en' : link.hreflang);
+  });
   if (!initialised.has(id) && toolSetup[id]) {
     initialised.add(id);
     toolSetup[id]!();
   }
 }
 
+function toolPath(id: AppId, lang = language) { return '/app/' + lang + '/' + id + '/'; }
+
+function navigate(id: AppId) {
+  if (location.pathname !== toolPath(id)) history.pushState(null, '', toolPath(id));
+  route();
+}
+
 function setupDrawer() {
   const drawer = $<HTMLDialogElement>('drawer');
   $('drawer-apps').replaceChildren(...APPS.map((app) => {
-    const link = el('a', { className: 'drawer-app', href: `#${app.id}`, dataset: { app: app.id } }, appLogo(app.logo, 22),
+    const link = el('a', { className: 'drawer-app', href: toolPath(app.id), dataset: { app: app.id } }, appLogo(app.logo, 22),
       el('span', { textContent: app.name() }));
-    link.addEventListener('click', () => drawer.close());
+    link.addEventListener('click', (event) => {
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+      event.preventDefault();
+      drawer.close();
+      navigate(app.id);
+    });
     return link;
   }));
-  const site = `../${language}/`;
+  const site = `/${language}/`;
   $<HTMLAnchorElement>('drawer-download').href = `${site}download/`;
   $<HTMLAnchorElement>('drawer-about').href = `${site}about/`;
   $<HTMLAnchorElement>('drawer-privacy').href = `${site}privacy/`;
@@ -524,7 +546,7 @@ function topBar(id: AppId, search?: HTMLElement): HTMLElement {
   const helpButton = el('button', { type: 'button', className: 'icon-button help-button', title: t('bar.help'),
     aria: { label: t('bar.help') } }, icon('help'));
   helpButton.addEventListener('click', showAbout);
-  const wordmark = el('a', { className: 'wordmark small', href: `../${language}/`, dir: 'ltr', aria: { label: 'OFF42' } });
+  const wordmark = el('a', { className: 'wordmark small', href: `/${language}/`, dir: 'ltr', aria: { label: 'OFF42' } });
   wordmark.innerHTML = 'off<span class="wm-n">42<svg class="wm-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1"/></svg></span>';
   return el('header', { className: 'topbar' },
     menuButton,
@@ -648,8 +670,7 @@ async function openFile(file: OpenFile, app = fileAppFor(file.name)) {
     notify(t('files.unsupported', { extension: extension(file.name) }), 'warn');
     return;
   }
-  if (location.hash !== `#${app.id}`) location.hash = app.id;
-  route();
+  navigate(app.id);
   if (!(await mayDiscard(app))) return;
   remember(app.id, file);
   app.renderRecent();
@@ -659,8 +680,7 @@ async function openFile(file: OpenFile, app = fileAppFor(file.name)) {
 /** A new blank document or workbook (not added to the recent files: it has no bytes until downloaded). */
 async function createBlank(app: FileApp) {
   if (!app.blank) return;
-  if (location.hash !== `#${app.id}`) location.hash = app.id;
-  route();
+  navigate(app.id);
   if (!(await mayDiscard(app))) return;
   await openEditor(app, { name: `${app.blank.untitled()}.${app.blank.ext}`, bytes: new Uint8Array(), blank: true });
 }
@@ -726,6 +746,7 @@ function buildFileApp(app: FileApp) {
           el('span', { className: 'strip-formats', textContent: app.formats, dir: 'ltr' })),
         el('div', { className: 'tiles' }, blankTile, el('div', { className: 'tile-box' }, openTile,
           el('span', { className: 'tile-label', textContent: t('home.openFromDevice') }))))),
+      el('p', { className: 'tool-description wrap', textContent: t('landing.' + app.id) }),
       el('section', { className: 'recent wrap', aria: { label: t('home.recent') } }, head, list, empty,
         el('p', { className: 'privacy-line' }, icon('lock'), el('span', { textContent: t('home.privacy') })))));
   app.editorHost = el('div', { className: 'editor', hidden: true });
@@ -840,7 +861,7 @@ async function openEditor(app: FileApp, file: OpenFile) {
   };
   const helpMenu = (): MenuItem[] => [
     { label: t('app.site'), icon: 'info', run: showAbout },
-    { label: t('menu.website'), icon: 'external', run: () => window.open(`../${language}/`, '_blank', 'noopener') },
+    { label: t('menu.website'), icon: 'external', run: () => window.open(`/${language}/`, '_blank', 'noopener') },
   ];
   const specs = (): MenuSpec[] => [
     { label: t('menu.file'), items: fileMenu },
@@ -959,6 +980,7 @@ class EditSession {
   private queue: Promise<unknown> = Promise.resolve();
   /** Whether a command has changed anything in this session (Download then saves instead of returning the file). */
   edited = false;
+  revision = 0;
   status = { canUndo: false, canRedo: false, dirty: false };
 
   private constructor(readonly id: number) {}
@@ -977,17 +999,20 @@ class EditSession {
   async apply<T = unknown>(request: unknown): Promise<T> {
     const result = await json<T>('editApply', this.id, JSON.stringify(request));
     this.edited = true;
+    this.revision++;
     return result;
   }
 
   async undo() {
     const result = await json<typeof this.status & { changed: boolean }>('editUndo', this.id);
+    if (result.changed) this.revision++;
     this.status = { canUndo: result.canUndo, canRedo: result.canRedo, dirty: result.dirty };
     return result;
   }
 
   async redo() {
     const result = await json<typeof this.status & { changed: boolean }>('editRedo', this.id);
+    if (result.changed) this.revision++;
     this.status = { canUndo: result.canUndo, canRedo: result.canRedo, dirty: result.dirty };
     return result;
   }
@@ -1008,8 +1033,26 @@ class EditSession {
   }
 
   close() {
+    this.revision++;
     call('editClose', this.id).catch(() => {});
   }
+}
+
+function editorAssistant(kind: 'document' | 'spreadsheet', session: EditSession,
+  context: () => { selection: unknown; sheet?: number }, redraw: () => Promise<void>) {
+  const panel = fileAssistant({
+    kind,
+    start: () => session.run(async () => ({
+      draft: await call<number>('editFork', session.id), version: session.revision, ...context(),
+    })),
+    commit: (commands, version, signal) => session.run(async () => {
+      signal.throwIfAborted();
+      if (version !== session.revision) throw new Error('ai.stale');
+      await session.apply(commands);
+      await redraw();
+    }),
+  });
+  return { button: tool('notes', t('ai.title'), panel.open, t('ai.title')), dispose: panel.dispose };
 }
 
 /** Undo and Redo toolbar buttons and Edit menu items that follow a session's state. */
@@ -1638,12 +1681,20 @@ async function viewDocument(ctx: Context): Promise<Editor> {
     }
   };
 
+  const assistant = editorAssistant('document', session, () => {
+    const { start, end } = current();
+    const text = selectedIds().map(id => {
+      const chars = [...paragraphText(id)];
+      return chars.slice(id === start.id ? start.offset : 0, id === end.id ? end.offset : undefined).join('');
+    }).join('\n').slice(0,8000);
+    return { selection: { start, end, text } };
+  }, async () => { draw(await session.snapshot<DocSnapshot>()); });
   draw(snap);
   if (snap.selection) select(snap.selection);
   return {
     body: canvas,
     toolbar: [...history.buttons, tool('print', t('menu.print'), ctx.print), 'sep', zoom.button, 'sep', styleButton, 'sep',
-      boldButton, italicButton, underlineButton, 'sep', ...alignButtons, 'sep', bulletButton, numberedButton, 'sep', statsButton],
+      boldButton, italicButton, underlineButton, 'sep', ...alignButtons, 'sep', bulletButton, numberedButton, 'sep', statsButton, assistant.button],
     exports: DOC_FORMATS.map(([ext, label]) => ({ label: label(), ext, run: () => save(ext) })),
     fileItems: [{ label: t('stats.title'), icon: 'stats', run: stats }],
     menus: [
@@ -1685,6 +1736,7 @@ async function viewDocument(ctx: Context): Promise<Editor> {
     edited: () => session.edited,
     undo, redo,
     dispose: () => {
+      assistant.dispose();
       document.removeEventListener('selectionchange', onSelection);
       images.forEach((url) => URL.revokeObjectURL(url));
       session.close();
@@ -2176,12 +2228,15 @@ async function viewSpreadsheet(ctx: Context): Promise<Editor> {
     { label: t('edit.clear'), shortcut: 'Del', run: clear },
     { label: t('edit.deleteRows'), icon: 'deleteRow', run: () => rowsCommand('delete_rows') },
     { label: t('edit.deleteColumns'), icon: 'deleteColumn', run: () => columnsCommand('delete_columns') }];
+  const assistant = editable ? editorAssistant('spreadsheet', session,
+    () => ({ sheet: sheetIndex, selection: rangeRef() }),
+    async () => { apply(await load(sheetIndex), true); }) : null;
   return {
     body: el('div', { className: 'sheet-view' },
       el('div', { className: 'formula-bar' }, nameBox, el('span', { className: 'fx', textContent: 'fx', aria: { hidden: 'true' } }), valueBox),
       scroll,
       el('footer', { className: 'sheet-bar' }, sheets, tabs, note, chip)),
-    toolbar: [...(editable ? history.buttons : []), tool('print', t('menu.print'), ctx.print), 'sep', zoom.button, ...editTools],
+    toolbar: [...(editable ? history.buttons : []), tool('print', t('menu.print'), ctx.print), 'sep', zoom.button, ...editTools, ...(assistant ? [assistant.button] : [])],
     exports: snap.readOnly ? [] : [['xlsx', 'Microsoft Excel'], ['ods', t('format.ods')], ['csv', 'CSV']]
       .map(([ext, label]) => ({ label, ext, run: () => convert(ext) })),
     extraExports: [{ label: t('sheet.valuesCsv'), run: valuesCsv }],
@@ -2221,7 +2276,7 @@ async function viewSpreadsheet(ctx: Context): Promise<Editor> {
     dirty: () => session.status.dirty,
     edited: () => session.edited,
     ...(editable ? { undo, redo } : {}),
-    dispose: () => session.close(),
+    dispose: () => { assistant?.dispose(); session.close(); },
   };
 }
 
@@ -2268,7 +2323,128 @@ function slideCard(slide: SlideOutline): HTMLElement {
   return card;
 }
 
+type DraftSlide = { title: string; body: string; notes: string };
+
+function newPresentation(ctx: Context): Editor {
+  const empty = (): DraftSlide => ({ title: '', body: '', notes: '' });
+  const slides = [empty()];
+  let index = 0;
+  let edited = false;
+  let saved = JSON.stringify(slides);
+  const list = el('ol', { className: 'thumbs' });
+  const title = el('input', { placeholder: t('slides.title'), aria: { label: t('slides.title') }, dir: 'auto' });
+  const body = el('textarea', { placeholder: t('slides.body'), aria: { label: t('slides.body') }, dir: 'auto' });
+  const notes = el('textarea', { placeholder: t('slides.notesTitle'), aria: { label: t('slides.notesTitle') }, dir: 'auto' });
+  const redraw = () => {
+    list.replaceChildren(...slides.map((slide, i) => {
+      const label = slide.title || t('slides.untitled');
+      const b = el('button', { type: 'button', className: 'draft-thumb', textContent: (i + 1) + '. ' + label,
+        aria: { current: String(index === i) } });
+      b.onclick = () => { index = i; redraw(); title.focus(); };
+      return el('li', {}, b);
+    }));
+    title.value = slides[index].title;
+    body.value = slides[index].body;
+    notes.value = slides[index].notes;
+  };
+  for (const [field, input] of [['title', title], ['body', body], ['notes', notes]] as const) {
+    input.maxLength = 32768;
+    input.addEventListener('input', () => {
+      slides[index][field] = input.value;
+      if (field === 'title') list.children[index].firstElementChild!.textContent = (index + 1) + '. ' + (input.value || t('slides.untitled'));
+      edited = true;
+      ctx.changed();
+    });
+  }
+  const add = () => {
+    if (slides.length >= 200) return;
+    slides.splice(++index, 0, empty());
+    addButton.disabled = slides.length >= 200;
+    edited = true;
+    redraw();
+    ctx.changed();
+    title.focus();
+  };
+  const addButton = tool('plus', t('slides.add'), add, t('slides.add'));
+  const save = async (format: string) => {
+    const content = JSON.stringify(slides);
+    const bytes = await call<Uint8Array>('presentationCreate', content, format);
+    ctx.save(bytes, format);
+    saved = content;
+    ctx.changed();
+  };
+  redraw();
+  return {
+    body: el('div', { className: 'slides-view' }, el('aside', { className: 'slide-strip' }, list),
+      el('div', { className: 'draft-slide' }, el('div', { className: 'draft-paper' }, title, body),
+        el('label', { className: 'draft-notes' }, t('slides.notesTitle'), notes))),
+    toolbar: [addButton],
+    menus: [{ label: t('menu.slide'), items: () => [{ label: t('slides.add'), run: add, disabled: slides.length >= 200 }] }],
+    download: () => save('pptx'),
+    exports: ['pptx','odp'].map(ext => ({ ext, label: ext === 'pptx' ? 'Microsoft PowerPoint' : t('format.odp'), run: () => save(ext) })),
+    edited: () => edited, dirty: () => edited && JSON.stringify(slides) !== saved,
+    printable: () => el('div', { className: 'print-slides' }, ...slides.map(slide => el('div', { className: 'print-slide' },
+      slideCard({ ...slide, hidden: false, objects: [] })))),
+  };
+}
+
+async function viewImage(ctx: Context): Promise<Editor> {
+  const id = await call<number>('imageOpen', ctx.file.bytes);
+  const preview = el('img', { alt: ctx.file.name });
+  const stage = el('div', { className: 'image-stage' }, preview);
+  const dimensions = el('span', { className: 'slide-position', dir: 'ltr' });
+  let url = '';
+  let closed = false;
+  let edited = false;
+  let dirty = false;
+  let chain = Promise.resolve();
+  const run = (job: () => Promise<void>) => {
+    const next = chain.then(() => closed ? undefined : job());
+    chain = next.catch(() => {});
+    return next;
+  };
+  const refresh = async (action: string) => {
+    const state = await json<{width: number; height: number; dirty: boolean; canUndo: boolean; canRedo: boolean}>('imageEdit', id, action);
+    dirty = state.dirty;
+    edited ||= dirty;
+    undo.disabled = !state.canUndo;
+    redo.disabled = !state.canRedo;
+    dimensions.textContent = state.width + ' × ' + state.height;
+    const png = await call<Uint8Array>('imageSave', id, 'png', false);
+    if (closed) return;
+    const next = URL.createObjectURL(new Blob([png as BlobPart], { type: 'image/png' }));
+    preview.src = next;
+    if (url) URL.revokeObjectURL(url);
+    url = next;
+    ctx.changed();
+  };
+  const edit = (action: string) => run(() => refresh(action));
+  const undo = tool('undo', t('edit.undo'), () => edit('undo'));
+  const redo = tool('redo', t('edit.redo'), () => edit('redo'));
+  const save = (ext: string, mark: boolean) => run(async () => {
+    const bytes = !edited && ext === ctx.kind ? ctx.file.bytes : await call<Uint8Array>('imageSave', id, ext, mark);
+    if (closed) return;
+    ctx.save(bytes, ext);
+    if (mark) { dirty = false; ctx.changed(); }
+  });
+  const dispose = () => {
+    closed = true;
+    if (url) URL.revokeObjectURL(url);
+    void call('imageClose', id);
+  };
+  try { await refresh('info'); } catch (error) { dispose(); throw error; }
+  return {
+    body: stage, toolbar: [tool('refresh', t('images.rotate'), () => edit('rotate'), t('images.rotate')),
+      tool('flip', t('images.flip'), () => edit('flip'), t('images.flip')), 'sep', undo, redo, 'sep',
+      tool('zoomIn', t('menu.actualSize'), () => stage.classList.toggle('actual')), dimensions],
+    exports: ['png','jpeg'].map(ext => ({ ext, label: ext.toUpperCase(), run: () => save(ext, ext === ctx.kind) })),
+    download: () => save(ctx.kind, true), undo: () => edit('undo'), redo: () => edit('redo'),
+    dirty: () => dirty, edited: () => edited, dispose,
+  };
+}
+
 async function viewPresentation(ctx: Context): Promise<Editor> {
+  if (ctx.file.blank) return newPresentation(ctx);
   const { file, kind } = ctx;
   const { slides } = await json<{ slides: SlideOutline[] }>('presentationOutline', file.bytes, kind);
   let index = 0;
@@ -2903,7 +3079,9 @@ async function start() {
       blank: { label: () => t('home.blankDocument'), menu: () => t('menu.newDocument'), untitled: () => t('documents.untitled'), ext: 'docx' } },
     { id: 'spreadsheets', logo: 'xls', extensions: ['xlsx', 'ods', 'xls', 'csv'], formats: 'XLSX, ODS, XLS, CSV', view: viewSpreadsheet,
       blank: { label: () => t('home.blankSpreadsheet'), menu: () => t('menu.newSpreadsheet'), untitled: () => t('spreadsheets.untitled'), ext: 'xlsx' } },
-    { id: 'presentations', logo: 'ppt', extensions: ['pptx', 'odp'], formats: 'PPTX, ODP', view: viewPresentation },
+    { id: 'presentations', logo: 'ppt', extensions: ['pptx', 'odp'], formats: 'PPTX, ODP', view: viewPresentation,
+      blank: { label: () => t('home.blankPresentation'), menu: () => t('home.blankPresentation'), untitled: () => t('presentations.untitled'), ext: 'pptx' } },
+    { id: 'images', logo: 'img', extensions: ['png', 'jpg', 'jpeg', 'bmp', 'webp'], formats: 'PNG, JPEG, BMP, WebP', view: viewImage },
     { id: 'pdf', logo: 'pdf', extensions: ['pdf'], formats: 'PDF', view: viewPdf },
   ];
   for (const spec of apps) {
@@ -2913,7 +3091,7 @@ async function start() {
   }
   for (const id of ['labels', 'signatures'] as const) {
     const section = $(id);
-    section.prepend(topBar(id));
+    section.prepend(topBar(id), el('p', { className: 'tool-description', textContent: t('landing.' + id) }));
     $('app').append(section);
   }
   placeIcons();
@@ -2921,8 +3099,9 @@ async function start() {
   ['about', 'stats', 'confirm'].forEach((id) => setupDialog($<HTMLDialogElement>(id)));
   setupDrop();
   setupKeys();
-  window.addEventListener('hashchange', route);
+  window.addEventListener('popstate', route);
   route();
+  document.getElementById('tool-entry')?.remove();
   $('app').hidden = false;
   $('splash').classList.add('done');
   setTimeout(() => $('splash').remove(), 400);

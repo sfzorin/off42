@@ -714,3 +714,28 @@ body:has(#spreadsheets:not([hidden]) .sheet-bar) .snackbar { bottom: 64px; }
   .print-slide:last-child { break-after: auto; }
   .print-slide .slide-card { zoom: 0.7; box-shadow: none; border: 1px solid #ccc; }
 }
+
+.tool-description { color: var(--muted); line-height: 1.55; margin-block: 1rem; }
+.tool-screen > .tool-description { margin: .5rem clamp(1rem, 3vw, 3rem); }
+.draft-slide { flex: 1; min-width: 0; padding: clamp(12px, 3vw, 48px); overflow: auto; }
+.draft-paper { background: white; color: #202124; max-width: 960px; aspect-ratio: 16/9; margin: 0 auto; padding: 5%; display: flex; flex-direction: column; gap: 1rem; }
+.draft-paper input, .draft-paper textarea { width: 100%; color: inherit; background: transparent; border: 0; font: inherit; }
+.draft-paper input { font-size: clamp(20px, 3vw, 40px); font-weight: 600; }
+.draft-paper textarea { flex: 1; resize: none; }
+.draft-notes { display: grid; gap: .4rem; max-width: 960px; margin: 1rem auto; }
+.draft-notes textarea { font: inherit; padding: .5rem; }
+.draft-thumb { width: 100%; padding: .65rem; text-align: start; overflow-wrap: anywhere; }
+.draft-thumb[aria-current="true"] { font-weight: 700; outline: 2px solid currentColor; outline-offset: -2px; }
+.image-stage { height: 100%; width: 100%; overflow: auto; text-align: center; padding: 1rem; }
+.image-stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.image-stage.actual img { max-width: none; max-height: none; }
+
+#tool-entry { margin: clamp(2rem, 9vh, 6rem) auto; max-width: 64rem; padding-inline: 1.5rem; }
+#tool-entry h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+#tool-entry p { max-width: 66ch; line-height: 1.6; }
+#tool-entry nav { display: flex; flex-wrap: wrap; gap: 1rem; }
+#tool-entry ~ .splash { position: static; min-height: 8rem; height: auto; }
+.assistant-dialog { max-width: min(32rem, 95vw); }
+.assistant-dialog textarea { width: 100%; min-height: 5rem; font: inherit; padding: .65rem; }
+.assistant-dialog [role="status"] { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 35vh; overflow: auto; }
+.assistant-dialog iframe { border: none; width: 100%; height: 72px; }

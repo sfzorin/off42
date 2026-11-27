@@ -1,8 +1,11 @@
+import { assistant } from './assistant.js';
+export { AssistantBudget } from './budget.js';
 // Serves byte ranges for the demo videos. Workers Static Assets answer every request with the whole file
 // (HTTP 200), and Safari only plays video that answers Range requests with 206 Partial Content.
-// Only /assets/video/* reaches this Worker (run_worker_first); everything else is served as static assets.
+// The assistant has its own handler. Static assets serve the remaining site routes.
 export default {
   async fetch(request, env) {
+    if (new URL(request.url).pathname === '/api/assistant') return assistant(request, env);
     const range = request.headers.get('Range');
     const headers = new Headers(request.headers); headers.delete('Range');
     const response = await env.ASSETS.fetch(new Request(request.url, { method: request.method === 'HEAD' ? 'HEAD' : 'GET', headers }));
