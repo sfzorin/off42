@@ -4803,7 +4803,7 @@ def audit_window_layout(bin_dir,output):
                 # The title row's Save pill (command 2) is not a panel; it is checked separately below. Neither is the
                 # XLS42 formula bar's name box (104), which stays with the grid; the XLS42 status chip must hide.
                 return not any(u.IsWindowVisible(h)for h in children if classname(h).lower()in{'button','static'}and u.GetDlgCtrlID(h)not in(2,104 if app=='XLS42'else 2))
-            audit_chrome_structure(process,main,app,result,output)
+            fixture = audit_chrome_structure(process,main,app,result,output)
             caption=text(main);history=[u.GetMenuState(u.GetMenu(main),i,0)for i in(4,5)];before=body_rect()
             toggles=[i for i in(65503,65502,65501,65500)if u.GetMenuState(u.GetMenu(main),i,0)&3==0]
             assert 65501 in toggles
@@ -4824,6 +4824,10 @@ def audit_window_layout(bin_dir,output):
             if app in{'DOC42','XLS42'}:capture_window(main,output/(app+'-panels-hidden.bmp'))
             u.PostMessageW(main,WM_CLOSE,0,0);process.wait(timeout=5)
             process,main=launch();wait_for(hidden_panels,'panel preferences restored '+app,process)
+            # A fresh process starts untitled. Compare the restored panels, caption and
+            # history on the same clean document used for the original measurements.
+            if fixture is not None:
+                open_fixture(process, main, fixture)
             assert all(u.GetMenuState(u.GetMenu(main),i,0)&8==0 for i in toggles)
             for identifier in toggles:
                 command(main,identifier);wait_for(lambda:u.GetMenuState(u.GetMenu(main),identifier,0)&8,'panel restored '+str(identifier)+' '+app,process)
@@ -5007,6 +5011,7 @@ def audit_chrome_structure(process, main, app, result, output=None):
         # normal discard prompt so the panel checks that follow start from a clean, closable window.
         open_fixture(process, main, fixture)
         wait_for(lambda: text(name_box) == "A1" and " * - " not in text(main), "selection fixture reopened clean", process)
+        return fixture
 
 
 def audit_dark_mode(bin_dir, output):
