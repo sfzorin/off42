@@ -6,9 +6,11 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.net.Uri
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -16,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.core.content.FileProvider
 import androidx.test.espresso.Espresso.closeSoftKeyboard
@@ -208,14 +211,17 @@ class AppTest {
         node("nav-LABELS").performClick()
         waitFor("code-preview")
         node("code-value").performTextReplacement("OFF42-0001")
+        closeSoftKeyboard()
         waitFor("code-preview")
         screenshot("5-codes")
         val png = stubSaveDialog("code.png")
-        node("code-save-png").performScrollTo().performClick()
+        // These controls live in a regular scroll column. Their accessibility actions
+        // run on the UI thread even while the phone is resizing after text entry.
+        node("code-save-png").assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
         assertTrue(awaitWritten(png).copyOfRange(1, 4).contentEquals("PNG".toByteArray()))
 
         node("labels-tab-1").performClick()
-        node("make-sheet").performScrollTo().performClick()
+        node("make-sheet").assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
         waitFor("sheet-status")
         node("labels-tab-2").performClick()
         waitFor("marks-search")
