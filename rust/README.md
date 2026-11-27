@@ -43,6 +43,7 @@ Windows runtime behavior. The Windows CI workflow also builds with MSVC.
 | --- | --- |
 | `crates/*-core`, `label42`, `marks42`, `suite42-core`, `suite42-pdf-text` | Formats and document engines |
 | `crates/suite42-app` | Portable app services shared by every shell: the `App` host contract, recovery, recents, preferences, localization catalogs, labels, signature generators and per-app helpers (PDF comparison and export, Goal Seek/Solver, scan naming, slide outlines, image batches). See [its README](crates/suite42-app/README.md) |
+| `crates/edit42` | The editing command layer: serializable (JSON) document and workbook commands and edit sessions with one Undo step per request (blank/open, apply, undo/redo, snapshot, save). Used by the web app through `off42-wasm`; meant for the AI assistant and the other shells too (ARCHITECTURE.md, D13) |
 | `crates/win42` | Win32 host: windows, menus, dialogs, drawing, clipboard, printing, PDFium loading, OCR engine, spelling, dark mode. Re-exports the `suite42-app` contract |
 | `crates/egui42` | Experimental egui host used instead of `win42::run` on Linux and macOS (see [Linux preview](#linux-preview)) |
 | `crates/suite42-pdf-raster` | WinRT PDF rendering (Windows only) |

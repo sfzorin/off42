@@ -4,12 +4,14 @@ const N: &str = "urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0";
 const S: &str = "urn:oasis:names:tc:opendocument:xmlns:style:1.0";
 const O: &str = "urn:oasis:names:tc:opendocument:xmlns:office:1.0";
 const T: &str = "urn:oasis:names:tc:opendocument:xmlns:text:1.0";
-use crate::display::{Exponent, NumberPattern};
+use crate::display::{Currency, Exponent, NumberPattern};
 
 impl NumberPattern {
     fn ods_xml(self, name: &str) -> String {
         let kind = if self.percent {
             "percentage-style"
+        } else if self.currency.is_some() {
+            "currency-style"
         } else {
             "number-style"
         };
@@ -23,20 +25,31 @@ impl NumberPattern {
             ),
             None => ("number", String::new()),
         };
-        let suffix = if self.percent {
-            "<number:text>%</number:text>"
+        let mut prefix = String::new();
+        let mut suffix = if self.percent {
+            "<number:text>%</number:text>".to_owned()
         } else {
-            ""
+            String::new()
         };
+        if let Some(currency) = self.currency {
+            let symbol = format!("<number:currency-symbol>{}</number:currency-symbol>", escape_xml(currency.symbol()));
+            let gap = if currency.space { "<number:text> </number:text>" } else { "" };
+            if currency.prefix {
+                prefix = format!("{symbol}{gap}");
+            } else {
+                suffix = format!("{gap}{symbol}");
+            }
+        }
         format!(
-            "<number:{kind} xmlns:number=\"{N}\" xmlns:style=\"{S}\" style:name=\"{name}\" number:language=\"en\" number:country=\"US\"><number:{element} number:min-integer-digits=\"{}\" number:decimal-places=\"{}\" number:min-decimal-places=\"{}\" number:grouping=\"{}\"{exponent}/>{suffix}</number:{kind}>",
+            "<number:{kind} xmlns:number=\"{N}\" xmlns:style=\"{S}\" style:name=\"{name}\" number:language=\"en\" number:country=\"US\">{prefix}<number:{element} number:min-integer-digits=\"{}\" number:decimal-places=\"{}\" number:min-decimal-places=\"{}\" number:grouping=\"{}\"{exponent}/>{suffix}</number:{kind}>",
             self.integer, self.decimals, self.minimum_decimals, self.grouping
         )
     }
 
     fn read_ods(node: roxmltree::Node<'_, '_>) -> Option<Self> {
         let percent = node.has_tag_name((N, "percentage-style"));
-        if !percent && !node.has_tag_name((N, "number-style")) {
+        let money = node.has_tag_name((N, "currency-style"));
+        if !percent && !money && !node.has_tag_name((N, "number-style")) {
             return None;
         }
         if node.attribute((N, "language")).is_some_and(|s| s != "en")
@@ -47,10 +60,33 @@ impl NumberPattern {
         {
             return None;
         }
-        let children = node
+        let mut children = node
             .children()
             .filter(|n| n.is_element())
             .collect::<Vec<_>>();
+        let currency = if money {
+            let at = children.iter().position(|n| n.has_tag_name((N, "currency-symbol")))?;
+            let symbol = children[at];
+            if symbol.children().any(|n| n.is_element())
+                || symbol
+                    .attributes()
+                    .any(|a| a.namespace() != Some(N) || !matches!(a.name(), "language" | "country"))
+            {
+                return None;
+            }
+            let symbol = Currency::find(symbol.text()?)?;
+            let prefix = at == 0;
+            let space_at = if prefix { 1 } else { at.checked_sub(1)? };
+            let space = children.get(space_at).is_some_and(|n| n.has_tag_name((N, "text")) && n.text() == Some(" "));
+            let (first, last) = if prefix { (0, at + usize::from(space)) } else { (at - usize::from(space), at) };
+            if !prefix && last + 1 != children.len() {
+                return None;
+            }
+            children.drain(first..=last);
+            Some(Currency { symbol, prefix, space })
+        } else {
+            None
+        };
         if children.len() != if percent { 2 } else { 1 }
             || percent
                 && (!children[1].has_tag_name((N, "text")) || children[1].text() != Some("%"))
@@ -118,6 +154,7 @@ impl NumberPattern {
             grouping,
             percent,
             exponent,
+            currency,
         };
         pattern.is_valid().then_some(pattern)
     }
@@ -571,7 +608,8 @@ mod tests {
         assert_eq!(opened.style(0, 0).unwrap().number_format, "0.00");
         assert_eq!(opened.display_cells()[&(0, 0)], "12.30");
         let baseline = b.project_bytes().unwrap();
-        for code in ["00.00E+00", "[Red]0.00", "0.#0", "$0.00", "yyyy-mm-dd"] {
+        // "$0.00" became a supported currency format (stage 2); the bracketed locale form is still refused.
+        for code in ["00.00E+00", "[Red]0.00", "0.#0", "[$€-407]0.00", "yyyy-mm-dd"] {
             let mut b = Workbook::from_project_bytes(&baseline).unwrap();
             let mut style = b.style(0, 0).unwrap().clone();
             style.number_format = code.into();

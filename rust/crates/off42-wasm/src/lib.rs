@@ -169,6 +169,105 @@ pub fn spreadsheet_values_csv(bytes: &[u8], from: &str, sheet: usize) -> Result<
     Ok(out.into_bytes())
 }
 
+// MARK: - Edit sessions (edit42)
+//
+// An edit session holds one open document or workbook and its Undo history in the engine. The host keeps the
+// numeric handle, sends commands as JSON (edit42 defines them; one request is one Undo step) and asks for a
+// snapshot to draw. Sessions live until `edit_close`; the browser keeps one per open editor.
+
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
+
+struct Sessions {
+    next: u32,
+    open: HashMap<u32, edit42::Session>,
+}
+
+fn sessions() -> std::sync::MutexGuard<'static, Sessions> {
+    static SESSIONS: OnceLock<Mutex<Sessions>> = OnceLock::new();
+    SESSIONS
+        .get_or_init(|| Mutex::new(Sessions { next: 1, open: HashMap::new() }))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn keep(session: edit42::Session) -> Result<u32> {
+    let mut all = sessions();
+    if all.open.len() >= 64 {
+        return Err("Too many open files: close one first".into());
+    }
+    let id = all.next;
+    all.next = all.next.checked_add(1).ok_or("Too many sessions")?;
+    all.open.insert(id, session);
+    Ok(id)
+}
+
+fn with_session<T>(id: u32, f: impl FnOnce(&mut edit42::Session) -> Result<T>) -> Result<T> {
+    let mut all = sessions();
+    let session = all.open.get_mut(&id).ok_or("This file is no longer open in the engine; open it again.")?;
+    f(session)
+}
+
+/// A new blank document (`"document"`) or workbook (`"spreadsheet"`); returns the session handle.
+pub fn edit_new(kind: &str) -> Result<u32> {
+    keep(edit42::Session::blank(kind)?)
+}
+
+/// Opens a document (docx, odt, rtf, md, html, txt) or workbook (xlsx, ods, xls, csv) for editing.
+pub fn edit_open(bytes: &[u8], format: &str) -> Result<u32> {
+    keep(edit42::Session::open(bytes, format)?)
+}
+
+/// Applies a command or an array of commands (JSON) as one Undo step; returns the results as JSON.
+pub fn edit_apply(id: u32, request: &str) -> Result<String> {
+    with_session(id, |s| s.apply(request))
+}
+
+/// Undo; returns `{changed, canUndo, canRedo, dirty}`.
+pub fn edit_undo(id: u32) -> Result<String> {
+    with_session(id, |s| Ok(changed(s.undo(), s)))
+}
+
+/// Redo; returns `{changed, canUndo, canRedo, dirty}`.
+pub fn edit_redo(id: u32) -> Result<String> {
+    with_session(id, |s| Ok(changed(s.redo(), s)))
+}
+
+fn changed(changed: bool, s: &edit42::Session) -> String {
+    json_string(&json!({ "changed": changed, "canUndo": s.can_undo(), "canRedo": s.can_redo(), "dirty": s.is_dirty() }))
+}
+
+/// What to draw, as JSON (edit42 snapshot); `options` as JSON, for workbooks `{sheet, maxRows, maxCols}`.
+pub fn edit_snapshot(id: u32, options: &str) -> Result<String> {
+    with_session(id, |s| s.snapshot(options))
+}
+
+/// The edited content in a format (same formats and fidelity rules as the conversions above).
+pub fn edit_save(id: u32, format: &str, drop_package_parts: bool) -> Result<Vec<u8>> {
+    with_session(id, |s| s.save(format, drop_package_parts))
+}
+
+/// Marks the current state as saved (after the host delivered a download).
+pub fn edit_mark_saved(id: u32) -> Result<()> {
+    with_session(id, |s| {
+        s.mark_saved();
+        Ok(())
+    })
+}
+
+/// The bytes of an image block of a document session.
+pub fn edit_image(id: u32, image: u64) -> Result<Vec<u8>> {
+    with_session(id, |s| match s {
+        edit42::Session::Document(d) => d.image(image).map(|(_, data)| data),
+        _ => Err("Not a document".into()),
+    })
+}
+
+/// Closes a session and frees its memory.
+pub fn edit_close(id: u32) {
+    sessions().open.remove(&id);
+}
+
 // MARK: - Presentations (ppt42-core)
 
 use ppt42_core::{odp, pptx, ObjectKind, OutlineRole, Presentation};

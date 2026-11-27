@@ -16,6 +16,7 @@ mod revisions;
 pub use revisions::{now_iso8601, Removal};
 mod search;
 mod word_edit;
+pub mod ops;
 pub use word_edit::PreparedWordEdit;
 mod statistics;
 pub use statistics::TextStatistics;
@@ -438,6 +439,21 @@ impl RichDocument {
         operation(&mut next)?;
         validate(&next)?;
         Ok(self.history.apply(next))
+    }
+    /// Like [`Self::transact`], but the change joins the latest Undo step instead of starting a new one (hosts use
+    /// it to group consecutive typing). Validation and rollback are the same.
+    pub fn transact_amend(
+        &mut self,
+        operation: impl FnOnce(&mut State) -> Result<(), Error>,
+    ) -> Result<bool, Error> {
+        let mut next = self.state().clone();
+        operation(&mut next)?;
+        validate(&next)?;
+        Ok(self.history.amend(next))
+    }
+    /// How many Undo steps are kept (8 by default).
+    pub fn set_history_limit(&mut self, limit: usize) {
+        self.history.set_limit(limit);
     }
     pub fn undo(&mut self) -> bool {
         self.history.undo()

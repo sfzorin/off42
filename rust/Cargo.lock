@@ -1390,6 +1390,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "edit42"
+version = "0.1.0"
+dependencies = [
+ "doc42-core",
+ "serde",
+ "serde_json",
+ "xls42-core",
+]
+
+[[package]]
 name = "eframe"
 version = "0.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3369,6 +3379,7 @@ name = "off42-wasm"
 version = "0.1.0"
 dependencies = [
  "doc42-core",
+ "edit42",
  "label42",
  "marks42",
  "pdf42-core",

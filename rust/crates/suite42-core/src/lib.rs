@@ -209,6 +209,28 @@ impl<T: Clone + PartialEq> SnapshotHistory<T> {
     pub fn mark_saved_snapshot(&mut self, snapshot: T) {
         self.saved = snapshot;
     }
+    /// Change how many Undo (and Redo) steps are kept; the oldest steps beyond the new limit are dropped.
+    pub fn set_limit(&mut self, limit: usize) {
+        self.limit = limit;
+        let excess = self.undo.len().saturating_sub(limit);
+        self.undo.drain(..excess);
+        let excess = self.redo.len().saturating_sub(limit);
+        self.redo.drain(..excess);
+    }
+    pub fn limit(&self) -> usize {
+        self.limit
+    }
+    /// Replace the current state as part of the latest Undo step (for example consecutive typing), without a new
+    /// history entry; Redo is discarded. Returns false when the state is unchanged.
+    pub fn amend(&mut self, value: T) -> bool {
+        if value == self.current {
+            return false;
+        }
+        self.current = value;
+        self.advance_identity();
+        self.redo.clear();
+        true
+    }
 }
 /// Write to a new destination only, without clobbering any existing file.
 /// Publication atomicity depends on the platform and filesystem.
@@ -300,5 +322,32 @@ mod history_identity_tests{
         h.apply("b".into());let second=h.current_id();assert_ne!(second,start);h.apply("c".into());let third=h.current_id();
         h.undo();assert_eq!(h.current_id(),second);h.redo();assert_eq!(h.current_id(),third);h.undo();h.apply("d".into());assert!(h.current_id()>third);assert!(!h.can_redo());
         let branch=h.current_id();h.mark_saved_snapshot("a".into());assert_eq!(h.current_id(),branch);h.replace_current("d".into());assert_eq!(h.current_id(),branch);h.replace_current("e".into());assert!(h.current_id()>branch);
+    }
+    #[test]
+    fn history_limit_can_grow_and_amend_merges_into_the_last_step() {
+        let mut h = SnapshotHistory::new(0, 2);
+        for n in 1..=4 {
+            h.apply(n);
+        }
+        assert!(h.undo() && h.undo() && !h.undo(), "two steps kept");
+        h.redo();
+        h.redo();
+        h.set_limit(100);
+        for n in 5..=40 {
+            h.apply(n);
+        }
+        let mut steps = 0;
+        while h.undo() {
+            steps += 1;
+        }
+        assert_eq!(steps, 38);
+        h.set_limit(1);
+        h.redo();
+        h.apply(7);
+        assert!(h.amend(8) && !h.amend(8));
+        assert_eq!(*h.current(), 8);
+        assert!(!h.can_redo());
+        assert!(h.undo());
+        assert_eq!(*h.current(), 3, "one Undo step covers the amended state");
     }
 }
