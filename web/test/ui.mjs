@@ -2,7 +2,8 @@
 // (website/public/_headers, including the site's Content-Security-Policy), drives the page in headless Chromium
 // (Playwright) and checks the loading screen, the app shell (drawer, language menu, help, home screens with recent
 // files), every editor through its menus and toolbar (documents, spreadsheets, presentations, PDF), conversions and
-// downloads, printing, the tool screens (labels & codes, signatures & stamps), languages and right-to-left layout,
+// downloads, printing, creating and editing documents and spreadsheets (typing, styles, formulas, rows, Undo/Redo,
+// Edited/Saved, downloads checked by reopening them through the engine), the tool screens (labels & codes, signatures & stamps), languages and right-to-left layout,
 // the dark theme and the phone layout, and that the page makes no request outside its own origin.
 // Run after `npm run build`; pass `--dir ../website/public/app` to test the copy published on the site,
 // `--url <app URL>` to test an app served elsewhere (for example `npx wrangler dev` in website/), and
@@ -115,15 +116,17 @@ try {
     await page.waitForSelector('#splash', { state: 'detached' });
   });
 
-  await step('Documents home: top bar, open strip without fake "blank" tiles, empty recent list, privacy line', async () => {
+  await step('Documents home: top bar, open strip with the Blank and Open tiles, empty recent list, privacy line', async () => {
     await page.waitForSelector('#documents .home .app-title h1:text-is("Documents")');
     await page.waitForSelector('#documents .strip-head h2:text-is("Open a document")');
-    assert.equal(await page.locator('#documents .tile').count(), 1, 'only "Open from device"');
+    assert.deepEqual(await page.locator('#documents .tile').evaluateAll((tiles) => tiles.map((t) => t.getAttribute('aria-label'))),
+      ['Blank document', 'Open from device'], 'Blank document first, then Open from device; no other tiles');
+    assert.deepEqual(await page.locator('#documents .tile-label').allTextContents(), ['Blank document', 'Open from device']);
     await page.waitForSelector('#documents .recent-empty:text-is("Files you open appear here.")');
     await page.waitForSelector('#documents .privacy-line');
     assert.equal(await page.locator('.sidebar').count(), 0, 'no permanent sidebar');
     // The tile opens the file picker.
-    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('#documents .tile')]);
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('#documents .tile.open-tile')]);
     assert.equal(chooser.isMultiple(), false);
     await shoot(page, '01-documents-home');
   });
@@ -180,14 +183,16 @@ try {
   await step('Documents: Markdown on a page; Download keeps the original; Download as ▸ DOCX/ODT/RTF/Markdown/HTML', async () => {
     await open('documents', 'sample.md');
     await opened('documents', 'sample.md');
-    // The preview frame runs no scripts (sandboxed, same origin), so it is inspected from the page.
-    await page.waitForFunction(() => document.querySelector('#documents iframe.paper')?.contentDocument?.body
-      ?.textContent.includes('Quarterly notes'));
-    assert.ok((await page.locator('#documents iframe.paper').boundingBox()).height >= 1000, 'A4 page height');
-    // Links in the document cannot navigate the frame away from the preview.
-    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('#documents iframe.paper')
-      .contentDocument.querySelector('a')).pointerEvents), 'none');
-    assert.deepEqual(await page.locator('#documents .menubar-item').allTextContents(), ['File', 'View', 'Help']);
+    // The document is drawn by the engine on an editable page.
+    await page.waitForFunction(() => document.querySelector('#documents .doc-page[contenteditable="true"]')?.textContent
+      .includes('Quarterly notes'));
+    assert.ok((await page.locator('#documents .doc-page').boundingBox()).height >= 1000, 'A4 page height');
+    // Links in the document cannot navigate away from the page.
+    assert.equal(await page.evaluate(() => {
+      const link = document.querySelector('#documents .doc-page a');
+      return `${getComputedStyle(link).pointerEvents} ${link.hasAttribute('href')}`;
+    }), 'none false');
+    assert.deepEqual(await page.locator('#documents .menubar-item').allTextContents(), ['File', 'Edit', 'View', 'Insert', 'Format', 'Help']);
     await shoot(page, '04-document');
     const original = await downloadBytes(() => page.click('#documents .download-pill'));
     assert.equal(original.name, 'sample.md');
@@ -265,15 +270,17 @@ try {
     assert.equal(await page.locator('#print-root > *').count(), 0);
 
     // Zoom from the toolbar menu scales the page.
-    const before = (await page.locator('#documents iframe.paper').boundingBox()).width;
+    const before = (await page.locator('#documents .doc-page').boundingBox()).width;
     await page.click('#documents .zoom-button');
     await page.click('.menu .menu-item:has-text("150%")');
-    const after = (await page.locator('#documents iframe.paper').boundingBox()).width;
+    const after = (await page.locator('#documents .doc-page').boundingBox()).width;
     assert.ok(Math.abs(after / before - 1.5) < 0.02, `zoom ${before} → ${after}`);
     await menu('documents', ['View', 'Actual size']);
 
-    // Keyboard: ArrowDown opens File with its first item, ArrowRight moves to View, Escape returns to the bar.
+    // Keyboard: ArrowDown opens File with its first item, ArrowRight moves to Edit, Escape returns to the bar.
     await page.focus('#documents .menubar-item:text-is("File")');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await page.evaluate(() => document.activeElement.querySelector('.menu-label')?.textContent), 'New document');
     await page.keyboard.press('ArrowDown');
     assert.equal(await page.evaluate(() => document.activeElement.querySelector('.menu-label')?.textContent), 'Open…');
     await page.keyboard.press('ArrowDown');
@@ -289,9 +296,9 @@ try {
     assert.equal(await page.evaluate(() => document.activeElement.textContent), 'File', 'focus back on the menu bar');
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('Enter');
-    assert.equal(await page.getAttribute('.menu', 'aria-label'), 'View');
+    assert.equal(await page.getAttribute('.menu', 'aria-label'), 'Edit');
     await page.keyboard.press('ArrowRight');
-    assert.equal(await page.getAttribute('.menu', 'aria-label'), 'Help', 'ArrowRight in an open menu moves to the next menu');
+    assert.equal(await page.getAttribute('.menu', 'aria-label'), 'View', 'ArrowRight in an open menu moves to the next menu');
     await page.keyboard.press('Escape');
   });
 
@@ -339,10 +346,13 @@ try {
     await page.waitForSelector('#spreadsheets .grid td:text-is("12")');
     assert.equal(await page.textContent('#spreadsheets .grid thead th:nth-child(2)'), 'A');
     assert.ok(await page.locator('#spreadsheets .grid td.num').count() > 0, 'numbers are right-aligned');
-    assert.deepEqual(await page.locator('#spreadsheets .menubar-item').allTextContents(), ['File', 'View', 'Sheet', 'Help']);
+    assert.deepEqual(await page.locator('#spreadsheets .menubar-item').allTextContents(),
+      ['File', 'Edit', 'View', 'Insert', 'Format', 'Data', 'Sheet', 'Help']);
     await page.locator('#spreadsheets .grid td:text-is("12")').click();
     assert.equal(await page.textContent('#spreadsheets .namebox'), 'C5');
-    assert.equal(await page.textContent('#spreadsheets .valuebox'), '12');
+    // The cell shows the calculated value; the formula bar shows (and edits) the formula behind it.
+    assert.equal(await page.textContent('#spreadsheets td[data-ref="C5"]'), '12');
+    assert.equal(await page.textContent('#spreadsheets .valuebox'), '=SUM(C2:C4)*B3+B2');
     assert.deepEqual(await page.locator('#spreadsheets .grid th.hl').allTextContents(), ['C', '5'], 'row and column headers highlighted');
     // Keyboard and range selection: the status chip sums the numbers.
     await page.keyboard.press('ArrowUp');
@@ -406,6 +416,185 @@ try {
     await open('documents', 'sample.csv');
     await page.waitForURL(/#spreadsheets$/);
     await opened('spreadsheets', 'sample.csv');
+  });
+
+  await step('Documents: a blank document — typing, Enter, heading, bold, list, Undo/Redo, Edited/Saved, DOCX reopened', async () => {
+    await go('documents');
+    await page.click('#documents .tile.blank-tile');
+    await page.waitForSelector('#documents .doc-page[contenteditable="true"]');
+    assert.equal(await page.inputValue('#documents .file-name'), 'Untitled document');
+    assert.equal(await page.textContent('#documents .format-badge'), '.docx');
+    assert.equal(await page.locator('#documents .save-state:not([hidden])').count(), 0, 'no Edited/Saved state before an edit');
+    assert.ok(await page.locator('#documents .toolbar button[aria-label^="Undo"]').isDisabled());
+    const paragraphs = () => page.$$eval('#documents .doc-page [data-para]', (ps) => ps.map((p) => p.textContent));
+    const settle = (texts) => page.waitForFunction((texts) => JSON.stringify([...document.querySelectorAll('#documents .doc-page [data-para]')]
+      .map((p) => p.textContent)) === JSON.stringify(texts), texts);
+    await page.click('#documents .doc-page');
+    await page.keyboard.type('Quarterly plan');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('We grow fast this year.');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('Hire people');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('Ship the web app');
+    await settle(['Quarterly plan', 'We grow fast this year.', 'Hire people', 'Ship the web app']);
+    await page.waitForSelector('#documents .save-state:text-is("Edited")');
+    // Backspace and typing go through the engine too.
+    await page.keyboard.press('Backspace');
+    await page.keyboard.type('p!');
+    await settle(['Quarterly plan', 'We grow fast this year.', 'Hire people', 'Ship the web app!']);
+    // Heading 1 from the style menu on the first paragraph.
+    await page.click('#documents .doc-page [data-para] >> nth=0');
+    await page.click('#documents .style-button');
+    await page.click('.menu .menu-item:has-text("Heading 1")');
+    await page.waitForSelector('#documents .doc-page h1:has(span:text-is("Quarterly plan"))');
+    assert.equal(await page.textContent('#documents .style-label'), 'Heading 1');
+    // Bold on a selected word with the keyboard shortcut.
+    const selectText = (needle) => page.evaluate((needle) => {
+      const walker = document.createTreeWalker(document.querySelector('#documents .doc-page'), NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const at = node.data.indexOf(needle);
+        if (at >= 0) return document.getSelection().setBaseAndExtent(node, at, node, at + needle.length);
+      }
+      throw new Error(`no ${needle}`);
+    }, needle);
+    await selectText('fast');
+    await page.keyboard.press('ControlOrMeta+b');
+    await page.waitForFunction(() => [...document.querySelectorAll('#documents .doc-page span')]
+      .some((s) => s.textContent === 'fast' && s.style.fontWeight === '700'));
+    assert.equal(await page.getAttribute('#documents .toolbar button[aria-label^="Bold"]', 'aria-pressed'), 'true');
+    // A bulleted list over the last two paragraphs from the toolbar.
+    await page.evaluate(() => {
+      const ps = document.querySelectorAll('#documents .doc-page [data-para]');
+      document.getSelection().setBaseAndExtent(ps[2].firstChild.firstChild, 0, ps[3].firstChild.firstChild, 4);
+    });
+    await page.click('#documents .toolbar button[aria-label="Bulleted list"]');
+    await page.waitForFunction(() => document.querySelectorAll('#documents .doc-page ul > li').length === 2);
+    await shoot(page, '22-document-editing');
+    // Undo and Redo: each action is one step.
+    await page.click('#documents .toolbar button[aria-label^="Undo"]');
+    await page.waitForFunction(() => document.querySelectorAll('#documents .doc-page ul > li').length === 0);
+    await page.click('#documents .doc-page [data-para] >> nth=1');
+    await page.keyboard.press('ControlOrMeta+z');
+    await page.waitForFunction(() => ![...document.querySelectorAll('#documents .doc-page span')].some((s) => s.style.fontWeight === '700'));
+    await menu('documents', ['Edit', 'Redo']);
+    await page.waitForFunction(() => [...document.querySelectorAll('#documents .doc-page span')].some((s) => s.textContent === 'fast' && s.style.fontWeight === '700'));
+    await page.click('#documents .doc-page [data-para] >> nth=1');
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+z' : 'Control+y');
+    await page.waitForFunction(() => document.querySelectorAll('#documents .doc-page ul > li').length === 2);
+    // Download saves the edited document; the state turns to Saved.
+    const saved = await downloadBytes(() => page.click('#documents .download-pill'));
+    assert.equal(saved.name, 'Untitled document.docx');
+    assert.equal(saved.bytes.subarray(0, 2).toString(), 'PK');
+    await page.waitForSelector('#documents .save-state:text-is("Saved")');
+    // Reopened through the engine: text, heading, bold and list survived.
+    await open('documents', 'plan.docx', saved.bytes);
+    await opened('documents', 'plan.docx');
+    await page.waitForSelector('#documents .doc-page h1:has(span:text-is("Quarterly plan"))');
+    assert.deepEqual(await paragraphs(), ['Quarterly plan', 'We grow fast this year.', 'Hire people', 'Ship the web app!']);
+    assert.ok(await page.evaluate(() => [...document.querySelectorAll('#documents .doc-page span')]
+      .some((s) => s.textContent === 'fast' && s.style.fontWeight === '700')), 'bold kept');
+    assert.deepEqual(await page.locator('#documents .doc-page ul > li').allTextContents(), ['Hire people', 'Ship the web app!']);
+    // A Word file keeps Word package parts that only DOCX can hold: HTML asks before leaving them out.
+    const [download] = await Promise.all([page.waitForEvent('download'), (async () => {
+      await menu('documents', ['File', 'Download as', 'Web page']);
+      await page.waitForSelector('#confirm[open]');
+      assert.match(await page.textContent('#confirm-text'), /package parts/);
+      await page.click('#confirm-ok');
+    })()]);
+    assert.match(readFileSync(await download.path()).toString(), /<h1[^>]*>(<[^>]+>)*Quarterly plan/);
+    // Changes that were not downloaded: closing asks first; Undo back to the downloaded state needs no question.
+    await page.click('#documents .doc-page [data-para] >> nth=1');
+    await page.keyboard.press('End');
+    await page.keyboard.type(' Really.');
+    await page.waitForSelector('#documents .save-state:text-is("Edited")');
+    await menu('documents', ['File', 'Close']);
+    await page.waitForSelector('#confirm[open]');
+    assert.match(await page.textContent('#confirm-text'), /plan\.docx.*not downloaded/);
+    await page.click('#confirm-cancel');
+    assert.ok(await page.locator('#documents .editor').isVisible(), 'still open');
+    await page.click('#documents .toolbar button[aria-label^="Undo"]');
+    await page.waitForSelector('#documents .save-state:text-is("Saved")');
+    await menu('documents', ['File', 'Close']);
+    await page.waitForSelector('#documents .home:not([hidden])');
+    assert.equal(await page.locator('#confirm[open]').count(), 0);
+  });
+
+  await step('Spreadsheets: a blank workbook — values, SUM, F2, formula bar, inserted row shifts the formula, Undo, XLSX reopened', async () => {
+    await go('spreadsheets');
+    await menu('spreadsheets', ['File', 'New spreadsheet']);
+    await page.waitForFunction(() => document.querySelector('#spreadsheets .file-name')?.value === 'Untitled spreadsheet');
+    assert.equal(await page.textContent('#spreadsheets .format-badge'), '.xlsx');
+    const cellText = (ref) => page.textContent(`#spreadsheets td[data-ref="${ref}"]`);
+    const settled = (ref, text) => page.waitForSelector(`#spreadsheets td[data-ref="${ref}"]:text-is("${text}")`);
+    await page.click('#spreadsheets td[data-ref="A1"]');
+    for (const value of ['10', '20', '30', '=SUM(A1:A3)']) {
+      await page.keyboard.type(value);
+      await page.keyboard.press('Enter');
+    }
+    await settled('A4', '60');
+    assert.equal(await page.textContent('#spreadsheets .namebox'), 'A5', 'Enter moves down');
+    await page.click('#spreadsheets td[data-ref="A4"]');
+    assert.equal(await page.textContent('#spreadsheets .valuebox'), '=SUM(A1:A3)', 'the formula bar shows the formula');
+    // Insert a row above row 2: the formula moves to A5 and its range grows.
+    await page.click('#spreadsheets td[data-ref="A2"]');
+    await page.click('#spreadsheets .toolbar button[aria-label="Row above"]');
+    await settled('A5', '60');
+    assert.equal(await cellText('A2'), '');
+    await page.click('#spreadsheets td[data-ref="A5"]');
+    assert.equal(await page.textContent('#spreadsheets .valuebox'), '=SUM(A1:A4)');
+    await page.click('#spreadsheets td[data-ref="A2"]');
+    await page.keyboard.type('5');
+    await page.keyboard.press('Tab');
+    await settled('A5', '65');
+    assert.equal(await page.textContent('#spreadsheets .namebox'), 'B2', 'Tab moves right');
+    // Undo twice: the value, then the row; Redo brings both back.
+    await page.keyboard.press('ControlOrMeta+z');
+    await settled('A5', '60');
+    await page.keyboard.press('ControlOrMeta+z');
+    await settled('A4', '60');
+    await page.click('#spreadsheets td[data-ref="A4"]');
+    assert.equal(await page.textContent('#spreadsheets .valuebox'), '=SUM(A1:A3)');
+    await page.click('#spreadsheets .toolbar button[aria-label^="Redo"]');
+    await page.click('#spreadsheets .toolbar button[aria-label^="Redo"]');
+    await settled('A5', '65');
+    // F2 edits the input in place; Delete clears; the formula bar edits the active cell.
+    await page.click('#spreadsheets td[data-ref="A1"]');
+    await page.keyboard.press('F2');
+    await page.keyboard.type('0');
+    await page.keyboard.press('Enter');
+    await settled('A5', '155');
+    await page.click('#spreadsheets td[data-ref="A2"]');
+    await page.keyboard.press('Delete');
+    await settled('A5', '150');
+    await page.click('#spreadsheets td[data-ref="A3"]');
+    await page.click('#spreadsheets .valuebox');
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type('25');
+    await page.keyboard.press('Enter');
+    await settled('A5', '155');
+    // Bold and the currency format of the interface language (English: dollars).
+    await page.click('#spreadsheets td[data-ref="A1"]');
+    await page.keyboard.press('ControlOrMeta+b');
+    await page.waitForSelector('#spreadsheets td[data-ref="A1"].b');
+    await page.click('#spreadsheets td[data-ref="A5"]');
+    await page.click('#spreadsheets .toolbar button[aria-label="Currency"]');
+    await settled('A5', '$155.00');
+    await page.waitForSelector('#spreadsheets .save-state:text-is("Edited")');
+    await shoot(page, '23-spreadsheet-editing');
+    const saved = await downloadBytes(() => page.click('#spreadsheets .download-pill'));
+    assert.equal(saved.name, 'Untitled spreadsheet.xlsx');
+    await page.waitForSelector('#spreadsheets .save-state:text-is("Saved")');
+    // Reopened through the engine: values, formula, format and bold.
+    await open('spreadsheets', 'budget.xlsx', saved.bytes);
+    await opened('spreadsheets', 'budget.xlsx');
+    await settled('A5', '$155.00');
+    assert.deepEqual(await Promise.all(['A1', 'A2', 'A3', 'A4'].map(cellText)), ['100', '', '25', '30']);
+    await page.click('#spreadsheets td[data-ref="A5"]');
+    assert.equal(await page.textContent('#spreadsheets .valuebox'), '=SUM(A1:A4)');
+    assert.equal(await page.locator('#spreadsheets td[data-ref="A1"].b').count(), 1);
+    const csv = await downloadAs('spreadsheets', 'Sheet values as CSV');
+    assert.match(csv.bytes.toString(), /\$155\.00/);
   });
 
   await step('Presentations: slide strip with selection ring, 16:9 slide, notes, arrow keys; PPTX → ODP → reopened', async () => {
@@ -661,7 +850,7 @@ try {
     await shoot(phone, '17-phone-home');
     await d.open('documents', 'sample.md');
     await d.opened('documents', 'sample.md');
-    await phone.waitForSelector('#documents iframe.paper');
+    await phone.waitForSelector('#documents .doc-page');
     assert.ok(await phone.locator('#documents .menubar').isHidden(), 'no menu bar');
     const more = await phone.locator('#documents .overflow-button').boundingBox();
     assert.ok(more.width >= 44 && more.height >= 44);
@@ -670,7 +859,7 @@ try {
     assert.ok(await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'no horizontal scrolling');
     await shoot(phone, '18-phone-document');
     await phone.click('#documents .overflow-button');
-    assert.deepEqual(await phone.locator('.menu .menu-heading').allTextContents(), ['File', 'View', 'Help']);
+    assert.deepEqual(await phone.locator('.menu .menu-heading').allTextContents(), ['File', 'Edit', 'View', 'Insert', 'Format', 'Help']);
     const item = await phone.locator('.menu .menu-item >> nth=0').boundingBox();
     assert.ok(item.height >= 44);
     await shoot(phone, '19-phone-menu');
