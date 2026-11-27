@@ -3498,5 +3498,15 @@
   "Recovered": "Naibalik",
   "Recovered Changes": "Mga naibalik na pagbabago",
   "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "Bubukas ang naibalik na gawa bilang hindi naka-save. Kung itatapon mo ito, hindi na ito maibabalik.",
-  "Restore": "Ibalik"
+  "Restore": "Ibalik",
+  "Brother media:": "Media ng Brother:",
+  "Choose a printer file to import as a new PDF": "Pumili ng file ng pag-print na iaangkat bilang bagong PDF",
+  "Export Printer File…": "I-export ang File ng Pag-print…",
+  "Export flattened printer file at the selected printer resolution": "I-export ang pinagsamang file sa napiling resolusyon ng printer",
+  "Format and printer:": "Format at printer:",
+  "Import Printer File…": "Mag-import ng File ng Pag-print…",
+  "Keynote import limitations": "Mga limitasyon sa pag-import ng Keynote",
+  "Printer file format": "Format ng file ng pag-print",
+  "Printer files contain flattened black and white pages. SBPL and Brother jobs may include padding. Choose the matching printer and media.": "Ang mga file ng pag-print ay may mga pahinang itim at puti na pinagsama sa iisang layer. Maaaring may padding ang mga trabaho sa SBPL at Brother. Piliin ang angkop na printer at media.",
+  "Save this imported presentation as PPTX or ODP.": "I-save ang inangkat na presentasyon bilang PPTX o ODP."
 }

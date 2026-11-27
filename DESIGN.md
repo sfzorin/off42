@@ -1284,3 +1284,7 @@ Import resolves namespace-qualified definitions and parent number styles. Surgic
 updates carry number-format context, keeping percentage type and display text separate from numeric data.
 Formatting changes are bounded by XML size and unique-style counts; unsupported code families remain
 guarded. Unchanged style definitions and unknown ZIP parts survive value-only external saves.
+
+## macOS format adapters
+
+The document and presentation importers preserve the source when converting reflowable EPUB or editable Keynote content. The spreadsheet XML adapter reads and writes the Excel 2003 XML format. IMG42 uses the OpenRaster merged preview and writes flattened images. PDF42 converts supported raster printer jobs to and from pages through Kit42 codecs.

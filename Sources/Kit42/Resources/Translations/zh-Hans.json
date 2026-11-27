@@ -3498,5 +3498,15 @@
   "Recovered": "已恢复",
   "Recovered Changes": "已恢复的更改",
   "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "恢复的内容将以未存储状态打开。如果丢弃，以后将无法恢复。",
-  "Restore": "恢复"
+  "Restore": "恢复",
+  "Brother media:": "Brother 打印介质：",
+  "Choose a printer file to import as a new PDF": "选择要作为新 PDF 导入的打印文件",
+  "Export Printer File…": "导出打印文件…",
+  "Export flattened printer file at the selected printer resolution": "按所选打印机分辨率导出合并图层的打印文件",
+  "Format and printer:": "格式和打印机：",
+  "Import Printer File…": "导入打印文件…",
+  "Keynote import limitations": "Keynote 导入限制",
+  "Printer file format": "打印文件格式",
+  "Printer files contain flattened black and white pages. SBPL and Brother jobs may include padding. Choose the matching printer and media.": "打印文件包含合并图层的黑白页面。SBPL 和 Brother 打印任务可能包含填充区域。请选择匹配的打印机和介质。",
+  "Save this imported presentation as PPTX or ODP.": "请将导入的演示文稿另存为 PPTX 或 ODP。"
 }

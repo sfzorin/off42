@@ -84,6 +84,11 @@ final class TextDocument: NSDocument {
         return .plain
     }
 
+    static func isEPUB(_ typeName: String) -> Bool {
+        let t = typeName.lowercased()
+        return t == "epub" || t.contains("epub") || t.hasSuffix(".epub")
+    }
+
     static func isMarkdown(_ typeName: String) -> Bool {
         let t = typeName.lowercased()
         return t.contains("markdown") || t.hasSuffix(".md") || t == "md"
@@ -102,6 +107,12 @@ final class TextDocument: NSDocument {
     }
 
     override func read(from data: Data, ofType typeName: String) throws {
+        if Self.isEPUB(typeName) {
+            let text = try EPUBFormat.read(data)
+            applyImportedSettings(DocxStyles.Extras())
+            storage.setAttributedString(text)
+            return
+        }
         if Self.isMarkdown(typeName) {
             let (md, encoding) = TextDecoding.decode(data)
             let text = MarkdownReader.read(md, baseURL: readingFrom ?? fileURL?.deletingLastPathComponent())
@@ -173,6 +184,7 @@ final class TextDocument: NSDocument {
 
     override func data(ofType typeName: String) throws -> Data {
         commitPendingEdits()
+        if Self.isEPUB(typeName) { return try epubData() }
         if Self.isMarkdown(typeName) { return markdownData() }
         return try exportData(Self.documentType(for: typeName))
     }
@@ -191,6 +203,11 @@ final class TextDocument: NSDocument {
     func commitPendingEdits() {
         editor?.headerEditor?.commit()
         editor?.textView.breakUndoCoalescing()
+    }
+
+    func epubData() throws -> Data {
+        commitPendingEdits()
+        return try EPUBFormat.write(Fields.flatten(Revisions.accepted(storage), info: fieldInfo), title: docInfo.title, author: docInfo.author)
     }
 
     func markdownData() -> Data {

@@ -41,11 +41,28 @@ enum AcroFormFixer {
         if case .ref(let n, _)? = catalog["AcroForm"], let f = try? file.object(n) { formNum = n; form = f }
         else if case .dict? = catalog["AcroForm"] { form = catalog["AcroForm"]! }
         let listed = (try? file.resolve(form["Fields"]))?.items ?? []
-        let listedNums = Set(listed.compactMap { if case .ref(let n, _) = $0 { return n } else { return nil } })
+        // PDFKit can serialize a second copy of a terminal widget in the catalog on save.
+        // Only the widget on the page receives subsequent edits. Preserve unrelated and hierarchical fields.
+        struct WidgetField: Hashable {
+            let name: String
+            let type: String
+        }
+        func terminalWidget(_ num: Int) -> WidgetField? {
+            guard let obj = try? file.object(num), obj["Subtype"]?.nameValue == "Widget",
+                  obj["Kids"] == nil, obj["Parent"] == nil,
+                  let name = obj["T"]?.serialized, let type = obj["FT"]?.nameValue else { return nil }
+            return WidgetField(name: name, type: type)
+        }
+        let liveWidgets = Set(fields.compactMap(terminalWidget))
+        let retained = listed.filter { ref in
+            guard case .ref(let n, _) = ref, !seen.contains(n), let widget = terminalWidget(n) else { return true }
+            return !liveWidgets.contains(widget)
+        }
+        let listedNums = Set(retained.compactMap { if case .ref(let n, _) = $0 { return n } else { return nil } })
         let missing = fields.filter { !listedNums.contains($0) }
         var formChanged = false
-        if !missing.isEmpty {
-            form = form.setting("Fields", .array(listed + missing.map { .ref($0, file.gen($0)) }))
+        if retained.count != listed.count || !missing.isEmpty {
+            form = form.setting("Fields", .array(retained + missing.map { .ref($0, file.gen($0)) }))
             if form["DA"] == nil { form = form.setting("DA", .raw("(/Helv 0 Tf 0 g)")) }
             formChanged = true
         }

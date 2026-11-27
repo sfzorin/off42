@@ -59,7 +59,8 @@
         "q": "Is there a Windows version?",
         "a": "Preview with all six apps. Extract the entire ZIP, then launch the app you want. Includes tools for labels and barcodes."
       }
-    ]
+    ],
+    "formatLimits": "macOS format scope: Keynote imports supported objects into editable PPTX; Keynote is not required and saving .key is not supported. EPUB is reflowable, ORA opens merged and saves flattened, and available image codecs vary by macOS installation."
   },
   "name": {
     "label": "WHAT'S IN A NAME",
@@ -106,7 +107,8 @@
     "note": "A mark is artwork for your label: it does not certify the product. For conformity marks and trademarks the app shows the conditions of use, such as a required certificate or licence number. In PDF42, DOC42 and XLS42 on Mac and Windows.",
     "qrAlt": "Insert Symbol or Code in XLS42: a 30 mm QR code made from a product link.",
     "labelsAlt": "Create Labels in XLS42: a label sheet with QR codes built from ten product rows.",
-    "caption": "A label sheet made from ten spreadsheet rows. The products are fictional."
+    "caption": "A label sheet made from ten spreadsheet rows. The products are fictional.",
+    "printerJobs": "PDF42 also imports and exports raster printer files: ZPL, TSPL, EZPL, SBPL and Brother QL. Physical printer hardware has not been validated."
   },
   "web": {
     "label": "OFF42 IN THE BROWSER",

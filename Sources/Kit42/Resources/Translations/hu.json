@@ -3498,5 +3498,15 @@
   "Recovered": "Helyreállítva",
   "Recovered Changes": "Helyreállított módosítások",
   "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "A helyreállított munka mentetlenként nyílik meg. Ha elveti, később nem állítható helyre.",
-  "Restore": "Visszaállítás"
+  "Restore": "Visszaállítás",
+  "Brother media:": "Brother nyomathordozó:",
+  "Choose a printer file to import as a new PDF": "Válassza ki az új PDF-ként importálandó nyomtatási fájlt",
+  "Export Printer File…": "Nyomtatási fájl exportálása…",
+  "Export flattened printer file at the selected printer resolution": "Az összeolvasztott nyomtatási fájl exportálása a kiválasztott nyomtató felbontásával",
+  "Format and printer:": "Formátum és nyomtató:",
+  "Import Printer File…": "Nyomtatási fájl importálása…",
+  "Keynote import limitations": "A Keynote-importálás korlátai",
+  "Printer file format": "Nyomtatási fájl formátuma",
+  "Printer files contain flattened black and white pages. SBPL and Brother jobs may include padding. Choose the matching printer and media.": "A nyomtatási fájlok összeolvasztott fekete-fehér oldalakat tartalmaznak. Az SBPL- és Brother-feladatok kitöltést is tartalmazhatnak. Válassza ki a megfelelő nyomtatót és hordozót.",
+  "Save this imported presentation as PPTX or ODP.": "Mentse az importált bemutatót PPTX vagy ODP formátumban."
 }

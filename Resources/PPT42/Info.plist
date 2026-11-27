@@ -8,6 +8,13 @@
 	<string>PPT42</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
+        <dict>
+            <key>CFBundleTypeName</key><string>Keynote Presentation</string>
+            <key>CFBundleTypeRole</key><string>Viewer</string>
+            <key>LSHandlerRank</key><string>Alternate</string>
+            <key>LSItemContentTypes</key><array><string>com.apple.iwork.keynote.key</string></array>
+            <key>NSDocumentClass</key><string>PresentationDocument</string>
+        </dict>
 		<dict>
 			<key>CFBundleTypeName</key>
 			<string>PowerPoint Presentation</string>

@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 enum ImageFormats {
     static let imageIOTypes: [UTType] = (CGImageSourceCopyTypeIdentifiers() as? [String] ?? []).compactMap(UTType.init)
     static let svg = UTType("public.svg-image") ?? .svg
-    static let extraTypes: [UTType] = [svg, .pdf]
+    static let extraTypes: [UTType] = [svg, .pdf, OpenRaster.type]
     static var readableTypes: [UTType] { imageIOTypes + extraTypes }
 
     /// File extensions of every readable type, for folder scanning (faster than resolving each file's type).
@@ -17,7 +17,7 @@ enum ImageFormats {
         for t in imageIOTypes + extraTypes { t.tags[.filenameExtension]?.forEach { set.insert($0.lowercased()) } }
         // Camera RAW extensions that some systems map to the generic RAW type only.
         set.formUnion(["cr2", "cr3", "crw", "nef", "nrw", "arw", "sr2", "srf", "dng", "raf", "orf", "rw2", "pef", "srw", "x3f",
-                       "3fr", "fff", "iiq", "mos", "mrw", "erf", "rwl", "jxl", "avif", "heic", "heif", "webp", "exr", "svg"])
+                       "3fr", "fff", "iiq", "mos", "mrw", "erf", "rwl", "jxl", "avif", "heic", "heif", "webp", "exr", "svg", "ora"])
         return set
     }()
 
@@ -83,6 +83,12 @@ enum ImageLoader {
     static func load(_ url: URL, page: Int = 0) -> LoadedImage {
         var result = LoadedImage(url: url)
         guard page >= 0 else { result.error = L("The image is damaged and cannot be shown."); return result }
+        if url.pathExtension.lowercased() == "ora" {
+            result.typeIdentifier = OpenRaster.type.identifier
+            guard let image = try? OpenRaster.read(url) else { result.error = L("The image is damaged and cannot be shown."); return result }
+            result.pages = [image]; result.pixelSize = CGSize(width: image.width, height: image.height); result.hasAlpha = true
+            return result
+        }
         if ImageFormats.isPDF(url) { return loadPDF(url, page: page) }
         if ImageFormats.isSVG(url) { return loadSVG(url) }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary) else {
@@ -230,7 +236,7 @@ enum ImageLoader {
     static func thumbnail(_ url: URL, maxPixels: Int = 220) -> CGImage? {
         if let cached = thumbnailCache.object(forKey: url as NSURL) { return cached }
         var image: CGImage?
-        if ImageFormats.isPDF(url) || ImageFormats.isSVG(url) {
+        if ImageFormats.isPDF(url) || ImageFormats.isSVG(url) || url.pathExtension.lowercased() == "ora" {
             if let full = load(url).image { image = scaled(full, maxPixels: maxPixels) }
         } else if let source = CGImageSourceCreateWithURL(url as CFURL, nil) {
             let opts: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageIfAbsent: true, kCGImageSourceCreateThumbnailWithTransform: true,

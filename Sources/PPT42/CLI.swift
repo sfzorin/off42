@@ -7,6 +7,13 @@ enum CLI {
 
     static func load(_ path: String) throws -> Deck {
         let url = URL(fileURLWithPath: path)
+        if url.pathExtension.lowercased() == "key" {
+            let archive = try KeynoteArchive(url: url)
+            var importer = KeynoteImport(archive)
+            let result = try importer.read()
+            for warning in result.warnings { FileHandle.standardError.write(Data("Keynote import warning: \(warning)\n".utf8)) }
+            return result.deck
+        }
         return try DeckIO.read(Data(contentsOf: url), ext: url.pathExtension)
     }
 
@@ -39,6 +46,7 @@ enum CLI {
                 let out = rest[1]
                 let notes = rest.contains("--notes")
                 let ext = (out as NSString).pathExtension.lowercased()
+                if ext == "key" { throw DeckError.invalid("Keynote output is not supported") }
                 if ext == "pdf" {
                     try Renderer.pdf(deck, notes: notes, includeHidden: rest.contains("--hidden")).write(to: URL(fileURLWithPath: out), options: .atomic)
                     print("pdf: \(out)")

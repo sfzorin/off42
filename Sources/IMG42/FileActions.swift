@@ -35,6 +35,12 @@ extension ImageWindowController {
     func save(confirmed: Bool, completion: ((Bool) -> Void)? = nil) {
         canvas.markup.endTextEditing()
         guard let url, let l = loaded, isDirty, let window else { completion?(true); return }
+        // OpenRaster imports are flattened. An ordinary Save must never replace
+        // the layered source, including when only metadata changed.
+        if l.typeIdentifier == OpenRaster.type.identifier {
+            runExportPanel(saveAs: true, completion: completion)
+            return
+        }
         if onlyMetadataChanged, Orientation.writeMetadata(description: imageDescription,
             resolution: imageDPI != originalDPI ? imageDPI : nil, to: url) {
             didSave(url)
@@ -360,11 +366,11 @@ final class ExportOptions: NSObject {
 
     init(sourceType: UTType?, hasAlpha: Bool, panel: NSSavePanel) {
         self.panel = panel
-        var list: [UTType] = [.png, .jpeg, .heic, .tiff]
+        var list: [UTType] = [.png, .jpeg, .heic, .tiff, OpenRaster.type]
         if let avif = UTType("public.avif"), ImageWriter.writableTypes.contains(avif) { list.append(avif) }
         if let s = sourceType, ImageWriter.canWrite(s.identifier), !list.contains(s) { list.append(s) }
         types = list
-        for t in list { formatPopup.addItem(withTitle: t.preferredFilenameExtension?.uppercased() ?? t.identifier) }
+        for t in list { formatPopup.addItem(withTitle: t == OpenRaster.type ? "OpenRaster (flattened)" : (t.preferredFilenameExtension?.uppercased() ?? t.identifier)) }
         var start = sourceType.flatMap { s in list.firstIndex { s.conforms(to: $0) } } ?? 0
         if hasAlpha, list[start] == .jpeg { start = 0 }
         formatPopup.selectItem(at: start)
@@ -403,7 +409,7 @@ final class ExportOptions: NSObject {
     }
 
     var type: UTType { types[max(0, formatPopup.indexOfSelectedItem)] }
-    var fileExtension: String { type.preferredFilenameExtension ?? "png" }
+    var fileExtension: String { type == OpenRaster.type ? "ora" : (type.preferredFilenameExtension ?? "png") }
     var quality: Double { qualitySlider.doubleValue }
 
     @objc private func formatChanged() {

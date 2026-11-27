@@ -36,6 +36,46 @@ extension DocWindowController {
         }
         func near(_ a: CGFloat, _ b: CGFloat) -> Bool { abs(a - b) < 0.2 }
         do {
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent("doc42-epub-lifecycle-" + UUID().uuidString)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let source = directory.appendingPathComponent("source.epub")
+            let docx = directory.appendingPathComponent("saved.docx")
+            let exported = directory.appendingPathComponent("exported.epub")
+            let bytes = try EPUBFormat.write(NSAttributedString(string: "EPUB source 世界"))
+            try bytes.write(to: source)
+            var opened: TextDocument?, openError: Error?, completed = false
+            NSDocumentController.shared.openDocument(withContentsOf: source, display: true) { document, _, error in
+                opened = document as? TextDocument; openError = error; completed = true
+            }
+            let deadline = Date().addingTimeInterval(10)
+            while !completed && Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.01)) }
+            guard let imported = opened, openError == nil, let importedEditor = imported.editor else {
+                throw openError ?? NSError(domain: "DOC42 test", code: 1)
+            }
+            defer { imported.updateChangeCount(.changeCleared); imported.close(); importedEditor.paged.detach() }
+            check(imported.fileURL == nil && imported.fileType == "org.openxmlformats.wordprocessingml.document" && imported.isDocumentEdited,
+                  "EPUB opens as an edited untitled DOCX, not its source")
+            importedEditor.textView.setSelectedRange(NSRange(location: imported.storage.length, length: 0))
+            importedEditor.textView.insertText(" Edited", replacementRange: importedEditor.textView.selectedRange())
+            var saved = false, saveError: Error?
+            imported.save(to: docx, ofType: "org.openxmlformats.wordprocessingml.document", for: .saveAsOperation) { error in
+                saveError = error; saved = true
+            }
+            let saveDeadline = Date().addingTimeInterval(10)
+            while !saved && Date() < saveDeadline { RunLoop.current.run(until: Date().addingTimeInterval(0.01)) }
+            check(saved && saveError == nil && imported.fileURL == docx && (try? Data(contentsOf: source)) == bytes,
+                  "native Save As writes DOCX and preserves source EPUB")
+            let reopened = TextDocument()
+            try reopened.read(from: docx, ofType: "org.openxmlformats.wordprocessingml.document")
+            check(reopened.storage.string.contains("EPUB source 世界") && reopened.storage.string.contains("Edited"),
+                  "saved DOCX reopens with imported and edited text")
+            try imported.epubData().write(to: exported)
+            let exportedText = try EPUBFormat.read(Data(contentsOf: exported)).string
+            check((try? Data(contentsOf: source)) == bytes && exportedText.contains("Edited"),
+                  "explicit EPUB export reopens without modifying source")
+        } catch { check(false, "EPUB lifecycle failed: \(error)") }
+        do {
             try fixture("Page setup and document lifecycle\nРусский и Türkçe текст.") { document, editor, undo in
                 let original = document.setup
                 grouped(undo) { editor.setMargins(left: 91, right: 63) }

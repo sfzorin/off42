@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import re
+import runpy
 import shutil
 import struct
 import subprocess
@@ -122,6 +123,10 @@ def main():
         result['seconds'] = round(time.monotonic() - started, 3)
         report['checks'].append(result)
         print(f"{result['status']} {name}: {result['detail']}", flush=True)
+    def keynote():
+        runpy.run_path(str(repo / 'scripts/keynote-fixture-audit.py'))['run'](binary)
+        return 'editable slide order, Unicode, geometry, shapes, image, PPTX reopen, source preservation and unsupported object rejection'
+    check('Keynote native import', keynote)
     def conversions():
         run('--convert', source, output / 'converted.odp')
         run('--convert', output / 'converted.odp', output / 'roundtrip.pptx')

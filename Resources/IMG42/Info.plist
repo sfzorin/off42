@@ -18,6 +18,7 @@
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.image</string>
+				<string>org.openraster.image</string>
 				<string>public.jpeg</string>
 				<string>public.png</string>
 				<string>public.heic</string>
@@ -66,6 +67,24 @@
 			<array>
 				<string>public.folder</string>
 			</array>
+		</dict>
+	</array>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.openraster.image</string>
+			<key>UTTypeDescription</key>
+			<string>OpenRaster image</string>
+			<key>UTTypeConformsTo</key>
+			<array><string>public.image</string></array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array><string>ora</string></array>
+				<key>public.mime-type</key>
+				<string>image/openraster</string>
+			</dict>
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>

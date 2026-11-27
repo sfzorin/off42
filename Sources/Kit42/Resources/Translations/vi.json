@@ -3498,5 +3498,15 @@
   "Recovered": "Đã khôi phục",
   "Recovered Changes": "Thay đổi đã khôi phục",
   "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "Công việc được khôi phục sẽ mở ở trạng thái chưa lưu. Nếu bạn hủy bỏ, sẽ không thể khôi phục lại sau.",
-  "Restore": "Khôi phục"
+  "Restore": "Khôi phục",
+  "Brother media:": "Vật liệu in Brother:",
+  "Choose a printer file to import as a new PDF": "Chọn tệp in để nhập thành PDF mới",
+  "Export Printer File…": "Xuất tệp in…",
+  "Export flattened printer file at the selected printer resolution": "Xuất tệp in đã gộp lớp theo độ phân giải máy in đã chọn",
+  "Format and printer:": "Định dạng và máy in:",
+  "Import Printer File…": "Nhập tệp in…",
+  "Keynote import limitations": "Giới hạn khi nhập Keynote",
+  "Printer file format": "Định dạng tệp in",
+  "Printer files contain flattened black and white pages. SBPL and Brother jobs may include padding. Choose the matching printer and media.": "Tệp in chứa các trang đen trắng đã gộp lớp. Lệnh in SBPL và Brother có thể chứa phần đệm. Chọn máy in và vật liệu in phù hợp.",
+  "Save this imported presentation as PPTX or ODP.": "Lưu bản trình chiếu đã nhập dưới dạng PPTX hoặc ODP."
 }

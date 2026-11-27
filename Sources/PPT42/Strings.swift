@@ -1,5 +1,7 @@
 // PPT42 UI strings: [English, Русский, Türkçe].
 let ppt42Strings: [[String]] = [
+    ["Keynote import limitations", "Ограничения импорта Keynote", "Keynote içe aktarma sınırlamaları"],
+    ["Save this imported presentation as PPTX or ODP.", "Сохраните импортированную презентацию в формате PPTX или ODP.", "İçe aktarılan sunuyu PPTX veya ODP olarak kaydedin."],
     ["The image size is invalid", "Недопустимый размер изображения", "Görüntü boyutu geçersiz"],
     ["Could not render the slide", "Не удалось отрисовать слайд", "Slayt oluşturulamadı"],
     // App, welcome

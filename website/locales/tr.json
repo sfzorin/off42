@@ -59,7 +59,8 @@
         "q": "Windows sürümü var mı?",
         "a": "Altı uygulamanın tamamını içeren önizleme sürümü. ZIP dosyasının tamamını çıkarıp istediğiniz uygulamayı açın. Etiket ve barkod oluşturma araçları içerir."
       }
-    ]
+    ],
+    "formatLimits": "Keynote yüklemeden düzenlenebilir PPTX olarak içe aktarılır; .key dışa aktarma yoktur. EPUB yeniden akışlıdır, ORA düzleştirilir ve görüntü kodekleri macOS sürümüne göre değişir."
   },
   "name": {
     "label": "İSMİN ARDINDA NE VAR",
@@ -106,7 +107,8 @@
     "note": "İşaret, etiketiniz için bir çizimdir: ürünü sertifikalandırmaz. Uygunluk işaretleri ve ticari markalar için uygulama, gerekli sertifika veya lisans numarası gibi kullanım koşullarını gösterir. Mac ve Windows'ta PDF42, DOC42 ve XLS42'de kullanılabilir.",
     "qrAlt": "XLS42'de “Sembol veya Kod Ekle”: bir ürün bağlantısından oluşturulmuş 30 mm'lik QR kod.",
     "labelsAlt": "XLS42'de “Etiket Oluştur”: on ürün satırından oluşturulmuş QR kodlu bir etiket sayfası.",
-    "caption": "On tablo satırından oluşturulmuş bir etiket sayfası. Ürünler kurgusaldır."
+    "caption": "On tablo satırından oluşturulmuş bir etiket sayfası. Ürünler kurgusaldır.",
+    "printerJobs": "PDF42, ZPL, TSPL, EZPL, SBPL ve Brother QL Raster raster dosyalarını içe ve dışa aktarır. Fiziksel yazıcılar doğrulanmadı."
   },
   "web": {
     "label": "TARAYICIDA OFF42",

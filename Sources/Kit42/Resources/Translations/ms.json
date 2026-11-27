@@ -3498,5 +3498,15 @@
   "Recovered": "Dipulihkan",
   "Recovered Changes": "Perubahan Dipulihkan",
   "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "Kerja yang dipulihkan dibuka sebagai belum disimpan. Jika anda membuangnya, ia tidak boleh dipulihkan kemudian.",
-  "Restore": "Pulihkan"
+  "Restore": "Pulihkan",
+  "Brother media:": "Media Brother:",
+  "Choose a printer file to import as a new PDF": "Pilih fail cetakan untuk diimport sebagai PDF baharu",
+  "Export Printer File…": "Eksport Fail Cetakan…",
+  "Export flattened printer file at the selected printer resolution": "Eksport fail cetakan yang diratakan pada resolusi pencetak yang dipilih",
+  "Format and printer:": "Format dan pencetak:",
+  "Import Printer File…": "Import Fail Cetakan…",
+  "Keynote import limitations": "Batasan import Keynote",
+  "Printer file format": "Format fail cetakan",
+  "Printer files contain flattened black and white pages. SBPL and Brother jobs may include padding. Choose the matching printer and media.": "Fail cetakan mengandungi halaman hitam putih yang diratakan. Tugas SBPL dan Brother mungkin mengandungi ruang isian. Pilih pencetak dan media yang sepadan.",
+  "Save this imported presentation as PPTX or ODP.": "Simpan pembentangan yang diimport sebagai PPTX atau ODP."
 }

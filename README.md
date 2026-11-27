@@ -47,6 +47,12 @@ See [Windows scope and limits](rust/README.md#implemented-scope-and-limits) for 
   and safe image output; SCN42 acquisition, processing, OCR, page marks and export. Regression scenarios exercise native controls,
   Undo/Redo and saved output. The regression checks below describe their scope and remaining gaps.
 
+## Additional macOS file formats in the source build
+
+DOC42 opens and exports reflowable EPUB books. XLS42 opens and exports the Excel 2003 XML workbook subset. PPT42 imports supported Keynote objects into editable presentations and saves a separate PPTX. IMG42 opens the merged OpenRaster preview and writes a flattened single-layer ORA file.
+
+PDF42 imports and exports raster ZPL, TSPL, EZPL, SBPL and Brother QL printer jobs. The CLI accepts `--printer-to-pdf input output format` and `--pdf-to-printer input output format`, where `format` is `zpl`, `tspl`, `ezpl`, `sbpl` or `brother`. Brother QL also accepts the paper argument `continuous`, `62x29` or `62x100`. These conversions work with files. Physical printer interoperability requires testing with the target device.
+
 ## Labels and technical codes (macOS)
 
 Use **Insert → Symbol or Code…** to add a mark or barcode at a width in millimetres. The mark list has 97 entries
@@ -416,7 +422,7 @@ lets you switch extensions off.
   `K42_DO=action,…` (non-modal actions before the snapshot), `K42_PROPERTIES_TAB=n`. The native audit also exercises markup,
   pages/dialogs, core controls and document lifecycle; a panel screenshot alone does not verify an editing tool.
 
-## XLS42 — spreadsheets (.xlsx, .xls, .ods, .csv)
+## XLS42 — spreadsheets (.xlsx, .xls, .ods, .csv, .xml)
 
 The capabilities below describe the current source. The regression scenarios below identify their verification scope.
 
@@ -572,7 +578,7 @@ The capabilities below describe the current source. The regression scenarios bel
   `all` selects visible sheets. `python3 scripts/audit-spreadsheets-cli.py --binary .build/debug/XLS42` checks real
   XLSX/ODS/CSV conversions and PDF output; see the regression matrix below for its scope.
 
-## DOC42 — documents (.docx, .doc, .rtf, .odt, .md, .txt)
+## DOC42 — documents (.docx, .doc, .rtf, .odt, .md, .txt, .epub)
 
 - Page on a grey desk, styles (title, headings, quote), font, size, colour, highlighting, alignment,
   lists, indents, line spacing, tables, images, signatures and stamps from the shared library, PDF export, word count.
@@ -767,7 +773,7 @@ The capabilities below describe the current source. The regression scenarios bel
   `K42_LIVETEXT_ALL`, `K42_LIVETEXT_MENU=x,y`, `K42_LIVETEXT_PROBE`, `K42_LIVETEXT_KEY` (synthesised events, results
   printed); `K42_SMART_LASSO="x,y;…"|@file` (+ `K42_SMART_CROP`).
 
-## PPT42 — presentations (PPTX, ODP)
+## PPT42 — presentations (PPTX, ODP, Keynote import)
 
 - Files: PowerPoint .pptx and .potx (PresentationML: slides, master and layouts with theme colours/fonts and placeholder
   positions, text with runs, bullets/numbering and levels, preset and custom shapes with fill/line/shadow and theme style

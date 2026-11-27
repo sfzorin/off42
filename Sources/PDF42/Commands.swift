@@ -152,9 +152,13 @@ enum Cmd {
     static let welcome = Command(L("Welcome Window"), #selector(A.showWelcomeAction(_:)), shortcut: Shortcut("0", [.command, .shift]))
     static let shortcuts = Command(L("PDF42 Keyboard Shortcuts"), #selector(A.showShortcutsAction(_:)))
 
+    static let importPrinterFile = Command(L("Import Printer File…"), #selector(A.importPrinterFileAction(_:)))
+    static let exportPrinterFile = Command(L("Export Printer File…"), #selector(W.exportPrinterFileAction(_:)))
+
     static var menuBar: MenuBarSpec {
         var spec = MenuBarSpec(appName: "PDF42")
         spec.fileExtras = [.command(properties), .command(createLabels), .separator,
+                           .command(importPrinterFile), .command(exportPrinterFile), .separator,
                            .command(exportAs), .command(exportPDFA), .command(exportImages), .command(exportProtected), .command(reduceSize), .separator,
                            .command(createFromImages), .command(mergeFiles), .command(split), .separator,
                            .command(compare), .command(clearCompare), .separator,

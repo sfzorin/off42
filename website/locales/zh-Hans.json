@@ -59,7 +59,8 @@
         "q": "有 Windows 版本吗？",
         "a": "预览版包含全部六款应用。请完整解压 ZIP 文件，再启动所需的应用。 包含标签和条码制作工具。"
       }
-    ]
+    ],
+    "formatLimits": "无需安装 Keynote 即可将 Keynote 文件导入为可编辑的 PPTX；不支持导出 .key。EPUB 为可重排格式，ORA 会合并为单层，图像编解码器因 macOS 版本而异。"
   },
   "name": {
     "label": "名字里的故事",
@@ -106,7 +107,8 @@
     "note": "标志只是用于标签的图形：插入标志并不代表产品通过认证。对于合格标志和商标，应用会显示使用条件，例如所需的证书或许可证编号。适用于 Mac 和 Windows 上的 PDF42、DOC42 和 XLS42。",
     "qrAlt": "XLS42 中的“Insert Symbol or Code”：由产品链接生成的 30 毫米 QR 码。",
     "labelsAlt": "XLS42 中的“Create Labels”：根据十行产品数据生成的 QR 码标签纸。",
-    "caption": "由十行电子表格数据生成的标签纸。产品均为虚构。"
+    "caption": "由十行电子表格数据生成的标签纸。产品均为虚构。",
+    "printerJobs": "PDF42 可导入和导出 ZPL、TSPL、EZPL、SBPL 和 Brother QL Raster 栅格文件。尚未验证实体打印机。"
   },
   "web": {
     "label": "浏览器中的 OFF42",

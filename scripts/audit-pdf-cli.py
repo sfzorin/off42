@@ -81,11 +81,20 @@ def main():
         fields, filled, cleared = [out / name for name in ['fields.pdf', 'filled.pdf', 'cleared.pdf']]
         run('--add-field', source, fields)
         run('--fill', fields, filled, 'Name=A=B', 'Agree=yes', 'Colour=Green')
-        values = PdfReader(filled).get_fields()
+        def field_values(path):
+            pdf = PdfReader(path)
+            catalog = pdf.trailer['/Root']['/AcroForm']['/Fields']
+            widgets = [ref for page in pdf.pages for ref in page.get('/Annots', [])
+                       if ref.get_object().get('/Subtype') == '/Widget']
+            require(sorted(ref.idnum for ref in catalog) == sorted(ref.idnum for ref in widgets),
+                    f'{path.name}: catalog fields {[ref.idnum for ref in catalog]}, page widgets {[ref.idnum for ref in widgets]}')
+            return pdf.get_fields()
+
+        values = field_values(filled)
         require(len(values) == 3, 'expected three catalog form fields')
         require(str(values['Name']['/V']) == 'A=B' and str(values['Agree']['/V']) == '/Yes' and str(values['Colour']['/V']) == 'Green', values)
         run('--fill', filled, cleared, 'Name=', 'Agree=off')
-        values = PdfReader(cleared).get_fields()
+        values = field_values(cleared)
         require(str(values['Name'].get('/V', '')) == '' and str(values['Agree']['/V']) == '/Off', values)
         return 'text/checkbox/choice values and explicit empty text survive reopen'
     check('Fillable form fields', forms)
@@ -252,6 +261,32 @@ def main():
             finally:
                 for path in [key, certificate, identity]: path.unlink(missing_ok=True)
         check('Isolated digital signatures', signatures)
+
+    def printer_files():
+        # Fixed, independently specified asymmetric pixels: row 0 has dots 0 and 8; row 1 dot 1.
+        raw = bytes([0x80, 0x80, 0x40, 0])
+        zpl = b'^XA^MNY^PW9^LL2^LH0,0^FO0,0^GFA,4,4,2,80804000^FS^XZ'
+        tspl = b'SIZE 1.13,0.25 mm\r\nGAP 3 mm,0 mm\r\nDENSITY 8\r\nCLS\r\nBITMAP 0,0,2,2,0,' + raw + b'\r\nPRINT 1,1\r\n'
+        ezpl = b'^Q0.25,3,0\r\n^W1.13\r\n^P1\r\n^R0\r\n~GG14' + raw + b'E\r\n'
+        esc = b'\x1b'
+        sbpl = esc+b'A'+esc+b'IG1'+esc+b'H0000'+esc+b'V0000'+esc+b'GH002001'+b'80400000000000008000000000000000'+esc+b'Q1'+esc+b'Z'
+        header = bytes([27,64,27,105,97,1,27,105,33,0,27,105,122,142,10,62,0,180,0,0,0,0,0,27,105,77,0,27,105,100,35,0,77,0])
+        line = bytearray(90); line[1] = 8; line[2] = 4
+        brother = header + bytes([103,0,90]) + line + bytes([103,0,90]) + bytes(90) + bytes([26])
+        for fmt, content, stock, size in [('zpl',zpl,[],(9/8,2/8)), ('tspl',tspl,[],(1.13,0.25)), ('ezpl',ezpl,[],(1.13,0.25)), ('sbpl',sbpl,[],(16/8,8/8)), ('brother',brother,['continuous'],(696/(300/25.4),2/(300/25.4)))]:
+            job, pdf, again = [out / ('printer-'+fmt+ext) for ext in ('.in','.pdf','.out')]
+            job.write_bytes(content)
+            run('--printer-to-pdf', job, pdf, fmt, *stock)
+            doc = PdfReader(pdf); require(len(doc.pages) == 1, fmt+' page count')
+            box = doc.pages[0].mediabox
+            require(abs(float(box.width)*25.4/72-size[0]) < .001 and abs(float(box.height)*25.4/72-size[1]) < .001, fmt+' page size')
+            run('--pdf-to-printer', pdf, again, fmt, *stock)
+            require(again.read_bytes() == content, fmt+' pixel or framing mismatch after PDF reopen')
+        invalid = out / 'printer-invalid.zpl'; invalid.write_bytes(zpl+b'^BAD')
+        run('--printer-to-pdf', invalid, out/'invalid.pdf', 'zpl', success=False)
+        run('--pdf-to-printer', source, out/'too-wide.zpl', 'zpl', success=False)
+        return 'five explicit printer profiles, exact asymmetric raster after PDF reopen, page geometry, malformed and oversized input'
+    check('Printer file conversion', printer_files)
 
     report['finished_at'] = datetime.now(timezone.utc).isoformat()
     (out / 'result.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')

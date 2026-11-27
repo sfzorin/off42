@@ -2,6 +2,14 @@ import Kit42
 
 // PDF42 UI strings: [English, Русский, Türkçe].
 let pdf42Strings: [[String]] = [
+    ["Brother media:", "Носитель Brother:", "Brother baskı ortamı:"],
+    ["Choose a printer file to import as a new PDF", "Выберите файл печати для импорта в новый PDF", "Yeni bir PDF olarak içe aktarılacak yazıcı dosyasını seçin"],
+    ["Export Printer File…", "Экспортировать файл печати…", "Yazıcı Dosyasını Dışa Aktar…"],
+    ["Export flattened printer file at the selected printer resolution", "Экспортировать растровый файл с выбранным разрешением принтера", "Düzleştirilmiş dosyayı seçilen yazıcı çözünürlüğünde dışa aktar"],
+    ["Format and printer:", "Формат и принтер:", "Biçim ve yazıcı:"],
+    ["Import Printer File…", "Импортировать файл печати…", "Yazıcı Dosyasını İçe Aktar…"],
+    ["Printer file format", "Формат файла печати", "Yazıcı dosyası biçimi"],
+    ["Printer files contain flattened black and white pages. SBPL and Brother jobs may include padding. Choose the matching printer and media.", "Страницы в файле печати представлены чёрно-белыми растровыми изображениями. Задания SBPL и Brother могут содержать поля выравнивания. Выберите соответствующий принтер и носитель.", "Yazıcı dosyaları düzleştirilmiş siyah beyaz sayfalar içerir. SBPL ve Brother işlerinde dolgu olabilir. Uygun yazıcıyı ve baskı ortamını seçin."],
     ["The document changed during text recognition. Run OCR again.", "Документ изменился во время распознавания текста. Запустите распознавание снова.", "Metin tanıma sırasında belge değişti. OCR işlemini yeniden çalıştırın."],
     ["The image size is invalid", "Недопустимый размер изображения", "Görüntü boyutu geçersiz"],
     ["View and edit PDF", "Просмотр и редактирование PDF", "PDF görüntüleme ve düzenleme"],

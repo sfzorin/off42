@@ -59,7 +59,8 @@
         "q": "¿Hay versión para Windows?",
         "a": "Versión preliminar con las seis aplicaciones. Extrae todo el ZIP y abre la aplicación que quieras. Incluye herramientas para etiquetas y códigos de barras."
       }
-    ]
+    ],
+    "formatLimits": "Keynote se importa como PPTX editable sin instalar Keynote; no se exporta a .key. EPUB es adaptable, ORA se aplana y los códecs de imagen varían según macOS."
   },
   "name": {
     "label": "¿QUÉ HAY EN UN NOMBRE?",
@@ -106,7 +107,8 @@
     "note": "Una marca es un gráfico para tu etiqueta: no certifica el producto. Para las marcas de conformidad y las marcas registradas, la app muestra las condiciones de uso, como un certificado o un número de licencia obligatorio. Disponible en PDF42, DOC42 y XLS42 en Mac y Windows.",
     "qrAlt": "«Insert Symbol or Code» en XLS42: un código QR de 30 mm creado a partir del enlace de un producto.",
     "labelsAlt": "«Create Labels» en XLS42: una hoja de etiquetas con códigos QR creados a partir de diez filas de productos.",
-    "caption": "Una hoja de etiquetas creada a partir de diez filas de una hoja de cálculo. Los productos son ficticios."
+    "caption": "Una hoja de etiquetas creada a partir de diez filas de una hoja de cálculo. Los productos son ficticios.",
+    "printerJobs": "PDF42 importa y exporta archivos rasterizados para ZPL, TSPL, EZPL, SBPL y Brother QL Raster. No se han verificado impresoras físicas."
   },
   "web": {
     "label": "OFF42 EN EL NAVEGADOR",

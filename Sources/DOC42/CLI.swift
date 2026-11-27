@@ -17,7 +17,7 @@ enum CLI {
         switch ext {
         // Headless binaries may receive a dynamic UTI until LaunchServices knows their bundle.
         // The reader already understands these extensions; never interpret an OOXML ZIP as text.
-        case "docx", "doc", "odt", "rtf", "rtfd", "html", "md", "markdown", "txt": type = ext
+        case "docx", "doc", "odt", "rtf", "rtfd", "html", "md", "markdown", "txt", "epub": type = ext
         case "htm": type = "html"
         default: type = UTType(filenameExtension: ext)?.identifier ?? ext
         }
@@ -27,7 +27,7 @@ enum CLI {
 
     static func save(_ doc: TextDocument, _ path: String) throws {
         let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
-        let data = ext == "pdf" ? doc.pdfData() : ext == "md" ? doc.markdownData() : try doc.exportData(TextDocument.documentType(for: ext == "doc" ? "com.microsoft.word.doc" : ext))
+        let data = ext == "epub" ? try doc.epubData() : ext == "pdf" ? doc.pdfData() : ext == "md" ? doc.markdownData() : try doc.exportData(TextDocument.documentType(for: ext == "doc" ? "com.microsoft.word.doc" : ext))
         try data.write(to: URL(fileURLWithPath: path))
         print("\(ext): \(data.count) bytes")
     }

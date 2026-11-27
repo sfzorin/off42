@@ -185,3 +185,5 @@ The cut follows the product story: the promise (“Your whole office. No subscri
 an Excel formula and chart, a PowerPoint deck and presenter view, editing text inside a PDF, shrinking a heavy PDF,
 scanning, then QR codes, a CE mark with its conditions and a label sheet, a short signature shot, the interface in
 other languages, and the promise again.
+
+The format table combines the audited macOS catalogue (44 distinct labels) with additional import and export routes. The localised notes describe Keynote import, reflowable EPUB, flattened OpenRaster and raster printer-job conversion. The catalogue covers the source build, with binary downloads identified separately on the download page.

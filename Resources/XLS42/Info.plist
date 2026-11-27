@@ -24,6 +24,14 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
+			<string>Excel 2003 XML Spreadsheet</string>
+			<key>CFBundleTypeRole</key><string>Editor</string>
+			<key>LSHandlerRank</key><string>Alternate</string>
+			<key>LSItemContentTypes</key><array><string>public.xml</string></array>
+			<key>NSDocumentClass</key><string>SheetDocument</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
 			<string>CSV Document</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>

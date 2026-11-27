@@ -742,7 +742,7 @@ final class DocWindowController: NSWindowController, NSWindowDelegate, NSTextVie
     static let exportFormats: [(title: String, ext: String, type: NSAttributedString.DocumentType?)] = [
         ("PDF", "pdf", nil), ("Word (.docx)", "docx", .officeOpenXML), ("Word 97 (.doc)", "doc", .docFormat),
         ("Rich Text (.rtf)", "rtf", .rtf), ("OpenDocument (.odt)", "odt", .openDocument), ("HTML", "html", .html),
-        ("Markdown (.md)", "md", nil), (L("Plain Text"), "txt", .plain),
+        ("Markdown (.md)", "md", nil), (L("Plain Text"), "txt", .plain), ("EPUB (.epub)", "epub", nil),
     ]
 
 
@@ -776,7 +776,7 @@ final class DocWindowController: NSWindowController, NSWindowDelegate, NSTextVie
             UserDefaults.standard.set(i, forKey: "doc.exportFormat")
             do {
                 let f = formats[i]
-                let data = f.ext == "md" ? doc.markdownData() : try f.type.map { try doc.exportData($0) } ?? doc.pdfData()
+                let data = f.ext == "epub" ? try doc.epubData() : f.ext == "md" ? doc.markdownData() : try f.type.map { try doc.exportData($0) } ?? doc.pdfData()
                 try data.write(to: url, options: .atomic)
             } catch { NSApp.presentError(error) }
         }

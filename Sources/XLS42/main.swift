@@ -22,7 +22,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--lo-compare") {
 // XLS42 --roundtrip in.xlsx out.xlsx: read, recalculate, write (for testing compatibility)
 if let i = CommandLine.arguments.firstIndex(of: "--roundtrip"), CommandLine.arguments.count > i + 2 {
     let args = CommandLine.arguments
-    var wb = try SpreadsheetFile.read(Data(contentsOf: URL(fileURLWithPath: args[i + 1])))
+    var wb = try SpreadsheetFile.read(Data(contentsOf: URL(fileURLWithPath: args[i + 1])), typeName: URL(fileURLWithPath: args[i + 1]).pathExtension)
     wb = Calculator.recalculate(wb)
     for s in wb.sheets {
         print("[\(s.name)] cells: \(s.cells.count), formulas: \(s.cells.values.filter(\.isFormula).count), merges: \(s.merges.count)")
@@ -37,7 +37,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--roundtrip"), CommandLine.argu
 
 // XLS42 --info file: summary of structure (for format tests)
 if let i = CommandLine.arguments.firstIndex(of: "--info"), CommandLine.arguments.count > i + 1 {
-    let wb = Calculator.recalculate(try SpreadsheetFile.read(Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[i + 1]))))
+    let wb = Calculator.recalculate(try SpreadsheetFile.read(Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[i + 1])), typeName: URL(fileURLWithPath: CommandLine.arguments[i + 1]).pathExtension))
     for s in wb.sheets {
         let formulas = s.cells.values.filter(\.isFormula).count
         let errors = s.cells.filter { $0.value.isFormula && $0.value.value.isError }.map { "\($0.key.a1)=\($0.value.input)→\($0.value.value.plain)" }
@@ -70,16 +70,17 @@ if let i = CommandLine.arguments.firstIndex(of: "--info"), CommandLine.arguments
     exit(0)
 }
 
-// XLS42 --convert in.(xlsx|xls|ods|csv) out.(xlsx|ods|csv)
+// XLS42 --convert in.(xlsx|xls|ods|csv) out.(xlsx|ods|csv|xml)
 if let i = CommandLine.arguments.firstIndex(of: "--convert"), CommandLine.arguments.count > i + 2 {
     let args = CommandLine.arguments
-    var wb = Calculator.recalculate(try SpreadsheetFile.read(Data(contentsOf: URL(fileURLWithPath: args[i + 1]))))
+    var wb = Calculator.recalculate(try SpreadsheetFile.read(Data(contentsOf: URL(fileURLWithPath: args[i + 1])), typeName: URL(fileURLWithPath: args[i + 1]).pathExtension))
     if args.contains("freeze") { wb.sheets[0].frozenRows = 3; wb.sheets[0].frozenCols = 1 }
     // "refresh": rebuild every pivot table from its source (as Data › Refresh Pivot Table does).
     if args.contains("refresh") { for i in wb.sheets.indices where wb.sheets[i].pivot != nil { Pivot.refresh(&wb, sheet: i) } }
     let out = URL(fileURLWithPath: args[i + 2])
     let data: Data
     switch out.pathExtension.lowercased() {
+    case "xml": data = try SpreadsheetML.write(wb)
     case "ods": data = ODS.write(wb)
     case "csv": data = try SheetExport.csv(wb.sheets[0], delimiter: ",", bom: true, date1904: wb.date1904)
     default: data = XLSX.write(wb)
@@ -119,7 +120,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--model-demo"), CommandLine.arg
 // XLS42 --export-pdf in.xlsx out.pdf [all|landscape|nogrid|nofit]
 if let i = CommandLine.arguments.firstIndex(of: "--export-pdf"), CommandLine.arguments.count > i + 2 {
     let args = CommandLine.arguments
-    let wb = Calculator.recalculate(try SpreadsheetFile.read(Data(contentsOf: URL(fileURLWithPath: args[i + 1]))))
+    let wb = Calculator.recalculate(try SpreadsheetFile.read(Data(contentsOf: URL(fileURLWithPath: args[i + 1])), typeName: URL(fileURLWithPath: args[i + 1]).pathExtension))
     var options = SheetExport.Options()
     if args.contains("all") { options.scope = .workbook }
     if args.contains("landscape") { options.orientation = .landscape }

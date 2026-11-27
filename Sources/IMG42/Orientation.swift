@@ -141,12 +141,12 @@ enum Orientation {
 }
 
 enum ImageWriter {
-    static var writableTypes: [UTType] { (CGImageDestinationCopyTypeIdentifiers() as? [String] ?? []).compactMap(UTType.init) }
+    static var writableTypes: [UTType] { (CGImageDestinationCopyTypeIdentifiers() as? [String] ?? []).compactMap(UTType.init) + [OpenRaster.type] }
 
     static func canWrite(_ type: String?) -> Bool {
         guard let type, let t = UTType(type) else { return false }
         // Animated and multi-page images would lose frames when saved as one image.
-        return writableTypes.contains(t) && t != .pdf && t != .gif
+        return writableTypes.contains(t) && t != .pdf && t != .gif && t != OpenRaster.type
     }
 
     static func hasTransparency(_ image: CGImage) -> Bool {
@@ -186,6 +186,7 @@ enum ImageWriter {
               (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) != true else {
             throw NSError(domain: "IMG42", code: 1, userInfo: [NSLocalizedDescriptionKey: L("This format cannot be written.")])
         }
+        if type == OpenRaster.type.identifier { try OpenRaster.write(image, to: url); return }
         var props = metadata(from: source)
         if let dpi, dpi.isFinite, dpi > 0 {
             props[kCGImagePropertyDPIWidth] = dpi

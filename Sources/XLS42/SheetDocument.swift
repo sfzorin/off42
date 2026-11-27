@@ -79,6 +79,7 @@ final class SheetDocument: NSDocument {
             throw NSError(domain: "XLS42", code: 1, userInfo: [NSLocalizedDescriptionKey: editor?.lastAlertMessage ?? L("Invalid value")])
         }
         editor?.storeSplit()
+        if typeName.lowercased() == "public.xml" || typeName.lowercased() == "excel 2003 xml spreadsheet" { return try SpreadsheetML.write(workbook) }
         if Self.isCSV(typeName) {
             return try XLSX.writeCSV(workbook.sheets[editor?.sheetIndex ?? 0], date1904: workbook.date1904)
         }

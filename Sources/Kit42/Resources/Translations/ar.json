@@ -3498,5 +3498,15 @@
   "Recovered": "مُستعاد",
   "Recovered Changes": "التغييرات المستعادة",
   "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "يُفتح العمل المستعاد على أنه غير محفوظ. إذا تجاهلته، فلن يمكن استعادته لاحقًا.",
-  "Restore": "استعادة"
+  "Restore": "استعادة",
+  "Brother media:": "وسيط طباعة Brother:",
+  "Choose a printer file to import as a new PDF": "اختر ملف طباعة لاستيراده كمستند PDF جديد",
+  "Export Printer File…": "تصدير ملف طباعة…",
+  "Export flattened printer file at the selected printer resolution": "تصدير ملف طباعة مسطّح بدقة الطابعة المحددة",
+  "Format and printer:": "التنسيق والطابعة:",
+  "Import Printer File…": "استيراد ملف طباعة…",
+  "Keynote import limitations": "قيود استيراد Keynote",
+  "Printer file format": "تنسيق ملف الطباعة",
+  "Printer files contain flattened black and white pages. SBPL and Brother jobs may include padding. Choose the matching printer and media.": "تحتوي ملفات الطباعة على صفحات مسطّحة بالأبيض والأسود. قد تتضمن مهام SBPL وBrother مساحات حشو. اختر الطابعة ووسيط الطباعة المناسبين.",
+  "Save this imported presentation as PPTX or ODP.": "احفظ العرض التقديمي المستورد بتنسيق PPTX أو ODP."
 }

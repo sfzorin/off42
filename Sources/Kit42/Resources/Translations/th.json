@@ -3498,5 +3498,15 @@
   "Recovered": "กู้คืนแล้ว",
   "Recovered Changes": "การเปลี่ยนแปลงที่กู้คืน",
   "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "งานที่กู้คืนจะเปิดในสถานะยังไม่ได้บันทึก หากละทิ้ง จะกู้คืนภายหลังไม่ได้",
-  "Restore": "กู้คืน"
+  "Restore": "กู้คืน",
+  "Brother media:": "วัสดุพิมพ์ Brother:",
+  "Choose a printer file to import as a new PDF": "เลือกไฟล์งานพิมพ์เพื่อนำเข้าเป็น PDF ใหม่",
+  "Export Printer File…": "ส่งออกไฟล์งานพิมพ์…",
+  "Export flattened printer file at the selected printer resolution": "ส่งออกไฟล์งานพิมพ์แบบรวมเลเยอร์ด้วยความละเอียดเครื่องพิมพ์ที่เลือก",
+  "Format and printer:": "รูปแบบและเครื่องพิมพ์:",
+  "Import Printer File…": "นำเข้าไฟล์งานพิมพ์…",
+  "Keynote import limitations": "ข้อจำกัดในการนำเข้า Keynote",
+  "Printer file format": "รูปแบบไฟล์งานพิมพ์",
+  "Printer files contain flattened black and white pages. SBPL and Brother jobs may include padding. Choose the matching printer and media.": "ไฟล์งานพิมพ์มีหน้าขาวดำแบบรวมเลเยอร์ งานพิมพ์ SBPL และ Brother อาจมีพื้นที่เติมขอบ เลือกเครื่องพิมพ์และวัสดุพิมพ์ที่ตรงกัน",
+  "Save this imported presentation as PPTX or ODP.": "บันทึกงานนำเสนอที่นำเข้าเป็น PPTX หรือ ODP"
 }
