@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">Etiketler ve kodlar</string>
     <string name="section_marks">İmzalar ve kaşeler</string>
-    <string name="save_as">Farklı kaydet</string>
     <string name="width_mm">Genişlik, mm</string>
     <string name="height_mm">Yükseklik, mm</string>
     <string name="new_impression">Yeni baskı</string>
     <string name="file_unsupported">“.%1$s” türündeki dosyalar burada desteklenmez.</string>
     <string name="slides_notes_title">Konuşmacı notları</string>
     <string name="doc_preview">Belge önizlemesi</string>
-    <string name="doc_stats">%1$s sözcük · %2$s karakter · %3$s paragraf</string>
     <string name="doc_convert_anyway">%1$s.\n\nYine de dönüştürülsün mü? %2$s biçiminin tutamadığı stiller, ayarlar ve diğer bölümler dışarıda bırakılır; metin ve desteklenen biçimlendirme korunur.</string>
     <string name="sheet_values_csv">CSV olarak sayfa değerleri</string>
     <string name="sheet_read_only">XLS çalışma kitapları salt okunurdur: değerleri CSV olarak dışa aktarın.</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">Etiket sayfası oluştur</string>
     <string name="pdf_page">Sayfa %1$d / %2$d</string>
     <string name="marks_category">Kategori</string>
+    <string name="save_as">Farklı kaydet</string>
+    <string name="doc_stats">%1$s sözcük · %2$s karakter · %3$s paragraf</string>
 </resources>

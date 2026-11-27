@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">Etiquetas y códigos</string>
     <string name="section_marks">Firmas y sellos</string>
-    <string name="save_as">Guardar como</string>
     <string name="width_mm">Ancho, mm</string>
     <string name="height_mm">Alto, mm</string>
     <string name="new_impression">Nueva impresión</string>
     <string name="file_unsupported">Los archivos de tipo «.%1$s» no se admiten aquí.</string>
     <string name="slides_notes_title">Notas del orador</string>
     <string name="doc_preview">Vista previa del documento</string>
-    <string name="doc_stats">%1$s palabras · %2$s caracteres · %3$s párrafos</string>
     <string name="doc_convert_anyway">%1$s.\n\n¿Convertir de todos modos? Se omiten los estilos, los ajustes y otras partes que %2$s no puede contener; se conservan el texto y el formato compatible.</string>
     <string name="sheet_values_csv">Valores de la hoja como CSV</string>
     <string name="sheet_read_only">Los libros XLS son de solo lectura: exporta los valores como CSV.</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">Crear hoja de etiquetas</string>
     <string name="pdf_page">Página %1$d de %2$d</string>
     <string name="marks_category">Categoría</string>
+    <string name="save_as">Guardar como</string>
+    <string name="doc_stats">%1$s palabras · %2$s caracteres · %3$s párrafos</string>
 </resources>

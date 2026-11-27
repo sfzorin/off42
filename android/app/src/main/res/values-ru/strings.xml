@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">Этикетки и коды</string>
     <string name="section_marks">Подписи и печати</string>
-    <string name="save_as">Сохранить как</string>
     <string name="width_mm">Ширина, мм</string>
     <string name="height_mm">Высота, мм</string>
     <string name="new_impression">Новый оттиск</string>
     <string name="file_unsupported">Файлы типа «.%1$s» здесь не поддерживаются.</string>
     <string name="slides_notes_title">Заметки докладчика</string>
     <string name="doc_preview">Предпросмотр документа</string>
-    <string name="doc_stats">Слов: %1$s · символов: %2$s · абзацев: %3$s</string>
     <string name="doc_convert_anyway">%1$s.\n\nВсё равно конвертировать? Стили, настройки и другие части, которые %2$s не может хранить, будут опущены; текст и поддерживаемое форматирование сохранятся.</string>
     <string name="sheet_values_csv">Значения листа в CSV</string>
     <string name="sheet_read_only">Книги XLS доступны только для чтения: экспортируйте значения в CSV.</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">Создать лист этикеток</string>
     <string name="pdf_page">Страница %1$d из %2$d</string>
     <string name="marks_category">Категория</string>
+    <string name="save_as">Сохранить как</string>
+    <string name="doc_stats">Слов: %1$s · символов: %2$s · абзацев: %3$s</string>
 </resources>

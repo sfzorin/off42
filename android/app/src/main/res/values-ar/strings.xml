@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">الملصقات والرموز</string>
     <string name="section_marks">التوقيعات والأختام</string>
-    <string name="save_as">حفظ باسم</string>
     <string name="width_mm">العرض، مم</string>
     <string name="height_mm">الارتفاع، مم</string>
     <string name="new_impression">بصمة جديدة</string>
     <string name="file_unsupported">الملفات من النوع «.%1$s» غير مدعومة هنا.</string>
     <string name="slides_notes_title">ملاحظات المتحدث</string>
     <string name="doc_preview">معاينة المستند</string>
-    <string name="doc_stats">الكلمات: %1$s · الأحرف: %2$s · الفقرات: %3$s</string>
     <string name="doc_convert_anyway">%1$s.\n\nهل تريد التحويل على أي حال؟ ستُستبعد الأنماط والإعدادات والأجزاء الأخرى التي لا يستطيع %2$s الاحتفاظ بها، ويُحتفظ بالنص والتنسيق المدعوم.</string>
     <string name="sheet_values_csv">قيم الورقة بتنسيق CSV</string>
     <string name="sheet_read_only">مصنفات XLS للقراءة فقط: صدّر القيم بتنسيق CSV.</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">إنشاء ورقة ملصقات</string>
     <string name="pdf_page">الصفحة %1$d من %2$d</string>
     <string name="marks_category">الفئة</string>
+    <string name="save_as">حفظ باسم</string>
+    <string name="doc_stats">الكلمات: %1$s · الأحرف: %2$s · الفقرات: %3$s</string>
 </resources>

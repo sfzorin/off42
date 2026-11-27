@@ -28,14 +28,12 @@ FOLDERS = {"en": "values", "id": "values-in", "fil": "values-b+fil", "zh-Hans": 
 WEB_STRINGS = {
     "section_labels": ("tab.labels", []),
     "section_marks": ("tab.marks", []),
-    "save_as": ("common.saveAs", []),
     "width_mm": ("common.widthMm", []),
     "height_mm": ("common.heightMm", []),
     "new_impression": ("common.newImpression", []),
     "file_unsupported": ("files.unsupported", [("extension", "s")]),
     "slides_notes_title": ("slides.notesTitle", []),
     "doc_preview": ("doc.preview", []),
-    "doc_stats": ("doc.stats", [("words", "s"), ("characters", "s"), ("paragraphs", "s")]),
     "doc_convert_anyway": ("doc.convertAnyway", [("error", "s"), ("format", "s")]),
     "sheet_values_csv": ("sheet.valuesCsv", []),
     "sheet_read_only": ("sheet.readOnly", []),
@@ -91,6 +89,7 @@ WEB_STRINGS = {
 }
 
 EXTRA_ARGS = {
+    "doc_stats": [("words", "s"), ("characters", "s"), ("paragraphs", "s")],
     "formats_hint": [("formats", "s")],
     "convert_title": [("format", "s")],
     "saved": [("name", "s")],

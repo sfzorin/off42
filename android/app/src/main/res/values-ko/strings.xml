@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">라벨과 코드</string>
     <string name="section_marks">서명과 도장</string>
-    <string name="save_as">다른 형식으로 저장</string>
     <string name="width_mm">너비(mm)</string>
     <string name="height_mm">높이(mm)</string>
     <string name="new_impression">다시 찍기</string>
     <string name="file_unsupported">“.%1$s” 형식의 파일은 여기에서 지원되지 않습니다.</string>
     <string name="slides_notes_title">발표자 노트</string>
     <string name="doc_preview">문서 미리 보기</string>
-    <string name="doc_stats">단어 %1$s개 · 문자 %2$s자 · 단락 %3$s개</string>
     <string name="doc_convert_anyway">%1$s.\n\n그래도 변환할까요? %2$s에 담을 수 없는 스타일, 설정 등은 빠지고, 텍스트와 지원되는 서식은 유지됩니다.</string>
     <string name="sheet_values_csv">시트 값(CSV)</string>
     <string name="sheet_read_only">XLS 통합 문서는 읽기 전용입니다. 값을 CSV로 내보내세요.</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">라벨 시트 만들기</string>
     <string name="pdf_page">%2$d쪽 중 %1$d쪽</string>
     <string name="marks_category">카테고리</string>
+    <string name="save_as">다른 형식으로 저장</string>
+    <string name="doc_stats">단어 %1$s개 · 문자 %2$s자 · 단락 %3$s개</string>
 </resources>

@@ -6,14 +6,12 @@
     <string name="file_size" translatable="false">%1$s KB</string>
     <string name="section_labels">Labels &amp; codes</string>
     <string name="section_marks">Signatures &amp; stamps</string>
-    <string name="save_as">Save as</string>
     <string name="width_mm">Width, mm</string>
     <string name="height_mm">Height, mm</string>
     <string name="new_impression">New impression</string>
     <string name="file_unsupported">Files of type “.%1$s” are not supported here.</string>
     <string name="slides_notes_title">Speaker notes</string>
     <string name="doc_preview">Document preview</string>
-    <string name="doc_stats">%1$s words · %2$s characters · %3$s paragraphs</string>
     <string name="doc_convert_anyway">%1$s.\n\nConvert anyway? Styles, settings and other parts that %2$s cannot hold are left out; the text and supported formatting are kept.</string>
     <string name="sheet_values_csv">Sheet values as CSV</string>
     <string name="sheet_read_only">XLS workbooks are read-only: export the values as CSV.</string>
@@ -105,4 +103,6 @@
     <string name="labels_make">Create label sheet</string>
     <string name="pdf_page">Page %1$d of %2$d</string>
     <string name="marks_category">Category</string>
+    <string name="save_as">Save as</string>
+    <string name="doc_stats">%1$s words · %2$s characters · %3$s paragraphs</string>
 </resources>

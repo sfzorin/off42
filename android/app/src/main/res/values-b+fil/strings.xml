@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">Mga label at code</string>
     <string name="section_marks">Mga lagda at stamp</string>
-    <string name="save_as">I-save bilang</string>
     <string name="width_mm">Lapad, mm</string>
     <string name="height_mm">Taas, mm</string>
     <string name="new_impression">Bagong tatak</string>
     <string name="file_unsupported">Hindi sinusuportahan dito ang mga file na “.%1$s”.</string>
     <string name="slides_notes_title">Speaker notes</string>
     <string name="doc_preview">Preview ng dokumento</string>
-    <string name="doc_stats">%1$s salita · %2$s character · %3$s talata</string>
     <string name="doc_convert_anyway">%1$s.\n\nI-convert pa rin? Hindi isasama ang mga style, setting at iba pang bahaging hindi kayang hawakan ng %2$s; mananatili ang text at ang sinusuportahang formatting.</string>
     <string name="sheet_values_csv">Mga value ng sheet bilang CSV</string>
     <string name="sheet_read_only">Read-only ang mga XLS workbook: i-export ang mga value bilang CSV.</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">Gumawa ng sheet ng label</string>
     <string name="pdf_page">Pahina %1$d ng %2$d</string>
     <string name="marks_category">Kategorya</string>
+    <string name="save_as">I-save bilang</string>
+    <string name="doc_stats">%1$s salita · %2$s character · %3$s talata</string>
 </resources>

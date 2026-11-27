@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">Label &amp; kod</string>
     <string name="section_marks">Tandatangan &amp; cop</string>
-    <string name="save_as">Simpan sebagai</string>
     <string name="width_mm">Lebar, mm</string>
     <string name="height_mm">Tinggi, mm</string>
     <string name="new_impression">Cetakan baharu</string>
     <string name="file_unsupported">Fail jenis “.%1$s” tidak disokong di sini.</string>
     <string name="slides_notes_title">Nota penceramah</string>
     <string name="doc_preview">Pratonton dokumen</string>
-    <string name="doc_stats">%1$s perkataan · %2$s aksara · %3$s perenggan</string>
     <string name="doc_convert_anyway">%1$s.\n\nTukar juga? Gaya, tetapan dan bahagian lain yang tidak dapat disimpan oleh %2$s akan ditinggalkan; teks dan pemformatan yang disokong dikekalkan.</string>
     <string name="sheet_values_csv">Nilai helaian sebagai CSV</string>
     <string name="sheet_read_only">Buku kerja XLS adalah baca sahaja: eksport nilainya sebagai CSV.</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">Cipta helaian label</string>
     <string name="pdf_page">Halaman %1$d daripada %2$d</string>
     <string name="marks_category">Kategori</string>
+    <string name="save_as">Simpan sebagai</string>
+    <string name="doc_stats">%1$s perkataan · %2$s aksara · %3$s perenggan</string>
 </resources>

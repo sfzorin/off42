@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">Nhãn &amp; mã</string>
     <string name="section_marks">Chữ ký &amp; con dấu</string>
-    <string name="save_as">Lưu thành</string>
     <string name="width_mm">Rộng, mm</string>
     <string name="height_mm">Cao, mm</string>
     <string name="new_impression">Mẫu mới</string>
     <string name="file_unsupported">Không hỗ trợ tệp “.%1$s” ở đây.</string>
     <string name="slides_notes_title">Ghi chú của người trình bày</string>
     <string name="doc_preview">Xem trước tài liệu</string>
-    <string name="doc_stats">%1$s từ · %2$s ký tự · %3$s đoạn</string>
     <string name="doc_convert_anyway">%1$s.\n\nVẫn chuyển đổi? Kiểu, thiết lập và các phần khác mà %2$s không lưu được sẽ bị bỏ qua; văn bản và định dạng được hỗ trợ vẫn được giữ lại.</string>
     <string name="sheet_values_csv">Giá trị trang tính dạng CSV</string>
     <string name="sheet_read_only">Sổ làm việc XLS chỉ đọc được: hãy xuất giá trị ra CSV.</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">Tạo tờ nhãn</string>
     <string name="pdf_page">Trang %1$d/%2$d</string>
     <string name="marks_category">Danh mục</string>
+    <string name="save_as">Lưu thành</string>
+    <string name="doc_stats">%1$s từ · %2$s ký tự · %3$s đoạn</string>
 </resources>
