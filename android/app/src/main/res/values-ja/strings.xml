@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">ラベルとコード</string>
     <string name="section_marks">署名と印鑑</string>
-    <string name="save_as">保存形式</string>
     <string name="width_mm">幅（mm）</string>
     <string name="height_mm">高さ（mm）</string>
     <string name="new_impression">押し直す</string>
     <string name="file_unsupported">「.%1$s」形式のファイルにはここでは対応していません。</string>
     <string name="slides_notes_title">発表者ノート</string>
     <string name="doc_preview">文書のプレビュー</string>
-    <string name="doc_stats">%1$s 語 · %2$s 文字 · %3$s 段落</string>
     <string name="doc_convert_anyway">%1$s。\n\nこのまま変換しますか？ %2$s で保持できないスタイル、設定などは省かれます。テキストと対応している書式は保持されます。</string>
     <string name="sheet_values_csv">シートの値（CSV）</string>
     <string name="sheet_read_only">XLS ブックは読み取り専用です。値を CSV に書き出してください。</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">ラベルシートを作成</string>
     <string name="pdf_page">%1$d / %2$d ページ</string>
     <string name="marks_category">カテゴリ</string>
+    <string name="save_as">保存形式</string>
+    <string name="doc_stats">%1$s 語 · %2$s 文字 · %3$s 段落</string>
 </resources>

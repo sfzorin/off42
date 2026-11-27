@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">ฉลากและโค้ด</string>
     <string name="section_marks">ลายเซ็นและตราประทับ</string>
-    <string name="save_as">บันทึกเป็น</string>
     <string name="width_mm">ความกว้าง (มม.)</string>
     <string name="height_mm">ความสูง (มม.)</string>
     <string name="new_impression">ประทับใหม่</string>
     <string name="file_unsupported">ไม่รองรับไฟล์ประเภท “.%1$s” ที่นี่</string>
     <string name="slides_notes_title">บันทึกของผู้บรรยาย</string>
     <string name="doc_preview">ตัวอย่างเอกสาร</string>
-    <string name="doc_stats">%1$s คำ · %2$s อักขระ · %3$s ย่อหน้า</string>
     <string name="doc_convert_anyway">%1$s\n\nต้องการแปลงต่อหรือไม่ สไตล์ การตั้งค่า และส่วนอื่นๆ ที่ %2$s เก็บไว้ไม่ได้จะถูกตัดออก ส่วนข้อความและการจัดรูปแบบที่รองรับจะยังคงอยู่</string>
     <string name="sheet_values_csv">ค่าในชีตเป็น CSV</string>
     <string name="sheet_read_only">เวิร์กบุ๊ก XLS เป็นแบบอ่านอย่างเดียว ให้ส่งออกค่าเป็น CSV</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">สร้างแผ่นฉลาก</string>
     <string name="pdf_page">หน้า %1$d จาก %2$d</string>
     <string name="marks_category">หมวดหมู่</string>
+    <string name="save_as">บันทึกเป็น</string>
+    <string name="doc_stats">%1$s คำ · %2$s อักขระ · %3$s ย่อหน้า</string>
 </resources>

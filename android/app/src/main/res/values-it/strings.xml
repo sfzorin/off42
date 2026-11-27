@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">Etichette e codici</string>
     <string name="section_marks">Firme e timbri</string>
-    <string name="save_as">Salva come</string>
     <string name="width_mm">Larghezza, mm</string>
     <string name="height_mm">Altezza, mm</string>
     <string name="new_impression">Nuova impronta</string>
     <string name="file_unsupported">I file di tipo «.%1$s» non sono supportati qui.</string>
     <string name="slides_notes_title">Note del relatore</string>
     <string name="doc_preview">Anteprima del documento</string>
-    <string name="doc_stats">%1$s parole · %2$s caratteri · %3$s paragrafi</string>
     <string name="doc_convert_anyway">%1$s.\n\nConvertire comunque? Stili, impostazioni e altre parti che %2$s non può contenere vengono omessi; il testo e la formattazione supportata vengono mantenuti.</string>
     <string name="sheet_values_csv">Valori del foglio in CSV</string>
     <string name="sheet_read_only">Le cartelle di lavoro XLS sono di sola lettura: esporta i valori in CSV.</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">Crea foglio di etichette</string>
     <string name="pdf_page">Pagina %1$d di %2$d</string>
     <string name="marks_category">Categoria</string>
+    <string name="save_as">Salva come</string>
+    <string name="doc_stats">%1$s parole · %2$s caratteri · %3$s paragrafi</string>
 </resources>

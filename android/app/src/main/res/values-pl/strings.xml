@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">Etykiety i kody</string>
     <string name="section_marks">Podpisy i pieczęcie</string>
-    <string name="save_as">Zapisz jako</string>
     <string name="width_mm">Szerokość, mm</string>
     <string name="height_mm">Wysokość, mm</string>
     <string name="new_impression">Nowy odcisk</string>
     <string name="file_unsupported">Pliki typu „.%1$s” nie są tutaj obsługiwane.</string>
     <string name="slides_notes_title">Notatki prelegenta</string>
     <string name="doc_preview">Podgląd dokumentu</string>
-    <string name="doc_stats">Słowa: %1$s · znaki: %2$s · akapity: %3$s</string>
     <string name="doc_convert_anyway">%1$s.\n\nKonwertować mimo to? Style, ustawienia i inne elementy, których %2$s nie może przechować, zostaną pominięte; tekst i obsługiwane formatowanie zostaną zachowane.</string>
     <string name="sheet_values_csv">Wartości arkusza jako CSV</string>
     <string name="sheet_read_only">Skoroszyty XLS są tylko do odczytu: wyeksportuj wartości do CSV.</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">Utwórz arkusz etykiet</string>
     <string name="pdf_page">Strona %1$d z %2$d</string>
     <string name="marks_category">Kategoria</string>
+    <string name="save_as">Zapisz jako</string>
+    <string name="doc_stats">Słowa: %1$s · znaki: %2$s · akapity: %3$s</string>
 </resources>

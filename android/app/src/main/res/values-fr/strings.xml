@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">Étiquettes et codes</string>
     <string name="section_marks">Signatures et tampons</string>
-    <string name="save_as">Enregistrer en</string>
     <string name="width_mm">Largeur, mm</string>
     <string name="height_mm">Hauteur, mm</string>
     <string name="new_impression">Nouvelle empreinte</string>
     <string name="file_unsupported">Les fichiers de type « .%1$s » ne sont pas pris en charge ici.</string>
     <string name="slides_notes_title">Notes de l’orateur</string>
     <string name="doc_preview">Aperçu du document</string>
-    <string name="doc_stats">%1$s mots · %2$s caractères · %3$s paragraphes</string>
     <string name="doc_convert_anyway">%1$s.\n\nConvertir quand même ? Les styles, réglages et autres éléments que %2$s ne peut pas contenir sont omis ; le texte et la mise en forme prise en charge sont conservés.</string>
     <string name="sheet_values_csv">Valeurs de la feuille en CSV</string>
     <string name="sheet_read_only">Les classeurs XLS sont en lecture seule : exportez les valeurs en CSV.</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">Créer la planche</string>
     <string name="pdf_page">Page %1$d sur %2$d</string>
     <string name="marks_category">Catégorie</string>
+    <string name="save_as">Enregistrer en</string>
+    <string name="doc_stats">%1$s mots · %2$s caractères · %3$s paragraphes</string>
 </resources>

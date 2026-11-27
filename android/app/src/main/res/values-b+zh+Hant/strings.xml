@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">標籤與條碼</string>
     <string name="section_marks">簽名與印章</string>
-    <string name="save_as">另存為</string>
     <string name="width_mm">寬度（公釐）</string>
     <string name="height_mm">高度（公釐）</string>
     <string name="new_impression">重新用印</string>
     <string name="file_unsupported">這裡不支援「.%1$s」類型的檔案。</string>
     <string name="slides_notes_title">備忘稿</string>
     <string name="doc_preview">文件預覽</string>
-    <string name="doc_stats">%1$s 個字詞 · %2$s 個字元 · %3$s 個段落</string>
     <string name="doc_convert_anyway">%1$s。\n\n仍要轉換嗎？%2$s 無法容納的樣式、設定和其他部分會被捨棄；文字與支援的格式會保留。</string>
     <string name="sheet_values_csv">工作表數值（CSV）</string>
     <string name="sheet_read_only">XLS 活頁簿為唯讀：請將數值匯出為 CSV。</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">產生標籤紙</string>
     <string name="pdf_page">第 %1$d 頁，共 %2$d 頁</string>
     <string name="marks_category">類別</string>
+    <string name="save_as">另存為</string>
+    <string name="doc_stats">%1$s 個字詞 · %2$s 個字元 · %3$s 個段落</string>
 </resources>

@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">Etiquetas e códigos</string>
     <string name="section_marks">Assinaturas e carimbos</string>
-    <string name="save_as">Salvar como</string>
     <string name="width_mm">Largura, mm</string>
     <string name="height_mm">Altura, mm</string>
     <string name="new_impression">Nova impressão</string>
     <string name="file_unsupported">Arquivos do tipo “.%1$s” não são compatíveis aqui.</string>
     <string name="slides_notes_title">Anotações do apresentador</string>
     <string name="doc_preview">Prévia do documento</string>
-    <string name="doc_stats">%1$s palavras · %2$s caracteres · %3$s parágrafos</string>
     <string name="doc_convert_anyway">%1$s.\n\nConverter mesmo assim? Estilos, configurações e outras partes que o %2$s não comporta serão omitidos; o texto e a formatação compatível são mantidos.</string>
     <string name="sheet_values_csv">Valores da planilha em CSV</string>
     <string name="sheet_read_only">Pastas de trabalho XLS são somente leitura: exporte os valores como CSV.</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">Criar folha de etiquetas</string>
     <string name="pdf_page">Página %1$d de %2$d</string>
     <string name="marks_category">Categoria</string>
+    <string name="save_as">Salvar como</string>
+    <string name="doc_stats">%1$s palavras · %2$s caracteres · %3$s parágrafos</string>
 </resources>

@@ -3,14 +3,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="section_labels">Címkék és kódok</string>
     <string name="section_marks">Aláírások és bélyegzők</string>
-    <string name="save_as">Mentés másként</string>
     <string name="width_mm">Szélesség, mm</string>
     <string name="height_mm">Magasság, mm</string>
     <string name="new_impression">Új lenyomat</string>
     <string name="file_unsupported">A(z) „.%1$s” típusú fájlok itt nem támogatottak.</string>
     <string name="slides_notes_title">Előadói jegyzetek</string>
     <string name="doc_preview">Dokumentum előnézete</string>
-    <string name="doc_stats">%1$s szó · %2$s karakter · %3$s bekezdés</string>
     <string name="doc_convert_anyway">%1$s.\n\nMégis átalakítod? A stílusok, beállítások és egyéb részek, amelyeket a(z) %2$s nem tud tárolni, kimaradnak; a szöveg és a támogatott formázás megmarad.</string>
     <string name="sheet_values_csv">A munkalap értékei CSV-ként</string>
     <string name="sheet_read_only">Az XLS-munkafüzetek csak olvashatók: exportáld az értékeket CSV-be.</string>
@@ -102,4 +100,6 @@
     <string name="labels_make">Címkeív készítése</string>
     <string name="pdf_page">%1$d. oldal / %2$d</string>
     <string name="marks_category">Kategória</string>
+    <string name="save_as">Mentés másként</string>
+    <string name="doc_stats">%1$s szó · %2$s karakter · %3$s bekezdés</string>
 </resources>
