@@ -92,7 +92,8 @@ each app runs in `crates/egui42`, an egui window (X11 or Wayland) laid out like 
   drawer that starts the other apps from the same folder, a language picker (applies after restart) and About.
 - **Document window**: file name, format badge and save state; a menu bar (File with New, Open, Open recent, Save,
   Save as ▸ formats and exports, Import, Close; Edit; View with zoom, Appearance and Language; one menu per command
-  group; Help); one toolbar strip with Undo/Redo, zoom and the app's icon commands; a Save button; one snackbar.
+  group; Help); one toolbar strip with Undo/Redo, zoom and the app's commands as icon buttons (label in the
+  tooltip); a Save button; one snackbar; a status chip with the word count, page/slide position or picture size.
 - **DOC42**: plain text on a white page. Edits reach the model after a pause or when the page loses focus; documents
   with rich formatting refuse plain-text edits (the page reverts and says why). **XLS42**: formula bar with the cell
   name, grid with column letters and row numbers, Shift-click ranges, sheet tabs with Add sheet, a Sum chip.

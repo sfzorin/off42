@@ -52,6 +52,91 @@ fn expect(h: &Harness<'static, Host>, label: &str, state: &str) {
     assert!(h.query_all_by_label(label).next().is_some(), "{state}: no element labelled {label:?}");
 }
 
+/// Label and value texts of every node whose rect lies inside `area`.
+fn texts_in(h: &Harness<'static, Host>, area: eframe::egui::Rect) -> Vec<String> {
+    h.root()
+        .children_recursive()
+        .filter(|n| n.accesskit_node().bounding_box().is_some() && area.expand(1.0).contains_rect(n.rect()))
+        .flat_map(|n| [n.accesskit_node().label(), n.accesskit_node().value()])
+        .flatten()
+        .filter(|t| !t.trim().is_empty())
+        .collect()
+}
+
+/// The title row shows the human save state and nothing of the app's status line.
+#[track_caller]
+fn check_title_row(h: &Harness<'static, Host>, state: &str) {
+    let title = h.get_by_label("Title bar").rect();
+    let texts = texts_in(h, title);
+    let save_state = h.state().save_state();
+    assert!(texts.iter().any(|t| t == &save_state), "{state}: title row shows the save state {save_state:?}: {texts:?}");
+    let status = h.state().app.status();
+    for t in &texts {
+        assert!(!t.contains('|') && !t.contains("[]"), "{state}: title row shows debug text {t:?}");
+        assert!(status.trim().is_empty() || !t.contains(status.trim()), "{state}: title row shows App::status {t:?}");
+    }
+    // Readable status fields go to the status chip, never with "|" separators or "[]".
+    if let Some(summary) = h.state().status_summary() {
+        expect(h, "Document status", state);
+        let chip = texts_in(h, h.get_by_label("Document status").rect());
+        assert!(chip.iter().any(|t| t == &summary), "{state}: status chip shows {summary:?}: {chip:?}");
+        assert!(!summary.contains('|') && !summary.contains("[]"), "{state}: status chip shows debug text {summary:?}");
+    }
+}
+
+/// Every toolbar command is an icon button with its label as accessible name and tooltip; the
+/// toolbar has no text buttons. Commands that do not fit are in the More… overflow.
+#[track_caller]
+fn check_toolbar(h: &mut Harness<'static, Host>, state: &str) {
+    use eframe::egui::accesskit::Role;
+    let commands = h.state().toolbar_commands();
+    let bar = h.get_by_label("Toolbar").rect();
+    let mut shown = Vec::new();
+    for (_, title, _, _) in &commands {
+        let node = h
+            .query_all_by_label(title)
+            .find(|n| bar.expand(1.0).contains_rect(n.rect()));
+        match node {
+            Some(node) => {
+                assert_eq!(node.accesskit_node().role(), Role::Button, "{state}: toolbar {title:?} is a button");
+                let r = node.rect();
+                assert!(r.width() <= 32.0 && r.height() <= 32.0, "{state}: toolbar {title:?} is an icon button, not text ({r:?})");
+                shown.push(title.clone());
+            }
+            None => assert!(
+                h.query_all_by_label("More tools").next().is_some(),
+                "{state}: toolbar command {title:?} is neither shown nor in More…"
+            ),
+        }
+    }
+    for node in h.root().children_recursive() {
+        let ak = node.accesskit_node();
+        if ak.bounding_box().is_none() || !bar.expand(1.0).contains_rect(node.rect()) {
+            continue;
+        }
+        if let Some(label) = ak.label() {
+            assert!(
+                !(ak.role() == Role::Label && commands.iter().any(|c| c.1 == label)),
+                "{state}: toolbar shows the command {label:?} as text"
+            );
+        }
+        if ak.role() == Role::Button {
+            let r = node.rect();
+            assert!(r.width() <= 40.0, "{state}: toolbar button {:?} is wider than an icon ({r:?})", ak.label());
+        }
+    }
+    // The label is the tooltip of the first command.
+    if let Some(title) = shown.first() {
+        let center = h.query_all_by_label(title).find(|n| bar.contains_rect(n.rect())).unwrap().rect().center();
+        h.hover_at(center);
+        h.run_steps(6);
+        let tips = h.query_all_by_label(title).filter(|n| !bar.expand(1.0).contains_rect(n.rect())).count();
+        assert!(tips > 0, "{state}: hovering the toolbar {title:?} shows a tooltip with its label");
+        h.hover_at(eframe::egui::pos2(SIZE[0] / 2.0, SIZE[1] - 4.0));
+        h.run_steps(3);
+    }
+}
+
 #[track_caller]
 fn expect_text(h: &Harness<'static, Host>, text: &str, state: &str) {
     let found = h.query_all(egui_kittest::kittest::By::new().label_contains(text).include_labels()).next().is_some();
@@ -107,6 +192,8 @@ pub fn capture_states(prefix: &str, make: impl Fn() -> Box<dyn App>, sample: Opt
     if let Some(ext) = ext {
         expect_text(&h, &format!(".{ext}"), "format badge");
     }
+    check_title_row(&h, "document");
+    check_toolbar(&mut h, "document");
     shot(&mut h, &format!("{prefix}-04-document"));
 
     // Functional checks on a separate window so the screenshots above stay deterministic.
@@ -115,6 +202,8 @@ pub fn capture_states(prefix: &str, make: impl Fn() -> Box<dyn App>, sample: Opt
         b.get_all_by_label("Blank document").next().unwrap().click();
         b.run_steps(3);
         assert!(!b.state().home, "Blank document opens the document window");
+        check_title_row(&b, "blank document");
+        check_toolbar(&mut b, "blank document");
         if b.query_all_by_label("Document text").next().is_some() {
             // Typed text on a blank page reaches the model as one undoable edit.
             b.get_by_label("Document text").focus();
@@ -202,6 +291,11 @@ pub fn capture_states(prefix: &str, make: impl Fn() -> Box<dyn App>, sample: Opt
     let mut h = harness(make(), sample, true);
     if sample.is_some() {
         expect(&h, "Notification", "snackbar after opening");
+        // The snackbar stays clear of the sheet-tab bar.
+        if let Some(tabs) = h.query_all_by_label("Sheets").next().map(|n| n.rect()) {
+            let snack = h.get_by_label("Notification").rect();
+            assert!(!snack.intersects(tabs), "the snackbar {snack:?} overlaps the sheet tabs {tabs:?}");
+        }
     }
     shot(&mut h, &format!("{prefix}-06-dark"));
     let mut h = harness(make(), None, true);

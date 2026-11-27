@@ -24,6 +24,9 @@ fn clean(title: &str) -> String {
     tr(&t)
 }
 
+/// Height of the spreadsheet's sheet-tab bar at the bottom of the window.
+const SHEET_TABS_HEIGHT: f32 = 40.0;
+
 struct Snack {
     pub(crate) text: String,
     error: bool,
@@ -480,8 +483,10 @@ impl Host {
         out
     }
 
-    /// Toolbar commands: the app's toolbar set, as icons where the suite has a glyph.
-    fn toolbar_commands(&self) -> Vec<(u16, String, Option<Icon>, bool)> {
+    /// Toolbar commands: the app's toolbar set, each as an icon button. A curated set (twelve
+    /// or fewer) shows every command, with the generic command glyph where the suite has none;
+    /// a larger set shows only the commands that have a suite icon.
+    pub(crate) fn toolbar_commands(&self) -> Vec<(u16, String, Icon, bool)> {
         let all = self.app_commands();
         let visible: Vec<_> = all
             .iter()
@@ -491,10 +496,11 @@ impl Host {
         let mut out = Vec::new();
         let mut group = None;
         for (g, id, title, _) in visible {
-            let icon = icons::for_command(&title.replace('&', ""));
-            if icon.is_none() && !curated {
-                continue;
-            }
+            let icon = match icons::for_command(&title.replace('&', "")) {
+                Some(icon) => icon,
+                None if curated => Icon::Command,
+                None => continue,
+            };
             if !self.available(*id) {
                 continue;
             }
@@ -1062,17 +1068,33 @@ impl Host {
                     ui.label(RichText::new(format!(".{ext}")).size(12.0).color(p.muted));
                 });
             ui.add_space(6.0);
-            let state = if self.app.dirty() || self.text_edited {
-                tr("Unsaved changes")
-            } else if self.path.is_some() {
-                tr("Saved on this computer")
-            } else {
-                tr("Not saved yet")
-            };
-            let status = self.app.status();
-            let line = if status.trim().is_empty() { state } else { format!("{state} · {}", status.trim()) };
-            ui.add(egui::Label::new(RichText::new(line).size(13.0).color(p.muted)).truncate());
+            let state = self.save_state();
+            ui.add(egui::Label::new(RichText::new(&state).size(13.0).color(p.muted)).truncate());
         });
+    }
+
+    /// The human save state shown in the title row; app status details never go here.
+    pub(crate) fn save_state(&self) -> String {
+        if self.app.dirty() || self.text_edited {
+            tr("Edited")
+        } else if self.path.is_some() {
+            tr("Saved on this computer")
+        } else {
+            tr("Not saved yet")
+        }
+    }
+
+    /// The readable part of `App::status` for the status chip: its first field (word count,
+    /// page or slide position, picture size), or nothing when that field looks like debug output.
+    /// Spreadsheets show the sheet and cell in the tabs and the formula bar instead.
+    pub(crate) fn status_summary(&self) -> Option<String> {
+        if self.home || matches!(self.kind(), Kind::Table) {
+            return None;
+        }
+        let status = self.app.status();
+        let first = status.split('|').next().unwrap_or_default().trim().to_string();
+        let debug = first.is_empty() || first.contains(['[', ']', '{', '}', '=']) || first.ends_with(':');
+        (!debug).then_some(first)
     }
 
     fn menu_bar(&mut self, ui: &mut Ui, p: &Palette) {
@@ -1342,12 +1364,9 @@ impl Host {
                 let mut width_left = ui.available_width() - 40.0;
                 let mut overflow = Vec::new();
                 for (id, title, icon, new_group) in commands {
-                    let w = match icon {
-                        Some(_) => 32.0,
-                        None => ui.painter().layout_no_wrap(title.clone(), FontId::proportional(14.0), p.text).size().x + 18.0,
-                    } + if new_group { 13.0 } else { 0.0 };
+                    let w = 32.0 + if new_group { 13.0 } else { 0.0 };
                     if w > width_left || !overflow.is_empty() {
-                        overflow.push((id, title));
+                        overflow.push((id, title, icon));
                         continue;
                     }
                     width_left -= w;
@@ -1356,28 +1375,22 @@ impl Host {
                     }
                     let enabled = self.command_enabled(id);
                     let checked = self.app.command_state(id).checked;
-                    let clicked = match icon {
-                        Some(icon) => self.icon_button(ui, icon, &title, enabled, checked, p).clicked(),
-                        None => ui
-                            .add_enabled(enabled, egui::Button::new(RichText::new(&title).color(p.icon)).selected(checked).min_size(Vec2::new(0.0, 30.0)))
-                            .clicked(),
-                    };
-                    if clicked {
+                    if self.icon_button(ui, icon, &title, enabled, checked, p).clicked() {
                         self.command(ctx, id);
                     }
                 }
                 if !overflow.is_empty() {
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let more = egui::containers::menu::MenuButton::from_button(egui::Button::image(self.icons.image(Icon::More, 18.0).tint(p.icon))).ui(ui, |ui| {
-                            for (id, title) in &overflow {
-                                let icon = icons::for_command(title);
-                                if self.menu_item(ui, icon, title, None, self.command_enabled(*id), self.app.command_state(*id).checked).clicked() {
+                            for (id, title, icon) in &overflow {
+                                if self.menu_item(ui, Some(*icon), title, None, self.command_enabled(*id), self.app.command_state(*id).checked).clicked() {
                                     self.command(ctx, *id);
                                     ui.close();
                                 }
                             }
                         });
                         more.0.widget_info(|| WidgetInfo::labeled(Role::Button, true, "More tools"));
+                        more.0.on_hover_text(tr("More"));
                     });
                 }
             });
@@ -1900,7 +1913,7 @@ impl Host {
         let ctx = root.ctx().clone();
         let mut select = None;
         let panel = egui::Panel::bottom("sheets")
-            .exact_size(40.0)
+            .exact_size(SHEET_TABS_HEIGHT)
             .show_separator_line(false)
             .frame(Frame::new().fill(p.bg).inner_margin(Margin::symmetric(8, 0)))
             .show(root, |ui| {
@@ -1997,7 +2010,35 @@ impl Host {
 
     // ----- overlays -------------------------------------------------------------------
 
+    /// Height of a bar along the window's bottom edge (the sheet tabs) that floating chips must clear.
+    fn bottom_bar(&self) -> f32 {
+        if !self.home && matches!(self.kind(), Kind::Table) {
+            SHEET_TABS_HEIGHT
+        } else {
+            0.0
+        }
+    }
+
+    fn status_chip(&self, ctx: &egui::Context, p: &Palette) {
+        let Some(summary) = self.status_summary() else { return };
+        egui::Area::new(egui::Id::unique("off42-status-chip"))
+            .order(egui::Order::Foreground)
+            .interactable(false)
+            .anchor(Align2::RIGHT_BOTTOM, Vec2::new(-24.0, -16.0 - self.bottom_bar()))
+            .show(ctx, |ui| {
+                let chip = Frame::new()
+                    .fill(p.toolbar)
+                    .corner_radius(12)
+                    .inner_margin(Margin::symmetric(10, 4))
+                    .show(ui, |ui| {
+                        ui.add(egui::Label::new(RichText::new(&summary).size(12.0).color(p.icon)).extend());
+                    });
+                Self::landmark(ui, chip.response.rect, Role::Status, "Document status");
+            });
+    }
+
     fn overlays(&mut self, ctx: &egui::Context, p: &Palette) {
+        self.status_chip(ctx, p);
         if let Some(mut dialog) = self.files.take() {
             match dialog.show(ctx, &self.icons, p) {
                 Outcome::None => self.files = Some(dialog),
@@ -2046,7 +2087,7 @@ impl Host {
             let screen = ctx.content_rect();
             egui::Area::new(egui::Id::unique("off42-snackbar"))
                 .order(egui::Order::Tooltip)
-                .anchor(Align2::LEFT_BOTTOM, Vec2::new(24.0, -24.0))
+                .anchor(Align2::LEFT_BOTTOM, Vec2::new(24.0, -24.0 - self.bottom_bar()))
                 .show(ctx, |ui| {
                     let frame = Frame::new()
                         .fill(p.snack)

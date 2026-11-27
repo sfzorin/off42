@@ -1415,42 +1415,16 @@ impl suite42_app::App for Xls {
             .find(|(id, _)| *id == self.book.active_sheet())
             .map(|(_, name)| name)
             .unwrap_or_default();
-        let charts = self
-            .book
-            .charts()
-            .iter()
-            .map(|c| format!("{}:{}", c.id, c.title))
-            .collect::<Vec<_>>()
-            .join(", ");
-        let pivots = self
-            .book
-            .pivots()
-            .iter()
-            .map(|p| format!("{}:{}", p.id, p.name))
-            .collect::<Vec<_>>()
-            .join(", ");
-        format!(
-            "{}{} | {}×{} | R{} C{} | Charts [{}] | Pivot summaries [{}]{}",
-            if self.book.is_read_only() {
-                "READ ONLY | "
-            } else if self.book.has_external_source() {
-                "External: structural edits limited | "
-            } else {
-                ""
-            },
-            sheet,
-            self.book.rows(),
-            self.book.cols(),
-            self.row + 1,
-            self.col + 1,
-            charts,
-            pivots,
-            if self.preview.is_some() {
-                " | Chart preview"
-            } else {
-                ""
-            }
-        )
+        status_line(&StatusParts {
+            read_only: self.book.is_read_only(),
+            external: self.book.has_external_source(),
+            sheet: &sheet,
+            row: self.row,
+            col: self.col,
+            charts: self.book.charts().len(),
+            pivots: self.book.pivots().len(),
+            preview: self.preview.is_some(),
+        })
     }
     fn selected(&self) -> usize {
         self.row * self.book.cols() + self.col
@@ -2639,6 +2613,78 @@ mod far_picture_geometry_regression {
         app.move_grid_picture(id,80.,20.).unwrap();let moved=app.book.images()[0].clone();
         assert_eq!((moved.row,moved.column),(1_048_575,16_383));assert_eq!((moved.offset_x,moved.offset_y),(0.,0.));assert_eq!(moved.data,original.data);
         app.action(4).unwrap();assert_eq!(app.book.images(),&[original]);app.action(5).unwrap();assert_eq!(app.book.images(),&[moved]);
+    }
+}
+
+/// What the status line reports: the state that matters to a reader, without empty lists or ids.
+struct StatusParts<'a> {
+    read_only: bool,
+    external: bool,
+    sheet: &'a str,
+    row: usize,
+    col: usize,
+    charts: usize,
+    pivots: usize,
+    preview: bool,
+}
+
+/// Spreadsheet column letters for a zero-based index (0 → A, 26 → AA).
+fn column_letters(mut col: usize) -> String {
+    let mut out = Vec::new();
+    loop {
+        out.push(b'A' + (col % 26) as u8);
+        if col < 26 {
+            break;
+        }
+        col = col / 26 - 1;
+    }
+    out.reverse();
+    String::from_utf8(out).unwrap_or_default()
+}
+
+/// "Sheet1 · B3", with "Read only", chart and pivot counts and "Chart preview" only when they apply.
+fn status_line(p: &StatusParts) -> String {
+    let text = suite42_app::localization::text;
+    let mut parts = Vec::new();
+    if p.read_only {
+        parts.push(text("Read only"));
+    } else if p.external {
+        parts.push(text("External source: structural edits limited"));
+    }
+    if !p.sheet.is_empty() {
+        parts.push(p.sheet.to_string());
+    }
+    parts.push(format!("{}{}", column_letters(p.col), p.row + 1));
+    if p.charts > 0 {
+        parts.push(format!("{}: {}", text("Charts"), p.charts));
+    }
+    if p.pivots > 0 {
+        parts.push(format!("{}: {}", text("Pivot summaries"), p.pivots));
+    }
+    if p.preview {
+        parts.push(text("Chart preview"));
+    }
+    parts.join(" · ")
+}
+
+#[cfg(test)]
+mod status_tests {
+    use super::*;
+
+    #[test]
+    fn status_line_shows_sheet_and_cell_without_empty_lists() {
+        let base = StatusParts { read_only: false, external: false, sheet: "Sheet1", row: 0, col: 0, charts: 0, pivots: 0, preview: false };
+        assert_eq!(status_line(&base), "Sheet1 · A1");
+        let busy = StatusParts { row: 9, col: 27, charts: 2, pivots: 1, preview: true, ..base };
+        let line = status_line(&busy);
+        assert_eq!(line, "Sheet1 · AB10 · Charts: 2 · Pivot summaries: 1 · Chart preview");
+        for line in [status_line(&base), line] {
+            assert!(!line.contains('|') && !line.contains('['), "{line}");
+        }
+        assert_eq!(column_letters(25), "Z");
+        assert_eq!(column_letters(26), "AA");
+        assert_eq!(column_letters(701), "ZZ");
+        assert_eq!(column_letters(702), "AAA");
     }
 }
 
