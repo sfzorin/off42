@@ -54,6 +54,14 @@ const shoot = async (page, name) => {
   await page.waitForTimeout(250); // let entrance animations settle
   await page.screenshot({ path: join(shots, `${name}.png`) });
 };
+/** Asserts that two visible elements do not overlap. */
+const clearOf = async (page, a, b) => {
+  const [boxA, boxB] = [await page.locator(a).boundingBox(), await page.locator(b).boundingBox()];
+  assert.ok(boxA && boxB, `${a} and ${b} are visible`);
+  const overlap = boxA.x < boxB.x + boxB.width && boxB.x < boxA.x + boxA.width
+    && boxA.y < boxB.y + boxB.height && boxB.y < boxA.y + boxA.height;
+  assert.ok(!overlap, `${a} ${JSON.stringify(boxA)} overlaps ${b} ${JSON.stringify(boxB)}`);
+};
 const step = async (name, fn) => {
   await fn();
   console.log(`ok   ${name}`);
@@ -383,6 +391,10 @@ try {
     const values = await downloadAs('spreadsheets', 'Sheet values as CSV');
     assert.equal(values.name, 'sheets - October.csv');
     assert.match(values.bytes.toString(), /North,120/);
+    // The snackbar reporting the download stays above the sheet-tab bar (all-sheets button and first tab).
+    await page.waitForSelector('#snackbar:not([hidden])');
+    await clearOf(page, '#snackbar', '#spreadsheets .sheet-bar');
+    await shoot(page, '07-spreadsheet-snackbar');
     await page.evaluate(() => (window.print = () => (window.__printed = document.querySelector('#print-root table.grid')?.textContent ?? '')));
     await page.click('#spreadsheets .toolbar button[aria-label="Print"]');
     assert.match(await page.evaluate(() => window.__printed), /North120/);
@@ -676,6 +688,19 @@ try {
     assert.ok(snack.y + snack.height <= toolbar.y, 'the snackbar stays above the toolbar');
     await phone.click('#documents .back-button');
     await phone.waitForSelector('#documents .home:not([hidden])');
+    // Spreadsheets on a phone: the snackbar clears both the sheet-tab bar and the bottom toolbar.
+    await phone.goto(`${app}#spreadsheets`);
+    await ready(phone);
+    await d.open('spreadsheets', 'sheets.xlsx');
+    await d.opened('spreadsheets', 'sheets.xlsx');
+    await phone.click('#spreadsheets .overflow-button');
+    await phone.hover('.menu .menu-item:has-text("Download as")');
+    await phone.click('.menu .menu-item:has-text("Download as")');
+    await Promise.all([phone.waitForEvent('download'), phone.locator('.menu .menu-item:has(.menu-label:text-is("Sheet values as CSV"))').last().click()]);
+    await phone.waitForSelector('#snackbar:not([hidden])');
+    await clearOf(phone, '#snackbar', '#spreadsheets .sheet-bar');
+    await clearOf(phone, '#snackbar', '#spreadsheets .toolbar');
+    await shoot(phone, '21-phone-spreadsheet-snackbar');
     await phone.context().close();
   });
 
