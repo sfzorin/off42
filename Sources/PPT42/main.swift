@@ -8,12 +8,13 @@ Localization.register(rows: ppt42Strings)
 if CommandLine.arguments.contains("--selftest"), !AppStoreEdition.selfCheck() { exit(1) }
 #endif
 
-if CommandLine.arguments.contains("--selftest") { exit(Int32(PPTFilesAudit.run() == 0 ? 0 : 1)) }
+if CommandLine.arguments.contains("--selftest") { exit(Int32(PPTFilesAudit.run() == 0 && KeynoteArchiveAudit.run() ? 0 : 1)) }
 
 // Command-line checks (no UI): --info, --export, --convert, --demo. See CLI.swift.
 if CLI.run(CommandLine.arguments) { exit(CLI.status) }
 
 let app = NSApplication.shared
+let documentController = PresentationDocumentController()
 let delegate = AppDelegate()
 app.delegate = delegate
 app.setActivationPolicy(.regular)

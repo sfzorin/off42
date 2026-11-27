@@ -70,7 +70,7 @@ enum CLI {
         let input = URL(fileURLWithPath: a[0]), output = URL(fileURLWithPath: a[1])
         let loaded = ImageLoader.load(input)
         guard var base = loaded.image, !loaded.wasDownsampled else { print("cannot read full-resolution image \(a[0])"); status = 1; return }
-        guard let type = UTType(filenameExtension: output.pathExtension), ImageWriter.writableTypes.contains(type) else {
+        guard let type = output.pathExtension.lowercased() == "ora" ? OpenRaster.type : UTType(filenameExtension: output.pathExtension), ImageWriter.writableTypes.contains(type) else {
             print("unsupported output format \(output.pathExtension)"); status = 2; return
         }
         var adjustments = Adjustments()

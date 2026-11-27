@@ -3498,5 +3498,15 @@
   "Recovered": "Recuperado",
   "Recovered Changes": "Alterações recuperadas",
   "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "O trabalho recuperado abre como não guardado. Se o descartar, não poderá recuperá-lo mais tarde.",
-  "Restore": "Restaurar"
+  "Restore": "Restaurar",
+  "Brother media:": "Suporte Brother:",
+  "Choose a printer file to import as a new PDF": "Escolha um ficheiro de impressão para importar como um novo PDF",
+  "Export Printer File…": "Exportar ficheiro de impressão…",
+  "Export flattened printer file at the selected printer resolution": "Exportar o ficheiro achatado com a resolução de impressora selecionada",
+  "Format and printer:": "Formato e impressora:",
+  "Import Printer File…": "Importar ficheiro de impressão…",
+  "Keynote import limitations": "Limitações da importação do Keynote",
+  "Printer file format": "Formato do ficheiro de impressão",
+  "Printer files contain flattened black and white pages. SBPL and Brother jobs may include padding. Choose the matching printer and media.": "Os ficheiros de impressão contêm páginas achatadas a preto e branco. Os trabalhos SBPL e Brother podem incluir preenchimento. Escolha a impressora e o suporte adequados.",
+  "Save this imported presentation as PPTX or ODP.": "Guarde a apresentação importada como PPTX ou ODP."
 }

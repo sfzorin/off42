@@ -10,6 +10,8 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import runpy
+import zipfile
 import shutil
 import signal
 import subprocess
@@ -262,15 +264,16 @@ if args.mode in ('all', 'tests'):
         ('SCN42', 'scn-editing', ('--audit', 'editing'), {}, 'SCN42 editing regressions:', False),
         ('SCN42', 'scn-files', ('--audit', 'files'), {}, 'SCN42 file UI regressions:', False),
         ('SCN42', 'scn-marks', ('--audit', 'marks'), {}, 'SCN42 mark regressions:', False),
-        ('DOC42', 'doc-technical', (), {'K42_NEW': '1', 'K42_SCRIPT': 'audittechnical'}, 'DOC technical:', True),
         ('PDF42', 'pdf-technical', (out / 'sample.pdf',), {'K42_AUDIT': 'technical'}, 'PDF technical:', True),
         ('SCN42', 'scn-vision', ('--audit', 'vision'), {}, 'SCN42 Vision regressions:', False),
         ('DOC42', 'doc-panels', (), {'K42_NEW': '1', 'K42_SCRIPT': 'auditpanels', 'K42_AUDIT_RECENT': '1'}, 'DOC panel UI regressions: 16/16 passed', True),
         ('DOC42', 'doc-rulers', (), {'K42_NEW': '1', 'K42_SCRIPT': 'auditrulers'}, 'DOC ruler UI regressions:', True),
         ('DOC42', 'doc-editing', (), {'K42_NEW': '1', 'K42_SCRIPT': 'auditediting'}, 'DOC editing UI regressions:', True),
         ('DOC42', 'doc-document', (), {'K42_NEW': '1', 'K42_SCRIPT': 'auditdocument'}, 'DOC document UI regressions:', True),
+        ('DOC42', 'doc-technical', (), {'K42_NEW': '1', 'K42_SCRIPT': 'audittechnical'}, 'DOC technical:', True),
         ('DOC42', 'doc-pagination', (out / 'sample.docx',), {'K42_SCRIPT': 'auditpagination'}, 'DOC pagination UI regressions:', True),
         ('PDF42', 'pdf-markup', (out / 'sample.pdf',), {'K42_AUDIT': 'markup'}, 'PDF markup UI regressions:', True),
+        ('PDF42', 'pdf-printer', (out / 'sample.pdf',), {'K42_AUDIT': 'printer'}, 'PDF printer UI regressions:', True),
         ('PDF42', 'pdf-pages', (out / 'sample.pdf',), {'K42_AUDIT': 'pages'}, 'PDF pages UI regressions:', True),
         ('PDF42', 'pdf-core', (out / 'sample.pdf',), {'K42_AUDIT': 'core'}, 'PDF core UI regressions:', True),
         ('PDF42', 'pdf-files', (out / 'sample.pdf',), {'K42_AUDIT': 'files'}, 'PDF document lifecycle regressions:', True),
@@ -288,13 +291,23 @@ if args.mode in ('all', 'tests'):
         ('PPT42', 'ppt-notes', (), {'K42_NEW': '1', 'K42_DO': 'auditnotes', 'K42_AUDIT_RECENT': '1'}, 'PPT notes UI regressions: 6/6 passed', True),
         ('PPT42', 'ppt-editing', (), {'K42_NEW': '1', 'K42_DO': 'auditediting', 'K42_PASTEBOARD': '1'}, 'PPT editing UI regressions:', True),
         ('PPT42', 'ppt-text', (), {'K42_NEW': '1', 'K42_DO': 'audittext', 'K42_PASTEBOARD': '1'}, 'PPT text/table/show UI regressions:', True),
-        ('PPT42', 'ppt-files', (), {'K42_NEW': '1', 'K42_DO': 'auditfiles'}, 'PPT document lifecycle regressions:', True),
+        ('PPT42', 'ppt-files', (), {'K42_NEW': '1', 'K42_DO': 'auditfiles', 'K42_KEY_FIXTURE': str(out / 'keynote-fixture.key')}, 'PPT document lifecycle regressions:', True),
         ('PPT42', 'ppt-inspector', (), {'K42_NEW': '1', 'K42_DO': 'auditinspector'}, 'PPT inspector UI regressions:', True),
     ]
+    if 'PPT42' in binaries:
+        runpy.run_path(str(REPO / 'scripts/keynote-fixture-audit.py'))['fixture'](out / 'keynote-fixture.key')
+        package = out / 'keynote-package.key'
+        if package.exists(): shutil.rmtree(package)
+        package.mkdir()
+        with zipfile.ZipFile(out / 'keynote-fixture.key') as keyzip: keyzip.extractall(package)
     available = {name for app, name, *_ in tests if app in binaries}
     if set(args.case) - available:
         parser.error("Unknown or unselected cases: " + ", ".join(sorted(set(args.case) - available)))
     for app, name, arguments, settings, marker, snapshot in tests:
+        if app in binaries and name == 'pdf-printer' and not args.case:
+            print('SKIP pdf-printer: remote file-panel automation is unverified; run explicitly with --mode tests --case pdf-printer', flush=True)
+            run_records.append({'name': name, 'app': app, 'kind': 'behavioral', 'status': 'SKIP', 'reason': 'remote file-panel automation unverified'})
+            continue
         if app in binaries and (not args.case or name in args.case):
             # The mark sample sheet renders ~240 signatures and stamps in a debug build.
             timeout = 300 if name in ('mark-samples', 'signature-fidelity') else 180 if name in ('img-vision', 'scn-vision', 'scn-scanner') else 60

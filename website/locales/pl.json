@@ -59,7 +59,8 @@
         "q": "Czy jest wersja dla Windows?",
         "a": "Wersja wstępna zawiera wszystkie sześć aplikacji. Rozpakuj całe archiwum ZIP i uruchom wybraną aplikację. Zawiera narzędzia do tworzenia etykiet i kodów kreskowych."
       }
-    ]
+    ],
+    "formatLimits": "Pliki Keynote są importowane jako edytowalne PPTX bez instalowania Keynote; eksport .key nie jest dostępny. EPUB ma płynny układ, ORA jest spłaszczany, a kodeki obrazów zależą od macOS."
   },
   "name": {
     "label": "CO KRYJE SIĘ W NAZWIE",
@@ -106,7 +107,8 @@
     "note": "Znak to grafika na etykietę: nie certyfikuje produktu. Dla znaków zgodności i znaków towarowych aplikacja pokazuje warunki użycia, np. wymagany certyfikat lub numer licencji. Dostępne w PDF42, DOC42 i XLS42 na Macu i w systemie Windows.",
     "qrAlt": "„Insert Symbol or Code” w XLS42: kod QR o rozmiarze 30 mm utworzony z linku do produktu.",
     "labelsAlt": "„Create Labels” w XLS42: arkusz etykiet z kodami QR utworzonymi z dziesięciu wierszy produktów.",
-    "caption": "Arkusz etykiet utworzony z dziesięciu wierszy arkusza kalkulacyjnego. Produkty są fikcyjne."
+    "caption": "Arkusz etykiet utworzony z dziesięciu wierszy arkusza kalkulacyjnego. Produkty są fikcyjne.",
+    "printerJobs": "PDF42 importuje i eksportuje pliki rastrowe ZPL, TSPL, EZPL, SBPL i Brother QL Raster. Drukarki fizyczne nie zostały sprawdzone."
   },
   "web": {
     "label": "OFF42 W PRZEGLĄDARCE",

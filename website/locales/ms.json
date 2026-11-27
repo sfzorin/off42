@@ -59,7 +59,8 @@
         "q": "Adakah versi Windows tersedia?",
         "a": "Versi pratonton yang mengandungi kesemua enam aplikasi. Ekstrak keseluruhan ZIP, kemudian jalankan aplikasi pilihan anda. Termasuk alat untuk membuat label dan kod bar."
       }
-    ]
+    ],
+    "formatLimits": "Keynote diimport sebagai PPTX boleh edit tanpa memasang Keynote; eksport .key tidak tersedia. EPUB boleh mengalir semula, ORA diratakan dan codec imej berbeza mengikut macOS."
   },
   "name": {
     "label": "APA ADA PADA NAMA",
@@ -106,7 +107,8 @@
     "note": "Tanda ialah grafik untuk label anda: ia tidak mensijilkan produk. Bagi tanda pematuhan dan tanda dagangan, apl memaparkan syarat penggunaan, seperti sijil atau nombor lesen yang diperlukan. Tersedia dalam PDF42, DOC42 dan XLS42 pada Mac dan Windows.",
     "qrAlt": "“Insert Symbol or Code” dalam XLS42: kod QR 30 mm yang dibuat daripada pautan produk.",
     "labelsAlt": "“Create Labels” dalam XLS42: helaian label dengan kod QR yang dibina daripada sepuluh baris produk.",
-    "caption": "Helaian label yang dibuat daripada sepuluh baris hamparan. Produknya adalah rekaan."
+    "caption": "Helaian label yang dibuat daripada sepuluh baris hamparan. Produknya adalah rekaan.",
+    "printerJobs": "PDF42 mengimport dan mengeksport fail raster ZPL, TSPL, EZPL, SBPL dan Brother QL Raster. Pencetak fizikal belum disahkan."
   },
   "web": {
     "label": "OFF42 DALAM PELAYAR",

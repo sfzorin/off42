@@ -193,6 +193,44 @@ def main():
 
     check("XLSX direct round trip and recalculation", direct)
 
+    def spreadsheetml_roundtrip():
+        ns = "urn:schemas-microsoft-com:office:spreadsheet"
+        initial, back, xlsx = output / "excel2003.xml", output / "excel2003-back.xml", output / "excel2003.xlsx"
+        initial.write_text('''<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:x="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style x:ID="bold"><Font x:Bold="1" x:Color="#112233"/><Interior x:Color="#AABBCC" x:Pattern="Solid"/><NumberFormat x:Format="0.00"/></Style></Styles><Worksheet x:Name="First &amp; One"><Table><Column x:Index="3" x:Width="90"/><Row x:Index="2"><Cell x:Index="2" x:StyleID="bold"><Data x:Type="Number">12.5</Data></Cell><Cell x:Index="4" x:MergeAcross="1"><Data x:Type="String">A &amp; B</Data></Cell><Cell><Data x:Type="Boolean">1</Data></Cell><Cell xmlns:x="urn:unrelated" x:Index="12"><Data x:Type="Number">007</Data></Cell></Row><Row x:Index="4"><Cell x:Index="3" x:Formula="=SUM(R[-2]C:R[-1]C)+R1C1+R1C[-1]+&apos;Other Sheet&apos;!R2C3+IF(RC=&quot;A1 R1C1&quot;,1,0)"><Data x:Type="Number">5</Data></Cell></Row></Table></Worksheet><Worksheet x:Name="Other Sheet"><Table><Row><Cell><Data x:Type="DateTime">2024-01-02T12:00:00.000</Data></Cell></Row></Table></Worksheet></Workbook>''', encoding="utf-8")
+        command(binary, "--convert", initial, xlsx)
+        with ZipFile(xlsx) as archive:
+            sheet = ET.fromstring(archive.read("xl/worksheets/sheet1.xml"))
+            styles = ET.fromstring(archive.read("xl/styles.xml"))
+            cells = {c.get("r"): c for c in sheet.findall(f".//{{{S}}}c")}
+            xf = list(styles.find(f"{{{S}}}cellXfs"))[int(cells["B2"].get("s"))]
+            font = list(styles.find(f"{{{S}}}fonts"))[int(xf.get("fontId"))]
+            fill = list(styles.find(f"{{{S}}}fills"))[int(xf.get("fillId"))]
+            require(font.find(f"{{{S}}}b") is not None and font.find(f"{{{S}}}color").get("rgb").endswith("112233"), "font style changed")
+            require(fill.find(f"{{{S}}}patternFill/{{{S}}}fgColor").get("rgb").endswith("AABBCC"), "fill changed")
+            require(cells["C4"].findtext(f"{{{S}}}f") == 'SUM(C2:C3)+$A$1+B$1+\'Other Sheet\'!$C$2+IF(C4="A1 R1C1",1,0)', "wrong converted A1 formula")
+            require(cells["G2"].get("t") in ("inlineStr", "s", "str"), "rebound unrelated Type or Index was accepted")
+            require(cells["B2"].findtext(f"{{{S}}}v") == "12.5", "alternate-prefix numeric type lost")
+            require(cells["F2"].findtext(f"{{{S}}}v") == "1", "boolean or merged cell position changed")
+            require(sheet.find(f"{{{S}}}mergeCells/{{{S}}}mergeCell").get("ref") == "D2:E2", "merge changed")
+        command(binary, "--convert", xlsx, back)
+        tree = ET.parse(back); q = "{" + ns + "}"
+        formulas = [c.get(q + "Formula") for c in tree.findall(".//" + q + "Cell") if c.get(q + "Formula")]
+        require(formulas == ['=SUM(R[-2]C:R[-1]C)+R1C1+R1C[-1]+\'Other Sheet\'!R2C3+IF(RC="A1 R1C1",1,0)'], f"wrong emitted R1C1 {formulas}")
+        require(len(tree.findall(q + "Worksheet")) == 2, "lost worksheet")
+        command(binary, "--convert", back, output / "excel2003-reopened.xlsx")
+        with ZipFile(output / "excel2003-reopened.xlsx") as archive:
+            reopened = ET.fromstring(archive.read("xl/worksheets/sheet1.xml"))
+            require(reopened.find(f".//{{{S}}}c[@r='C4']/{{{S}}}f").text == cells["C4"].findtext(f"{{{S}}}f"), "reopened formula changed")
+        bad = output / "unknown.xml"; bad.write_text("<not-a-workbook/>", encoding="utf-8")
+        result = subprocess.run([str(binary), "--convert", str(bad), str(output / "bad.xlsx")], capture_output=True, timeout=60)
+        require(result.returncode != 0, "unknown XML was accepted as CSV")
+        wrong = output / "wrong-namespace.xml"; wrong.write_text('<Workbook xmlns="urn:unrelated"/>', encoding="utf-8")
+        result = subprocess.run([str(binary), "--convert", str(wrong), str(output / "bad.xlsx")], capture_output=True, timeout=60)
+        require(result.returncode != 0, "wrong-namespace workbook accepted")
+        return "alternate attribute prefix, nested rebinding, two sheets, merge, typed values and mixed/relative/cross-sheet formulas; emitted XML and reopened XLSX inspected"
+
+    check("Excel 2003 XML conversion and reopen", spreadsheetml_roundtrip)
+
     def csv_roundtrip():
         rows = [["plain", "=1+2", "quotes \"hello\"", "Русский Türkçe"], ["comma, text", "line1\nline2", "first\rsecond", "42"]]
         csv_source, csv_book, csv_back = output / "source.csv", output / "csv.xlsx", output / "restored.csv"

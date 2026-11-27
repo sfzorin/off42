@@ -1,0 +1,40 @@
+name: macOS file formats
+on:
+  pull_request:
+    paths: ['Sources/**', 'Resources/**', 'Package.swift', 'scripts/*cli.py', 'scripts/*printer*.py', 'scripts/keynote-fixture-audit.py', '.github/workflows/macos-formats.yml']
+  push:
+    branches: [main]
+    paths: ['Sources/**', 'Resources/**', 'Package.swift', 'scripts/*cli.py', 'scripts/*printer*.py', 'scripts/keynote-fixture-audit.py', '.github/workflows/macos-formats.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  file-round-trips:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install independent file readers
+        run: |
+          command -v pdftotext >/dev/null || brew install poppler
+          python -m pip install pypdf pillow
+      - name: Build the suite and check the language catalogs
+        run: |
+          swift build
+          python scripts/check_strings.py
+      - name: Check document and workbook round trips
+        run: |
+          python scripts/audit-documents-cli.py
+          python scripts/audit-spreadsheets-cli.py
+      - name: Check presentation and image round trips
+        run: |
+          python scripts/audit-presentations-cli.py
+          python scripts/audit-images-cli.py
+      - name: Check PDF and printer-job conversions
+        run: |
+          python scripts/audit-pdf-cli.py
+          python scripts/audit-printer-files.py
+          python scripts/audit-printer-pdf-geometry.py

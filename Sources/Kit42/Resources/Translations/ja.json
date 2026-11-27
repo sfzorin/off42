@@ -3498,5 +3498,15 @@
   "Recovered": "復元済み",
   "Recovered Changes": "復元された変更",
   "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "復元した作業は未保存として開きます。破棄すると、後で復元することはできません。",
-  "Restore": "復元"
+  "Restore": "復元",
+  "Brother media:": "Brother の用紙：",
+  "Choose a printer file to import as a new PDF": "新しい PDF として読み込む印刷ファイルを選択",
+  "Export Printer File…": "印刷ファイルを書き出す…",
+  "Export flattened printer file at the selected printer resolution": "統合した印刷ファイルを選択したプリンターの解像度で書き出す",
+  "Format and printer:": "形式とプリンター：",
+  "Import Printer File…": "印刷ファイルを読み込む…",
+  "Keynote import limitations": "Keynote 読み込み時の制限",
+  "Printer file format": "印刷ファイル形式",
+  "Printer files contain flattened black and white pages. SBPL and Brother jobs may include padding. Choose the matching printer and media.": "印刷ファイルには統合された白黒のページが含まれます。SBPL と Brother の印刷ジョブには余白が含まれる場合があります。対応するプリンターと用紙を選択してください。",
+  "Save this imported presentation as PPTX or ODP.": "読み込んだプレゼンテーションを PPTX または ODP として保存してください。"
 }

@@ -3,6 +3,9 @@
 import argparse
 from datetime import datetime, timezone
 import hashlib
+import io
+import zipfile
+import xml.etree.ElementTree as ET
 import json
 from pathlib import Path
 import subprocess
@@ -55,6 +58,43 @@ def formats():
         with Image.open(target) as result:
             assert result.format == reported and result.size == (96, 64)
     return 'PNG/JPEG/TIFF/BMP are readable and use the requested container and dimensions'
+
+
+def openraster():
+    preview = io.BytesIO(); image.save(preview, format='PNG')
+    layer = io.BytesIO(); Image.new('RGBA', (16, 16), (255, 0, 0, 128)).save(layer, format='PNG')
+    fixture = out / 'layered.ora'
+    with zipfile.ZipFile(fixture, 'w') as archive:
+        archive.writestr('mimetype', 'image/openraster', compress_type=zipfile.ZIP_STORED)
+        archive.writestr('stack.xml', '<image w="96" h="64"><stack><layer src="data/top.png" x="3" y="5"/><layer src="data/bottom.png" x="0" y="0"/></stack></image>')
+        archive.writestr('data/top.png', layer.getvalue()); archive.writestr('data/bottom.png', preview.getvalue())
+        archive.writestr('mergedimage.png', preview.getvalue())
+    decoded = out / 'ora-decoded.png'; run('--edit', fixture, decoded)
+    assert ImageChops.difference(Image.open(decoded).convert('RGB'), image).getbbox() is None
+    exported = out / 'flattened.ora'; run('--edit', fixture, exported)
+    with zipfile.ZipFile(exported) as archive:
+        assert archive.namelist()[0] == 'mimetype' and archive.getinfo('mimetype').compress_type == zipfile.ZIP_STORED
+        assert archive.read('mimetype') == b'image/openraster'
+        xml = ET.fromstring(archive.read('stack.xml')); layers = xml.findall('./stack/layer')
+        assert xml.attrib['w'] == '96' and xml.attrib['h'] == '64' and len(layers) == 1
+        assert layers[0].attrib['x'] == layers[0].attrib['y'] == '0'
+        for path in ['mergedimage.png', layers[0].attrib['src']]:
+            assert ImageChops.difference(Image.open(io.BytesIO(archive.read(path))).convert('RGB'), image).getbbox() is None
+    reopened = out / 'ora-reopened.png'; run('--edit', exported, reopened)
+    assert ImageChops.difference(Image.open(reopened).convert('RGB'), image).getbbox() is None
+    for bad, entries in [('missing', [('mimetype', b'image/openraster'), ('stack.xml', b'<image w="96" h="64"/>')]),
+                         ('traversal', [('mimetype', b'image/openraster'), ('stack.xml', b'<image w="96" h="64"/>'), ('mergedimage.png', preview.getvalue()), ('../escape', b'x')]),
+                         ('wrong-mime', [('mimetype', b'wrong'), ('stack.xml', b'<image w="96" h="64"/>'), ('mergedimage.png', preview.getvalue())])]:
+        path = out / (bad + '.ora')
+        with zipfile.ZipFile(path, 'w') as archive:
+            for name, data in entries: archive.writestr(name, data)
+        run('--info', path, success=False)
+    oversized = bytearray(fixture.read_bytes())
+    central = oversized.find(b'PK\x01\x02'); assert central >= 0
+    oversized[central + 24:central + 28] = (256 * 1024 * 1024 + 1).to_bytes(4, 'little')
+    too_big = out / 'oversized.ora'; too_big.write_bytes(oversized)
+    run('--info', too_big, success=False)
+    return 'layered merged preview pixels, single-layer export manifest and reopened pixels; missing preview, traversal, wrong MIME and oversized ZIP rejected'
 
 
 def orientation():
@@ -188,7 +228,7 @@ def ocr():
 
 
 started = datetime.now(timezone.utc).isoformat()
-for name, body in [('Containers and dimensions', formats), ('EXIF orientation', orientation), ('Pixel rotate and flip', transforms),
+for name, body in [('Containers and dimensions', formats), ('OpenRaster flattened round trip', openraster), ('EXIF orientation', orientation), ('Pixel rotate and flip', transforms),
                    ('Resize and crop', geometry), ('Alpha and JPEG background', alpha), ('Description and DPI', metadata),
                    ('Markup follows geometry', marks), ('Colour adjustments', adjustments), ('Pages and animation', multiple),
                    ('Bounded decoding', bounded), ('Failure preservation', failures), ('Actual OCR', ocr)]:

@@ -59,7 +59,8 @@
         "q": "Gibt es eine Windows-Version?",
         "a": "Vorschau mit allen sechs Apps. Entpacke die ZIP-Datei vollständig und starte die gewünschte App. Mit Werkzeugen für Etiketten und Barcodes."
       }
-    ]
+    ],
+    "formatLimits": "Keynote-Dateien werden ohne installiertes Keynote in bearbeitbare PPTX importiert; .key-Export ist nicht verfügbar. EPUB ist umfließend, ORA wird zusammengeführt, und Bildcodecs variieren je nach macOS."
   },
   "name": {
     "label": "WAS STECKT IM NAMEN",
@@ -106,7 +107,8 @@
     "note": "Ein Zeichen ist eine Grafik für dein Etikett: Es zertifiziert das Produkt nicht. Für Konformitätszeichen und Marken zeigt die App die Nutzungsbedingungen, etwa ein erforderliches Zertifikat oder eine Lizenznummer. Verfügbar in PDF42, DOC42 und XLS42 auf Mac und Windows.",
     "qrAlt": "„Insert Symbol or Code“ in XLS42: ein 30 mm großer QR-Code aus einem Produktlink.",
     "labelsAlt": "„Create Labels“ in XLS42: ein Etikettenbogen mit QR-Codes aus zehn Produktzeilen.",
-    "caption": "Ein Etikettenbogen aus zehn Tabellenzeilen. Die Produkte sind frei erfunden."
+    "caption": "Ein Etikettenbogen aus zehn Tabellenzeilen. Die Produkte sind frei erfunden.",
+    "printerJobs": "PDF42 importiert und exportiert Rasterdateien für ZPL, TSPL, EZPL, SBPL und Brother QL Raster. Physische Drucker wurden nicht geprüft."
   },
   "web": {
     "label": "OFF42 IM BROWSER",

@@ -59,7 +59,8 @@
         "q": "Van Windows-verzió?",
         "a": "Előzetes verzió mind a hat alkalmazással. Bontsd ki a teljes ZIP-fájlt, majd indítsd el a kívánt alkalmazást. Címkék és vonalkódok készítésére is használható."
       }
-    ]
+    ],
+    "formatLimits": "A Keynote telepítése nélkül szerkeszthető PPTX-ként importálható; .key export nincs. Az EPUB tördelése rugalmas, az ORA rétegei összeolvadnak, a képkodekek pedig macOS-verziótól függenek."
   },
   "name": {
     "label": "MI VAN A NÉVBEN?",
@@ -106,7 +107,8 @@
     "note": "A jelölés grafika a címkédhez: nem tanúsítja a terméket. A megfelelőségi jelöléseknél és védjegyeknél az alkalmazás megmutatja a használat feltételeit, például a szükséges tanúsítványt vagy licencszámot. Elérhető a PDF42-ben, a DOC42-ben és az XLS42-ben Macen és Windowson.",
     "qrAlt": "„Insert Symbol or Code” az XLS42-ben: egy termékhivatkozásból készült, 30 mm-es QR-kód.",
     "labelsAlt": "„Create Labels” az XLS42-ben: tíz terméksorból készült, QR-kódos címkeív.",
-    "caption": "Tíz táblázatsorból készült címkeív. A termékek kitaláltak."
+    "caption": "Tíz táblázatsorból készült címkeív. A termékek kitaláltak.",
+    "printerJobs": "A PDF42 ZPL, TSPL, EZPL, SBPL és Brother QL Raster raszterfájlokat importál és exportál. Fizikai nyomtatókat nem ellenőriztünk."
   },
   "web": {
     "label": "OFF42 A BÖNGÉSZŐBEN",

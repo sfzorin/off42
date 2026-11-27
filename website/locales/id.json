@@ -59,7 +59,8 @@
         "q": "Apakah ada versi Windows?",
         "a": "Versi pratinjau berisi keenam aplikasi. Ekstrak seluruh isi ZIP, lalu jalankan aplikasi yang Anda inginkan. Termasuk alat untuk membuat label dan kode batang."
       }
-    ]
+    ],
+    "formatLimits": "Keynote diimpor menjadi PPTX yang dapat diedit tanpa memasang Keynote; ekspor .key tidak tersedia. EPUB dapat menyesuaikan alur teks, ORA diratakan, dan codec gambar berbeda menurut macOS."
   },
   "name": {
     "label": "APALAH ARTI SEBUAH NAMA",
@@ -106,7 +107,8 @@
     "note": "Tanda adalah gambar untuk label Anda: tanda tidak menyertifikasi produk. Untuk tanda kesesuaian dan merek dagang, aplikasi menampilkan syarat penggunaannya, seperti sertifikat atau nomor lisensi yang diwajibkan. Tersedia di PDF42, DOC42, dan XLS42 di Mac dan Windows.",
     "qrAlt": "“Insert Symbol or Code” di XLS42: kode QR 30 mm yang dibuat dari tautan produk.",
     "labelsAlt": "“Create Labels” di XLS42: lembar label berisi kode QR yang dibuat dari sepuluh baris produk.",
-    "caption": "Lembar label yang dibuat dari sepuluh baris spreadsheet. Produknya fiktif."
+    "caption": "Lembar label yang dibuat dari sepuluh baris spreadsheet. Produknya fiktif.",
+    "printerJobs": "PDF42 mengimpor dan mengekspor berkas raster ZPL, TSPL, EZPL, SBPL, dan Brother QL Raster. Printer fisik belum diverifikasi."
   },
   "web": {
     "label": "OFF42 DI BROWSER",

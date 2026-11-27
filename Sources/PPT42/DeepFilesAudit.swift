@@ -146,6 +146,7 @@ enum PPTFilesAudit {
         owner.commitEditing(); doc.endSilentEdit()
         let original = doc.deck, undo = doc.undoManager, state = EditState(slide: owner.current, selection: owner.selection)
         let originalMode = owner.mode, originalNotesShown = owner.notesShown
+        let originalURL = doc.fileURL, originalType = doc.fileType
         let manager = UndoManager(); manager.groupsByEvent = false; doc.undoManager = manager
         // The harness calls actions synchronously in one run-loop turn. Represent each user event explicitly;
         // production AppKit supplies these groups automatically, including focus-change/end-edit callbacks.
@@ -156,6 +157,7 @@ enum PPTFilesAudit {
         }
         defer {
             owner.canvas.editor.cancel(); doc.replaceDeck(original); doc.undoManager = undo
+            doc.fileURL = originalURL; doc.fileType = originalType
             doc.onChange?(fixture()); doc.restoreState?(state)
             owner.setMode(originalMode); owner.setNotesShown(originalNotesShown)
         }
@@ -245,6 +247,35 @@ enum PPTFilesAudit {
             type("DISCARDED-OUTLINE-DRAFT", in: owner.outline)
             try doc.read(from: titledData, ofType: "org.openxmlformats.presentationml.presentation")
             check("Revert cancels delayed outline edits and its local Undo stack", !owner.outline.hasPendingChanges && outlineUndo?.canUndo == false && owner.outline.string == "ORIGINAL-OUTLINE" && doc.deck.slides[0].title == "ORIGINAL-OUTLINE")
+            if let keyPath = ProcessInfo.processInfo.environment["K42_KEY_FIXTURE"] {
+                let key = URL(fileURLWithPath: keyPath)
+                let package = key.deletingLastPathComponent().appendingPathComponent("keynote-package.key", isDirectory: true)
+                for input in [key, package] {
+                    let before = try Data(contentsOf: input.hasDirectoryPath ? input.appendingPathComponent("Index/Document.iwa") : input)
+                    var opened: PresentationDocument?, openError: Error?, openDone = false
+                    NSDocumentController.shared.openDocument(withContentsOf: input, display: true) { document, _, error in
+                        opened = document as? PresentationDocument; openError = error; openDone = true
+                    }
+                    let openDeadline = Date(timeIntervalSinceNow: 5)
+                    while !openDone && Date() < openDeadline { RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.01)) }
+                    guard let imported = opened, let window = imported.controller else { check("Keynote controller opens document: \(String(describing: openError))", false); continue }
+                    check("Keynote controller creates untitled imported deck", imported.fileURL == nil && imported.deck.slides.count == 2 && imported.fileType == "org.openxmlformats.presentationml.presentation")
+                    guard let text = window.currentSlide?.objects.first else { check("Keynote text object exists", false); imported.close(); continue }
+                    window.canvas.editor.begin(text, at: nil, selectAll: true)
+                    window.canvas.editor.textView.insertText("KEYNOTE-EDITED", replacementRange: window.canvas.editor.textView.selectedRange())
+                    let output = key.deletingLastPathComponent().appendingPathComponent(input.hasDirectoryPath ? "package-save.pptx" : "key-save.pptx")
+                    var done = false, saveError: Error?
+                    imported.undoManager?.beginUndoGrouping()
+                    imported.save(to: output, ofType: "org.openxmlformats.presentationml.presentation", for: .saveAsOperation) { error in saveError = error; done = true }
+                    imported.undoManager?.endUndoGrouping()
+                    let deadline = Date(timeIntervalSinceNow: 5)
+                    while !done && Date() < deadline { RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.01)) }
+                    let saved = try? DeckIO.read(Data(contentsOf: output), ext: "pptx")
+                    let after = try Data(contentsOf: input.hasDirectoryPath ? input.appendingPathComponent("Index/Document.iwa") : input)
+                    check("Keynote native edit and Save As reopens without changing source", done && saveError == nil && before == after && saved?.slides.first?.objects.first?.text?.plainText == "KEYNOTE-EDITED")
+                    imported.close()
+                }
+            } else { check("Keynote lifecycle fixture supplied", false) }
         } catch { check("lifecycle fixture: " + error.localizedDescription, false) }
         print("PPT document lifecycle regressions: \(checks - failures)/\(checks) passed")
         return failures

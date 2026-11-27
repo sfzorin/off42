@@ -6,7 +6,7 @@ import PDFKit
 enum PDFMainCLI {
     static func run(_ args: [String]) -> Int32? {
         guard args.count > 1, ["--compress", "--verify", "--sign", "--export", "--images-to-pdf", "--ocr",
-                                 "--ltv", "--doc-timestamp", "--csc-credentials", "--csc-sign"].contains(args[1]) else { return nil }
+                                 "--ltv", "--doc-timestamp", "--csc-credentials", "--csc-sign", "--printer-to-pdf", "--pdf-to-printer"].contains(args[1]) else { return nil }
         func require(_ value: Bool, _ message: String) throws {
             if !value { throw NSError(domain: "PDF42.CLI", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
         }
@@ -67,6 +67,18 @@ enum PDFMainCLI {
         let cscKeys: Set<String> = ["token", "user", "password", "client-id", "client-secret", "port"]
         do {
             switch args[1] {
+            case "--printer-to-pdf", "--pdf-to-printer":
+                try require((5...6).contains(args.count), "Usage: --printer-to-pdf|--pdf-to-printer input output zpl|tspl|ezpl|sbpl|brother [continuous|62x29|62x100]")
+                let (format, profile) = try PDFPrinterFiles.settings(args[4], args.count == 6 ? args[5] : "")
+                let source = URL(fileURLWithPath: args[2]), destination = URL(fileURLWithPath: args[3])
+                try require(source.standardizedFileURL != destination.standardizedFileURL, "Input and output must be different files")
+                let result: Data
+                if args[1] == "--printer-to-pdf" { result = try PDFPrinterFiles.toPDF(PrinterFilePanel.load(source), format: format, profile: profile) }
+                else { let (_, pdf) = try input(args[2]); result = try PDFPrinterFiles.fromPDF(pdf, format: format, profile: profile) }
+                try result.write(to: destination, options: .atomic)
+                if args[4].lowercased() == "sbpl" || args[4].lowercased() == "brother" {
+                    print("Note: SBPL and Brother raster jobs include block or transport padding; imported dimensions include encoded padding.")
+                }
             case "--verify":
                 try require(args.count == 3, "Usage: --verify file.pdf")
                 let (data, pdf) = try input(args[2])

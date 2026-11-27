@@ -1,4 +1,5 @@
 import AppKit
+import CryptoKit
 import Kit42
 import PDFKit
 import UniformTypeIdentifiers
@@ -73,6 +74,19 @@ extension ImageWindowController {
                     }
                 }
             }
+            func matchingPixels(_ lhs: CGImage?, _ rhs: CGImage?) -> Bool {
+                guard let lhs, let rhs, lhs.width == rhs.width, lhs.height == rhs.height else { return false }
+                func rgba(_ image: CGImage) -> Data? {
+                    guard let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8,
+                                                  bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+                    context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+                    guard let data = context.data else { return nil }
+                    return Data(bytes: data, count: image.width * image.height * 4)
+                }
+                guard let a = rgba(lhs), let b = rgba(rhs) else { return false }
+                return a == b
+            }
             reset()
             check(url == first && loaded?.url == first && base?.width == 320 && base?.height == 240
                 && !isDirty && imageDPI == 144 && imageDescription == "Saved caption",
@@ -130,6 +144,49 @@ extension ImageWindowController {
             catch { check(url == first && isDirty && imageDescription == "Retained edit" && imageDPI == 200 && (try? Data(contentsOf: failed)) == sentinel,
                           "failed Save As preserves URL, edits, DPI and existing destination") }
 
+            // Remote save panels need desktop accessibility automation to accept;
+            // keep this full scenario opt-in until that facility is available.
+            if ProcessInfo.processInfo.environment["IMG42_AUDIT_ORA_PANEL"] == "1" {
+                // A layered ORA is a flattened editing session, so Cmd+S must offer a
+                // new destination even for the metadata-only fast path.
+                let layered = folder.appendingPathComponent("layered.ora")
+                try OpenRaster.write(white, to: layered)
+                var archive = try ZipArchive(data: Data(contentsOf: layered))
+                archive["data/layer1.png"] = archive["data/layer0.png"]
+                archive["stack.xml"] = Data("<image w=\"320\" h=\"240\"><stack><layer src=\"data/layer1.png\"/><layer src=\"data/layer0.png\"/></stack></image>".utf8)
+                try archive.data().write(to: layered)
+                let sourceData = try Data(contentsOf: layered)
+                let sourceHash = SHA256.hash(data: sourceData)
+                adoptSavedURL(layered, loaded: ImageLoader.load(layered)); undo.removeAllActions()
+                imageDescription = "Changed metadata"
+                let key = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .command,
+                                           timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                                           context: nil, characters: "s", charactersIgnoringModifiers: "s", isARepeat: false, keyCode: 1)!
+                NSApp.sendEvent(key); pump(0.3)
+                if let panel = NSApp.windows.compactMap({ $0 as? NSSavePanel }).first(where: { $0.isVisible }) {
+                    check(panel.nameFieldStringValue != layered.lastPathComponent, "layered ORA Cmd+S offers a new filename")
+                    let destination = folder.appendingPathComponent("layered-saved.ora")
+                    panel.directoryURL = folder; panel.nameFieldStringValue = destination.lastPathComponent
+                    if let button = panel.contentView.flatMap({ views($0).compactMap { $0 as? NSButton }.first { $0.title == panel.prompt } }) {
+                        button.performClick(nil); pump(0.8)
+                    } else {
+                        check(false, "layered ORA Save panel has native Save button")
+                    }
+                    let reopened = ImageLoader.load(destination)
+                    check(matchingPixels(reopened.image, white), "layered ORA Save As reopens all output pixels")
+                    check(SHA256.hash(data: try Data(contentsOf: layered)) == sourceHash,
+                          "layered ORA Cmd+S preserves source hash")
+                    let preserved = try ZipArchive(data: Data(contentsOf: layered))
+                    check(preserved["data/layer0.png"] != nil && preserved["data/layer1.png"] != nil && preserved.string("stack.xml") == archive.string("stack.xml"),
+                          "layered ORA Cmd+S preserves source layers")
+                    if panel.isVisible { panel.cancel(nil); pump() }
+
+                } else { check(false, "layered ORA Cmd+S opens native Save As panel") }
+
+            } else {
+                print("SKIP IMG files UI: layered ORA native Save As acceptance requires accessibility automation (set IMG42_AUDIT_ORA_PANEL=1)")
+            }
+
             reset(); check(beginText("SHARE VISIBLE TEXT"), "native draft opens before Share")
             var items: [Any] = []; event { items = shareItems() }
             check(!canvas.markup.isEditingText && items.first is NSImage && isDirty, "Share commits the current text and shares edited pixels")
@@ -179,6 +236,16 @@ extension ImageWindowController {
                           "Save As format updates encoding, extension and allowed file type: " + type.identifier)
                     check(quality.isHidden == (type != .jpeg), "Save As exposes quality only for a lossy format: " + type.identifier)
                 }
+                if let index = options.types.firstIndex(of: OpenRaster.type) {
+                    format.selectItem(at: index)
+                    if let action = format.action { check(NSApp.sendAction(action, to: format.target, from: format), "native OpenRaster format action") }
+                    check(options.type == OpenRaster.type && panel.nameFieldStringValue == "accessory.ora"
+                          && format.titleOfSelectedItem == "OpenRaster (flattened)", "OpenRaster control selects flattened output and extension")
+                    reset(); check(beginText("ORA VISIBLE TEXT"), "OpenRaster export commits native text draft")
+                    let target = folder.appendingPathComponent("native.ora")
+                    try event { try writeExport(to: target, type: options.type.identifier, saveAs: false) }
+                    check(hasInk(ImageLoader.load(target).image), "native OpenRaster export reopens rendered text pixels")
+                } else { check(false, "Save As offers flattened OpenRaster") }
                 format.selectItem(at: options.types.firstIndex(of: .jpeg)!)
                 if let action = format.action { _ = NSApp.sendAction(action, to: format.target, from: format) }
                 quality.doubleValue = 0.63

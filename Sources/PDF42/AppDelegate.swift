@@ -135,6 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 switch audit {
                 case "markup": passed = await editor.auditMarkup()
                 case "pages": passed = await editor.auditPages()
+                case "printer": passed = await editor.auditPrinterFiles()
                 case "core": passed = editor.auditCore()
                 case "technical":
                     // This scenario pumps the run loop for native sheets and drags; nested pumping only delivers

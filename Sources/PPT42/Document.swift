@@ -95,9 +95,34 @@ final class PresentationDocument: NSDocument {
 
     // MARK: - Reading and writing
 
+    override func read(from url: URL, ofType typeName: String) throws {
+        guard Self.extensionFor(typeName) == "key" || url.pathExtension.lowercased() == "key" else {
+            try super.read(from: url, ofType: typeName); return
+        }
+        let archive = try KeynoteArchive(url: url)
+        var importer = KeynoteImport(archive)
+        let imported = try importer.read()
+        installReadDeck(imported.deck)
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            guard !Self.testMode else { return }
+            let alert = NSAlert()
+            alert.messageText = L("Keynote import limitations")
+            alert.informativeText = imported.warnings.joined(separator: "\n") + "\n" + L("Save this imported presentation as PPTX or ODP.")
+            alert.addButton(withTitle: L("OK"))
+            if let window = self.windowForSheet { alert.beginSheetModal(for: window) } else { alert.runModal() }
+        }
+    }
+
     override func read(from data: Data, ofType typeName: String) throws {
         let ext = Self.extensionFor(typeName)
         let restored = try DeckIO.read(data, ext: ext)
+        installReadDeck(restored)
+        // Opening a template starts a new, untitled presentation from it.
+        if ext == "potx" || ext == "otp" { DispatchQueue.main.async { [weak self] in self?.fileURL = nil; self?.fileType = ext == "otp" ? "org.oasis-open.opendocument.presentation" : "org.openxmlformats.presentationml.presentation"; self?.updateChangeCount(.changeDone) } }
+    }
+
+    private func installReadDeck(_ restored: Deck) {
         let old = deck
         // Parse first: failed Revert must preserve both the model and the visible draft.
         silentStart = nil
@@ -113,8 +138,6 @@ final class PresentationDocument: NSDocument {
         controller?.notesView.resetUndoHistory()
         controller?.notesPage.resetUndoHistory()
         controller?.outline.resetUndoHistory()
-        // Opening a template starts a new, untitled presentation from it.
-        if ext == "potx" || ext == "otp" { DispatchQueue.main.async { [weak self] in self?.fileURL = nil; self?.fileType = ext == "otp" ? "org.oasis-open.opendocument.presentation" : "org.openxmlformats.presentationml.presentation"; self?.updateChangeCount(.changeDone) } }
     }
 
     override func data(ofType typeName: String) throws -> Data {
@@ -125,6 +148,7 @@ final class PresentationDocument: NSDocument {
 
     static func extensionFor(_ typeName: String) -> String {
         let t = typeName.lowercased()
+        if t == "com.apple.iwork.keynote.key" || t == "key" || t.hasSuffix(".key") { return "key" }
         if t.contains("presentation-template") || t.hasSuffix("otp") { return "otp" }
         if t.contains("presentationml.template") || t.hasSuffix("potx") { return "potx" }
         if t.contains("opendocument") || t.hasSuffix("odp") { return "odp" }

@@ -59,7 +59,8 @@
         "q": "Existe-t-il une version Windows ?",
         "a": "Version préliminaire avec les six applications. Décompressez toute l’archive ZIP, puis lancez l’application de votre choix. Des outils permettent de créer des étiquettes et des codes-barres."
       }
-    ]
+    ],
+    "formatLimits": "Les fichiers Keynote sont importés en PPTX modifiable sans installer Keynote ; l’export .key n’est pas disponible. EPUB est redistribuable, ORA est aplati et les codecs d’image varient selon macOS."
   },
   "name": {
     "label": "QU'Y A-T-IL DANS UN NOM ?",
@@ -106,7 +107,8 @@
     "note": "Un marquage est un graphisme pour votre étiquette : il ne certifie pas le produit. Pour les marquages de conformité et les marques déposées, l'app affiche les conditions d'utilisation, comme un certificat ou un numéro de licence requis. Disponible dans PDF42, DOC42 et XLS42 sur Mac et Windows.",
     "qrAlt": "« Insert Symbol or Code » dans XLS42 : un code QR de 30 mm créé à partir d'un lien produit.",
     "labelsAlt": "« Create Labels » dans XLS42 : une planche d'étiquettes avec des codes QR créés à partir de dix lignes de produits.",
-    "caption": "Une planche d'étiquettes créée à partir de dix lignes de tableur. Les produits sont fictifs."
+    "caption": "Une planche d'étiquettes créée à partir de dix lignes de tableur. Les produits sont fictifs.",
+    "printerJobs": "PDF42 importe et exporte des fichiers matriciels ZPL, TSPL, EZPL, SBPL et Brother QL Raster. Les imprimantes physiques n’ont pas été vérifiées."
   },
   "web": {
     "label": "OFF42 DANS LE NAVIGATEUR",

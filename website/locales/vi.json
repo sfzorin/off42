@@ -59,7 +59,8 @@
         "q": "Có phiên bản Windows không?",
         "a": "Bản xem trước có đủ sáu ứng dụng. Giải nén toàn bộ tệp ZIP rồi mở ứng dụng bạn muốn. Có công cụ tạo nhãn và mã vạch."
       }
-    ]
+    ],
+    "formatLimits": "Tệp Keynote được nhập thành PPTX có thể chỉnh sửa mà không cần cài Keynote; không hỗ trợ xuất .key. EPUB có bố cục linh hoạt, ORA được làm phẳng và codec ảnh tùy thuộc macOS."
   },
   "name": {
     "label": "Ý NGHĨA CÁI TÊN",
@@ -106,7 +107,8 @@
     "note": "Dấu chỉ là hình vẽ cho nhãn: chèn dấu không có nghĩa là sản phẩm được chứng nhận. Với dấu hợp chuẩn và nhãn hiệu thương mại, ứng dụng hiển thị điều kiện sử dụng, chẳng hạn chứng chỉ hoặc số giấy phép bắt buộc. Có trong PDF42, DOC42 và XLS42 trên Mac và Windows.",
     "qrAlt": "“Insert Symbol or Code” trong XLS42: mã QR rộng 30 mm tạo từ đường dẫn sản phẩm.",
     "labelsAlt": "“Create Labels” trong XLS42: tờ nhãn có mã QR tạo từ mười hàng sản phẩm.",
-    "caption": "Tờ nhãn tạo từ mười hàng bảng tính. Các sản phẩm là hư cấu."
+    "caption": "Tờ nhãn tạo từ mười hàng bảng tính. Các sản phẩm là hư cấu.",
+    "printerJobs": "PDF42 nhập và xuất tệp raster ZPL, TSPL, EZPL, SBPL và Brother QL Raster. Máy in vật lý chưa được kiểm chứng."
   },
   "web": {
     "label": "OFF42 TRÊN TRÌNH DUYỆT",

@@ -3498,5 +3498,15 @@
   "Recovered": "복구됨",
   "Recovered Changes": "복구된 변경 사항",
   "Recovered work opens as unsaved. If you discard it, it cannot be recovered later.": "복구된 작업은 저장되지 않은 상태로 열립니다. 버리면 나중에 복구할 수 없습니다.",
-  "Restore": "복원"
+  "Restore": "복원",
+  "Brother media:": "Brother 인쇄 용지:",
+  "Choose a printer file to import as a new PDF": "새 PDF로 가져올 인쇄 파일 선택",
+  "Export Printer File…": "인쇄 파일 내보내기…",
+  "Export flattened printer file at the selected printer resolution": "병합된 인쇄 파일을 선택한 프린터 해상도로 내보내기",
+  "Format and printer:": "형식 및 프린터:",
+  "Import Printer File…": "인쇄 파일 가져오기…",
+  "Keynote import limitations": "Keynote 가져오기 제한 사항",
+  "Printer file format": "인쇄 파일 형식",
+  "Printer files contain flattened black and white pages. SBPL and Brother jobs may include padding. Choose the matching printer and media.": "인쇄 파일에는 한 레이어로 병합된 흑백 페이지가 들어 있습니다. SBPL 및 Brother 작업에는 여백이 포함될 수 있습니다. 알맞은 프린터와 용지를 선택하세요.",
+  "Save this imported presentation as PPTX or ODP.": "가져온 프레젠테이션을 PPTX 또는 ODP로 저장하세요."
 }
