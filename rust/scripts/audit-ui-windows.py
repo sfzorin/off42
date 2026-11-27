@@ -4888,6 +4888,26 @@ def audit_chrome_structure(process, main, app, result, output=None):
     assert len(tops) == 1 and min(tops) > box.top, (app, "toolbar is not one strip below the title row", sorted(tops))
     assert rect(undo).left < rect(redo).left and all(rect(undo).left <= rect(h).left for h in strip_buttons), (app, "Undo does not lead the strip")
     assert bool(u.IsWindowEnabled(undo)) == (u.GetMenuState(u.GetMenu(main), 4, 0) & 3 == 0), (app, "Undo button and menu disagree")
+    # Every strip command is an icon button: a fixed square icon cell, never a label-sized text button, with the
+    # label kept as window text (accessible name) and registered as a tooltip.
+    u.GetDpiForWindow.argtypes, u.GetDpiForWindow.restype = [w.HWND], w.UINT
+    icon_cell = round(32 * u.GetDpiForWindow(main) / 96)
+    sizes = {text(h): (rect(h).right - rect(h).left, rect(h).bottom - rect(h).top) for h in strip_buttons}
+    text_buttons = {name: size for name, size in sizes.items() if abs(size[0] - icon_cell) > 1 or abs(size[1] - icon_cell) > 1}
+    assert not text_buttons, (app, "toolbar commands drawn as text buttons", icon_cell, text_buttons)
+    assert all(text(h).strip() for h in strip_buttons), (app, "toolbar icon button without an accessible name")
+    tooltips = []
+    @c.WINFUNCTYPE(w.BOOL, w.HWND, w.LPARAM)
+    def collect_tooltips(hwnd, _):
+        owner = w.DWORD()
+        u.GetWindowThreadProcessId(hwnd, c.byref(owner))
+        if owner.value == process.pid and classname(hwnd) == "tooltips_class32" and u.GetWindow(hwnd, 4) == main:  # GW_OWNER
+            tooltips.append(hwnd)
+        return True
+    u.GetWindow.argtypes, u.GetWindow.restype = [w.HWND, w.UINT], w.HWND
+    u.EnumWindows(collect_tooltips, 0)
+    tool_count = max((u.SendMessageW(h, 0x40D, 0, 0) for h in tooltips), default=0)  # TTM_GETTOOLCOUNT
+    assert tool_count >= len(strip_buttons), (app, "toolbar icon buttons without tooltips", tool_count, len(strip_buttons))
     # Flat panels: no sunken client edges on the side list, the editor or the table.
     for identifier in (100, 101, 102):
         control = u.GetDlgItem(main, identifier)

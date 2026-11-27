@@ -4430,7 +4430,8 @@ pub fn run(app: Box<dyn App>) {
                 null(),
             );
             toolbar.push((id, button));
-            toolbar_info.push((title, crate::chrome::icon_for(title), group));
+            // Every strip command is an icon button; its label stays the window text (accessible name) and tooltip.
+            toolbar_info.push((title, Some(crate::chrome::toolbar_icon(title)), group));
         }
         let toolbar_more = CreateWindowExW(
             0,
