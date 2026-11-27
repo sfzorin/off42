@@ -1,6 +1,8 @@
 // One SQLite-backed object per UTC day. Amounts are integer millionths of a US dollar.
 import { DurableObject } from 'cloudflare:workers';
 
+const sessionLimitMicros = 100_000; // $0.10 per anonymous visitor in this day's object.
+
 export class AssistantBudget extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
@@ -21,7 +23,7 @@ export class AssistantBudget extends DurableObject {
       if (this.sql.exec('SELECT 1 FROM consumed WHERE id=?',nonce).toArray().length) return 'expired';
       if (first && this.count(session) >= 30) return 'session';
       const siteLimit = Math.floor(Number(this.env.ASSISTANT_DAILY_USD ?? 5)*1e6);
-      if (!Number.isSafeInteger(siteLimit) || this.count(user)+amount > 100000 || this.count(ip)+amount > 500000 || this.count('site')+amount > siteLimit) return 'limit';
+      if (!Number.isSafeInteger(siteLimit) || this.count(user)+amount > sessionLimitMicros || this.count(ip)+amount > 500000 || this.count('site')+amount > siteLimit) return 'limit';
       this.sql.exec('INSERT INTO consumed VALUES (?)',nonce);
       this.sql.exec('INSERT INTO attempts VALUES (?,?,?,?)',nonce,user,ip,amount);
       if (first) this.add(session,1);

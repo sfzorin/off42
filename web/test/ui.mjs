@@ -788,6 +788,46 @@ try {
     await page.unrouteAll();
   });
 
+  await step('two editors, a reload and renewed consent share one daily spending ID', async () => {
+    const doc = await newPage();
+    const context = doc.context();
+    try {
+      const sheet = await context.newPage();
+      const ids = [];
+      await context.route('**/api/assistant', route => {
+        if (route.request().method() === 'GET') return route.fulfill({json:{sitekey:'fixture'}});
+        ids.push(route.request().postDataJSON().id);
+        return route.fulfill({json:{text:'Completed.'}});
+      });
+      await context.route('**/app/challenge/?*', route => route.fulfill({
+        contentType:'text/html', body:'<script>parent.postMessage({off42Challenge:"fixture"},location.origin)</script>',
+      }));
+      async function openEditor(tab, kind) {
+        await tab.goto(app+'en/'+kind+'/');
+        await ready(tab);
+        await tab.click('#'+kind+' .blank-tile');
+        await tab.getByRole('button',{name:'File assistant',exact:true}).click();
+      }
+      async function submit(tab) {
+        await tab.locator('.assistant-dialog textarea').fill('Summarise the selection');
+        await tab.getByRole('button',{name:'Send',exact:true}).click();
+        await tab.waitForSelector('.assistant-dialog [role="status"]:text-is("Completed.")');
+      }
+      await Promise.all([openEditor(doc,'documents'),openEditor(sheet,'spreadsheets')]);
+      assert.equal(await doc.evaluate(() => localStorage.getItem('off42.assistant.id')),null);
+      await doc.getByRole('button',{name:'Agree and continue'}).click();
+      await Promise.all([submit(doc),submit(sheet)]);
+      await doc.getByRole('button',{name:'Withdraw consent'}).click();
+      await sheet.getByRole('button',{name:'Agree and continue'}).waitFor();
+      await openEditor(sheet,'spreadsheets');
+      await sheet.getByRole('button',{name:'Agree and continue'}).click();
+      await submit(sheet);
+      assert.equal(ids.length,3);
+      assert.match(ids[0],/^[0-9a-f-]{36}$/);
+      assert.equal(new Set(ids).size,1);
+    } finally { await context.close(); }
+  });
+
   await step('direct presentation entry: author two slides, download and reopen the PPTX', async () => {
     await page.goto(app+'ru/presentations/');
     await ready(page);

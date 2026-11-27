@@ -32,6 +32,7 @@ const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:"off42",
     const payload=await request.json();
     assert.equal(payload.provider.data_collection,'deny');
     assert.equal(payload.provider.allow_fallbacks,false);
+    assert.deepEqual(payload.provider.max_price,{prompt:0.25,completion:1,request:0});
     assert.equal(payload.messages[0].content,promptFile);
     models.push(payload.model);
     requests++;
@@ -69,6 +70,39 @@ try {
   const day=new Date().toISOString().slice(0,10);
   const stub=namespace.get(namespace.idFromName(day));
   const reserve=(user,ip,amount)=>stub.reserve({user,ip,amount,session:'test-session',nonce:crypto.randomUUID(),first:false,day});
+  const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);
+  const returning=crypto.randomUUID();
+  const previous=namespace.get(namespace.idFromName(yesterday));
+  await previous.add('user:'+returning,100000);
+  replies.push(say('Готово.'));
+  assert.equal((await post({...body,id:returning})).status,200);
+  assert.equal(await stub.count('user:'+returning),150,'returning on another UTC day starts a fresh budget');
+  assert.equal(await previous.count('user:'+returning),100000);
+  const visitor=crypto.randomUUID();
+  const owner='user:'+visitor;
+  const charge=crypto.randomUUID();
+  assert.equal(await stub.reserve({user:owner,ip:'reserved-ip',session:'chat-1',nonce:charge,first:true,amount:90000,day}),'ok');
+  await stub.settle(charge,60000);
+  await stub.settle(charge,0); // A duplicate settlement cannot release the same funds twice.
+  assert.deepEqual((await Promise.all([reserve(owner,'ip-2',40000),reserve(owner,'ip-3',40000)])).sort(),['limit','ok']);
+  const countBeforeLimit=requests;
+  for(const kind of ['document','spreadsheet']) {
+    const blocked=await post({...body,id:visitor,kind,session:crypto.randomUUID()});
+    assert.equal(blocked.status,429);
+    assert.deepEqual(await blocked.json(),{error:'limit'});
+  }
+  assert.equal(requests,countBeforeLimit,'a new chat or editor must not reset the spending limit');
+  assert.equal(await reserve(owner,'ip-2',1),'limit','exactly 100,000 microdollars have been spent or reserved');
+  // Browsers without a shared storage ID still have a single daily budget across editors.
+  const noStorage={...body,id:null};
+  replies.push(say('Готово.'));
+  assert.equal((await post(noStorage,'192.0.2.77')).status,200);
+  const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('test-only\0'+day+'\0'+'192.0.2.77'));
+  const network='ip:'+Buffer.from(hash).toString('base64');
+  assert.equal(await reserve('user:'+network,network,99850),'ok');
+  const blocked=await post({...noStorage,session:crypto.randomUUID()},'192.0.2.77');
+  assert.equal(blocked.status,429);
+  assert.equal(requests,countBeforeLimit+1);
   assert.deepEqual((await Promise.all([reserve('uA','ipA',65000),reserve('uA','ipA',65000)])).sort(),['limit','ok']);
   assert.equal(await reserve('uB','ipB',100000),'ok');
   for(let i=0;i<4;i++)assert.equal(await reserve('uOther'+i,'ipB',100000),'ok');

@@ -133,8 +133,10 @@ An optional assistant panel in the web editors (documents and spreadsheets first
   Cloudflare Worker (`off42.cc/api/assistant`) that holds the OpenRouter API key as a secret (`OPENROUTER_API_KEY`,
   set by the owner with `wrangler secret put`) and forwards to OpenRouter's chat-completions API with tool calling. The key never reaches the browser; the page still makes no requests to other origins.
 - Open to everyone without an account. Spending is limited in money, not requests (owner's decision 2026-11-26):
-  - per user and day: $0.10 of model cost (about 600 typical actions). The user is an anonymous random id kept in
-    the browser; the Worker also keeps a per-IP-hash ceiling of $0.50/day so clearing the browser or switching
+  - a spending session is one anonymous browser ID on one UTC calendar day. Its $0.10 of model cost is shared
+    across tabs, files and chats, including after withdrawing and granting consent again. The next UTC day has a
+    fresh budget. Browsers unable to share an ID use their daily network hash for the same $0.10 ceiling.
+    The Worker also keeps a per-IP-hash ceiling of $0.50/day so clearing the browser or switching
     browsers doesn't multiply it freely (several people behind one IP share that ceiling). This is approximate by
     design: there is no registration.
   - the Worker adds up the actual cost OpenRouter reports for each request (`usage` accounting) in Cloudflare

@@ -21,8 +21,25 @@ function stored(key: string) { try { return localStorage.getItem(key); } catch {
 function store(key: string,value: string|null) { try { if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value); } catch { /* tab-only consent */ } }
 const consentKey = 'off42.assistant.consent.v1';
 const idKey = 'off42.assistant.id';
-let consent = stored(consentKey)==='yes';
-let anonymousId = stored(idKey);
+let tabOnlyConsent = false;
+const hasConsent = () => tabOnlyConsent || stored(consentKey)==='yes';
+// The Worker scopes this browser ID to its own UTC day. Read and initialize it
+// under an origin-wide lock, even when two editors send their first request at once.
+async function spendingId(signal: AbortSignal): Promise<string|null> {
+  if (!navigator.locks) return null;
+  try {
+    return await navigator.locks.request(idKey, {signal}, () => {
+      const existing = localStorage.getItem(idKey);
+      if (existing) return existing;
+      const id = crypto.randomUUID();
+      localStorage.setItem(idKey, id);
+      return id;
+    });
+  } catch {
+    signal.throwIfAborted();
+    return null; // The Worker uses the daily network hash when storage is unavailable.
+  }
+}
 async function api(signal: AbortSignal, body?: object): Promise<Reply> {
   const result = await fetch('/api/assistant',{method:body?'POST':'GET',signal,cache:'no-store',
     ...(body?{headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}:{})});
@@ -67,12 +84,21 @@ export function fileAssistant(options: Options) {
   const form=element('form');form.append(prompt,send);
   const actions=element('div');actions.className='actions end';actions.append(revoke,close);
   dialog.append(heading,policy,agree,form,widget,output,actions);
-  const display=()=>{policy.hidden=consent;agree.hidden=consent;form.hidden=!consent;revoke.hidden=!consent;};
+  const display=()=>{const consent=hasConsent();policy.hidden=consent;agree.hidden=consent;form.hidden=!consent;revoke.hidden=!consent;};
   close.onclick=()=>dialog.close();
   dialog.addEventListener('close',()=>{active?.abort();});
-  agree.onclick=()=>{consent=true;store(consentKey,'yes');display();prompt.focus();};
-  revoke.onclick=()=>{active?.abort();consent=false;store(consentKey,null);store(idKey,null);anonymousId=null;
-    prompt.value='';output.textContent='';messages=0;session=crypto.randomUUID();display();};
+  agree.onclick=()=>{store(consentKey,'yes');tabOnlyConsent=stored(consentKey)!=='yes';display();prompt.focus();};
+  function resetPanel() {
+    active?.abort();prompt.value='';output.textContent='';messages=0;session=crypto.randomUUID();
+  }
+  revoke.onclick=()=>{tabOnlyConsent=false;store(consentKey,null);resetPanel();display();};
+  function syncConsent(event: StorageEvent) {
+    if (event.key !== consentKey && event.key !== null) return;
+    tabOnlyConsent = false;
+    if (!hasConsent()) resetPanel();
+    display();
+  }
+  window.addEventListener('storage',syncConsent);
   async function run(signal: AbortSignal) {
     const question=prompt.value.trim();
     if(!question)return;
@@ -85,8 +111,7 @@ export function fileAssistant(options: Options) {
       const contextCommand=options.kind==='document'?{command:'get_outline'}:{command:'get_sheet_info',sheet};
       const outline=await json('editApply',draft,JSON.stringify(contextCommand));
       const context=JSON.stringify({selection,outline}).slice(0,30000);
-      if(!anonymousId){anonymousId=crypto.randomUUID();store(idKey,anonymousId);}
-      let request: object={id:anonymousId,session,kind:options.kind,context,prompt:question,challenge:token};
+      let request: object={id:await spendingId(signal),session,kind:options.kind,context,prompt:question,challenge:token};
       messages++;
       const writes: Command[]=[];
       for(let turn=0;turn<8;turn++){
@@ -116,14 +141,14 @@ export function fileAssistant(options: Options) {
     } finally {await call('editClose',draft);}
   }
   form.onsubmit=async event=>{
-    event.preventDefault();if(!consent||active||!prompt.value.trim())return;
+    event.preventDefault();if(!hasConsent()||active||!prompt.value.trim())return;
     const task=new AbortController();active=task;send.disabled=true;output.textContent=t('ai.wait');
     try {await run(task.signal);}
     catch(error){if(!task.signal.aborted){const key=error instanceof Error?error.message:'';output.textContent=t(['ai.session','ai.limit','ai.stale'].includes(key)?key:'ai.error');}}
     finally {if(active===task){active=undefined;send.disabled=false;}}
   };
   return {
-    open(){if(!dialog.isConnected)document.body.append(dialog);display();output.textContent='';dialog.showModal();(consent?prompt:agree).focus();},
-    dispose(){active?.abort();dialog.remove();},
+    open(){if(!dialog.isConnected)document.body.append(dialog);display();output.textContent='';dialog.showModal();(hasConsent()?prompt:agree).focus();},
+    dispose(){active?.abort();window.removeEventListener('storage',syncConsent);dialog.remove();},
   };
 }

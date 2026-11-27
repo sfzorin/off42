@@ -31,8 +31,11 @@ or provider setting not on this allowlist, whatever the browser sends.
 
 ## Spend limits
 
-The money limits of D13 apply to every request, refused or not: $0.10 of model cost per anonymous user id and day,
-$0.50 per IP hash and day, $5 site-wide per day. An out-of-scope message costs one short model call (about
+The money limits of D13 apply to each model attempt, including tool continuations and fallback models.
+One anonymous browser shares $0.10 across tabs, editors and chats until 00:00 UTC. If the browser cannot share
+an ID, visitors on its network share the same $0.10 allowance. A new chat or renewed consent preserves the
+day's charges. The separate ceilings remain $0.50 per IP hash per day and $5 site-wide per day.
+An out-of-scope message costs one short model call (about
 $0.00001–0.00003 measured, no tool turns), so a user who only sends off-topic chatter reaches the daily limit long
 after anyone would stop. Requests the Worker rejects itself (checks 1–4) make no model call and cost nothing.
 

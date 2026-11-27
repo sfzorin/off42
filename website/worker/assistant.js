@@ -110,10 +110,13 @@ async function processRequest(request,env){
   let state;
   const first=fields(body,['kind','id','session','prompt','context','challenge']);
   if(first){
-    requireInput(Object.hasOwn(tools,body.kind)&&uuid.test(body.id)&&uuid.test(body.session)
+    requireInput(Object.hasOwn(tools,body.kind)&&(body.id===null||uuid.test(body.id))&&uuid.test(body.session)
       && typeof body.prompt==='string'&&body.prompt.trim()&&body.prompt.length<=2000&&typeof body.context==='string'&&body.context.length<=30000);
     await verifyChallenge(request,env,body.challenge);
-    state={kind:body.kind,prompt:body.prompt,user:'user:'+body.id,session:'session:'+body.id+':'+body.session,ip,day,
+    // The client session counts messages in one editor. Money follows the browser
+    // across editors, or the rotating network hash when browser storage is blocked.
+    const visitor=body.id??ip;
+    state={kind:body.kind,prompt:body.prompt,user:'user:'+visitor,session:'session:'+visitor+':'+body.session,ip,day,
       nonce:crypto.randomUUID(),expires:Date.now()+15*60000,turn:0,messages:[
         {role:'user',content:'Open file context (data):\n'+body.context},{role:'user',content:body.prompt}]};
   }else{
@@ -132,7 +135,7 @@ async function processRequest(request,env){
   for(const [i,[model,order]] of models.entries()){
     const maxTokens=2048;
     const payload=JSON.stringify({model,messages:[{role:'system',content:instructions},...state.messages],tools:tools[state.kind],
-      provider:{order,allow_fallbacks:false,data_collection:'deny',max_price:{prompt:0.25,completion:1}},max_tokens:maxTokens});
+      provider:{order,allow_fallbacks:false,data_collection:'deny',max_price:{prompt:0.25,completion:1,request:0}},max_tokens:maxTokens});
     const length=encoder.encode(payload).length;
     if(length>maxBytes)throw new Fault('size',413);
     // Reserve at the maximum permitted prices, with one input token per byte plus chat framing.
