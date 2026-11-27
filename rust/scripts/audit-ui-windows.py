@@ -1852,7 +1852,7 @@ def audit_engineering_formulas(process, main, binary, output, results, include_e
     open_fixture(process,main,source)
     wait_for(lambda: source.name in text(main) and u.IsWindowEnabled(main), "engineering source opened", process)
     fill_prompt(process, main, 25, "Range (1-based)", ["1", "2", "1", "2"])
-    wait_for(lambda: any("R1 C2" in text(h) for h in windows(process.pid, main)), "B1 selected", process)
+    wait_for(lambda: any(re.search(r"(^| · )B1( · |$)", text(h)) for h in windows(process.pid, main)), "B1 selected", process)
     edit = u.GetDlgItem(main, 101)
     replace_editor_text(edit, "=DEC2HEX($A$1,4)")
     def save(name):
