@@ -412,6 +412,10 @@ mod tests {
                 "Export Slide Images…",
                 "Scan History",
                 "Clear Scan History…",
+                "Read only",
+                "External source: structural edits limited",
+                "Chart preview",
+                "Opening… (Esc to cancel)",
             ] {
                 assert_ne!(translate_in(language, key), key, "{}: {key}", language.code);
             }

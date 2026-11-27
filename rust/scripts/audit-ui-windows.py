@@ -1852,7 +1852,7 @@ def audit_engineering_formulas(process, main, binary, output, results, include_e
     open_fixture(process,main,source)
     wait_for(lambda: source.name in text(main) and u.IsWindowEnabled(main), "engineering source opened", process)
     fill_prompt(process, main, 25, "Range (1-based)", ["1", "2", "1", "2"])
-    wait_for(lambda: any(re.search(r"(^| · )B1( · |$)", text(h)) for h in windows(process.pid, main)), "B1 selected", process)
+    wait_for(lambda: text(u.GetDlgItem(main, 104)) == "B1", "B1 selected in the name box", process)
     edit = u.GetDlgItem(main, 101)
     replace_editor_text(edit, "=DEC2HEX($A$1,4)")
     def save(name):
@@ -4800,8 +4800,9 @@ def audit_window_layout(bin_dir,output):
                 value=w.RECT();assert u.GetWindowRect(body,c.byref(value));return(value.left,value.top,value.right-value.left,value.bottom-value.top)
             def hidden_panels():
                 children=windows(process.pid,main)
-                # The title row's Save pill (command 2) is not a panel; it is checked separately below.
-                return not any(u.IsWindowVisible(h)for h in children if classname(h).lower()in{'button','static'}and u.GetDlgCtrlID(h)!=2)
+                # The title row's Save pill (command 2) is not a panel; it is checked separately below. Neither is the
+                # XLS42 formula bar's name box (104), which stays with the grid; the XLS42 status chip must hide.
+                return not any(u.IsWindowVisible(h)for h in children if classname(h).lower()in{'button','static'}and u.GetDlgCtrlID(h)not in(2,104 if app=='XLS42'else 2))
             audit_chrome_structure(process,main,app,result,output)
             caption=text(main);history=[u.GetMenuState(u.GetMenu(main),i,0)for i in(4,5)];before=body_rect()
             toggles=[i for i in(65503,65502,65501,65500)if u.GetMenuState(u.GetMenu(main),i,0)&3==0]
@@ -4931,6 +4932,62 @@ def audit_chrome_structure(process, main, app, result, output=None):
         offsets = (u.GetScrollPos(grid_window, 0), u.GetScrollPos(grid_window, 1))
         assert offsets == (0, 0), ("new workbook grid is scrolled past A1", offsets)
         checks.append("formula bar above a full-width grid scrolled to A1, sheet tabs with + below it")
+        # No status row: the sheet-tab bar is the last strip above the window's bottom edge, nothing sits below it,
+        # and the status line never repeats the sheet name (the tab) or the cell address (the name box).
+        bottom = origin.y + client.bottom
+        assert 0 <= bottom - tabs.bottom <= 1, ("status row below the sheet tabs", tabs.bottom, bottom)
+        below = [(classname(h), u.GetDlgCtrlID(h)) for h in windows(process.pid, main)
+                 if u.IsWindowVisible(h) and rect(h).bottom > rect(h).top and rect(h).top >= tabs.bottom - 1]
+        assert not below, ("controls below the sheet-tab bar", below)
+        name_box = u.GetDlgItem(main, 104)
+        assert name_box and classname(name_box).lower() == "static" and u.IsWindowVisible(name_box), "native name box"
+        assert text(name_box) == "A1" and rect(name_box).bottom <= grid.top, ("name box", text(name_box))
+        length = u.SendMessageW(listing, 0x18A, 0, 0)  # LB_GETTEXTLEN of the first sheet tab
+        buffer = c.create_unicode_buffer(max(length, 0) + 1)
+        u.SendMessageW(listing, 0x189, 0, c.cast(buffer, c.c_void_p).value)
+        sheet = buffer.value
+        assert sheet, "first sheet tab name"
+        def statuses():
+            # windows() lists visible windows only: a hidden chip shows nothing.
+            return [h for h in windows(process.pid, main) if classname(h).lower() == "static" and u.GetDlgCtrlID(h) != 104]
+        def status_texts():
+            return [text(h) for h in statuses() if text(h)]
+        def repeats(value):
+            return sheet in value or re.search(r"\b\$?[A-Z]{1,3}\$?[0-9]+\b", value)
+        assert not any(repeats(value) for value in status_texts()), ("status repeats the sheet or cell", sheet, status_texts())
+        # A shift-selected numeric range puts "Sum · Count" in a chip at the right end of the tab bar.
+        fixture = (output or Path(os.environ.get("TEMP", "."))) / "chrome-selection-sum.csv"
+        fixture.write_text("Amount\n7000\n8000\n7000\n9500\nNote\n", encoding="utf-8")
+        open_fixture(process, main, fixture)
+        wait_for(lambda: text(name_box) == "A1", "fixture opens at A1 in the name box", process)
+        u.keybd_event.argtypes = [c.c_ubyte, c.c_ubyte, w.DWORD, c.c_size_t]
+        def key(code, flags=0):
+            u.keybd_event(code, 0, flags, 0)
+            u.keybd_event(code, 0, flags | 2, 0)
+        u.GetForegroundWindow.restype = w.HWND
+        u.SetForegroundWindow(main)
+        point = ((25 + 6) << 16) | (64 + 8)  # inside A1, just past the column and row headers
+        assert u.PostMessageW(grid_window, 0x201, 1, point) and u.PostMessageW(grid_window, 0x202, 0, point)
+        wait_for(lambda: text(name_box) == "A1" and u.GetForegroundWindow() == main, "grid focused at A1", process)
+        key(0x28, 1)  # Down
+        wait_for(lambda: text(name_box) == "A2", "A2 selected", process)
+        assert not any(repeats(value) for value in status_texts()), ("status repeats the cell", status_texts())
+        u.keybd_event(0x10, 0, 0, 0)  # Shift held for three Down presses
+        try:
+            for _ in range(3):
+                key(0x28, 1)
+        finally:
+            u.keybd_event(0x10, 0, 2, 0)
+        wait_for(lambda: text(name_box) == "A2:A5", "shift-selected A2:A5", process)
+        chip = wait_for(lambda: next((h for h in statuses() if text(h)), None), "selection chip", process)
+        assert text(chip) == "Sum: 31,500 · Count: 4", ("selection chip text", text(chip))
+        tabs = rect(listing)
+        box_chip = rect(chip)
+        assert tabs.top - 1 <= box_chip.top and box_chip.bottom <= bottom and box_chip.left >= tabs.right, ("chip is not in the tab bar", (box_chip.left, box_chip.top, box_chip.right, box_chip.bottom), (tabs.left, tabs.top, tabs.right, tabs.bottom))
+        assert box_chip.right <= origin.x + client.right and 0 <= bottom - tabs.bottom <= 1, "chip or tabs moved into a new row"
+        assert not repeats(text(chip)), ("chip repeats the sheet or cell", text(chip))
+        assert " * - " not in text(main), "selecting cells must not edit the workbook"
+        checks.append("no status row below the last strip (sheet tabs), status never repeats sheet or cell, native name box, shift-selected numbers show Sum · Count in a chip inside the tab bar")
     if app == "PPT42":
         u.SendMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
         height = u.SendMessageW(listing, 0x1A1, 0, 0)  # LB_GETITEMHEIGHT
@@ -5052,7 +5109,8 @@ def audit_dark_mode(bin_dir, output):
                 set_mode(False)
                 process = subprocess.Popen([str(bin_dir / (app + ".exe")), "--language", "en"], env=environment)
                 main = modal(process, native_class="Suite42Native")
-                status = wait_for(lambda: max((h for h in windows(process.pid, main) if classname(h).lower() == "static"),
+                # XLS42 has no status row: its bottom chrome is the sheet-tab bar (100), which holds the status chip.
+                status = wait_for(lambda: u.GetDlgItem(main, 100) if app == "XLS42" else max((h for h in windows(process.pid, main) if classname(h).lower() == "static"),
                                               key=lambda h: rect(h).bottom, default=None), "status bar " + app, process)
                 content = next((h for h in windows(process.pid, main) if u.GetDlgCtrlID(h) == 101), None) if app == "DOC42" else None
 

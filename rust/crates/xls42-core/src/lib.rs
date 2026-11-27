@@ -280,13 +280,27 @@ pub struct Workbook {
 }
 impl Workbook {
     pub fn new(rows: usize, cols: usize) -> Result<Self, Error> {
+        Self::new_named(rows, cols, "Sheet1")
+    }
+    /// A new workbook whose only sheet has `first_sheet` as its name (a UI-language default such as "Лист1").
+    /// The name is the initial state, not an edit: the workbook is clean and has nothing to undo.
+    pub fn new_named(rows: usize, cols: usize, first_sheet: &str) -> Result<Self, Error> {
+        let empty = State {
+            sheets: Vec::new(),
+            active: 1,
+            next_id: 2,
+            styles: Vec::new(),
+            date_1904: false,
+            selection: Range { top: 0, left: 0, bottom: 0, right: 0 },
+        };
+        validate_name(&empty, first_sheet, None)?;
         if rows == 0 || cols == 0 || rows > MAX_ROWS || cols > MAX_COLS {
             return Err(Error::Limit);
         };
         Ok(Self {
             history: SnapshotHistory::new(
                 State {
-                    sheets: vec![Sheet::new(1, "Sheet1".into(), rows, cols)],
+                    sheets: vec![Sheet::new(1, first_sheet.into(), rows, cols)],
                     active: 1,
                     next_id: 2,
                     styles: vec![CellStyle::default()],
@@ -1995,6 +2009,15 @@ fn adjust_refs(input: &str, rows: bool, at: usize, count: usize, delete: bool) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn new_named_workbook_starts_clean_with_the_given_first_sheet() {
+        let b = Workbook::new_named(2, 2, "Лист1").unwrap();
+        assert_eq!(b.sheets(), vec![(1, "Лист1".to_string())]);
+        assert!(!b.is_dirty() && !b.can_undo());
+        assert_eq!(Workbook::new(1, 1).unwrap().sheets(), vec![(1, "Sheet1".to_string())]);
+        assert!(Workbook::new_named(1, 1, "").is_err());
+        assert!(Workbook::new_named(1, 1, "a/b").is_err());
+    }
     #[test]
     fn structural_range_references_shrink_on_deletion() {
         assert_eq!(

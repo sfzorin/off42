@@ -100,14 +100,21 @@ paints them.
 - Side list: flat owner-drawn `LISTBOX` (`LBS_HASSTRINGS`, so `LB_GETTEXT` and accessibility keep the item text)
   separated from the document by a 1 px line. Selection is an accent-tinted pill. Apps with `list_thumbnail_size`
   (PPT42) get a slide strip: number, thumbnail of `presenter_preview(index)` and an accent ring on the selection.
-- Spreadsheets: a formula bar above a full-width grid (name box with the cell or range, `fx`, the one-line cell
-  editor) and sheet tabs at the bottom (`LBS_MULTICOLUMN` list) with the app's `add_sheet_command` as "+".
+- Spreadsheets: a formula bar above a full-width grid (name box with the cell or range, a native `STATIC` with
+  control id 104, `fx`, the one-line cell editor) and sheet tabs at the bottom (`LBS_MULTICOLUMN` list) with the
+  app's `add_sheet_command` as "+". The tab bar is the window's last strip: spreadsheets have no status row. Their
+  status is a rounded chip (strip colour) at the right end of the tab bar, sized to its text and shown only when
+  there is something the tabs and name box do not already say — "Sum: 31,500 · Count: 4" for a selection with at
+  least two numbers (the web app's chip; numbers grouped for the UI language), "Read only", the external-source
+  limit or "Chart preview". It never repeats the sheet name or the cell address. View > Show Status Bar hides the
+  chip; the grid keeps its height. A new workbook's first sheet takes the UI language's name ("Sheet%d": "Лист1");
+  opened files keep theirs.
 - Canvas: `#f8f9fb` (dark: `#17181b`). Pages from `canvas_pages` (PDF42 page, PPT42 slide) are white sheets with a
   shadow, offset from the canvas edge by `CANVAS_MARGIN` (24 logical px); pointer mapping uses the same viewport.
   Images (IMG42, SCN42) keep their fit-to-window geometry and get the same shadow. The DOC42 Rich Edit desk is
   document paper and stays light in both appearances.
 - Snackbar: one non-activating popup (`Off42Snackbar`) at the bottom left, "Saved: name" for four seconds after a
-  successful save; it hides when the window moves or resizes.
+  successful save, above the status line or the sheet-tab bar; it hides when the window moves or resizes.
 - File > Save As is a submenu when the app declares save formats: "Save As…" (the full dialog, Ctrl+Shift+S) and
   one entry per format, which opens the same dialog with that format selected.
 - Colours (`chrome::LIGHT`/`DARK`): background `#f8f9fb`, strip `#edf1f7`, separators `#e1e3e6`, text `#1f1f1f`,
