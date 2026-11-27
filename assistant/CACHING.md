@@ -18,8 +18,18 @@ one prefix. Measured with the Qwen tokenizer, system prompt, tools and a small s
 Alibaba reported a 1,878–1,938-token cache write at the snapshot breakpoint. Everything after the prefix is per
 session.
 
+The scope section added to the system prompt (prompt v2, see `GUARD.md`) grew it from 2.1k to 4.1k characters,
+about 500 more prefix tokens. The measurements below were taken with v1; v2's longer shared prefix only raises
+the cacheable share of a short request.
+
+Only paid models are used, all with `provider.data_collection: "deny"`: DeepSeek V4.1 Flash (Alibaba, Together,
+Google Vertex) and GLM-5.3 Flash (Z.AI, Fireworks) as fallback. The free rows in the tables below are earlier
+measurements of candidates that are not used.
+
 Rules that keep the prefix byte-identical:
 
+- The Worker, not the browser, inserts `system.md` and the tool list (`GUARD.md`, check 1), from one copy per
+  release, so every user's requests share the same bytes.
 - Ship `system.md` and the tool JSON as static assets of a release; load them as text, never template them. No
   date, user name, locale, app version or document name in the system prompt. The user's language comes from their
   messages; anything session-specific goes in the snapshot message.
