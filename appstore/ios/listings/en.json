@@ -1,0 +1,11 @@
+{
+  "appStoreLocale": "en-US",
+  "name": "OFF42 – Offline Office Tools",
+  "subtitle": "View and convert office files",
+  "promotionalText": "View and convert documents, sheets, slides and PDFs. Make codes and signatures.",
+  "description": "OFF42 opens and converts office files on your iPhone and iPad. Everything happens on the device: OFF42 makes no network connections and opens or saves files only where you choose, through the Files app and sharing.\n\n• Documents: view DOCX, ODT, RTF, Markdown, HTML and plain text, see word counts, and save in any of these formats.\n• Spreadsheets: XLSX, ODS, CSV and XLS (read-only) in a grid with sheet tabs; save as XLSX, ODS or CSV.\n• Presentations: PPTX and ODP as a text outline of every slide; convert between the two formats.\n• PDF: pages rendered on the device, with metadata, bookmarks, attachments and form fields.\n• Labels and codes: QR, Data Matrix, Code 128 and Aztec codes, A4 label sheets from your own lines, and 97 product and conformity marks (artwork only: a mark certifies nothing).\n• Signatures and stamps: handwritten-style signatures with different pens and inks, and stamp impressions from built-in templates, saved as transparent PNG.\n\nNot available yet: editing, exporting documents to PDF, slide pictures and layouts, PDF annotation. A drawn signature is an image, not a certificate-based digital signature.\n\nOFF42 is free and open source (MIT license). It shares its engine with the OFF42 apps for Mac, Windows and Linux and with the web app.",
+  "keywords": "docx,xlsx,pptx,pdf,odt,ods,csv,markdown,converter,viewer,qr code,barcode,labels,signature,stamp",
+  "supportUrl": "https://off42.cc/en/support/",
+  "marketingUrl": "https://off42.cc/",
+  "privacyPolicyUrl": "https://off42.cc/en/privacy/"
+}

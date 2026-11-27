@@ -1,0 +1,11 @@
+{
+  "appStoreLocale": "tr",
+  "name": "OFF42 – Çevrimdışı ofis",
+  "subtitle": "Ofis dosyalarını aç, dönüştür",
+  "promotionalText": "Belge, tablo, slayt ve PDF görüntüleyin, dönüştürün. Kod ve imza oluşturun.",
+  "description": "OFF42, iPhone ve iPad’inizde ofis dosyalarını açar ve dönüştürür. Her şey cihazda gerçekleşir: OFF42 ağ bağlantısı kurmaz ve dosyaları yalnızca sizin seçtiğiniz yerde, Dosyalar uygulaması ve paylaşım üzerinden açar veya kaydeder.\n\n• Belgeler: DOCX, ODT, RTF, Markdown, HTML ve düz metni kelime sayısıyla görüntüleyin; bu biçimlerden herhangi biriyle kaydedin.\n• Elektronik tablolar: XLSX, ODS, CSV ve XLS (salt okunur) sayfa sekmeli bir ızgarada; XLSX, ODS veya CSV olarak kaydedin.\n• Sunular: PPTX ve ODP, her slaytın metin ana hattı olarak; iki biçim arasında dönüştürme.\n• PDF: sayfalar cihazda işlenir; meta veriler, yer imleri, ekler ve form alanları gösterilir.\n• Etiketler ve kodlar: QR, Data Matrix, Code 128 ve Aztec kodları, kendi satırlarınızdan A4 etiket sayfaları ve 97 ürün ve uygunluk işareti (yalnızca görsel: işaret hiçbir şeyi belgelemez).\n• İmzalar ve mühürler: farklı kalem ve mürekkeplerle el yazısı görünümlü imzalar ve hazır şablonlardan mühür baskıları, saydam PNG olarak kaydedilir.\n\nHenüz yok: düzenleme, belgeleri PDF olarak dışa aktarma, slayt resimleri ve düzenleri, PDF açıklamaları. Çizilmiş imza bir görüntüdür, sertifikaya dayalı dijital imza değildir.\n\nOFF42 ücretsiz ve açık kaynaklıdır (MIT lisansı). Mac, Windows ve Linux için OFF42 uygulamaları ve web uygulamasıyla aynı motoru kullanır.",
+  "keywords": "docx,xlsx,pptx,pdf,odt,dönüştürücü,belge,tablo,slayt,qr kod,barkod,etiket,imza,kaşe",
+  "supportUrl": "https://off42.cc/en/support/",
+  "marketingUrl": "https://off42.cc/",
+  "privacyPolicyUrl": "https://off42.cc/en/privacy/"
+}

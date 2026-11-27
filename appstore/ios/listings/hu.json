@@ -1,0 +1,11 @@
+{
+  "appStoreLocale": "hu",
+  "name": "OFF42 – Offline irodai eszköz",
+  "subtitle": "Irodai fájlok offline",
+  "promotionalText": "Dokumentumok, táblák, diák és PDF-ek megnyitása, átalakítása. Kódok, aláírások.",
+  "description": "Az OFF42 irodai fájlokat nyit meg és alakít át iPhone-on és iPaden. Minden az eszközön történik: az OFF42 nem létesít hálózati kapcsolatot, és csak ott nyit meg vagy ment fájlokat, ahol Ön választja – a Fájlok appban és a megosztással.\n\n• Dokumentumok: DOCX, ODT, RTF, Markdown, HTML és egyszerű szöveg megtekintése szószámmal; mentés bármelyik formátumban.\n• Táblázatok: XLSX, ODS, CSV és XLS (csak olvasható) rácsban, munkalapfülekkel; mentés XLSX, ODS vagy CSV formátumban.\n• Bemutatók: PPTX és ODP az összes dia szöveges vázlataként; átalakítás a két formátum között.\n• PDF: az oldalak megjelenítése az eszközön, metaadatokkal, könyvjelzőkkel, mellékletekkel és űrlapmezőkkel.\n• Címkék és kódok: QR, Data Matrix, Code 128 és Aztec kódok, A4-es címkeívek saját sorokból, valamint 97 termék- és megfelelőségi jelölés (csak grafika: a jelölés semmit sem tanúsít).\n• Aláírások és bélyegzők: kézírásos hatású aláírások különböző tollakkal és tintákkal, bélyegzőlenyomatok beépített sablonokból, átlátszó PNG-ként mentve.\n\nMég nem érhető el: szerkesztés, dokumentumok exportálása PDF-be, diák képei és elrendezései, PDF-jegyzetelés. A rajzolt aláírás kép, nem tanúsítványalapú digitális aláírás.\n\nAz OFF42 ingyenes és nyílt forráskódú (MIT-licenc). Ugyanazt a motort használja, mint az OFF42 Mac, Windows és Linux alkalmazásai és a webes alkalmazás.",
+  "keywords": "docx,xlsx,pptx,pdf,odt,átalakító,dokumentum,táblázat,dia,qr kód,vonalkód,címke,aláírás,bélyegző",
+  "supportUrl": "https://off42.cc/en/support/",
+  "marketingUrl": "https://off42.cc/",
+  "privacyPolicyUrl": "https://off42.cc/en/privacy/"
+}

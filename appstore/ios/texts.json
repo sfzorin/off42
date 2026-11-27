@@ -1,0 +1,122 @@
+{
+  "en": {
+    "name": "OFF42 – Offline Office Tools",
+    "subtitle": "View and convert office files",
+    "keywords": "docx,xlsx,pptx,pdf,odt,ods,csv,markdown,converter,viewer,qr code,barcode,labels,signature,stamp",
+    "intro": "OFF42 opens and converts office files on your iPhone and iPad. Everything happens on the device: OFF42 makes no network connections and opens or saves files only where you choose, through the Files app and sharing."
+  },
+  "ar": {
+    "name": "OFF42 – مكتب بلا إنترنت",
+    "subtitle": "عرض الملفات المكتبية وتحويلها",
+    "keywords": "docx,xlsx,pptx,pdf,odt,محول,عارض,مستندات,جداول,عروض,رمز qr,باركود,ملصقات,توقيع,ختم",
+    "intro": "يفتح OFF42 الملفات المكتبية ويحوّلها على iPhone وiPad. كل شيء يجري على الجهاز: لا يتصل OFF42 بالشبكة، ولا يفتح الملفات أو يحفظها إلا حيث تختار، عبر تطبيق الملفات والمشاركة."
+  },
+  "de": {
+    "name": "OFF42 – Office offline",
+    "subtitle": "Office-Dateien offline öffnen",
+    "keywords": "docx,xlsx,pptx,pdf,odt,konverter,dokumente,tabellen,folien,qr-code,barcode,etiketten,stempel",
+    "intro": "OFF42 öffnet und wandelt Office-Dateien auf iPhone und iPad um. Alles geschieht auf dem Gerät: OFF42 baut keine Netzwerkverbindungen auf und öffnet oder speichert Dateien nur dort, wo Sie es wählen – über die Dateien-App und Teilen."
+  },
+  "es": {
+    "name": "OFF42 – Ofimática sin conexión",
+    "subtitle": "Ver y convertir archivos",
+    "keywords": "docx,xlsx,pptx,pdf,odt,convertir,documentos,hojas,diapositivas,código qr,etiquetas,firma,sello",
+    "intro": "OFF42 abre y convierte archivos de oficina en tu iPhone y iPad. Todo ocurre en el dispositivo: OFF42 no se conecta a la red y solo abre o guarda archivos donde tú elijas, con la app Archivos y la opción Compartir."
+  },
+  "fil": {
+    "name": "OFF42 – Office tools offline",
+    "subtitle": "Tingnan at i-convert ang file",
+    "keywords": "docx,xlsx,pptx,pdf,odt,converter,dokumento,spreadsheet,slide,qr code,barcode,label,pirma,selyo",
+    "intro": "Binubuksan at kino-convert ng OFF42 ang mga office file sa iyong iPhone at iPad. Lahat ay nangyayari sa device: hindi kumokonekta sa network ang OFF42 at nagbubukas o nagse-save lang ito ng file kung saan mo pipiliin, sa Files app at sa pagbabahagi."
+  },
+  "fr": {
+    "name": "OFF42 – Bureautique hors ligne",
+    "subtitle": "Voir et convertir vos fichiers",
+    "keywords": "docx,xlsx,pptx,pdf,odt,convertir,documents,tableur,diapos,code qr,code-barres,étiquettes,tampon",
+    "intro": "OFF42 ouvre et convertit des fichiers bureautiques sur votre iPhone et votre iPad. Tout se passe sur l’appareil : OFF42 n’établit aucune connexion réseau et n’ouvre ou n’enregistre des fichiers que là où vous le choisissez, via l’app Fichiers et le partage."
+  },
+  "hu": {
+    "name": "OFF42 – Offline irodai eszköz",
+    "subtitle": "Irodai fájlok offline",
+    "keywords": "docx,xlsx,pptx,pdf,odt,átalakító,dokumentum,táblázat,dia,qr kód,vonalkód,címke,aláírás,bélyegző",
+    "intro": "Az OFF42 irodai fájlokat nyit meg és alakít át iPhone-on és iPaden. Minden az eszközön történik: az OFF42 nem létesít hálózati kapcsolatot, és csak ott nyit meg vagy ment fájlokat, ahol Ön választja – a Fájlok appban és a megosztással."
+  },
+  "id": {
+    "name": "OFF42 – Alat kantor offline",
+    "subtitle": "Lihat dan konversi file kantor",
+    "keywords": "docx,xlsx,pptx,pdf,odt,konversi,dokumen,spreadsheet,slide,kode qr,barcode,label,tanda tangan,stempel",
+    "intro": "OFF42 membuka dan mengonversi file kantor di iPhone dan iPad Anda. Semuanya terjadi di perangkat: OFF42 tidak membuat koneksi jaringan dan hanya membuka atau menyimpan file di tempat yang Anda pilih, melalui app File dan fitur berbagi."
+  },
+  "it": {
+    "name": "OFF42 – Office offline",
+    "subtitle": "Apri e converti file d’ufficio",
+    "keywords": "docx,xlsx,pptx,pdf,odt,convertitore,documenti,fogli,diapositive,codice qr,etichette,firma,timbro",
+    "intro": "OFF42 apre e converte file da ufficio su iPhone e iPad. Tutto avviene sul dispositivo: OFF42 non si connette alla rete e apre o salva file solo dove scegli tu, tramite l’app File e la condivisione."
+  },
+  "ja": {
+    "name": "OFF42 – オフラインのオフィスツール",
+    "subtitle": "オフィスファイルを表示・変換",
+    "keywords": "docx,xlsx,pptx,pdf,odt,変換,ビューア,文書,表計算,スライド,QRコード,バーコード,ラベル,署名,印鑑",
+    "intro": "OFF42 は iPhone と iPad でオフィスファイルを開き、変換します。処理はすべて端末上で行われます。OFF42 はネットワークに接続せず、ファイルの読み書きは「ファイル」App と共有を使い、あなたが選んだ場所だけで行います。"
+  },
+  "ko": {
+    "name": "OFF42 – 오프라인 오피스 도구",
+    "subtitle": "오피스 파일 보기와 변환",
+    "keywords": "docx,xlsx,pptx,pdf,odt,변환,뷰어,문서,스프레드시트,슬라이드,qr코드,바코드,라벨,서명,도장",
+    "intro": "OFF42는 iPhone과 iPad에서 오피스 파일을 열고 변환합니다. 모든 작업은 기기에서 이루어집니다. OFF42는 네트워크에 연결하지 않으며, 파일 앱과 공유를 통해 사용자가 선택한 곳에서만 파일을 열거나 저장합니다."
+  },
+  "ms": {
+    "name": "OFF42 – Pejabat luar talian",
+    "subtitle": "Lihat dan tukar fail pejabat",
+    "keywords": "docx,xlsx,pptx,pdf,odt,penukar,dokumen,hamparan,slaid,kod qr,kod bar,label,tandatangan,cop",
+    "intro": "OFF42 membuka dan menukar fail pejabat pada iPhone dan iPad anda. Semuanya berlaku pada peranti: OFF42 tidak membuat sambungan rangkaian dan hanya membuka atau menyimpan fail di tempat yang anda pilih, melalui apl Fail dan perkongsian."
+  },
+  "pl": {
+    "name": "OFF42 – Biuro offline",
+    "subtitle": "Przeglądaj i konwertuj pliki",
+    "keywords": "docx,xlsx,pptx,pdf,odt,konwerter,dokumenty,arkusze,slajdy,kod qr,kod kreskowy,etykiety,podpis",
+    "intro": "OFF42 otwiera i konwertuje pliki biurowe na iPhonie i iPadzie. Wszystko dzieje się na urządzeniu: OFF42 nie łączy się z siecią i otwiera lub zapisuje pliki tylko tam, gdzie wybierzesz – w aplikacji Pliki i przez udostępnianie."
+  },
+  "pt": {
+    "name": "OFF42 – Escritório offline",
+    "subtitle": "Veja e converta arquivos",
+    "keywords": "docx,xlsx,pptx,pdf,odt,conversor,documentos,planilhas,slides,qr code,etiquetas,assinatura,carimbo",
+    "intro": "O OFF42 abre e converte arquivos de escritório no seu iPhone e iPad. Tudo acontece no dispositivo: o OFF42 não se conecta à rede e só abre ou salva arquivos onde você escolher, pelo app Arquivos e pelo compartilhamento."
+  },
+  "ru": {
+    "name": "OFF42 – офис без интернета",
+    "subtitle": "Офисные файлы без интернета",
+    "keywords": "docx,xlsx,pptx,pdf,odt,конвертер,документы,таблицы,слайды,qr код,штрихкод,этикетки,подпись,печать",
+    "intro": "OFF42 открывает и конвертирует офисные файлы на iPhone и iPad. Всё происходит на устройстве: OFF42 не подключается к сети и открывает или сохраняет файлы только там, где вы выберете, — через приложение «Файлы» и «Поделиться»."
+  },
+  "th": {
+    "name": "OFF42 – ชุดสำนักงานออฟไลน์",
+    "subtitle": "ดูและแปลงไฟล์สำนักงาน",
+    "keywords": "docx,xlsx,pptx,pdf,odt,แปลงไฟล์,เอกสาร,สเปรดชีต,สไลด์,คิวอาร์โค้ด,บาร์โค้ด,ฉลาก,ลายเซ็น,ตราประทับ",
+    "intro": "OFF42 เปิดและแปลงไฟล์สำนักงานบน iPhone และ iPad ของคุณ ทุกอย่างเกิดขึ้นบนอุปกรณ์: OFF42 ไม่เชื่อมต่อเครือข่าย และเปิดหรือบันทึกไฟล์เฉพาะในที่ที่คุณเลือก ผ่านแอปไฟล์และการแชร์"
+  },
+  "tr": {
+    "name": "OFF42 – Çevrimdışı ofis",
+    "subtitle": "Ofis dosyalarını aç, dönüştür",
+    "keywords": "docx,xlsx,pptx,pdf,odt,dönüştürücü,belge,tablo,slayt,qr kod,barkod,etiket,imza,kaşe",
+    "intro": "OFF42, iPhone ve iPad’inizde ofis dosyalarını açar ve dönüştürür. Her şey cihazda gerçekleşir: OFF42 ağ bağlantısı kurmaz ve dosyaları yalnızca sizin seçtiğiniz yerde, Dosyalar uygulaması ve paylaşım üzerinden açar veya kaydeder."
+  },
+  "vi": {
+    "name": "OFF42 – Văn phòng offline",
+    "subtitle": "Xem, chuyển đổi tệp văn phòng",
+    "keywords": "docx,xlsx,pptx,pdf,odt,chuyển đổi,tài liệu,bảng tính,trang chiếu,mã qr,mã vạch,nhãn,chữ ký",
+    "intro": "OFF42 mở và chuyển đổi tệp văn phòng trên iPhone và iPad. Mọi thứ diễn ra trên thiết bị: OFF42 không kết nối mạng và chỉ mở hoặc lưu tệp ở nơi bạn chọn, qua ứng dụng Tệp và tính năng chia sẻ."
+  },
+  "zh-Hans": {
+    "name": "OFF42 – 离线办公工具",
+    "subtitle": "查看和转换办公文件",
+    "keywords": "docx,xlsx,pptx,pdf,odt,转换,查看器,文档,表格,幻灯片,二维码,条码,标签,签名,印章",
+    "intro": "OFF42 在 iPhone 和 iPad 上打开和转换办公文件。一切都在设备上完成：OFF42 不连接网络，只在你选择的位置，通过“文件”App 和共享来打开或保存文件。"
+  },
+  "zh-Hant": {
+    "name": "OFF42 – 離線辦公工具",
+    "subtitle": "檢視和轉換辦公檔案",
+    "keywords": "docx,xlsx,pptx,pdf,odt,轉換,檢視器,文件,試算表,投影片,QR碼,條碼,標籤,簽名,印章",
+    "intro": "OFF42 在 iPhone 和 iPad 上開啟並轉換辦公檔案。一切都在裝置上完成：OFF42 不連線網路，只在你選擇的位置，透過「檔案」App 與分享來開啟或儲存檔案。"
+  }
+}

@@ -90,7 +90,8 @@ The fixtures were made by the engine from `web/test/fixtures` (`OFF42_FIXTURES=<
    no permissions, and the debug APK and release AAB as artifacts (sizes in the job summary).
 3. **emulator** (tablet `pixel_tablet` and phone `pixel_6`, API 34, x86_64): the instrumented tests; screenshots and
    reports as artifacts.
-4. **apple** (`macos-latest`): the same bindings for iPadOS/iOS (see the crate's README).
+
+The iOS build of the same bindings runs in the iOS workflow ([ios/README.md](../ios/README.md)).
 
 ## Release
 

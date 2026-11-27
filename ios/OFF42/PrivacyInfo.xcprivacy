@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  OFF42 for iPad and iPhone collects no data and does not track. It makes no network connections and keeps no
+  preferences (no UserDefaults).
+
+  File timestamp category: the linked off42 engine (Rust, rust/crates/off42-mobile) contains the Rust standard
+  library's file functions, which call stat/fstat/fstatat. The engine uses them only to look for font files when it
+  draws stamp text (fontdb) and to read file sizes; it reads no timestamps and nothing leaves the device. Declared
+  with C617.1 because CI (ios/scripts/check-app-bundle.sh) finds these symbols in the binary. No other
+  required-reason API (boot time, disk space, user defaults, active keyboards) is referenced. See ios/README.md.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

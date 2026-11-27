@@ -130,6 +130,9 @@ An Android app for tablets and phones (`android/`, Kotlin and Compose over the s
 spreadsheets, presentations and PDFs, renders PDF pages, and makes codes, label sheets, marks, signatures and stamps,
 offline and without permissions. It is not on Google Play yet; CI builds a debug APK. See [android/README.md](android/README.md).
 
+An iPad and iPhone app (`ios/`, SwiftUI over the same cores) does the same on iOS/iPadOS 17 and later, offline. It is
+not on the App Store yet; CI builds an unsigned archive and runs its tests on simulators. See [ios/README.md](ios/README.md).
+
 ## Build and install on macOS
 
 ```bash
@@ -1332,8 +1335,9 @@ The snapshots render AppKit views; native material layers may require checking t
   https://off42.cc/app/ in the site's 20 languages; see [web/README.md](web/README.md) for what it does, its limits
   and build steps.
 - `android/` — the Android app (Kotlin, Jetpack Compose) over the cores through the UniFFI crate
-  `rust/crates/off42-mobile`, which also builds the Swift bindings for the planned iPad/iPhone app; see
+  `rust/crates/off42-mobile`, which also builds the Swift bindings for the iPad/iPhone app; see
   [android/README.md](android/README.md).
+- `ios/` — the iPad/iPhone app (SwiftUI) over the same UniFFI crate; see [ios/README.md](ios/README.md).
 - `Sources/Kit42` — shared macOS components: commands, menu bar, toolbar, tool strip, banners, welcome window, localisation,
   signature library, certificates, ZIP.
 - `Sources/Previews42` — Quick Look rendering (Markdown → HTML/page, ODS/TSV → table); `Sources/QLPreview42` and

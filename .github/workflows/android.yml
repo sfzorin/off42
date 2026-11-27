@@ -182,36 +182,3 @@ jobs:
             android/app/build/reports/androidTests
             android/app/build/outputs/androidTest-results
           retention-days: 7
-
-  # The same bindings for iPadOS/iOS (phase 6): device and simulator libraries, Swift bindings, XCFramework.
-  apple:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-ios,aarch64-apple-ios-sim
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            rust/target
-          key: apple-engine-${{ hashFiles('rust/Cargo.lock') }}-${{ github.sha }}
-          restore-keys: apple-engine-${{ hashFiles('rust/Cargo.lock') }}-
-      - name: cargo build for the iOS simulator
-        working-directory: rust
-        run: cargo build --locked --target aarch64-apple-ios-sim -p off42-mobile
-      - name: Static libraries, Swift bindings and XCFramework
-        run: sh rust/scripts/build-mobile-apple.sh
-      - name: The Swift bindings type-check against the generated module
-        working-directory: rust/build/apple
-        run: |
-          sdk=$(xcrun --sdk iphonesimulator --show-sdk-path)
-          xcrun swiftc -typecheck -sdk "$sdk" -target arm64-apple-ios16.0-simulator \
-            -Xcc -fmodule-map-file=headers/module.modulemap -I headers swift/Off42Mobile.swift
-      - uses: actions/upload-artifact@v4
-        with:
-          name: off42-mobile-apple
-          path: |
-            rust/build/apple/swift
-            rust/build/apple/Off42MobileFFI.xcframework

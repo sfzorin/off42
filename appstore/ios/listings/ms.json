@@ -1,0 +1,11 @@
+{
+  "appStoreLocale": "ms",
+  "name": "OFF42 – Pejabat luar talian",
+  "subtitle": "Lihat dan tukar fail pejabat",
+  "promotionalText": "Lihat dan tukar dokumen, hamparan, slaid dan PDF. Cipta kod dan tandatangan.",
+  "description": "OFF42 membuka dan menukar fail pejabat pada iPhone dan iPad anda. Semuanya berlaku pada peranti: OFF42 tidak membuat sambungan rangkaian dan hanya membuka atau menyimpan fail di tempat yang anda pilih, melalui apl Fail dan perkongsian.\n\n• Dokumen: lihat DOCX, ODT, RTF, Markdown, HTML dan teks biasa dengan kiraan perkataan; simpan dalam mana-mana format ini.\n• Hamparan: XLSX, ODS, CSV dan XLS (baca sahaja) dalam grid dengan tab helaian; simpan sebagai XLSX, ODS atau CSV.\n• Persembahan: PPTX dan ODP sebagai rangka teks setiap slaid; tukar antara kedua-dua format.\n• PDF: halaman dipaparkan pada peranti, bersama metadata, penanda buku, lampiran dan medan borang.\n• Label dan kod: kod QR, Data Matrix, Code 128 dan Aztec, helaian label A4 daripada baris anda sendiri, dan 97 tanda produk dan pematuhan (grafik sahaja: tanda tidak memperakui apa-apa).\n• Tandatangan dan cop: tandatangan gaya tulisan tangan dengan pelbagai pen dan dakwat, serta kesan cop daripada templat terbina dalam, disimpan sebagai PNG lutsinar.\n\nBelum tersedia: penyuntingan, eksport dokumen ke PDF, gambar dan susun atur slaid, anotasi PDF. Tandatangan yang dilukis ialah imej, bukan tandatangan digital berasaskan sijil.\n\nOFF42 percuma dan sumber terbuka (lesen MIT). Enjinnya sama dengan apl OFF42 untuk Mac, Windows dan Linux serta apl web.",
+  "keywords": "docx,xlsx,pptx,pdf,odt,penukar,dokumen,hamparan,slaid,kod qr,kod bar,label,tandatangan,cop",
+  "supportUrl": "https://off42.cc/en/support/",
+  "marketingUrl": "https://off42.cc/",
+  "privacyPolicyUrl": "https://off42.cc/en/privacy/"
+}
