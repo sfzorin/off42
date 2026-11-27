@@ -169,7 +169,8 @@ def audit_tracked_changes(binary, output):
 
 PRINT_LAYOUT = 65496
 SHEET_CAPTION = re.compile(r"(\d+) / (\d+)$")
-DESK_BGR = bytes([0xE4, 0xE1, 0xDE])
+# win42 chrome::DESK #eef0f3 (paper-like desk around Print Layout sheets), as BGR.
+DESK_BGR = bytes([0xF3, 0xF0, 0xEE])
 RTF_FORMAT = "Rich Text Format (supported subset)"
 
 
