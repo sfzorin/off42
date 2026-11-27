@@ -527,6 +527,24 @@ pub trait App {
     fn list_visible(&self) -> bool {
         true
     }
+    /// Existing menu commands (from `actions` or `view_actions`) that the toolbar strip also shows,
+    /// after the host's Undo, Redo and Print buttons.
+    fn toolbar_actions(&self) -> &'static [u16] {
+        &[]
+    }
+    /// Command and English title of the "+" button beside the sheet tabs.
+    fn add_sheet_command(&self) -> Option<(u16, &'static str)> {
+        None
+    }
+    /// Logical size of side-list thumbnails; the host then draws `presenter_preview(index)` for each item.
+    fn list_thumbnail_size(&self) -> Option<(f64, f64)> {
+        None
+    }
+    /// Page rectangles of the editing canvas scene in document units. The host frames them as white
+    /// sheets with a soft shadow on the grey canvas and offsets the scene by a fixed margin.
+    fn canvas_pages(&self) -> Vec<CanvasRect> {
+        Vec::new()
+    }
     /// Page and paragraph ruler geometry, in twips; None disables rulers.
     fn rich_ruler(&self) -> Option<RichRuler> {
         None

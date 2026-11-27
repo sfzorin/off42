@@ -55,7 +55,8 @@ unsafe fn paint(hwnd: HWND, s: &State) {
     let dc = BeginPaint(hwnd, &mut ps);
     let mut rc: RECT = zeroed();
     GetClientRect(hwnd, &mut rc);
-    FillRect(dc, &rc, GetSysColorBrush(COLOR_BTNFACE));
+    // Like the page desk, the ruler is paper-like in both appearances: desk margins, a white page span.
+    crate::chrome::fill(dc, &rc, crate::chrome::DESK);
     if let Some(v) = &s.view {
         let g = v.data.page;
         let zoom = v.data.zoom_percent;
@@ -64,7 +65,15 @@ unsafe fn paint(hwnd: HWND, s: &State) {
             Axis::Horizontal => g.width_twips,
             Axis::Vertical => g.height_twips,
         };
-        let pen = CreatePen(PS_SOLID, 1, 0x808080);
+        let page = match s.axis {
+            Axis::Horizontal => RECT { left: scale(g.margin_left_twips), top: 0, right: scale(g.width_twips - g.margin_right_twips), bottom: rc.bottom },
+            Axis::Vertical => RECT { left: 0, top: scale(g.margin_top_twips), right: rc.right, bottom: scale(g.height_twips - g.margin_bottom_twips) },
+        };
+        crate::chrome::fill(dc, &page, [255; 3]);
+        SetBkMode(dc, TRANSPARENT as i32);
+        SetTextColor(dc, 0x0066_5f5b);
+        SelectObject(dc, crate::chrome::font(crate::chrome::scale(v.dpi as i32, 11), 400) as _);
+        let pen = CreatePen(PS_SOLID, 1, 0x00AB_A19A);
         let old = SelectObject(dc, pen as _);
         let mut unit = 0;
         while unit <= extent {

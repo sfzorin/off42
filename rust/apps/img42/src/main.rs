@@ -419,6 +419,7 @@ impl suite42_app::App for Img {
             .into_iter().map(|(id,title,accelerator)|suite42_app::CommandSpec{id,title,accelerator,group:"Live Text"}).collect()
     }
     fn toolbar_command_visible(&self,id:u16)->bool {matches!(id,44|49)}
+    fn toolbar_actions(&self)->&'static [u16]{&[37,38,10,11,12,13,14]}
     fn command_state(&self,id:u16)->suite42_app::CommandState {suite42_app::CommandState{enabled:self.enabled(id),checked:id==49&&self.tool==0}}
     fn clipboard_request(&self,id:u16)->Option<suite42_app::ClipboardRequest> {
         if !matches!(id,44|45)||(id==44&&self.tool!=0){return None;}

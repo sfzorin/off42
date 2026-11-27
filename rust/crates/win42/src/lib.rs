@@ -15,6 +15,7 @@ pub mod pdfium;
 mod pdf_preview;
 pub use suite42_app::localization;
 mod theme;
+mod chrome;
 pub use suite42_app::host::*;
 pub use suite42_app::report::{ReportEvent, ReportRequest};
 pub use suite42_app::{InputRequest, LabelSource};

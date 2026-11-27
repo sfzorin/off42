@@ -92,6 +92,9 @@ impl suite42_app::App for Scn {
     fn view_actions(&self) -> &'static [(u16, &'static str)] {
         &[(SCAN_HISTORY, "Scan History…"), (CLEAR_SCAN_HISTORY, "Clear Scan History…")]
     }
+    fn toolbar_actions(&self) -> &'static [u16] {
+        &[19, 10, 18]
+    }
     fn dialog_request(&self, id: u16) -> Option<suite42_app::DialogRequest> {
         match id {
             SCAN_HISTORY if history::load().is_empty() => Some(suite42_app::DialogRequest::Information {

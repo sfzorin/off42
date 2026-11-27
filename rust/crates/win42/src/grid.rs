@@ -81,7 +81,7 @@ fn color(v: [u8; 3]) -> u32 {
 fn selected(range: Option<GridRange>, r: usize, c: usize) -> bool {
     range.is_some_and(|v| r >= v.top && r <= v.bottom && c >= v.left && c <= v.right)
 }
-fn col_label(mut c: usize) -> String {
+pub(super) fn col_label(mut c: usize) -> String {
     c += 1;
     let mut s = Vec::new();
     while c > 0 {
@@ -327,7 +327,7 @@ unsafe fn paint(hwnd: HWND) {
                 rect.bottom - 1,
                 rect.right,
                 rect.bottom - 1,
-                [218; 3],
+                [225, 227, 230],
             );
             line(
                 dc,
@@ -335,7 +335,7 @@ unsafe fn paint(hwnd: HWND) {
                 rect.top,
                 rect.right - 1,
                 rect.bottom,
-                [218; 3],
+                [225, 227, 230],
             );
             for (bit, a, b) in [
                 (1, (rect.left, rect.top), (rect.right, rect.top)),
@@ -458,14 +458,14 @@ unsafe fn paint(hwnd: HWND) {
         right: rc.right,
         bottom: HEADER,
     };
-    fill(dc, &header, [239, 242, 247]);
+    fill(dc, &header, [248, 249, 250]);
     let left = RECT {
         left: 0,
         top: HEADER,
         right: ROW_HEADER,
         bottom: rc.bottom,
     };
-    fill(dc, &left, [239, 242, 247]);
+    fill(dc, &left, [248, 249, 250]);
     for &c in &visible_columns {
         if snap.widths[c] <= 0 {
             continue;
@@ -503,7 +503,7 @@ unsafe fn paint(hwnd: HWND) {
             false,
             true,
         );
-        line(dc, b - 1, 0, b - 1, HEADER, [195; 3]);
+        line(dc, b - 1, 0, b - 1, HEADER, [218, 220, 224]);
         RestoreDC(dc, pane);
     }
     for &r in &visible_rows {
@@ -543,11 +543,11 @@ unsafe fn paint(hwnd: HWND) {
             false,
             true,
         );
-        line(dc, 0, b - 1, ROW_HEADER, b - 1, [195; 3]);
+        line(dc, 0, b - 1, ROW_HEADER, b - 1, [218, 220, 224]);
         RestoreDC(dc, pane);
     }
-    line(dc, ROW_HEADER - 1, 0, ROW_HEADER - 1, rc.bottom, [175; 3]);
-    line(dc, 0, HEADER - 1, rc.right, HEADER - 1, [175; 3]);
+    line(dc, ROW_HEADER - 1, 0, ROW_HEADER - 1, rc.bottom, [200, 204, 210]);
+    line(dc, 0, HEADER - 1, rc.right, HEADER - 1, [200, 204, 210]);
     if let Some(d) = st.drag {
         if d.row {
             line(dc, 0, d.last, rc.right, d.last, [35, 100, 210])
@@ -780,32 +780,47 @@ unsafe fn position_editor(hwnd: HWND) {
 pub(super) unsafe fn finish_pending(hwnd: HWND) -> bool {
     finish_editor(hwnd, true)
 }
-unsafe fn ensure_visible(hwnd: HWND, row: usize, col: usize) {
+/// Scroll offset that shows the span `start..end` (offsets past the frozen panes at `frozen`) in a
+/// `page` of scrollable pixels. A view with no scrollable area keeps its offset: a grid that has not
+/// been laid out yet must not scroll its first cells out of sight.
+fn reveal(scroll: i64, start: i64, end: i64, frozen: i64, page: i64) -> i64 {
+    if page <= 0 {
+        scroll
+    } else if start < scroll + frozen {
+        start - frozen
+    } else if end > scroll + page {
+        end - page
+    } else {
+        scroll
+    }
+}
+/// Scrolls the cell into view; false while the grid has no client area beyond its headers.
+unsafe fn ensure_visible(hwnd: HWND, row: usize, col: usize) -> bool {
     let Some(snap) = super::native::grid_snapshot() else {
-        return;
+        return false;
     };
-    let Some(st) = state(hwnd) else { return };
+    let Some(st) = state(hwnd) else { return false };
     let xs = &snap.widths;
     let ys = &snap.heights;
     if row >= ys.len() || col >= xs.len() {
-        return;
+        return true;
     }
     let mut rc = RECT::default();
     GetClientRect(hwnd, &mut rc);
-    let w = (rc.right - ROW_HEADER).max(1) as i64;
-    let h = (rc.bottom - HEADER).max(1) as i64;
-    if col >= snap.frozen.1 && xs.offset(col) < st.x + xs.offset(snap.frozen.1.min(xs.len())) {
-        st.x = xs.offset(col) - xs.offset(snap.frozen.1.min(xs.len()))
-    } else if col >= snap.frozen.1 && xs.offset(col+1) > st.x + w {
-        st.x = xs.offset(col+1) - w
+    let w = i64::from(rc.right - ROW_HEADER);
+    let h = i64::from(rc.bottom - HEADER);
+    if w <= 0 || h <= 0 {
+        return false;
     }
-    if row >= snap.frozen.0 && ys.offset(row) < st.y + ys.offset(snap.frozen.0.min(ys.len())) {
-        st.y = ys.offset(row) - ys.offset(snap.frozen.0.min(ys.len()))
-    } else if row >= snap.frozen.0 && ys.offset(row+1) > st.y + h {
-        st.y = ys.offset(row+1) - h
+    if col >= snap.frozen.1 {
+        st.x = reveal(st.x, xs.offset(col), xs.offset(col + 1), xs.offset(snap.frozen.1.min(xs.len())), w);
+    }
+    if row >= snap.frozen.0 {
+        st.y = reveal(st.y, ys.offset(row), ys.offset(row + 1), ys.offset(snap.frozen.0.min(ys.len())), h);
     }
     update_scroll(hwnd);
     InvalidateRect(hwnd, null(), 0);
+    true
 }
 unsafe fn scroll(hwnd:HWND,vertical:bool,code:i32) {
     if !finish_editor(hwnd,true){return}
@@ -975,7 +990,7 @@ unsafe fn move_selection(hwnd: HWND, key: u16, shift: bool) {
     let target = super::native::grid_snapshot()
         .and_then(|s| s.selected)
         .unwrap_or(target);
-    ensure_visible(hwnd, target.0, target.1)
+    ensure_visible(hwnd, target.0, target.1);
 }
 unsafe extern "system" fn proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LRESULT {
     match msg {
@@ -1508,7 +1523,29 @@ pub(super) unsafe fn refresh(hwnd: HWND) {
     let selected=super::native::grid_snapshot().and_then(|s|s.selected);
     let moved=state(hwnd).is_some_and(|st|{let changed=st.last_focus!=selected;st.last_focus=selected;changed});
     update_scroll(hwnd);
-    if moved {if let Some((r,c))=selected{ensure_visible(hwnd,r,c);}}
+    // Until the grid has been laid out, keep the focus pending so the first sized refresh reveals it.
+    if moved {if let Some((r,c))=selected{if !ensure_visible(hwnd,r,c){if let Some(st)=state(hwnd){st.last_focus=None;}}}}
     position_editor(hwnd);
     InvalidateRect(hwnd, null(), 0);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::reveal;
+
+    #[test]
+    fn unsized_grid_keeps_the_first_cell_in_view() {
+        // A1 (0..80) in a grid created at 0x0 before layout: no scrollable page, no scroll.
+        assert_eq!(reveal(0, 0, 80, 0, 1 - 64), 0);
+        assert_eq!(reveal(0, 0, 80, 0, 0), 0);
+    }
+
+    #[test]
+    fn reveal_scrolls_only_as_far_as_needed() {
+        assert_eq!(reveal(0, 0, 80, 0, 500), 0);
+        assert_eq!(reveal(0, 800, 880, 0, 500), 380);
+        assert_eq!(reveal(400, 160, 240, 0, 500), 160);
+        // Frozen first column (0..80): the next column reveals at offset 0 behind it.
+        assert_eq!(reveal(300, 80, 160, 80, 500), 0);
+    }
 }

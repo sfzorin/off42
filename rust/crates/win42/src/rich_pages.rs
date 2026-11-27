@@ -44,9 +44,9 @@ mod native {
     const EM_GETSCROLLPOS: u32 = WM_USER + 221;
     const EM_SETSCROLLPOS: u32 = WM_USER + 222;
     const SETTLE: Duration = Duration::from_millis(250);
-    const DESK: u32 = 0x00E4_E1DE;
-    const EDGE: u32 = 0x00B4_B0AC;
-    const SHADOW: u32 = 0x00A8_A4A0;
+    const DESK: u32 = crate::chrome::DESK[0] as u32 | (crate::chrome::DESK[1] as u32) << 8 | (crate::chrome::DESK[2] as u32) << 16;
+    const EDGE: u32 = crate::chrome::DESK_EDGE[0] as u32 | (crate::chrome::DESK_EDGE[1] as u32) << 8 | (crate::chrome::DESK_EDGE[2] as u32) << 16;
+    const SHADOW: u32 = 0x00CF_CBC7;
     const MAX_CACHED: usize = 8;
 
     #[derive(Default)]
@@ -541,7 +541,7 @@ mod native {
         }
         SetWindowRgn(edit, null_mut(), 1);
         let style = GetWindowLongPtrW(edit, GWL_EXSTYLE);
-        SetWindowLongPtrW(edit, GWL_EXSTYLE, style | WS_EX_CLIENTEDGE as isize);
+        SetWindowLongPtrW(edit, GWL_EXSTYLE, style & !(WS_EX_CLIENTEDGE as isize));
         let style = GetWindowLongPtrW(edit, GWL_STYLE);
         SetWindowLongPtrW(edit, GWL_STYLE, style | WS_VSCROLL as isize);
         SendMessageW(edit, EM_SHOWSCROLLBAR, SB_VERT as usize, 1);
