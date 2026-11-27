@@ -61,10 +61,9 @@ def main():
     for lang in android.LANGUAGES:
         web = json.loads((WEB / f"{lang}.json").read_text(encoding="utf-8"))
         for name, (key, _) in android.WEB_STRINGS.items():
+            # Keys the web app no longer has are kept in strings-ios.json (checked below).
             if key in web:
                 texts.setdefault(name, {})[lang] = web[key]
-            else:
-                missing.append(f"{lang}: {key}")
         for source in (android_extra, ios_extra):
             for name, text in source.get(lang, {}).items():
                 texts.setdefault(name, {})[lang] = text
