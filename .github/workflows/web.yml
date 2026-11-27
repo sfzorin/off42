@@ -20,6 +20,18 @@ jobs:
           node-version: 22
       - name: website/public/app is up to date with web/ and off42-wasm
         run: node web/scripts/site-build.mjs check website/public/app
+      - name: Exercise the published browser tools
+        working-directory: web
+        run: |
+          npm ci
+          npx playwright install --with-deps --only-shell chromium
+          npm run test:ui -- --dir ../website/public/app --screenshots ../build/web-screenshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-screenshots
+          path: build/web-screenshots
+          retention-days: 14
   website:
     runs-on: ubuntu-latest
     defaults:
@@ -86,13 +98,6 @@ jobs:
         run: |
           npx playwright install --with-deps --only-shell chromium
           npm run test:ui
-      - name: Headless browser test of the copy published on the site (website/public/app)
-        working-directory: web
-        run: npm run test:ui -- --dir ../website/public/app --screenshots ../build/web-screenshots
-      - uses: actions/upload-artifact@v4
-        with:
-          name: web-screenshots
-          path: build/web-screenshots
       - uses: actions/upload-artifact@v4
         with:
           name: off42-web

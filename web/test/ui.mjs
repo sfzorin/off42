@@ -93,15 +93,8 @@ function driver(page) {
   };
   const downloadAs = (section, label) => downloadBytes(() => menu(section, ['File', 'Download as', label]));
   const go = async (id) => {
-    await page.locator('.screen:not([hidden]) .menu-button:visible, .screen:not([hidden]) .back-button:visible').first().evaluate((button, id) => {
-      if (button.classList.contains('back-button')) {
-        const link = document.querySelector('#drawer .drawer-app[data-app="' + id + '"]');
-        link.click();
-      } else {
-        button.click();
-        document.querySelector('#drawer .drawer-app[data-app="' + id + '"]').click();
-      }
-    }, id);
+    // Exercise the actual tool link without closing the current file. The separate drawer test checks its visible UI.
+    await page.locator('#drawer .drawer-app[data-app="'+id+'"]').evaluate(link => link.click());
     await page.waitForSelector(`#${id}:not([hidden])`);
   };
   return { open, opened, downloadBytes, menu, downloadAs, go };
