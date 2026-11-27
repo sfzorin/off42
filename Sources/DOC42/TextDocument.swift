@@ -206,7 +206,8 @@ final class TextDocument: NSDocument {
     }
 
     func epubData() throws -> Data {
-        try EPUBFormat.write(Fields.flatten(Revisions.accepted(storage), info: fieldInfo), title: docInfo.title, author: docInfo.author)
+        commitPendingEdits()
+        return try EPUBFormat.write(Fields.flatten(Revisions.accepted(storage), info: fieldInfo), title: docInfo.title, author: docInfo.author)
     }
 
     func markdownData() -> Data {

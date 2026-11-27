@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 
 /// OpenRaster is flattened on import and exported as a new single-layer archive.
 enum OpenRaster {
-    static let type = UTType(exportedAs: "org.openraster.image", conformingTo: .image)
+    static let type = UTType(importedAs: "org.openraster.image", conformingTo: .image)
     static let mime = "image/openraster"
     private static let limit = 256 * 1024 * 1024
 
