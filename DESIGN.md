@@ -93,8 +93,9 @@ paints them.
   Save command, enabled with File > Save). It is not a panel and stays visible when panels are hidden.
 - Toolbar strip: one rounded row (`#edf1f7`). Undo, Redo and Print come first, then the app's `toolbar_actions`
   (existing menu commands), then its visible `command_specs`. Groups are separated by 1 px dividers. Buttons are native
-  `BUTTON`s painted through `NM_CUSTOMDRAW` (hover, pressed, accent-tinted check state, focus ring); commands with an
-  icon in `chrome::icon_for` are icon-only with a tooltip and keep their title as window text. Buttons that do not
+  `BUTTON`s painted through `NM_CUSTOMDRAW` (hover, pressed, accent-tinted check state, focus ring). Every command is
+  a 32 px icon button (`chrome::toolbar_icon`: the command's icon from `chrome::icon_for`, or the generic command
+  glyph) whose label is its tooltip and window text (accessible name); there are no text buttons. Buttons that do not
   fit move to "More…". Only real commands appear; there are no placeholder buttons.
 - Side list: flat owner-drawn `LISTBOX` (`LBS_HASSTRINGS`, so `LB_GETTEXT` and accessibility keep the item text)
   separated from the document by a 1 px line. Selection is an accent-tinted pill. Apps with `list_thumbnail_size`

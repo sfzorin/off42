@@ -165,9 +165,19 @@ pub(crate) enum Icon {
     Previous,
     Next,
     Slide,
+    SelectRange,
+    NumberFormat,
+    Font,
+    /// Generic command glyph for toolbar commands without a specific icon.
+    Command,
 }
 
-/// Icon for a toolbar command, chosen by its English source title; `None` keeps a text button.
+/// Icon for a toolbar button: the command's specific icon, or the generic command icon.
+pub(crate) fn toolbar_icon(title: &str) -> Icon {
+    icon_for(title).unwrap_or(Icon::Command)
+}
+
+/// Specific icon for a command, chosen by its English source title.
 pub(crate) fn icon_for(title: &str) -> Option<Icon> {
     let title = title.replace('&', "");
     let title = title.trim_end_matches(['…', '.']).trim();
@@ -204,6 +214,11 @@ pub(crate) fn icon_for(title: &str) -> Option<Icon> {
         "Previous image in folder" => Icon::Previous,
         "Next image in folder" => Icon::Next,
         "Add Slide" => Icon::Slide,
+        "Select range" | "Select cells" => Icon::SelectRange,
+        "Number format" | "Format cells" => Icon::NumberFormat,
+        "Font" => Icon::Font,
+        "Chart" | "Add chart" => Icon::Chart,
+        "Copy" => Icon::Copy,
         _ => return None,
     })
 }
@@ -354,6 +369,31 @@ pub(crate) fn marks(icon: Icon) -> Vec<Mark> {
         Icon::Slide => vec![
             rect(3.0, 6.0, 15.0, 11.0),
             Line(vec![(18.0, 9.0), (21.0, 9.0), (21.0, 20.0), (6.0, 20.0), (6.0, 17.0)]),
+        ],
+        Icon::SelectRange => vec![
+            Line(vec![(4.0, 8.0), (4.0, 4.0), (8.0, 4.0)]),
+            Line(vec![(12.0, 4.0), (14.0, 4.0)]),
+            Line(vec![(18.0, 4.0), (20.0, 4.0), (20.0, 8.0)]),
+            Line(vec![(4.0, 12.0), (4.0, 14.0)]),
+            Line(vec![(4.0, 18.0), (4.0, 20.0), (8.0, 20.0)]),
+            Closed(vec![(13.0, 13.0), (20.0, 15.6), (17.0, 17.0), (15.6, 20.0)]),
+        ],
+        Icon::NumberFormat => vec![
+            Line(vec![(10.0, 4.0), (8.0, 20.0)]),
+            Line(vec![(16.0, 4.0), (14.0, 20.0)]),
+            Line(vec![(5.0, 9.0), (20.0, 9.0)]),
+            Line(vec![(4.0, 15.0), (19.0, 15.0)]),
+        ],
+        Icon::Font => vec![
+            Line(vec![(3.0, 19.0), (8.5, 5.0), (14.0, 19.0)]),
+            Line(vec![(5.2, 14.0), (11.8, 14.0)]),
+            Ring(17.5, 16.0, 3.0),
+            Line(vec![(20.5, 12.5), (20.5, 19.0)]),
+        ],
+        Icon::Command => vec![
+            rect(4.0, 4.0, 16.0, 16.0),
+            Line(vec![(8.5, 9.0), (11.5, 12.0), (8.5, 15.0)]),
+            Line(vec![(13.0, 15.0), (16.0, 15.0)]),
         ],
     }
 }
@@ -989,6 +1029,7 @@ mod tests {
             Icon::Copy, Icon::Paste, Icon::Plus, Icon::More, Icon::TextSelect, Icon::TextBox, Icon::Shape,
             Icon::Play, Icon::ZoomIn, Icon::ZoomOut, Icon::Fit, Icon::RotateLeft, Icon::RotateRight,
             Icon::Rectangle, Icon::Highlight, Icon::Scan, Icon::Crop, Icon::Previous, Icon::Next, Icon::Slide,
+            Icon::SelectRange, Icon::NumberFormat, Icon::Font, Icon::Command,
         ];
         for icon in all {
             let marks = marks(icon);
@@ -1006,12 +1047,18 @@ mod tests {
     }
 
     #[test]
-    fn toolbar_titles_map_to_icons_and_unknown_titles_stay_text() {
+    fn toolbar_titles_map_to_icons_and_unknown_titles_get_the_command_icon() {
         assert_eq!(icon_for("Bold"), Some(Icon::Bold));
         assert_eq!(icon_for("Insert table…"), Some(Icon::Table));
         assert_eq!(icon_for("&Undo"), Some(Icon::Undo));
         assert_eq!(icon_for("Rotate &Right"), Some(Icon::RotateRight));
-        assert_eq!(icon_for("Font…"), None);
-        assert_eq!(icon_for("Number format…"), None);
+        assert_eq!(toolbar_icon("Font…"), Icon::Font);
+        assert_eq!(toolbar_icon("Font..."), Icon::Font);
+        assert_eq!(toolbar_icon("Number format..."), Icon::NumberFormat);
+        assert_eq!(toolbar_icon("Select range"), Icon::SelectRange);
+        assert_eq!(toolbar_icon("Insert chart..."), Icon::Chart);
+        assert_eq!(toolbar_icon("Copy cells"), Icon::Copy);
+        assert_eq!(icon_for("Paragraph spacing…"), None);
+        assert_eq!(toolbar_icon("Paragraph spacing…"), Icon::Command);
     }
 }

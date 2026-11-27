@@ -396,8 +396,8 @@ The six apps share the layout of the web apps (see [DESIGN.md](../DESIGN.md#wind
 - One toolbar strip starts with **Undo**, **Redo** and **Print**, followed by each app's frequent commands: zoom,
   rotate, select text, highlight and rectangle in PDF42; add slide, text box, shape, table and slide show in PPT42;
   previous/next image, rotate and zoom in IMG42; scan, rotate and crop in SCN42; formatting in DOC42 and XLS42.
-  Icon buttons show their name as a tooltip. Commands that do not fit go to **More…**. **View → Show Toolbar** hides
-  the strip; the title row stays.
+  Every toolbar command is an icon button that shows its name as a tooltip. Commands that do not fit go to
+  **More…**. **View → Show Toolbar** hides the strip; the title row stays.
 - XLS42 has a formula bar (cell or range name, `fx`, cell text) above the grid and sheet tabs with **+** (Add sheet)
   below it. PPT42 shows slide thumbnails in the side strip. PDF pages and slides sit on a grey canvas with a margin.
 - **File → Save As** opens a submenu: **Save As…** (all formats, `Ctrl+Shift+S`) and one entry per format.
