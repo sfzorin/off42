@@ -75,6 +75,8 @@ final class AppUITests: XCTestCase {
 
     /// Goes back one level in the iPhone navigation stack.
     private func back() {
+        // On iPad every column is shown; the first bar button there is the sidebar toggle, not Back.
+        guard !isPad else { return }
         let button = app.navigationBars.buttons.element(boundBy: 0)
         if button.exists && button.isHittable { button.tap() }
     }
@@ -300,7 +302,7 @@ final class AppUITests: XCTestCase {
         // A Word file keeps package parts that ODT cannot carry: the app asks first.
         select(file: "sample.docx")
         saveAs("odt")
-        let convert = app.alerts.buttons["Convert"]
+        let convert = app.alerts.buttons["Convert"].firstMatch
         XCTAssertTrue(convert.waitForExistence(timeout: 20))
         convert.tap()
         let odt = written("sample.odt")
@@ -446,9 +448,12 @@ final class AppUITests: XCTestCase {
 
         // The real save dialog (fileExporter) comes up for Save PNG.
         reveal("code-save-png", from: "code-preview").tap()
-        let save = app.buttons["Cancel"].firstMatch
-        XCTAssertTrue(save.waitForExistence(timeout: 30), "save dialog did not appear")
-        save.tap()
+        // Its look differs between iOS versions (a Cancel button, or a location title over a file name bar), so any
+        // of them counts; the suggested file name "qr" shows in the newer layout.
+        waitUntil(30, "save dialog did not appear") {
+            app.buttons["Cancel"].exists || app.buttons["Move"].exists || app.buttons["Save"].exists
+                || app.staticTexts["On My iPhone"].exists || app.staticTexts["On My iPad"].exists
+        }
     }
 
     // MARK: - Pixels
