@@ -16,7 +16,7 @@ off42 has two independent implementations of the same six apps (PDF42, DOC42, XL
 | — app crates | `rust/apps/*` | ~23k lines | Win32 wiring of each app model; PDFium, WinRT, CryptoAPI, WIA and Windows OCR bindings |
 | Website | Node generator (`website/`), Cloudflare | — | 20 languages |
 | Linux | PR #4, paused | — | egui host + `off42` CLI over the Rust cores |
-| Web | groundwork (`web/`, `rust/crates/off42-wasm`) | — | Not deployed; cores build for wasm32 |
+| Web | `web/`, `rust/crates/off42-wasm`, `rust/crates/edit42` | — | off42.cc/app (phase 3); documents and spreadsheets editable (phase 8, stage 2) |
 
 Every feature is written twice, once in Swift and once in Rust. `rust/PARITY.md` tracks the drift, and some
 ports (for example `marks42`) must stay bit-identical to Swift by hand.
@@ -158,6 +158,21 @@ An optional assistant panel in the web editors (documents and spreadsheets first
 - Neui/Doors (server-side Go UI) was considered and rejected: it would move documents to a server and require
   rewriting the web UI.
 
+Command layer crate (stage 2) — **Proposed** (needs the owner's agreement under §4): the commands live in a new
+crate, `rust/crates/edit42`, rather than in `suite42-app` or `off42-wasm`.
+
+- `suite42-app` links image, lopdf, tempfile and the PDF, image and scan cores; the command layer needs only doc42-core,
+  xls42-core and serde. Putting it there would pull all of that into the 13 MB browser engine and into every client
+  that only edits documents.
+- `off42-wasm` is the browser's bytes-in/bytes-out API with wasm-bindgen exports; the commands must also serve the
+  Windows/Linux shells, the `off42` CLI and `off42-mobile` without going through the web API, and the assistant later
+  sends the same JSON.
+- `edit42` holds no platform code: JSON commands in, JSON results out, an edit session per open file (blank or opened
+  from bytes, apply, undo/redo, snapshot for drawing, save in a format). One request (one command or an array) runs in
+  one `RichDocument::transact` or one `Workbook::batch`, so it is one Undo step and a failing request changes nothing.
+  The State-level operations it needs went into the cores (`doc42_core::rich::ops`, `Workbook::batch`,
+  `Workbook::update_style`, `Workbook::with_sheet`, history depth), so other hosts can use them without `edit42`.
+
 ## 3. Target layering (Windows, Linux, CLI, web)
 
 ```
@@ -197,7 +212,7 @@ An optional assistant panel in the web editors (documents and spreadsheets first
 | 5 | `off42-mobile` UniFFI bindings; Android app (Compose, tablets first) | D10 | Done (PR #13); not on Google Play yet (needs the owner's developer account and upload key) |
 | 6 | iPad/iPhone SwiftUI app over `off42-mobile` | D11, phase 5 bindings | Built on branch `phase6-ios` (pull request, not merged; not on the App Store); see below |
 | 7 | Mac App Store build variant (sandbox) and DMG notarization | D12, Apple Developer account | Prepared without an account: `APP_STORE` variant, `scripts/build-app-store.sh`, DMG notarization in `scripts/sign_and_notarize.sh` (appstore/README.md); signing, upload and sandbox runtime checks wait for the account |
-| 8 | Web editing (stage 2) with the shared command layer, then the AI assistant: Worker proxy, assistant panel, consent and policy updates | D13 | — |
+| 8 | Web editing (stage 2) with the shared command layer, then the AI assistant: Worker proxy, assistant panel, consent and policy updates | D13 | Stage 2 (editing) in PR #25 (not merged); see below. Assistant next |
 
 Phase 1 result: `suite42-app` holds the `App` contract and every module listed in §1 that has no Win32 call; the
 crate's README lists them. Code that needs the platform is passed in by the shell: `platform::PdfText` (PDFium),
@@ -225,6 +240,27 @@ because it changes the provenance hash of the published web app. The crate build
 the iOS build. Phase 6 reuses the crate, the Swift bindings and XCFramework from that script, the fixture set in
 `android/app/src/androidTest/assets/fixtures`, the Play listing texts as a base for the App Store listing, and the
 Android screen structure (sections, list/detail on large screens, save through the system dialog).
+
+Phase 8, stage 2 result: `crates/edit42` is the command layer (see D13). Documents: insert/replace/delete text (line
+breaks split paragraphs; consecutive typing at the caret joins one Undo step), Enter (`split_paragraph`, ending a
+list in an empty item), paragraph styles normal/heading 1–3/bulleted/numbered list (adjacent list paragraphs share a
+list), alignment, bold/italic/underline over a range, by paragraph or by found text, and the assistant's planned
+`replace_text`, `insert_paragraphs`, `delete_paragraphs`, `get_outline`, `read_range`, `find`. Spreadsheets:
+`set_cells` (values and formulas, fill of one value over a range), `clear`, insert/delete rows and columns,
+`set_number_format` (Excel codes, including currency literals that xls42 now shows and writes to XLSX and ODS),
+`adjust_decimals`, `set_text_style` (bold/italic/underline), `sort_range`, `get_sheet_info`, `read_cells`; every
+command can name a sheet. Cores: `SnapshotHistory::set_limit`/`amend`, `RichDocument::transact_amend` and
+`set_history_limit`, `doc42_core::rich::ops` (State-level text, style, split/join, insert/remove block with anchors
+moved), `Workbook::batch`, `update_style`, `with_sheet`, `set_history_limit`, `mark_saved`; sessions keep 100 Undo
+steps. `off42-wasm` exposes sessions as `editNew/editOpen/editApply/editUndo/editRedo/editSnapshot/editSave/
+editMarkSaved/editImage/editClose`; its existing functions, which `off42-mobile` calls, are unchanged. The web app
+creates blank documents and workbooks (home tile, File ▸ New), edits documents on a contenteditable page whose input
+events are all turned into commands (the page is redrawn from the session; IME text is committed at composition end)
+and edits cells (typing, F2, double click, formula bar, Enter/Tab/arrows, Delete, clipboard). Documents with tracked
+changes stay view-only (the core cannot record new revisions from these commands yet); presentations stay view-only
+(ppt42 slide text editing would need a text-frame editing surface, not a small step); XLS stays read-only. XLSX/ODS
+files written by other programs keep the core's limits: xls42 keeps their original package, so sorting and filling
+are refused there (and number formats in ODS); files saved by off42 reopen fully editable. Next: the assistant (Worker proxy, panel, consent) over the same commands.
 
 Phase 6 result: `ios/` is the SwiftUI app (`cc.off42.office`, iOS/iPadOS 17+, iPad and iPhone), generated as an
 Xcode project by XcodeGen from `ios/project.yml`. It compiles the UniFFI Swift bindings and links the XCFramework from

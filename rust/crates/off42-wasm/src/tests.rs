@@ -99,3 +99,44 @@ fn signatures_and_stamps_render_deterministically() {
     let stamp = stamp_png(id, &Value::Object(values).to_string(), "", "99", 1.0).unwrap();
     assert!(stamp.starts_with(b"\x89PNG"));
 }
+
+#[test]
+fn edit_sessions_create_edit_undo_and_save() {
+    let doc = edit_new("document").unwrap();
+    let snap: Value = serde_json::from_str(&edit_snapshot(doc, "{}").unwrap()).unwrap();
+    let first = snap["blocks"][0]["id"].as_u64().unwrap();
+    let request = json!([
+        { "command": "insert_text", "at": { "id": first, "offset": 0 }, "text": "Title\nBody" },
+        { "command": "set_paragraph_style", "ids": [first], "style": "heading1" },
+    ]);
+    edit_apply(doc, &request.to_string()).unwrap();
+    let docx = edit_save(doc, "docx", false).unwrap();
+    let html = document_html(&docx, "docx").unwrap();
+    assert!(html.contains("<h1") && html.contains("Title") && html.contains("Body"), "{html}");
+    let status: Value = serde_json::from_str(&edit_undo(doc).unwrap()).unwrap();
+    assert_eq!(status, json!({ "changed": true, "canUndo": false, "canRedo": true, "dirty": false }));
+    let status: Value = serde_json::from_str(&edit_redo(doc).unwrap()).unwrap();
+    assert_eq!(status["dirty"], true);
+    edit_mark_saved(doc).unwrap();
+    let snap: Value = serde_json::from_str(&edit_snapshot(doc, "").unwrap()).unwrap();
+    assert_eq!(snap["dirty"], false);
+    assert!(edit_apply(doc, "{\"command\":\"bogus\"}").is_err());
+    edit_close(doc);
+    assert!(edit_snapshot(doc, "{}").is_err(), "closed");
+
+    let book = edit_new("spreadsheet").unwrap();
+    edit_apply(book, &json!({ "command": "set_cells", "range": "A1", "values": [[2], [3], ["=SUM(A1:A2)"]] }).to_string()).unwrap();
+    edit_apply(book, &json!({ "command": "insert_rows", "row": 1, "count": 1 }).to_string()).unwrap();
+    let xlsx = edit_save(book, "xlsx", false).unwrap();
+    let shown: Value = serde_json::from_str(&spreadsheet_json(&xlsx, "xlsx", 100, 10).unwrap()).unwrap();
+    let cells = shown["sheets"][0]["cells"].as_array().unwrap();
+    assert!(cells.iter().any(|c| c[0] == 3 && c[1] == 0 && c[2] == "5"), "{cells:?}");
+    let opened = edit_open(&xlsx, "xlsx").unwrap();
+    let snap: Value = serde_json::from_str(&edit_snapshot(opened, "{\"sheet\":0}").unwrap()).unwrap();
+    assert!(snap["sheet"]["inputs"].as_array().unwrap().iter().any(|c| c[2] == "=SUM(A2:A3)"));
+    assert!(edit_image(opened, 1).is_err());
+    edit_close(book);
+    edit_close(opened);
+    assert!(edit_new("drawing").is_err());
+    assert!(edit_open(b"", "pdf").is_err());
+}

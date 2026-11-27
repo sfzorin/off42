@@ -156,4 +156,29 @@ check('stamp templates and PNG (date supplied by the host)', () => {
   assert.equal(drawn, templates.length);
 });
 
+// Edit sessions (the editing command layer, crates/edit42)
+check('edit sessions: a blank document edited, undone and saved as DOCX inside wasm', () => {
+  const doc = off42.editNew('document');
+  const first = JSON.parse(off42.editSnapshot(doc, '{}')).blocks[0].id;
+  off42.editApply(doc, JSON.stringify([
+    { command: 'insert_text', at: { id: first, offset: 0 }, text: 'Plan\nHire people' },
+    { command: 'set_paragraph_style', ids: [first], style: 'heading1' },
+  ]));
+  const html = off42.documentHtml(off42.editSave(doc, 'docx', false), 'docx');
+  assert.match(html, /<h1[^>]*>(<[^>]+>)*Plan/);
+  assert.equal(JSON.parse(off42.editUndo(doc)).canUndo, false, 'one request is one Undo step');
+  assert.throws(() => off42.editApply(doc, '{"command":"nope"}'), /Invalid command/);
+  off42.editClose(doc);
+  assert.throws(() => off42.editSnapshot(doc, '{}'), /no longer open/);
+});
+check('edit sessions: a blank workbook with a formula, an inserted row and a currency format as XLSX', () => {
+  const book = off42.editNew('spreadsheet');
+  off42.editApply(book, JSON.stringify({ command: 'set_cells', range: 'A1', values: [[2], [3], ['=SUM(A1:A2)']] }));
+  off42.editApply(book, JSON.stringify({ command: 'insert_rows', row: 2, count: 1 }));
+  off42.editApply(book, JSON.stringify({ command: 'set_number_format', range: 'A4', format: '"€"0.00' }));
+  const sheet = JSON.parse(off42.spreadsheetJson(off42.editSave(book, 'xlsx', false), 'xlsx', 10, 10)).sheets[0];
+  assert.ok(sheet.cells.some(([r, c, t]) => r === 3 && c === 0 && t === '€5.00'), JSON.stringify(sheet.cells));
+  off42.editClose(book);
+});
+
 console.log(`\n${passed} checks passed`);

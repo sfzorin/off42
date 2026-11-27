@@ -43,6 +43,57 @@ pub fn spreadsheet_values_csv(bytes: &[u8], from: &str, sheet: usize) -> JsResul
     js(crate::spreadsheet_values_csv(bytes, from, sheet))
 }
 
+#[wasm_bindgen(js_name = editNew)]
+pub fn edit_new(kind: &str) -> JsResult<u32> {
+    js(crate::edit_new(kind))
+}
+
+#[wasm_bindgen(js_name = editOpen)]
+pub fn edit_open(bytes: &[u8], format: &str) -> JsResult<u32> {
+    js(crate::edit_open(bytes, format))
+}
+
+#[wasm_bindgen(js_name = editApply)]
+pub fn edit_apply(id: u32, request: &str) -> JsResult<String> {
+    js(crate::edit_apply(id, request))
+}
+
+#[wasm_bindgen(js_name = editUndo)]
+pub fn edit_undo(id: u32) -> JsResult<String> {
+    js(crate::edit_undo(id))
+}
+
+#[wasm_bindgen(js_name = editRedo)]
+pub fn edit_redo(id: u32) -> JsResult<String> {
+    js(crate::edit_redo(id))
+}
+
+#[wasm_bindgen(js_name = editSnapshot)]
+pub fn edit_snapshot(id: u32, options: &str) -> JsResult<String> {
+    js(crate::edit_snapshot(id, options))
+}
+
+#[wasm_bindgen(js_name = editSave)]
+pub fn edit_save(id: u32, format: &str, drop_package_parts: bool) -> JsResult<Vec<u8>> {
+    js(crate::edit_save(id, format, drop_package_parts))
+}
+
+#[wasm_bindgen(js_name = editMarkSaved)]
+pub fn edit_mark_saved(id: u32) -> JsResult<()> {
+    js(crate::edit_mark_saved(id))
+}
+
+/// Image ids are passed as numbers (paragraph and image ids stay far below 2^53).
+#[wasm_bindgen(js_name = editImage)]
+pub fn edit_image(id: u32, image: f64) -> JsResult<Vec<u8>> {
+    js(crate::edit_image(id, image as u64))
+}
+
+#[wasm_bindgen(js_name = editClose)]
+pub fn edit_close(id: u32) {
+    crate::edit_close(id)
+}
+
 #[wasm_bindgen(js_name = presentationOutline)]
 pub fn presentation_outline(bytes: &[u8], from: &str) -> JsResult<String> {
     js(crate::presentation_outline(bytes, from))

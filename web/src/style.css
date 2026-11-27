@@ -207,6 +207,10 @@ input[type="range"] { padding: 0; border: 0; min-height: 24px; accent-color: var
 .tile-icon { width: 44px; height: 44px; stroke-width: 1.6; }
 .tile-hint { font-size: 12px; color: var(--muted); text-align: center; }
 .tile-label { font-weight: 500; }
+/* The Blank tile: an empty page with a plus in the app colour. */
+.blank-tile { padding: 0; overflow: hidden; }
+.blank-sheet { width: 100%; height: 100%; display: grid; place-items: center; background: #fff; }
+.blank-plus { width: 56px; height: 56px; color: var(--app); stroke-width: 1.6; }
 .recent { padding: 22px 0 40px; }
 .recent-head, .recent-open { display: grid; grid-template-columns: 36px minmax(0, 1fr) 200px 120px; align-items: center; }
 .recent-head { grid-template-columns: minmax(0, 1fr) 200px 120px 40px; height: 40px; color: var(--icon); }
@@ -298,6 +302,9 @@ dialog::backdrop { background: var(--scrim); }
 .read-only { color: var(--warn); border-color: currentColor; }
 .privacy-state { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; margin-inline-start: 8px; white-space: nowrap; }
 .privacy-state .icon { width: 16px; height: 16px; }
+.save-state { color: var(--muted); font-size: 13px; white-space: nowrap; }
+.save-state::before { content: "·"; margin-inline-end: 6px; }
+.save-state.dirty { color: var(--text); }
 .menubar { display: flex; align-items: center; height: 30px; margin-inline-start: -2px; }
 .menubar-item { height: 26px; border: 0; background: transparent; border-radius: 4px; padding: 0 8px; font-size: 14px; color: var(--text); }
 .menubar-item:hover, .menubar-item.open { background: #e8ebef; }
@@ -324,6 +331,10 @@ dialog::backdrop { background: var(--scrim); }
 .tool.with-text { padding: 0 8px 0 6px; }
 .tool:hover, .tool.open { background: var(--tool-hover); }
 .tool[aria-pressed="true"] { background: var(--pressed); color: var(--pressed-text); }
+.tool:disabled { opacity: 0.38; cursor: default; background: transparent; }
+.tool.text-tool { font-weight: 500; font-size: 13px; min-width: 30px; padding: 0 6px; }
+.style-button { width: 150px; justify-content: space-between; padding: 0 6px 0 10px; }
+.style-label { overflow: hidden; text-overflow: ellipsis; }
 .tool .count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .zoom-button { padding: 0 6px 0 8px; font-variant-numeric: tabular-nums; }
 .tool-sep { width: 1px; height: 20px; background: var(--line-strong); margin: 0 6px; flex: none; }
@@ -343,13 +354,35 @@ dialog::backdrop { background: var(--scrim); }
 .doc-canvas { padding: 12px 16px 48px; }
 .page-wrap { width: 794px; max-width: 100%; margin-inline: auto; }
 .paper { display: block; width: 100%; min-height: 1123px; border: 0; background: #fff; box-shadow: var(--paper-shadow); }
+/* The editing surface: an A4 page; the engine draws it again after every change. */
+.doc-page {
+  display: block; min-height: 1123px; background: #fff; color: #1f1f1f; color-scheme: light; box-shadow: var(--paper-shadow);
+  padding: 84px 96px 96px; font: 12pt/1.5 Arial, "Helvetica Neue", "Noto Sans", sans-serif; outline: none; overflow-wrap: break-word;
+  white-space: pre-wrap; tab-size: 4; caret-color: #1f1f1f;
+}
+.doc-page p, .doc-page li { margin: 0 0 6pt; }
+.doc-page h1, .doc-page h2, .doc-page h3, .doc-page h4, .doc-page h5, .doc-page h6 { margin: 12pt 0 6pt; font-weight: 700; line-height: 1.25; }
+.doc-page h1 { font-size: 20pt; }
+.doc-page h2 { font-size: 16pt; }
+.doc-page h3 { font-size: 13pt; }
+.doc-page h4, .doc-page h5, .doc-page h6 { font-size: 12pt; }
+.doc-page > :first-child { margin-top: 0; }
+.doc-page ul, .doc-page ol { margin: 0 0 6pt; padding-inline-start: 24pt; }
+.doc-page a { color: #2457c5; pointer-events: none; }
+.doc-table { border-collapse: collapse; margin: 6pt 0; max-width: 100%; white-space: normal; user-select: text; }
+.doc-table td { border: 1px solid #c7ccd4; padding: 4px 6px; vertical-align: top; min-width: 40px; }
+.doc-table p { margin: 0; }
+.doc-image { margin: 6pt 0; }
+.doc-image img { max-width: 100%; height: auto; display: block; }
+.doc-break { border: 0; border-top: 1px dashed #c7ccd4; margin: 12pt 0; }
 
 /* Spreadsheets: formula bar, full-bleed grid, sheet tabs. */
 .sheet-view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .formula-bar { height: 30px; flex: none; display: flex; align-items: center; background: var(--surface); border-block: 1px solid var(--grid-line); font-size: 13px; }
 .namebox { width: 84px; height: 100%; display: flex; align-items: center; padding-inline-start: 12px; border-inline-end: 1px solid var(--grid-line); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; flex: none; }
 .fx { width: 44px; height: 100%; display: flex; align-items: center; justify-content: center; color: #80868b; border-inline-end: 1px solid var(--grid-line); font-style: italic; font-family: Georgia, serif; flex: none; }
-.valuebox { padding-inline: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.valuebox { padding-inline: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; outline: none; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.valuebox:focus { box-shadow: inset 0 0 0 2px var(--focus); text-overflow: clip; }
 .grid-scroll { flex: 1; min-height: 0; overflow: auto; background: var(--surface); outline: none; }
 table.grid { border-collapse: separate; border-spacing: 0; font-size: 13px; font-variant-numeric: tabular-nums; user-select: none; }
 .grid th, .grid td { height: 24px; border-right: 1px solid var(--grid-line); border-bottom: 1px solid var(--grid-line); padding: 0 6px; white-space: nowrap; }
@@ -362,6 +395,14 @@ table.grid { border-collapse: separate; border-spacing: 0; font-size: 13px; font
 .grid th.hl { background: var(--select-bg); color: var(--text); font-weight: 600; }
 .grid td.in-range { background: var(--range-bg); }
 .grid td.selected { box-shadow: inset 0 0 0 2px var(--select); }
+.grid td.b { font-weight: 700; }
+.grid td.i { font-style: italic; }
+.grid td.u { text-decoration: underline; }
+.grid td.editing { padding: 0; position: relative; overflow: visible; }
+.cell-editor {
+  position: absolute; inset: 0; width: 100%; min-width: 100%; height: 100%; border: 0; border-radius: 0; margin: 0; padding: 0 6px;
+  font: inherit; background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 2px var(--select); outline: none; z-index: 1;
+}
 .sheet-bar { height: 40px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 8px; border-top: 1px solid var(--grid-line); background: var(--chrome); }
 .sheet-tabs { display: flex; align-items: flex-end; align-self: stretch; gap: 2px; overflow-x: auto; min-width: 0; margin-inline-start: 8px; scrollbar-width: none; }
 .sheet-tab { height: 32px; border: 0; background: transparent; color: var(--icon); padding: 0 14px; border-radius: 4px 4px 0 0; white-space: nowrap; }
@@ -637,6 +678,7 @@ body:has(#spreadsheets:not([hidden]) .sheet-bar) .snackbar { bottom: 64px; }
   .editor-body { margin-top: 0; }
   .doc-canvas { padding: 8px 12px 24px; }
   .paper { min-height: 660px; }
+  .doc-page { min-height: 660px; padding: 28px 22px 40px; }
   .slide-strip, .strip-note { display: none; }
   .slide-stage { padding: 12px; }
   .slide-notes { height: 120px; padding: 12px 16px; }

@@ -597,13 +597,16 @@ function whenText(at: number): string {
 
 // MARK: - File apps: home screen and editor
 
-type OpenFile = { name: string; bytes: Uint8Array };
+/** A file to show; `blank` is a new empty document or workbook (File ▸ New, the Blank tile). */
+type OpenFile = { name: string; bytes: Uint8Array; blank?: boolean };
 type Context = {
   file: OpenFile; kind: string;
   /** The file name without extension as currently shown in the title row (Rename changes it). */
   stem: () => string;
   save: (data: Uint8Array | string, ext: string) => void;
   print: () => void;
+  /** Editors that edit report their state: shown as "Edited"/"Saved" next to the file name; menus are rebuilt. */
+  changed: () => void;
 };
 type Editor = {
   body: HTMLElement;
@@ -618,13 +621,23 @@ type Editor = {
   printable?: () => Node;
   keydown?: (e: KeyboardEvent) => void;
   dispose?: () => void;
+  /** Download in the file's own format (the edited content); without it Download returns the file as opened. */
+  download?: () => Promise<void>;
+  /** Changes since the file was opened, created or last downloaded. */
+  dirty?: () => boolean;
+  /** Whether anything was edited in this editor (shows the Edited/Saved state). */
+  edited?: () => boolean;
+  undo?: () => unknown;
+  redo?: () => unknown;
 };
 type FileApp = {
   id: AppId; logo: string; extensions: string[]; formats: string;
   view: (ctx: Context) => Promise<Editor>;
   section: HTMLElement; home: HTMLElement; editorHost: HTMLElement; input: HTMLInputElement; search: HTMLInputElement;
   renderRecent: () => void;
-  editor?: { editor: Editor | null; ctx: Context; download: () => void };
+  editor?: { editor: Editor | null; ctx: Context; download: () => unknown };
+  /** File ▸ New and the Blank tile (documents and spreadsheets). */
+  blank?: { label: () => string; menu: () => string; untitled: () => string; ext: string };
 };
 
 const fileApps: FileApp[] = [];
@@ -637,9 +650,26 @@ async function openFile(file: OpenFile, app = fileAppFor(file.name)) {
   }
   if (location.hash !== `#${app.id}`) location.hash = app.id;
   route();
+  if (!(await mayDiscard(app))) return;
   remember(app.id, file);
   app.renderRecent();
   await openEditor(app, file);
+}
+
+/** A new blank document or workbook (not added to the recent files: it has no bytes until downloaded). */
+async function createBlank(app: FileApp) {
+  if (!app.blank) return;
+  if (location.hash !== `#${app.id}`) location.hash = app.id;
+  route();
+  if (!(await mayDiscard(app))) return;
+  await openEditor(app, { name: `${app.blank.untitled()}.${app.blank.ext}`, bytes: new Uint8Array(), blank: true });
+}
+
+/** Before an editor with changes that were not downloaded is replaced or closed: asks whether to discard them. */
+async function mayDiscard(app: FileApp): Promise<boolean> {
+  const open = app.editor;
+  if (!open?.editor?.dirty?.()) return true;
+  return ask(t('edit.discard', { name: `${open.ctx.stem()}.${open.ctx.kind}` }), t('edit.discardButton'));
 }
 
 async function openPicked(input: HTMLInputElement, app: FileApp) {
@@ -659,9 +689,18 @@ function buildFileApp(app: FileApp) {
 
   app.search = el('input', { type: 'search', placeholder: t('home.search'), aria: { label: t('home.search') } });
   const search = el('label', { className: 'search-field large' }, icon('search'), app.search);
-  const openTile = el('button', { type: 'button', className: 'tile', aria: { label: t('home.openFromDevice') } },
+  const openTile = el('button', { type: 'button', className: 'tile open-tile', aria: { label: t('home.openFromDevice') } },
     icon('open', 'icon tile-icon'), el('span', { className: 'tile-hint', textContent: t('home.orDrag') }));
   openTile.addEventListener('click', pick);
+  // A blank document or workbook: the first tile, as in the design (documents and spreadsheets only).
+  let blankTile: HTMLElement | null = null;
+  if (app.blank) {
+    const blank = app.blank;
+    const tileButton = el('button', { type: 'button', className: 'tile blank-tile', aria: { label: blank.label() } },
+      el('span', { className: 'blank-sheet' }, icon('plus', 'icon blank-plus')));
+    tileButton.addEventListener('click', () => attempt(() => createBlank(app)));
+    blankTile = el('div', { className: 'tile-box' }, tileButton, el('span', { className: 'tile-label', textContent: blank.label() }));
+  }
   const list = el('ul', { className: 'recent-list' });
   const empty = el('p', { className: 'recent-empty' });
   const head = el('div', { className: 'recent-head', aria: { hidden: 'true' } },
@@ -685,7 +724,7 @@ function buildFileApp(app: FileApp) {
       el('section', { className: 'open-strip' }, el('div', { className: 'wrap' },
         el('div', { className: 'strip-head' }, el('h2', { textContent: t(`${app.id}.empty`) }),
           el('span', { className: 'strip-formats', textContent: app.formats, dir: 'ltr' })),
-        el('div', { className: 'tiles' }, el('div', { className: 'tile-box' }, openTile,
+        el('div', { className: 'tiles' }, blankTile, el('div', { className: 'tile-box' }, openTile,
           el('span', { className: 'tile-label', textContent: t('home.openFromDevice') }))))),
       el('section', { className: 'recent wrap', aria: { label: t('home.recent') } }, head, list, empty,
         el('p', { className: 'privacy-line' }, icon('lock'), el('span', { textContent: t('home.privacy') })))));
@@ -721,7 +760,8 @@ function recentRow(app: FileApp, entry: Recent): HTMLElement {
   return el('li', { className: 'recent-row' }, open, more);
 }
 
-function closeEditor(app: FileApp) {
+async function closeEditor(app: FileApp) {
+  if (!(await mayDiscard(app))) return;
   app.editor?.editor?.dispose?.();
   app.editor = undefined;
   closeMenus(0);
@@ -744,27 +784,31 @@ async function openEditor(app: FileApp, file: OpenFile) {
       nameInput.blur();
     }
   });
+  const saveState = el('span', { className: 'save-state', role: 'status' });
   const ctx: Context = {
     file, kind,
     stem: () => nameInput.value.trim() || stem(file.name),
     save: (data, ext) => download(data, `${ctx.stem()}.${ext}`, MIME[ext] ?? 'application/octet-stream'),
     print: () => printEditor(app),
+    changed: () => render(),
   };
   const downloadOriginal = () => ctx.save(file.bytes, kind);
-  const state: NonNullable<FileApp['editor']> = { editor: null, ctx, download: downloadOriginal };
+  // Download in the file's own format: the edited content once the editor edits, otherwise the file as opened.
+  const downloadCurrent = () => (state.editor?.download ?? downloadOriginal)();
+  const state: NonNullable<FileApp['editor']> = { editor: null, ctx, download: downloadCurrent };
   app.editor = state;
   const pick = () => app.input.click();
   const close = () => closeEditor(app);
 
   const home = el('button', { type: 'button', className: 'logo-button', title: t('bar.home', { app: info.name() }),
     aria: { label: t('bar.home', { app: info.name() }) } }, appLogo(info.logo, 30));
-  home.addEventListener('click', close);
+  home.addEventListener('click', () => attempt(close));
   const back = el('button', { type: 'button', className: 'icon-button back-button', title: t('bar.back', { app: info.name() }),
     aria: { label: t('bar.back', { app: info.name() }) } }, icon(rtl() ? 'next' : 'back'));
-  back.addEventListener('click', close);
+  back.addEventListener('click', () => attempt(close));
   const downloadPill = el('button', { type: 'button', className: 'download-pill', title: t('menu.download', { format: `.${kind}` }) },
     icon('download'), el('span', { textContent: t('editor.download') }));
-  downloadPill.addEventListener('click', () => busy(downloadPill, downloadOriginal));
+  downloadPill.addEventListener('click', () => busy(downloadPill, downloadCurrent));
   const more = el('button', { type: 'button', className: 'icon-button overflow-button', title: t('bar.more'), aria: { label: t('bar.more') } }, icon('more'));
   const titleRow = el('div', { className: 'title-row' }, nameInput,
     el('span', { className: 'format-badge', textContent: `.${kind}`, dir: 'ltr' }));
@@ -781,9 +825,10 @@ async function openEditor(app: FileApp, file: OpenFile) {
     const extra: MenuItem[] = (editor?.extraExports ?? []).map((x) => ({ label: x.label, run: x.run }));
     const downloadAs = [...exports, ...(exports.length && extra.length ? [SEP] : []), ...extra];
     return [
+      ...(app.blank ? [{ label: app.blank.menu(), icon: 'newFile', run: () => createBlank(app) }] : []),
       { label: t('menu.open'), icon: 'folder', shortcut: shortcut('O'), run: pick },
       SEP,
-      { label: t('menu.download', { format: `.${kind}` }), icon: 'download', shortcut: shortcut('S'), run: downloadOriginal, disabled: !editor },
+      { label: t('menu.download', { format: `.${kind}` }), icon: 'download', shortcut: shortcut('S'), run: downloadCurrent, disabled: !editor },
       { label: t('menu.downloadAs'), submenu: () => downloadAs, disabled: !downloadAs.length },
       { label: t('menu.rename'), icon: 'rename', run: () => { nameInput.focus(); nameInput.select(); }, disabled: !editor },
       ...(editor?.fileItems?.length || editor?.printable ? [SEP] : []),
@@ -814,6 +859,13 @@ async function openEditor(app: FileApp, file: OpenFile) {
     titleRow.querySelector('.read-only')?.remove();
     if (editor?.badge) titleRow.append(el('span', { className: 'read-only', textContent: editor.badge.text, title: editor.badge.title }));
     titleRow.append(privacy);
+    // "Edited" until the changes are downloaded, then "Saved"; nothing before the first edit.
+    const edited = !!editor?.edited?.();
+    const dirty = !!editor?.dirty?.();
+    saveState.textContent = edited ? t(dirty ? 'edit.edited' : 'edit.saved') : '';
+    saveState.className = `save-state${dirty ? ' dirty' : ''}`;
+    saveState.hidden = !edited;
+    titleRow.append(saveState);
     toolbar.replaceChildren(...(editor?.toolbar ?? []).map((x) => (x === 'sep' ? separator() : x)));
     toolbar.hidden = !editor || editor.toolbar.length === 0;
   };
@@ -897,14 +949,104 @@ function fullScreenItem(): MenuItem[] {
     run: () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()) }];
 }
 
+// MARK: - Edit sessions
+//
+// An open document or workbook lives in the engine as an edit session (crates/edit42 through off42-wasm). Every
+// change is a command sent to it, one request per user action (one Undo step); the page redraws from the
+// session's snapshot. Requests run one after another, so fast typing cannot overtake a pending change.
+
+class EditSession {
+  private queue: Promise<unknown> = Promise.resolve();
+  /** Whether a command has changed anything in this session (Download then saves instead of returning the file). */
+  edited = false;
+  status = { canUndo: false, canRedo: false, dirty: false };
+
+  private constructor(readonly id: number) {}
+
+  static async open(file: OpenFile, kind: 'document' | 'spreadsheet', format: string) {
+    return new EditSession(file.blank ? await call<number>('editNew', kind) : await call<number>('editOpen', file.bytes, format));
+  }
+
+  /** Runs `task` after every task queued before it. */
+  run<T>(task: () => Promise<T>): Promise<T> {
+    const next = this.queue.then(task, task);
+    this.queue = next.catch(() => undefined);
+    return next;
+  }
+
+  async apply<T = unknown>(request: unknown): Promise<T> {
+    const result = await json<T>('editApply', this.id, JSON.stringify(request));
+    this.edited = true;
+    return result;
+  }
+
+  async undo() {
+    const result = await json<typeof this.status & { changed: boolean }>('editUndo', this.id);
+    this.status = { canUndo: result.canUndo, canRedo: result.canRedo, dirty: result.dirty };
+    return result;
+  }
+
+  async redo() {
+    const result = await json<typeof this.status & { changed: boolean }>('editRedo', this.id);
+    this.status = { canUndo: result.canUndo, canRedo: result.canRedo, dirty: result.dirty };
+    return result;
+  }
+
+  async snapshot<T extends { canUndo: boolean; canRedo: boolean; dirty: boolean }>(options: object = {}): Promise<T> {
+    const snap = await json<T>('editSnapshot', this.id, JSON.stringify(options));
+    this.status = { canUndo: snap.canUndo, canRedo: snap.canRedo, dirty: snap.dirty };
+    return snap;
+  }
+
+  save(ext: string, dropPackageParts = false) {
+    return call<Uint8Array>('editSave', this.id, ext, dropPackageParts);
+  }
+
+  async markSaved() {
+    await call('editMarkSaved', this.id);
+    this.status = { ...this.status, dirty: false };
+  }
+
+  close() {
+    call('editClose', this.id).catch(() => {});
+  }
+}
+
+/** Undo and Redo toolbar buttons and Edit menu items that follow a session's state. */
+function historyControls(session: EditSession, undo: () => unknown, redo: () => unknown) {
+  const undoButton = tool('undo', `${t('edit.undo')} (${shortcut('Z')})`, undo);
+  const redoButton = tool('redo', `${t('edit.redo')} (${MAC ? '⇧⌘Z' : 'Ctrl+Y'})`, redo);
+  return {
+    buttons: [undoButton, redoButton],
+    update: () => {
+      undoButton.disabled = !session.status.canUndo;
+      redoButton.disabled = !session.status.canRedo;
+    },
+    items: (): MenuItem[] => [
+      { label: t('edit.undo'), icon: 'undo', shortcut: shortcut('Z'), run: undo, disabled: !session.status.canUndo },
+      { label: t('edit.redo'), icon: 'redo', shortcut: MAC ? '⇧⌘Z' : 'Ctrl+Y', run: redo, disabled: !session.status.canRedo },
+    ],
+  };
+}
+
+/** A toolbar toggle (aria-pressed) that runs its action without stealing the editing focus. */
+function toggleTool(iconName: string, label: string, action: () => unknown): HTMLButtonElement {
+  const b = tool(iconName, label, action);
+  b.setAttribute('aria-pressed', 'false');
+  b.addEventListener('mousedown', (e) => e.preventDefault());
+  return b;
+}
+
+const isMod = (e: KeyboardEvent) => (MAC ? e.metaKey : e.ctrlKey) && !e.altKey;
+
 // MARK: - Documents
 
 function documentKind(kind: string): string {
   return kind === 'markdown' ? 'md' : kind === 'htm' ? 'html' : kind;
 }
 
-// The page around the document's own HTML: A4 paper with margins. Links cannot navigate (the frame is sandboxed
-// without popups or top navigation) and the frame runs no scripts.
+// The page around the document's own HTML (view-only documents): A4 paper with margins. Links cannot navigate
+// (the frame is sandboxed without popups or top navigation) and the frame runs no scripts.
 const PAPER_STYLE = `<base target="_blank"><style>
 html{background:#fff;color:#1f1f1f;color-scheme:light}
 body{margin:0;padding:84px 96px 96px;font:16px/1.55 "Helvetica Neue",Arial,"Noto Sans",sans-serif;overflow:hidden;word-wrap:break-word}
@@ -930,7 +1072,59 @@ function printableDocument(html: string): Node {
   return host;
 }
 
-async function viewDocument(ctx: Context): Promise<Editor> {
+type Pos = { id: number; offset: number };
+type DocRun = { text: string; bold?: boolean; italic?: boolean; underline?: boolean; strike?: boolean; size?: number; font?: string;
+  color?: string; highlight?: string; link?: string };
+type DocParagraph = { type: 'paragraph'; id: number; style: string; level: number | null; align: string; indent: number;
+  list: { id: number; numbered: boolean; level: number } | null; runs: DocRun[] };
+type DocBlock = DocParagraph
+  | { type: 'table'; id: number; rows: { paragraphs: DocParagraph[]; rowSpan: number; colSpan: number; fill: string | null }[][] }
+  | { type: 'image'; id: number; mime: string; alt: string; width: number; height: number }
+  | { type: 'break' };
+type DocStats = { words: number; characters: number; charactersWithoutSpaces: number; paragraphs: number };
+type DocSnapshot = { editable: boolean; reason: string | null; blocks: DocBlock[]; selection: { anchor: Pos; focus: Pos } | null;
+  stats: DocStats; canUndo: boolean; canRedo: boolean; dirty: boolean };
+type Marks = { bold?: boolean; italic?: boolean; underline?: boolean };
+
+const STYLE_NAMES = ['normal', 'heading1', 'heading2', 'heading3'] as const;
+const styleLabel = (style: string) => (style.startsWith('heading') ? t('format.heading', { level: style.slice(7) }) : t('format.normal'));
+const cssFont = (font: string) => `"${font.replace(/["\\]/g, '')}", Arial, "Noto Sans", sans-serif`;
+
+/** One paragraph of the editing surface; `data-para` marks the elements that map to the engine's paragraphs. */
+function paragraphNode(p: DocParagraph, tag: string, editable: boolean): HTMLElement {
+  const node = document.createElement(tag);
+  node.dir = 'auto';
+  if (editable) {
+    node.dataset.para = '';
+    node.dataset.id = String(p.id);
+  }
+  if (p.align !== 'left') node.style.textAlign = p.align;
+  if (p.indent > 0 && tag !== 'li') node.style.marginInlineStart = `${p.indent}pt`;
+  for (const run of p.runs) {
+    const span = document.createElement(run.link ? 'a' : 'span');
+    span.textContent = run.text;
+    if (run.link) {
+      // Links are shown, never followed: the page has no href to navigate to.
+      span.className = 'doc-link';
+      span.title = run.link;
+    }
+    const st = span.style;
+    if (run.bold) st.fontWeight = '700';
+    if (run.italic) st.fontStyle = 'italic';
+    const lines = [run.underline || run.link ? 'underline' : '', run.strike ? 'line-through' : ''].filter(Boolean).join(' ');
+    if (lines) st.textDecorationLine = lines;
+    if (run.size) st.fontSize = `${run.size}pt`;
+    if (run.font && run.font !== 'Arial') st.fontFamily = cssFont(run.font);
+    if (run.color) st.color = run.color;
+    if (run.highlight) st.backgroundColor = run.highlight;
+    node.append(span);
+  }
+  if (!p.runs.some((r) => r.text)) node.append(document.createElement('br'));
+  return node;
+}
+
+/** The view of documents the engine cannot edit (tracked changes): the core's HTML on a sandboxed page. */
+async function previewDocument(ctx: Context, session: EditSession, reason: string): Promise<Editor> {
   const kind = documentKind(ctx.kind);
   const { file } = ctx;
   const [html, info] = await Promise.all([
@@ -956,12 +1150,12 @@ async function viewDocument(ctx: Context): Promise<Editor> {
   const convert = async (to: string) => {
     let output: Uint8Array;
     try {
-      output = await call<Uint8Array>('documentConvert', file.bytes, kind, to, false);
+      output = await session.save(to, false);
     } catch (error) {
       const text = message(error);
       if (!/package parts/.test(text)) throw error;
       if (!(await ask(t('doc.convertAnyway', { error: text, format: to.toUpperCase() }), t('common.convertAnyway')))) return;
-      output = await call<Uint8Array>('documentConvert', file.bytes, kind, to, true);
+      output = await session.save(to, true);
     }
     ctx.save(output, to);
   };
@@ -972,24 +1166,556 @@ async function viewDocument(ctx: Context): Promise<Editor> {
   ]);
   return {
     body: canvas,
-    toolbar: [tool('folder', t('menu.open'), () => $<HTMLInputElement>('file-input-documents').click()),
-      tool('print', t('menu.print'), ctx.print), 'sep', zoom.button, 'sep',
+    toolbar: [tool('print', t('menu.print'), ctx.print), 'sep', zoom.button, 'sep',
       tool('stats', t('stats.title'), stats, t('doc.words', { words: number(info.words) }))],
     exports: DOC_FORMATS.map(([ext, label]) => ({ label: label(), ext, run: () => convert(ext) })),
     fileItems: [{ label: t('stats.title'), icon: 'stats', run: stats }],
     menus: [{ label: t('menu.view'), items: () => [...zoom.items(), SEP, ...fullScreenItem()] }],
+    badge: { text: t('edit.viewOnly'), title: reason },
     printable: () => printableDocument(html),
-    dispose: () => observer.disconnect(),
+    dispose: () => {
+      observer.disconnect();
+      session.close();
+    },
+  };
+}
+
+async function viewDocument(ctx: Context): Promise<Editor> {
+  const kind = documentKind(ctx.kind);
+  const { file } = ctx;
+  const session = await EditSession.open(file, 'document', kind);
+  let snap: DocSnapshot;
+  try {
+    snap = await session.snapshot<DocSnapshot>();
+  } catch (error) {
+    session.close();
+    throw error;
+  }
+  if (!snap.editable) return previewDocument(ctx, session, snap.reason ?? '');
+
+  // The editing surface: a contenteditable page whose every change goes to the engine as a command (beforeinput is
+  // cancelled), then the page is redrawn from the session's snapshot.
+  const surface = el('article', { className: 'doc-page', spellcheck: true, role: 'textbox',
+    aria: { multiline: 'true', label: t('doc.editor') } });
+  surface.contentEditable = 'true';
+  const pageWrap = el('div', { className: 'page-wrap' }, surface);
+  const canvas = el('div', { className: 'canvas doc-canvas' }, pageWrap);
+  const images = new Map<number, string>();
+  let blocks = new Map<number, DocParagraph>();
+  let order: number[] = [];
+  /** The last selection in the page (engine positions), kept when focus moves to the toolbar or a menu. */
+  let saved: { anchor: Pos; focus: Pos } | null = null;
+  let pending: Marks = {};
+  let composing: { anchor: Pos; focus: Pos } | null = null;
+  let restoring = false;
+
+  const imageNode = (image: Extract<DocBlock, { type: 'image' }>) => {
+    const img = el('img', { alt: image.alt, draggable: false });
+    img.style.width = `${Math.min(image.width, 602)}px`;
+    const cached = images.get(image.id);
+    if (cached) img.src = cached;
+    else {
+      call<Uint8Array>('editImage', session.id, image.id).then((bytes) => {
+        const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: image.mime }));
+        images.set(image.id, url);
+        img.src = url;
+      }, () => img.replaceWith(el('span', { className: 'doc-missing', textContent: image.alt || t('slides.pictureLabel') })));
+    }
+    return el('figure', { className: 'doc-image', contentEditable: 'false' }, img);
+  };
+
+  const draw = (next: DocSnapshot) => {
+    snap = next;
+    blocks = new Map();
+    order = [];
+    const nodes: Node[] = [];
+    let list: HTMLElement | null = null;
+    let listKey = '';
+    for (const block of next.blocks) {
+      if (block.type === 'paragraph') {
+        blocks.set(block.id, block);
+        order.push(block.id);
+        if (block.list && block.level === null) {
+          const key = `${block.list.id}:${block.list.numbered}`;
+          if (!list || key !== listKey) {
+            list = document.createElement(block.list.numbered ? 'ol' : 'ul');
+            listKey = key;
+            nodes.push(list);
+          }
+          const item = paragraphNode(block, 'li', true);
+          if (block.list.level) item.style.marginInlineStart = `${block.list.level * 24}px`;
+          list.append(item);
+          continue;
+        }
+        list = null;
+        nodes.push(paragraphNode(block, block.level === null ? 'p' : `h${Math.min(block.level + 1, 6)}`, true));
+      } else {
+        list = null;
+        if (block.type === 'table') {
+          nodes.push(el('table', { className: 'doc-table', contentEditable: 'false' }, el('tbody', {}, ...block.rows.map((row) =>
+            el('tr', {}, ...row.map((cell) => {
+              const td = el('td', { rowSpan: cell.rowSpan, colSpan: cell.colSpan }, ...cell.paragraphs.map((p) => paragraphNode(p, 'p', false)));
+              if (cell.fill) td.style.backgroundColor = cell.fill;
+              return td;
+            }))))));
+        } else if (block.type === 'image') {
+          nodes.push(imageNode(block));
+        } else {
+          nodes.push(el('hr', { className: 'doc-break', contentEditable: 'false' }));
+        }
+      }
+    }
+    surface.replaceChildren(...nodes);
+    words.textContent = t('doc.words', { words: number(next.stats.words) });
+    history.update();
+    ctx.changed();
+  };
+
+  // Engine positions ↔ DOM positions. Offsets count Unicode characters (code points), as the engine does.
+  const paragraphOf = (node: Node | null): HTMLElement | null => {
+    const element = node instanceof Element ? node : node?.parentElement;
+    const p = element?.closest<HTMLElement>('[data-para]');
+    return p && surface.contains(p) ? p : null;
+  };
+  const paragraphs = () => [...surface.querySelectorAll<HTMLElement>('[data-para]')];
+  const toPos = (node: Node, offset: number): Pos | null => {
+    const p = paragraphOf(node);
+    if (p) {
+      const range = document.createRange();
+      range.setStart(p, 0);
+      try {
+        range.setEnd(node, offset);
+      } catch {
+        return null;
+      }
+      return { id: Number(p.dataset.id), offset: [...range.toString()].length };
+    }
+    // A boundary between blocks (select all): the paragraph after it, or the end of the last one.
+    if (node === surface || (node instanceof Element && surface.contains(node))) {
+      const child = node.childNodes[offset] ?? null;
+      const after = child ? (child instanceof Element ? (child.matches('[data-para]') ? child : child.querySelector('[data-para]')) : paragraphOf(child)) : null;
+      if (after instanceof HTMLElement) return { id: Number(after.dataset.id), offset: 0 };
+      const all = paragraphs();
+      const before = child ? all.filter((p) => p.compareDocumentPosition(child) & Node.DOCUMENT_POSITION_FOLLOWING).at(-1) : all.at(-1);
+      if (before) return { id: Number(before.dataset.id), offset: [...(before.textContent ?? '')].length };
+    }
+    return null;
+  };
+  const toDom = (pos: Pos): { node: Node; offset: number } | null => {
+    const p = surface.querySelector<HTMLElement>(`[data-para][data-id="${pos.id}"]`);
+    if (!p) return null;
+    const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT);
+    let left = pos.offset;
+    let last: Text | null = null;
+    for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+      const chars = [...node.data];
+      if (left <= chars.length) return { node, offset: chars.slice(0, left).join('').length };
+      left -= chars.length;
+      last = node;
+    }
+    return last ? { node: last, offset: last.data.length } : { node: p, offset: 0 };
+  };
+  const index = (id: number) => order.indexOf(id);
+  const before = (a: Pos, b: Pos) => index(a.id) < index(b.id) || (a.id === b.id && a.offset <= b.offset);
+  const domSelection = (): { anchor: Pos; focus: Pos } | null => {
+    const sel = document.getSelection();
+    if (!sel?.anchorNode || !sel.focusNode || !surface.contains(sel.anchorNode)) return null;
+    const anchor = toPos(sel.anchorNode, sel.anchorOffset);
+    const focus = toPos(sel.focusNode, sel.focusOffset);
+    return anchor && focus ? { anchor, focus } : null;
+  };
+  /** The current selection in document order, from the page or (when focus is elsewhere) the last one kept. */
+  const current = () => {
+    const sel = domSelection() ?? saved;
+    if (!sel || !blocks.has(sel.anchor.id) || !blocks.has(sel.focus.id)) {
+      const first = order[0];
+      return { start: { id: first, offset: 0 }, end: { id: first, offset: 0 }, collapsed: true, anchor: { id: first, offset: 0 }, focus: { id: first, offset: 0 } };
+    }
+    const [start, end] = before(sel.anchor, sel.focus) ? [sel.anchor, sel.focus] : [sel.focus, sel.anchor];
+    return { start, end, collapsed: start.id === end.id && start.offset === end.offset, ...sel };
+  };
+  const select = (sel: { anchor: Pos; focus: Pos }) => {
+    saved = sel;
+    const a = toDom(sel.anchor);
+    const f = toDom(sel.focus);
+    if (!a || !f) return;
+    restoring = true;
+    document.getSelection()?.setBaseAndExtent(a.node, a.offset, f.node, f.offset);
+    restoring = false;
+    updateTools();
+  };
+  const selectedIds = () => {
+    const { start, end } = current();
+    return order.slice(index(start.id), index(end.id) + 1);
+  };
+  const paragraphText = (id: number) => (blocks.get(id)?.runs ?? []).map((r) => r.text).join('');
+  const runAt = (pos: Pos): DocRun | undefined => {
+    const runs = blocks.get(pos.id)?.runs ?? [];
+    let at = 0;
+    let found = runs[0];
+    for (const run of runs) {
+      if (at < pos.offset) found = run;
+      at += [...run.text].length;
+    }
+    return found;
+  };
+
+  /** Sends a request and redraws; `caret` (a command result) or the previous selection is restored. */
+  const send = (request: unknown | (() => unknown), keep?: { anchor: Pos; focus: Pos }) => session.run(async () => {
+    const body = typeof request === 'function' ? request() : request;
+    if (body === null || body === undefined) return;
+    const focused = document.activeElement === surface;
+    const selection = keep ?? domSelection() ?? saved;
+    let result: unknown;
+    try {
+      result = await session.apply(body);
+    } catch (error) {
+      notify(message(error), 'warn');
+      return;
+    }
+    const results = Array.isArray(result) ? result : [result];
+    const caret = [...results].reverse().find((r) => r && typeof r === 'object' && 'caret' in r) as { caret: Pos } | undefined;
+    draw(await session.snapshot<DocSnapshot>());
+    if (focused) surface.focus({ preventScroll: true });
+    if (caret) select({ anchor: caret.caret, focus: caret.caret });
+    else if (selection) select(selection);
+  });
+  const historyStep = (redo: boolean) => session.run(async () => {
+    const status = redo ? await session.redo() : await session.undo();
+    if (!status.changed) return;
+    pending = {};
+    const next = await session.snapshot<DocSnapshot>();
+    draw(next);
+    if (next.selection) select(next.selection);
+    else if (saved) select(saved);
+  });
+  const undo = () => historyStep(false);
+  const redo = () => historyStep(true);
+  const history = historyControls(session, undo, redo);
+
+  // Commands built from the selection at the time they run (earlier commands have been drawn by then).
+  const insertText = (text: string, typing: boolean) => send(() => {
+    const sel = current();
+    const marks = Object.keys(pending).length ? pending : undefined;
+    return { command: 'insert_text', at: sel.start, ...(sel.collapsed ? {} : { to: sel.end }), text, typing: typing && sel.collapsed,
+      ...(marks ? { marks } : {}) };
+  });
+  const segment = (text: string, granularity: 'grapheme' | 'word') =>
+    [...new Intl.Segmenter(language, { granularity }).segment(text)];
+  const deleteContent = (type: string) => send(() => {
+    const sel = current();
+    if (!sel.collapsed) return { command: 'delete', from: sel.start, to: sel.end };
+    if (type === 'deleteSelection') return null;
+    const at = sel.start;
+    const text = paragraphText(at.id);
+    const chars = [...text];
+    const backward = /Backward$/.test(type);
+    // Code point offset ↔ UTF-16 index, for segmenting.
+    const utf16 = chars.slice(0, at.offset).join('').length;
+    if (backward) {
+      if (at.offset === 0) {
+        const p = blocks.get(at.id)!;
+        // Backspace at the start of a heading or list item makes it normal text first.
+        if (p.style !== 'normal') return { command: 'set_paragraph_style', ids: [at.id], style: 'normal' };
+        const previous = order[index(at.id) - 1];
+        // Only a paragraph directly before it joins (not across a table or picture).
+        const prevNode = surface.querySelector(`[data-para][data-id="${previous}"]`);
+        const own = surface.querySelector(`[data-para][data-id="${at.id}"]`);
+        if (previous === undefined || !prevNode || !own || !adjacent(prevNode, own)) return null;
+        return { command: 'delete', from: { id: previous, offset: [...paragraphText(previous)].length }, to: at };
+      }
+      let start = 0;
+      if (type === 'deleteContentBackward') {
+        start = segment(text, 'grapheme').filter((s) => s.index < utf16).at(-1)?.index ?? 0;
+      } else if (type === 'deleteWordBackward') {
+        const parts = segment(text, 'word').filter((s) => s.index < utf16);
+        const word = parts.reverse().find((s) => s.isWordLike);
+        start = word?.index ?? 0;
+      }
+      return { command: 'delete', from: { id: at.id, offset: [...text.slice(0, start)].length }, to: at };
+    }
+    if (at.offset >= chars.length) {
+      const next = order[index(at.id) + 1];
+      const nextNode = surface.querySelector(`[data-para][data-id="${next}"]`);
+      const own = surface.querySelector(`[data-para][data-id="${at.id}"]`);
+      if (next === undefined || !nextNode || !own || !adjacent(own, nextNode)) return null;
+      return { command: 'delete', from: at, to: { id: next, offset: 0 } };
+    }
+    let end = text.length;
+    if (type === 'deleteContentForward') {
+      const s = segment(text, 'grapheme').find((x) => x.index >= utf16);
+      end = s ? s.index + s.segment.length : text.length;
+    } else if (type === 'deleteWordForward') {
+      const word = segment(text, 'word').find((s) => s.index >= utf16 && s.isWordLike);
+      end = word ? word.index + word.segment.length : text.length;
+    }
+    return { command: 'delete', from: at, to: { id: at.id, offset: [...text.slice(0, end)].length } };
+  });
+  /** Two paragraphs with nothing but list structure between them (no table, picture or break). */
+  const adjacent = (a: Element, b: Element) => {
+    const all = [...surface.querySelectorAll('[data-para], .doc-table, .doc-image, .doc-break')];
+    return all.indexOf(b) === all.indexOf(a) + 1;
+  };
+  const split = () => send(() => {
+    const sel = current();
+    return { command: 'split_paragraph', at: sel.start, ...(sel.collapsed ? {} : { to: sel.end }) };
+  });
+
+  const markState = (mark: keyof Marks) => {
+    const sel = current();
+    if (sel.collapsed && pending[mark] !== undefined) return pending[mark]!;
+    const run = runAt(sel.collapsed ? sel.start : { id: sel.start.id, offset: sel.start.offset + 1 });
+    return !!run?.[mark];
+  };
+  const toggleMark = (mark: keyof Marks) => {
+    const on = !markState(mark);
+    const sel = current();
+    if (sel.collapsed) {
+      // Applies to what is typed next at this caret.
+      pending = { ...pending, [mark]: on };
+      updateTools();
+      return;
+    }
+    return send({ command: 'apply_text_style', from: sel.start, to: sel.end, [mark]: on }, { anchor: sel.anchor, focus: sel.focus });
+  };
+  const setStyle = (style: string) => {
+    const sel = current();
+    return send({ command: 'set_paragraph_style', ids: selectedIds(), style }, { anchor: sel.anchor, focus: sel.focus });
+  };
+  const toggleList = (style: 'bullet_list' | 'numbered_list') => {
+    const ids = selectedIds();
+    const all = ids.every((id) => blocks.get(id)?.style === style);
+    return setStyle(all ? 'normal' : style);
+  };
+  const align = (alignment: string) => {
+    const sel = current();
+    return send({ command: 'set_alignment', ids: selectedIds(), alignment }, { anchor: sel.anchor, focus: sel.focus });
+  };
+
+  surface.addEventListener('beforeinput', (e) => {
+    const type = e.inputType;
+    if (type === 'insertCompositionText' || type === 'deleteCompositionText' || type === 'insertFromComposition') return;
+    e.preventDefault();
+    if (type === 'insertText' || type === 'insertReplacementText') {
+      const text = e.data ?? e.dataTransfer?.getData('text/plain') ?? '';
+      if (text) insertText(text, type === 'insertText');
+    } else if (type === 'insertParagraph' || type === 'insertLineBreak') {
+      split();
+    } else if (type === 'insertFromPaste' || type === 'insertFromDrop') {
+      const text = e.dataTransfer?.getData('text/plain') ?? '';
+      if (text) insertText(text, false);
+    } else if (type.startsWith('delete')) {
+      deleteContent(type === 'deleteByCut' || type === 'deleteByDrag' || type === 'deleteContent' ? 'deleteSelection' : type);
+    } else if (type === 'historyUndo') {
+      undo();
+    } else if (type === 'historyRedo') {
+      redo();
+    } else if (type === 'formatBold') {
+      toggleMark('bold');
+    } else if (type === 'formatItalic') {
+      toggleMark('italic');
+    } else if (type === 'formatUnderline') {
+      toggleMark('underline');
+    }
+  });
+  // Input methods change the page while composing; the composed text then goes to the engine and the page is redrawn.
+  surface.addEventListener('compositionstart', () => {
+    const sel = current();
+    composing = { anchor: sel.start, focus: sel.end };
+  });
+  surface.addEventListener('compositionend', (e) => {
+    const range = composing;
+    composing = null;
+    if (!range) return;
+    send({ command: 'insert_text', at: range.anchor, ...(range.anchor.id === range.focus.id && range.anchor.offset === range.focus.offset
+      ? {} : { to: range.focus }), text: e.data ?? '' });
+  });
+  surface.addEventListener('keydown', (e) => {
+    if (!isMod(e)) return;
+    const key = e.key.toLowerCase();
+    if (key === 'z') e.shiftKey ? redo() : undo();
+    else if (key === 'y' && !MAC) redo();
+    else if (key === 'b') toggleMark('bold');
+    else if (key === 'i') toggleMark('italic');
+    else if (key === 'u') toggleMark('underline');
+    else return;
+    e.preventDefault();
+  });
+  surface.addEventListener('cut', (e) => {
+    e.preventDefault();
+    e.clipboardData?.setData('text/plain', document.getSelection()?.toString() ?? '');
+    deleteContent('deleteSelection');
+  });
+  surface.addEventListener('dragstart', (e) => e.preventDefault());
+  const onSelection = () => {
+    if (restoring || composing) return;
+    const sel = domSelection();
+    if (!sel) return;
+    if (saved && (sel.anchor.id !== saved.anchor.id || sel.anchor.offset !== saved.anchor.offset)) pending = {};
+    saved = sel;
+    updateTools();
+  };
+  document.addEventListener('selectionchange', onSelection);
+
+  // Toolbar (per the approved design, only controls that work): Undo, Redo, Print | zoom | style | B I U | alignment |
+  // lists | word count.
+  const zoom = zoomControl([50, 75, 90, 100, 125, 150, 200], 100, (z) => (pageWrap.style.zoom = String(z / 100)));
+  const styleLabelNode = el('span', { className: 'style-label', textContent: t('format.normal') });
+  const styleButton = el('button', { type: 'button', className: 'tool with-text style-button', title: t('format.style'),
+    aria: { label: t('format.style') } }, styleLabelNode, icon('down', 'icon small'));
+  styleButton.addEventListener('mousedown', (e) => e.preventDefault());
+  const styleItems = (): MenuItem[] => {
+    const now = blocks.get(current().start.id)?.style;
+    return STYLE_NAMES.map((name) => ({ label: styleLabel(name), checked: now === name, radio: true, run: () => setStyle(name) }));
+  };
+  dropdown(styleButton, styleItems, { label: t('format.style') });
+  const boldButton = toggleTool('bold', `${t('format.bold')} (${shortcut('B')})`, () => toggleMark('bold'));
+  const italicButton = toggleTool('italic', `${t('format.italic')} (${shortcut('I')})`, () => toggleMark('italic'));
+  const underlineButton = toggleTool('underline', `${t('format.underline')} (${shortcut('U')})`, () => toggleMark('underline'));
+  const alignments: [string, string, string][] = [['left', 'alignLeft', 'format.alignLeft'], ['center', 'alignCenter', 'format.alignCenter'],
+    ['right', 'alignRight', 'format.alignRight'], ['justify', 'alignJustify', 'format.justify']];
+  const alignButtons = alignments.slice(0, 3).map(([value, iconName, label]) => toggleTool(iconName, t(label), () => align(value)));
+  const bulletButton = toggleTool('bulletList', t('format.bulletList'), () => toggleList('bullet_list'));
+  const numberedButton = toggleTool('numberedList', t('format.numberedList'), () => toggleList('numbered_list'));
+  const words = el('span', {});
+  const stats = () => showStats([
+    [t('stats.words'), number(snap.stats.words)], [t('stats.characters'), number(snap.stats.characters)],
+    [t('stats.paragraphs'), number(snap.stats.paragraphs)], [t('stats.format'), kind.toUpperCase()],
+    [t('pdf.fileSize'), bytesText(file.bytes.length)],
+  ]);
+  const statsButton = tool('stats', t('stats.title'), stats, words);
+  const updateTools = () => {
+    const sel = current();
+    const p = blocks.get(sel.start.id);
+    styleLabelNode.textContent = p && p.level !== null && p.level < 3 ? styleLabel(p.style) : t('format.normal');
+    boldButton.setAttribute('aria-pressed', String(markState('bold')));
+    italicButton.setAttribute('aria-pressed', String(markState('italic')));
+    underlineButton.setAttribute('aria-pressed', String(markState('underline')));
+    alignButtons.forEach((b, i) => b.setAttribute('aria-pressed', String((p?.align ?? 'left') === alignments[i][0])));
+    bulletButton.setAttribute('aria-pressed', String(p?.style === 'bullet_list'));
+    numberedButton.setAttribute('aria-pressed', String(p?.style === 'numbered_list'));
+  };
+
+  // Edit menu clipboard commands act on the page's selection.
+  const restoreFocus = () => {
+    surface.focus({ preventScroll: true });
+    if (saved) select(saved);
+  };
+  const clipboardCommand = (command: 'cut' | 'copy') => {
+    restoreFocus();
+    if (!document.execCommand(command)) notify(t('edit.clipboardDenied', { shortcut: shortcut(command === 'cut' ? 'X' : 'C') }), 'warn');
+  };
+  const paste = async () => {
+    restoreFocus();
+    let text: string;
+    try {
+      text = await navigator.clipboard.readText();
+    } catch {
+      notify(t('edit.clipboardDenied', { shortcut: shortcut('V') }), 'warn');
+      return;
+    }
+    if (text) await insertText(text, false);
+  };
+  const insertDate = () => {
+    restoreFocus();
+    return insertText(new Intl.DateTimeFormat(language, { dateStyle: 'long' }).format(new Date()), false);
+  };
+  const now = () => blocks.get(current().start.id);
+  const save = async (to: string) => {
+    let output: Uint8Array;
+    try {
+      output = await session.save(to, false);
+    } catch (error) {
+      const text = message(error);
+      if (!/package parts/.test(text)) throw error;
+      if (!(await ask(t('doc.convertAnyway', { error: text, format: to.toUpperCase() }), t('common.convertAnyway')))) return;
+      output = await session.save(to, true);
+    }
+    ctx.save(output, to);
+    if (session.edited) {
+      await session.markSaved();
+      ctx.changed();
+    }
+  };
+
+  draw(snap);
+  if (snap.selection) select(snap.selection);
+  return {
+    body: canvas,
+    toolbar: [...history.buttons, tool('print', t('menu.print'), ctx.print), 'sep', zoom.button, 'sep', styleButton, 'sep',
+      boldButton, italicButton, underlineButton, 'sep', ...alignButtons, 'sep', bulletButton, numberedButton, 'sep', statsButton],
+    exports: DOC_FORMATS.map(([ext, label]) => ({ label: label(), ext, run: () => save(ext) })),
+    fileItems: [{ label: t('stats.title'), icon: 'stats', run: stats }],
+    menus: [
+      { label: t('menu.edit'), items: () => [...history.items(), SEP,
+        { label: t('edit.cut'), icon: 'cut', shortcut: shortcut('X'), run: () => clipboardCommand('cut') },
+        { label: t('edit.copy'), icon: 'copy', shortcut: shortcut('C'), run: () => clipboardCommand('copy') },
+        { label: t('edit.paste'), icon: 'paste', shortcut: shortcut('V'), run: paste }, SEP,
+        { label: t('edit.selectAll'), shortcut: shortcut('A'), run: () => { surface.focus(); document.getSelection()?.selectAllChildren(surface); } }] },
+      { label: t('menu.view'), items: () => [...zoom.items(), SEP, ...fullScreenItem()] },
+      { label: t('menu.insert'), items: () => [
+        { label: t('insert.date'), icon: 'calendar', run: insertDate },
+        { label: t('format.bulletList'), icon: 'bulletList', run: () => toggleList('bullet_list') },
+        { label: t('format.numberedList'), icon: 'numberedList', run: () => toggleList('numbered_list') }] },
+      { label: t('menu.format'), items: () => [...styleItems(), SEP,
+        { label: t('format.bold'), icon: 'bold', shortcut: shortcut('B'), checked: markState('bold'), run: () => toggleMark('bold') },
+        { label: t('format.italic'), icon: 'italic', shortcut: shortcut('I'), checked: markState('italic'), run: () => toggleMark('italic') },
+        { label: t('format.underline'), icon: 'underline', shortcut: shortcut('U'), checked: markState('underline'), run: () => toggleMark('underline') }, SEP,
+        ...alignments.map(([value, iconName, label]) => ({ label: t(label), icon: iconName, radio: true,
+          checked: (now()?.align ?? 'left') === value, run: () => align(value) })), SEP,
+        { label: t('format.bulletList'), checked: now()?.style === 'bullet_list', run: () => toggleList('bullet_list') },
+        { label: t('format.numberedList'), checked: now()?.style === 'numbered_list', run: () => toggleList('numbered_list') }] },
+    ],
+    printable: () => {
+      const host = el('div', { className: 'print-document' });
+      const shadow = host.attachShadow({ mode: 'open' });
+      shadow.innerHTML = '<style>.doc{font:12pt/1.5 Arial,"Helvetica Neue","Noto Sans",sans-serif;color:#000}img{max-width:100%;height:auto}table{border-collapse:collapse}td{border:1px solid #bbb;padding:4px 6px;vertical-align:top}a{color:inherit}</style>';
+      const copy = el('div', { className: 'doc' });
+      copy.append(...[...surface.childNodes].map((n) => n.cloneNode(true)));
+      copy.querySelectorAll('[contenteditable]').forEach((n) => n.removeAttribute('contenteditable'));
+      shadow.append(copy);
+      return host;
+    },
+    download: async () => {
+      // Unchanged files download exactly as opened.
+      if (!session.edited && !file.blank) return ctx.save(file.bytes, kind);
+      await save(kind);
+    },
+    dirty: () => session.status.dirty,
+    edited: () => session.edited,
+    undo, redo,
+    dispose: () => {
+      document.removeEventListener('selectionchange', onSelection);
+      images.forEach((url) => URL.revokeObjectURL(url));
+      session.close();
+    },
   };
 }
 
 // MARK: - Spreadsheets
 
-type Sheet = { name: string; rows: number; cols: number; truncated: boolean; cells: [number, number, string][] };
+type CellStyleInfo = { bold: boolean; italic: boolean; underline: boolean; format: string };
+type SheetSnapshot = {
+  editable: boolean; reason: string | null; readOnly: boolean; sheets: { name: string }[]; active: number;
+  sheet: { index: number; name: string; rows: number; cols: number; truncated: boolean; cells: [number, number, string][];
+    inputs: [number, number, string][]; styles: [number, number, CellStyleInfo][] };
+  canUndo: boolean; canRedo: boolean; dirty: boolean;
+};
 const MAX_ROWS = 1000;
 const MAX_COLS = 100;
-const NUMERIC = /^[-−+(]?[$€£¥₽₹]?\s?\d[\d\s.,'’ ]*(%|[$€£¥₽₹]|\s?[A-Z]{3})?\)?$/;
-const PLAIN_NUMBER = /^[-−]?(\d{1,3}([,   ]\d{3})+|\d+)(\.\d+)?$/;
+const NUMERIC = /^[-−+(]?([$€£¥₽₹₩₺₫฿₱₴₪]|zł|Ft|R\$|RM|Rp|Kč|kr|CHF|NT\$|HK\$|A\$|C\$|lei)?\s?\d[\d\s.,'’ ]*(%|[$€£¥₽₹₩₺₫฿₱₴₪]|\s?(zł|Ft|Kč|kr|lei)|\s?[A-Z]{3})?\)?$/;
+const PLAIN_NUMBER = /^[-−]?(\d{1,3}([,   ]\d{3})+|\d+)(\.\d+)?$/;
+/** The currency symbol of the interface language and whether it goes before the number. */
+const CURRENCY: Record<string, [string, boolean]> = {
+  en: ['$', true], de: ['€', false], fr: ['€', false], es: ['€', false], it: ['€', false], pt: ['R$', true], ru: ['₽', false],
+  pl: ['zł', false], hu: ['Ft', false], tr: ['₺', true], ja: ['¥', true], 'zh-Hans': ['¥', true], 'zh-Hant': ['NT$', true],
+  ko: ['₩', true], ar: ['$', true], id: ['Rp', true], ms: ['RM', true], th: ['฿', true], vi: ['₫', false], fil: ['₱', true],
+};
+
+function currencyFormat(): string {
+  const [symbol, before] = CURRENCY[language] ?? CURRENCY.en;
+  return before ? `"${symbol}"#,##0.00` : `#,##0.00 "${symbol}"`;
+}
 
 function columnName(index: number): string {
   let name = '';
@@ -999,15 +1725,38 @@ function columnName(index: number): string {
 
 async function viewSpreadsheet(ctx: Context): Promise<Editor> {
   const { file, kind } = ctx;
-  const book = await json<{ readOnly: boolean; sheets: Sheet[] }>('spreadsheetJson', file.bytes, kind, MAX_ROWS, MAX_COLS);
-  let sheetIndex = 0;
+  const session = await EditSession.open(file, 'spreadsheet', kind);
+  const load = (sheet?: number) => session.snapshot<SheetSnapshot>({ ...(sheet === undefined ? {} : { sheet }), maxRows: MAX_ROWS, maxCols: MAX_COLS });
+  let snap: SheetSnapshot;
+  try {
+    snap = await load();
+  } catch (error) {
+    session.close();
+    throw error;
+  }
+  const editable = snap.editable;
+  let sheetIndex = snap.sheet.index;
   let table: HTMLTableElement;
   let size = { rows: 0, cols: 0 };
   let anchor = { r: 0, c: 0 };
   let focus = { r: 0, c: 0 };
   let marked: HTMLElement[] = [];
+  let shown = new Map<string, string>();
+  let inputs = new Map<string, string>();
+  let styles = new Map<string, CellStyleInfo>();
+  const key = (r: number, c: number) => `${r},${c}`;
+  let boldButton: HTMLButtonElement | null = null;
+  let italicButton: HTMLButtonElement | null = null;
   const nameBox = el('span', { className: 'namebox', dir: 'ltr' });
-  const valueBox = el('span', { className: 'valuebox', dir: 'auto' });
+  // The formula bar shows the active cell's input (a formula rather than its result) and edits it.
+  const valueBox = el('span', { className: 'valuebox', dir: 'auto', spellcheck: false, role: 'textbox', aria: { label: t('sheet.formula') } });
+  if (editable) {
+    try {
+      valueBox.contentEditable = 'plaintext-only';
+    } catch {
+      valueBox.contentEditable = 'true'; // browsers without plaintext-only editing
+    }
+  }
   const scroll = el('div', { className: 'grid-scroll', dir: 'ltr', tabIndex: 0, aria: { label: t('nav.spreadsheets') } });
   const tabs = el('div', { className: 'sheet-tabs', role: 'tablist' });
   const note = el('span', { className: 'sheet-note' });
@@ -1016,13 +1765,19 @@ async function viewSpreadsheet(ctx: Context): Promise<Editor> {
   scroll.append(zoomTarget);
 
   const cell = (r: number, c: number) => table.tBodies[0].rows[r]?.cells[c + 1];
+  const inputOf = (r: number, c: number) => inputs.get(key(r, c)) ?? shown.get(key(r, c)) ?? '';
+  const ref = (r: number, c: number) => `${columnName(c)}${r + 1}`;
+  const bounds = () => ({ r0: Math.min(anchor.r, focus.r), r1: Math.max(anchor.r, focus.r), c0: Math.min(anchor.c, focus.c), c1: Math.max(anchor.c, focus.c) });
+  const rangeRef = () => {
+    const { r0, r1, c0, c1 } = bounds();
+    return r1 > r0 || c1 > c0 ? `${ref(r0, c0)}:${ref(r1, c1)}` : ref(r0, c0);
+  };
   const select = (to: { r: number; c: number }, extend = false) => {
     focus = { r: Math.max(0, Math.min(size.rows - 1, to.r)), c: Math.max(0, Math.min(size.cols - 1, to.c)) };
     if (!extend) anchor = { ...focus };
     marked.forEach((n) => n.classList.remove('in-range', 'selected', 'hl'));
     marked = [];
-    const [r0, r1] = [Math.min(anchor.r, focus.r), Math.max(anchor.r, focus.r)];
-    const [c0, c1] = [Math.min(anchor.c, focus.c), Math.max(anchor.c, focus.c)];
+    const { r0, r1, c0, c1 } = bounds();
     let sum = 0;
     let numbers = 0;
     let filled = 0;
@@ -1037,7 +1792,7 @@ async function viewSpreadsheet(ctx: Context): Promise<Editor> {
         const text = td.textContent!.trim();
         if (text) filled++;
         if (PLAIN_NUMBER.test(text)) {
-          sum += Number(text.replace(/[,   ]/g, '').replace('−', '-'));
+          sum += Number(text.replace(/[,   ]/g, '').replace('−', '-'));
           numbers++;
         }
       }
@@ -1055,28 +1810,69 @@ async function viewSpreadsheet(ctx: Context): Promise<Editor> {
       th.classList.add('hl');
       marked.push(th);
     }
-    const ref = `${columnName(focus.c)}${focus.r + 1}`;
-    nameBox.textContent = r1 > r0 || c1 > c0 ? `${columnName(c0)}${r0 + 1}:${columnName(c1)}${r1 + 1}` : ref;
-    valueBox.textContent = active.textContent;
+    nameBox.textContent = rangeRef();
+    if (document.activeElement !== valueBox) valueBox.textContent = inputOf(focus.r, focus.c);
     const parts = [];
     if (numbers) parts.push(t('sheet.sum', { sum: number(Math.round(sum * 1e10) / 1e10) }));
     if (filled > 1) parts.push(t('sheet.count', { count: number(filled) }));
     chip.textContent = parts.join(' · ');
     chip.hidden = parts.length === 0;
+    updateTools();
   };
+  function updateTools() {
+    boldButton?.setAttribute('aria-pressed', String(!!styles.get(key(focus.r, focus.c))?.bold));
+    italicButton?.setAttribute('aria-pressed', String(!!styles.get(key(focus.r, focus.c))?.italic));
+  }
   const reveal = () => cell(focus.r, focus.c)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 
-  const render = () => {
-    const sheet = book.sheets[sheetIndex];
+  const fillCell = (td: HTMLTableCellElement, r: number, c: number) => {
+    if (editing?.td === td) return;
+    const text = shown.get(key(r, c)) ?? '';
+    const style = styles.get(key(r, c));
+    td.textContent = text;
+    td.className = [NUMERIC.test(text.trim()) ? 'num' : '', style?.bold ? 'b' : '', style?.italic ? 'i' : '', style?.underline ? 'u' : '']
+      .filter(Boolean).join(' ');
+  };
+  /** Takes a snapshot of the shown sheet; redraws the grid (or only its cells when its size is unchanged). */
+  const apply = (next: SheetSnapshot, keepSelection: boolean) => {
+    snap = next;
+    sheetIndex = next.sheet.index;
+    const sheet = next.sheet;
+    shown = new Map(sheet.cells.map(([r, c, text]) => [key(r, c), text]));
+    inputs = new Map(sheet.inputs.map(([r, c, text]) => [key(r, c), text]));
+    styles = new Map(sheet.styles.map(([r, c, style]) => [key(r, c), style]));
     const used = sheet.cells.reduce(([r, c], [row, col]) => [Math.max(r, row + 1), Math.max(c, col + 1)], [0, 0]);
-    size = { rows: Math.min(Math.max(sheet.rows, used[0] + 20, 40), MAX_ROWS), cols: Math.min(Math.max(sheet.cols, used[1] + 4, 16), MAX_COLS) };
-    const grid: string[][] = Array.from({ length: size.rows }, () => Array(size.cols).fill(''));
-    for (const [r, c, text] of sheet.cells) if (r < size.rows && c < size.cols) grid[r][c] = text;
+    const wanted = { rows: Math.min(Math.max(sheet.rows, used[0] + 20, 40), MAX_ROWS), cols: Math.min(Math.max(sheet.cols, used[1] + 4, 16), MAX_COLS) };
+    if (keepSelection && table && wanted.rows <= size.rows && wanted.cols <= size.cols) {
+      for (let r = 0; r < size.rows; r++) for (let c = 0; c < size.cols; c++) fillCell(cell(r, c)!, r, c);
+    } else {
+      size = keepSelection && table ? { rows: Math.max(size.rows, wanted.rows), cols: Math.max(size.cols, wanted.cols) } : wanted;
+      buildTable();
+    }
+    if (keepSelection) {
+      anchor = { r: Math.min(anchor.r, size.rows - 1), c: Math.min(anchor.c, size.cols - 1) };
+      select(focus, true);
+    } else {
+      scroll.scrollTo(0, 0);
+      select({ r: 0, c: 0 });
+    }
+    tabs.querySelectorAll('button').forEach((b, i) => {
+      b.setAttribute('aria-selected', String(i === sheetIndex));
+      b.tabIndex = i === sheetIndex ? 0 : -1;
+    });
+    note.textContent = sheet.truncated ? t('sheet.truncated', { rows: number(MAX_ROWS), columns: number(MAX_COLS) }) : '';
+    history.update();
+    ctx.changed();
+  };
+  const buildTable = () => {
     const head = el('tr', {}, el('th', { className: 'corner' }),
       ...Array.from({ length: size.cols }, (_, c) => el('th', { textContent: columnName(c), scope: 'col' })));
-    const body = grid.map((row, r) => el('tr', {}, el('th', { textContent: String(r + 1), scope: 'row' }),
-      ...row.map((text, c) => el('td', { textContent: text, className: NUMERIC.test(text.trim()) ? 'num' : '',
-        dataset: { ref: `${columnName(c)}${r + 1}` } }))));
+    const body = Array.from({ length: size.rows }, (_, r) => el('tr', {}, el('th', { textContent: String(r + 1), scope: 'row' }),
+      ...Array.from({ length: size.cols }, (_, c) => {
+        const td = el('td', { dataset: { ref: ref(r, c) } });
+        fillCell(td, r, c);
+        return td;
+      })));
     table = el('table', { className: 'grid' }, el('thead', {}, head), el('tbody', {}, ...body));
     const at = (target: EventTarget | null) => {
       const td = (target as HTMLElement | null)?.closest?.('td');
@@ -1085,7 +1881,8 @@ async function viewSpreadsheet(ctx: Context): Promise<Editor> {
     let dragging = false;
     table.addEventListener('pointerdown', (e) => {
       const pos = at(e.target);
-      if (!pos || e.button !== 0) return;
+      if (!pos || e.button !== 0 || (e.target as HTMLElement).closest('.cell-editor')) return;
+      if (editing) commitEdit();
       select(pos, e.shiftKey);
       dragging = true;
       scroll.focus({ preventScroll: true });
@@ -1094,58 +1891,320 @@ async function viewSpreadsheet(ctx: Context): Promise<Editor> {
       const pos = dragging && e.buttons === 1 ? at(e.target) : null;
       if (pos) select(pos, true);
     });
+    table.addEventListener('dblclick', (e) => {
+      const pos = at(e.target);
+      if (pos && editable) beginEdit(inputOf(pos.r, pos.c), false);
+    });
     window.addEventListener('pointerup', () => (dragging = false));
     zoomTarget.replaceChildren(table);
-    scroll.scrollTo(0, 0);
-    select({ r: 0, c: 0 });
-    tabs.querySelectorAll('button').forEach((b, i) => {
-      b.setAttribute('aria-selected', String(i === sheetIndex));
-      b.tabIndex = i === sheetIndex ? 0 : -1;
-    });
-    note.textContent = sheet.truncated ? t('sheet.truncated', { rows: number(MAX_ROWS), columns: number(MAX_COLS) }) : '';
   };
-  const showSheet = (i: number) => {
-    sheetIndex = (i + book.sheets.length) % book.sheets.length;
-    render();
-  };
-  book.sheets.forEach((sheet, i) => {
+  const showSheet = (i: number) => session.run(async () => {
+    if (editing) commitEdit();
+    apply(await load((i + snap.sheets.length) % snap.sheets.length), false);
+  });
+  const renderTabs = () => tabs.replaceChildren(...snap.sheets.map((sheet, i) => {
     const b = el('button', { type: 'button', role: 'tab', className: 'sheet-tab', textContent: sheet.name, dir: 'auto' });
     b.addEventListener('click', () => showSheet(i));
-    tabs.append(b);
+    return b;
+  }));
+
+  // Commands: one request per action, sent with the shown sheet; the grid is redrawn from the new snapshot.
+  const send = (request: unknown | (() => unknown)) => session.run(async () => {
+    const body = typeof request === 'function' ? request() : request;
+    if (!body) return;
+    try {
+      await session.apply(body);
+    } catch (error) {
+      notify(message(error), 'warn');
+      return;
+    }
+    apply(await load(sheetIndex), true);
   });
-  scroll.addEventListener('keydown', (e) => {
-    const moves: Record<string, [number, number]> = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowRight: [0, 1], ArrowLeft: [0, -1], Enter: [1, 0] };
-    const move = moves[e.key];
-    if (!move || e.ctrlKey || e.metaKey || e.altKey) return;
-    select({ r: focus.r + move[0], c: focus.c + move[1] }, e.shiftKey && e.key !== 'Enter');
+  const withSheet = (command: Record<string, unknown>) => ({ ...command, sheet: sheetIndex });
+  const historyStep = (redo: boolean) => session.run(async () => {
+    if (editing) commitEdit();
+    const status = redo ? await session.redo() : await session.undo();
+    if (status.changed) apply(await load(sheetIndex), true);
+  });
+  const undo = () => historyStep(false);
+  const redo = () => historyStep(true);
+  const history = historyControls(session, undo, redo);
+
+  // Cell editing: typing replaces the cell, F2 or a double click edits its input, the formula bar edits it too.
+  let editing: { input: HTMLInputElement; td: HTMLTableCellElement; r: number; c: number; typed: boolean; original: string } | null = null;
+  const beginEdit = (text: string, typed: boolean) => {
+    if (!editable) return;
+    if (editing) commitEdit();
+    const td = cell(focus.r, focus.c)!;
+    anchor = { ...focus };
+    select(focus);
+    const input = el('input', { className: 'cell-editor', value: text, spellcheck: false, aria: { label: t('sheet.cell', { cell: ref(focus.r, focus.c) }) } });
+    editing = { input, td, r: focus.r, c: focus.c, typed, original: inputOf(focus.r, focus.c) };
+    td.classList.add('editing');
+    td.replaceChildren(input);
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+    valueBox.textContent = text;
+    input.addEventListener('input', () => (valueBox.textContent = input.value));
+    input.addEventListener('keydown', editorKey);
+    input.addEventListener('blur', () => editing?.input === input && commitEdit());
+  };
+  const finishEdit = () => {
+    if (!editing) return null;
+    const done = editing;
+    editing = null;
+    done.td.classList.remove('editing');
+    fillCell(done.td, done.r, done.c);
+    return done;
+  };
+  const commitEdit = (value?: string) => {
+    const done = finishEdit();
+    if (!done) return;
+    const text = value ?? done.input.value;
+    if (text === done.original) return;
+    // The typed text goes to the engine and the cell shows it until the snapshot arrives.
+    done.td.textContent = text;
+    send(withSheet({ command: 'set_cells', range: ref(done.r, done.c), values: [[text]] }));
+  };
+  const cancelEdit = () => {
+    finishEdit();
+    valueBox.textContent = inputOf(focus.r, focus.c);
+    scroll.focus({ preventScroll: true });
+  };
+  const move = (dr: number, dc: number, extend = false) => {
+    select({ r: focus.r + dr, c: focus.c + dc }, extend);
     reveal();
+  };
+  function editorKey(e: KeyboardEvent) {
+    const arrows: Record<string, [number, number]> = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowRight: [0, 1], ArrowLeft: [0, -1] };
+    if (e.key === 'Enter' || e.key === 'Tab' || (editing?.typed && arrows[e.key])) {
+      const [dr, dc] = e.key === 'Enter' ? [e.shiftKey ? -1 : 1, 0] : e.key === 'Tab' ? [0, e.shiftKey ? -1 : 1] : arrows[e.key];
+      commitEdit();
+      scroll.focus({ preventScroll: true });
+      move(dr, dc);
+    } else if (e.key === 'Escape') {
+      cancelEdit();
+    } else return;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  valueBox.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const text = valueBox.textContent ?? '';
+      finishEdit();
+      scroll.focus({ preventScroll: true });
+      if (text !== inputOf(focus.r, focus.c)) {
+        send(withSheet({ command: 'set_cells', range: ref(focus.r, focus.c), values: [[text]] }));
+      }
+      move(1, 0);
+    } else if (e.key === 'Escape') {
+      cancelEdit();
+    } else return;
     e.preventDefault();
   });
-  render();
+  valueBox.addEventListener('focus', () => editing && commitEdit());
+  valueBox.addEventListener('blur', () => (valueBox.textContent = inputOf(focus.r, focus.c)));
+
+  const selectionCommand = (name: string, extra: Record<string, unknown> = {}) => withSheet({ command: name, range: rangeRef(), ...extra });
+  const clear = () => send(selectionCommand('clear'));
+  const activeStyle = () => styles.get(key(focus.r, focus.c));
+  const toggleBold = () => send(selectionCommand('set_text_style', { bold: !activeStyle()?.bold }));
+  const toggleItalic = () => send(selectionCommand('set_text_style', { italic: !activeStyle()?.italic }));
+  const numberFormat = (format: string) => send(selectionCommand('set_number_format', { format }));
+  const decimals = (delta: number) => send(selectionCommand('adjust_decimals', { delta }));
+  const rowsCommand = (name: 'insert_rows' | 'delete_rows', below = false) => {
+    const { r0, r1 } = bounds();
+    return send(withSheet({ command: name, row: (below ? r1 + 1 : r0) + 1, count: r1 - r0 + 1 }));
+  };
+  const columnsCommand = (name: 'insert_columns' | 'delete_columns', right = false) => {
+    const { c0, c1 } = bounds();
+    return send(withSheet({ command: name, column: columnName(right ? c1 + 1 : c0), count: c1 - c0 + 1 }));
+  };
+  /** Sorts the selection by the active column; a single cell sorts the whole table around it, keeping a text header. */
+  const sort = (descending: boolean) => send(() => {
+    let { r0, r1, c0, c1 } = bounds();
+    let header = false;
+    if (r0 === r1 && c0 === c1) {
+      const cells = [...shown.keys()].map((k) => k.split(',').map(Number));
+      if (!cells.length) return null;
+      r0 = 0;
+      c0 = 0;
+      r1 = Math.max(...cells.map(([r]) => r));
+      c1 = Math.max(...cells.map(([, c]) => c));
+      const first = Array.from({ length: c1 + 1 }, (_, c) => shown.get(key(0, c)) ?? '');
+      header = first.every((text) => text && !NUMERIC.test(text.trim()))
+        && Array.from({ length: r1 }, (_, r) => shown.get(key(r + 1, focus.c)) ?? '').some((text) => NUMERIC.test(text.trim()));
+      if (!header) header = first.every((text) => text && !NUMERIC.test(text.trim())) && r1 > 0 && focus.r > 0;
+    }
+    return withSheet({ command: 'sort_range', range: `${ref(r0, c0)}:${ref(r1, c1)}`, by_column: columnName(focus.c), descending, has_header: header });
+  });
+
+  // Clipboard: displayed values as tab-separated text; pasted text fills from the active cell.
+  const selectionText = () => {
+    const { r0, r1, c0, c1 } = bounds();
+    return Array.from({ length: r1 - r0 + 1 }, (_, i) => Array.from({ length: c1 - c0 + 1 }, (_, j) =>
+      shown.get(key(r0 + i, c0 + j)) ?? '').join('\t')).join('\n');
+  };
+  const pasteText = (text: string) => {
+    const rows = text.replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n').map((line) => line.split('\t'));
+    if (!rows.length) return;
+    return send(withSheet({ command: 'set_cells', range: ref(Math.min(anchor.r, focus.r), Math.min(anchor.c, focus.c)), values: rows }));
+  };
+  scroll.addEventListener('copy', (e) => {
+    if (editing) return;
+    e.preventDefault();
+    e.clipboardData?.setData('text/plain', selectionText());
+  });
+  scroll.addEventListener('cut', (e) => {
+    if (editing || !editable) return;
+    e.preventDefault();
+    e.clipboardData?.setData('text/plain', selectionText());
+    clear();
+  });
+  scroll.addEventListener('paste', (e) => {
+    if (editing || !editable) return;
+    e.preventDefault();
+    pasteText(e.clipboardData?.getData('text/plain') ?? '');
+  });
+  const clipboard = async (command: 'cut' | 'copy' | 'paste') => {
+    try {
+      if (command === 'paste') return await pasteText(await navigator.clipboard.readText());
+      await navigator.clipboard.writeText(selectionText());
+      if (command === 'cut') await clear();
+    } catch {
+      notify(t('edit.clipboardDenied', { shortcut: shortcut(command === 'cut' ? 'X' : command === 'copy' ? 'C' : 'V') }), 'warn');
+    }
+  };
+
+  scroll.addEventListener('keydown', (e) => {
+    if (editing && e.target !== scroll) return;
+    if (isMod(e)) {
+      const k = e.key.toLowerCase();
+      if (k === 'z') e.shiftKey ? redo() : undo();
+      else if (k === 'y' && !MAC) redo();
+      else if (k === 'b' && editable) toggleBold();
+      else if (k === 'i' && editable) toggleItalic();
+      else return;
+      e.preventDefault();
+      return;
+    }
+    const moves: Record<string, [number, number]> = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowRight: [0, 1], ArrowLeft: [0, -1], Enter: [1, 0] };
+    const step = moves[e.key];
+    if (step && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (e.key === 'Enter' && e.shiftKey) move(-1, 0);
+      else move(step[0], step[1], e.shiftKey && e.key !== 'Enter');
+    } else if (e.key === 'Tab' && editable) {
+      move(0, e.shiftKey ? -1 : 1);
+    } else if (e.key === 'F2' && editable) {
+      beginEdit(inputOf(focus.r, focus.c), false);
+    } else if ((e.key === 'Delete' || e.key === 'Backspace') && editable) {
+      clear();
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && editable) {
+      beginEdit(e.key, true);
+    } else return;
+    e.preventDefault();
+  });
+
+  renderTabs();
+  apply(snap, false);
+
+  // Toolbar (per the approved design, only controls that work).
+  const zoom = zoomControl([50, 75, 90, 100, 125, 150, 200], 100, (z) => (zoomTarget.style.zoom = String(z / 100)));
+  const textTool = (text: string, label: string, action: () => unknown) => {
+    const b = tool('', label, action, text);
+    b.classList.add('text-tool');
+    b.dir = 'ltr'; // ".00" and "123" read left to right in right-to-left languages too
+    b.querySelector('svg')?.remove();
+    return b;
+  };
+  const [currencySymbol] = CURRENCY[language] ?? CURRENCY.en;
+  const formatsButton = el('button', { type: 'button', className: 'tool with-text', title: t('format.numberFormats'),
+    aria: { label: t('format.numberFormats') } }, el('span', { textContent: '123', dir: 'ltr' }), icon('down', 'icon small'));
+  const formatItems = (): MenuItem[] => {
+    const now = activeStyle()?.format ?? '';
+    return [
+      { label: t('format.automatic'), checked: now === '', radio: true, run: () => numberFormat('General') },
+      { label: t('format.number'), hint: '1,000.12', checked: now === '#,##0.00', radio: true, run: () => numberFormat('#,##0.00') },
+      { label: t('format.currency'), hint: currencySymbol, checked: now === currencyFormat(), radio: true, run: () => numberFormat(currencyFormat()) },
+      { label: t('format.percent'), hint: '10.12%', checked: now === '0.00%', radio: true, run: () => numberFormat('0.00%') },
+      SEP,
+      { label: t('format.moreDecimals'), run: () => decimals(1) },
+      { label: t('format.fewerDecimals'), run: () => decimals(-1) },
+    ];
+  };
+  dropdown(formatsButton, formatItems, { label: t('format.numberFormats') });
+  boldButton = tool('bold', `${t('format.bold')} (${shortcut('B')})`, toggleBold);
+  italicButton = tool('italic', `${t('format.italic')} (${shortcut('I')})`, toggleItalic);
+  updateTools();
+  const editTools: (HTMLElement | 'sep')[] = editable ? [
+    'sep',
+    textTool(currencySymbol, t('format.currency'), () => numberFormat(currencyFormat())),
+    textTool('%', t('format.percent'), () => numberFormat('0%')),
+    textTool('.0', t('format.fewerDecimals'), () => decimals(-1)),
+    textTool('.00', t('format.moreDecimals'), () => decimals(1)),
+    formatsButton, 'sep', boldButton!, italicButton!, 'sep',
+    tool('insertRow', t('insert.rowAbove'), () => rowsCommand('insert_rows')),
+    tool('deleteRow', t('edit.deleteRows'), () => rowsCommand('delete_rows')),
+    tool('insertColumn', t('insert.columnLeft'), () => columnsCommand('insert_columns')),
+    tool('deleteColumn', t('edit.deleteColumns'), () => columnsCommand('delete_columns')),
+    'sep',
+    tool('sortAsc', t('data.sortAsc'), () => sort(false)),
+    tool('sortDesc', t('data.sortDesc'), () => sort(true)),
+  ] : [];
 
   const sheets = el('button', { type: 'button', className: 'tool', title: t('menu.allSheets'), aria: { label: t('menu.allSheets') } }, icon('list'));
-  const sheetItems = (): MenuItem[] => book.sheets.map((s, i) => ({ label: s.name, checked: i === sheetIndex, radio: true, run: () => showSheet(i) }));
+  const sheetItems = (): MenuItem[] => snap.sheets.map((s, i) => ({ label: s.name, checked: i === sheetIndex, radio: true, run: () => showSheet(i) }));
   dropdown(sheets, sheetItems, { label: t('menu.allSheets') });
-  const zoom = zoomControl([50, 75, 90, 100, 125, 150, 200], 100, (z) => (zoomTarget.style.zoom = String(z / 100)));
-  const valuesCsv = async () => download(await call<Uint8Array>('spreadsheetValuesCsv', file.bytes, kind, sheetIndex),
-    `${ctx.stem()} - ${book.sheets[sheetIndex].name}.csv`, MIME.csv);
-  const convert = async (to: string) => ctx.save(await call<Uint8Array>('spreadsheetConvert', file.bytes, kind, to), to);
+  const markSaved = async () => {
+    if (!session.edited) return;
+    await session.markSaved();
+    ctx.changed();
+  };
+  // Displayed values of the shown sheet: from the edited workbook once it was edited (saved as XLSX first).
+  const valuesCsv = async () => {
+    const [bytes, from] = session.edited ? [await session.save('xlsx'), 'xlsx'] : [file.bytes, kind];
+    download(await call<Uint8Array>('spreadsheetValuesCsv', bytes, from, sheetIndex), `${ctx.stem()} - ${snap.sheets[sheetIndex].name}.csv`, MIME.csv);
+  };
+  const convert = async (to: string) => {
+    ctx.save(await session.save(to), to);
+    await markSaved();
+  };
+  const editMenu = (): MenuItem[] => [...history.items(), SEP,
+    { label: t('edit.cut'), icon: 'cut', shortcut: shortcut('X'), run: () => clipboard('cut') },
+    { label: t('edit.copy'), icon: 'copy', shortcut: shortcut('C'), run: () => clipboard('copy') },
+    { label: t('edit.paste'), icon: 'paste', shortcut: shortcut('V'), run: () => clipboard('paste') }, SEP,
+    { label: t('edit.clear'), shortcut: 'Del', run: clear },
+    { label: t('edit.deleteRows'), icon: 'deleteRow', run: () => rowsCommand('delete_rows') },
+    { label: t('edit.deleteColumns'), icon: 'deleteColumn', run: () => columnsCommand('delete_columns') }];
   return {
     body: el('div', { className: 'sheet-view' },
       el('div', { className: 'formula-bar' }, nameBox, el('span', { className: 'fx', textContent: 'fx', aria: { hidden: 'true' } }), valueBox),
       scroll,
       el('footer', { className: 'sheet-bar' }, sheets, tabs, note, chip)),
-    toolbar: [tool('folder', t('menu.open'), () => $<HTMLInputElement>('file-input-spreadsheets').click()),
-      tool('print', t('menu.print'), ctx.print), 'sep', zoom.button],
-    exports: book.readOnly ? [] : [['xlsx', 'Microsoft Excel'], ['ods', t('format.ods')], ['csv', 'CSV']]
+    toolbar: [...(editable ? history.buttons : []), tool('print', t('menu.print'), ctx.print), 'sep', zoom.button, ...editTools],
+    exports: snap.readOnly ? [] : [['xlsx', 'Microsoft Excel'], ['ods', t('format.ods')], ['csv', 'CSV']]
       .map(([ext, label]) => ({ label, ext, run: () => convert(ext) })),
     extraExports: [{ label: t('sheet.valuesCsv'), run: valuesCsv }],
-    badge: book.readOnly ? { text: t('sheet.readOnlyBadge'), title: t('sheet.readOnly') } : undefined,
+    badge: snap.readOnly ? { text: t('sheet.readOnlyBadge'), title: t('sheet.readOnly') } : undefined,
     menus: [
+      ...(editable ? [{ label: t('menu.edit'), items: editMenu }] : []),
       { label: t('menu.view'), items: () => [...zoom.items(), SEP, ...fullScreenItem()] },
+      ...(editable ? [
+        { label: t('menu.insert'), items: (): MenuItem[] => [
+          { label: t('insert.rowAbove'), icon: 'insertRow', run: () => rowsCommand('insert_rows') },
+          { label: t('insert.rowBelow'), icon: 'insertRow', run: () => rowsCommand('insert_rows', true) },
+          { label: t('insert.columnLeft'), icon: 'insertColumn', run: () => columnsCommand('insert_columns') },
+          { label: t('insert.columnRight'), icon: 'insertColumn', run: () => columnsCommand('insert_columns', true) }] },
+        { label: t('menu.format'), items: (): MenuItem[] => [...formatItems(), SEP,
+          { label: t('format.bold'), icon: 'bold', shortcut: shortcut('B'), checked: !!activeStyle()?.bold, run: toggleBold },
+          { label: t('format.italic'), icon: 'italic', shortcut: shortcut('I'), checked: !!activeStyle()?.italic, run: toggleItalic }] },
+        { label: t('menu.data'), items: (): MenuItem[] => [
+          { label: t('data.sortAsc'), icon: 'sortAsc', run: () => sort(false) },
+          { label: t('data.sortDesc'), icon: 'sortDesc', run: () => sort(true) }] },
+      ] : []),
       { label: t('menu.sheet'), items: () => [...sheetItems(), SEP,
-        { label: t('menu.previousSheet'), icon: 'prev', disabled: book.sheets.length < 2, run: () => showSheet(sheetIndex - 1) },
-        { label: t('menu.nextSheet'), icon: 'next', disabled: book.sheets.length < 2, run: () => showSheet(sheetIndex + 1) }] },
+        { label: t('menu.previousSheet'), icon: 'prev', disabled: snap.sheets.length < 2, run: () => showSheet(sheetIndex - 1) },
+        { label: t('menu.nextSheet'), icon: 'next', disabled: snap.sheets.length < 2, run: () => showSheet(sheetIndex + 1) }] },
     ],
     printable: () => el('div', { className: 'print-sheet' }, table.cloneNode(true)),
     keydown: (e) => {
@@ -1154,6 +2213,15 @@ async function viewSpreadsheet(ctx: Context): Promise<Editor> {
       else return;
       e.preventDefault();
     },
+    download: async () => {
+      // Unchanged files (and read-only XLS) download exactly as opened.
+      if ((!session.edited && !file.blank) || snap.readOnly) return ctx.save(file.bytes, kind);
+      await convert(kind);
+    },
+    dirty: () => session.status.dirty,
+    edited: () => session.edited,
+    ...(editable ? { undo, redo } : {}),
+    dispose: () => session.close(),
   };
 }
 
@@ -1768,8 +2836,16 @@ function setupKeys() {
     if (target.closest('.menu, [role="menubar"], dialog') || document.querySelector('dialog[open]')) return;
     const app = fileApps.find((a) => a.id === current);
     const open = app?.editor;
-    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && app) {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && app) {
       const key = e.key.toLowerCase();
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable;
+      // Undo/Redo of the editor (editing surfaces handle these keys themselves first).
+      if (!typing && open?.editor?.undo && (key === 'z' || key === 'y')) {
+        attempt(key === 'y' || e.shiftKey ? open.editor.redo! : open.editor.undo);
+        e.preventDefault();
+        return;
+      }
+      if (e.shiftKey) return;
       if (key === 'o') app.input.click();
       else if (key === 's' && open?.editor) attempt(open.download);
       else if (key === 'p' && open?.editor?.printable) open.ctx.print();
@@ -1777,8 +2853,13 @@ function setupKeys() {
       e.preventDefault();
       return;
     }
-    if (e.ctrlKey || e.metaKey || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.closest('.grid-scroll')) return;
+    if (e.ctrlKey || e.metaKey || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable
+      || target.closest('.grid-scroll')) return;
     open?.editor?.keydown?.(e);
+  });
+  // Changes that were not downloaded: the browser asks before the tab is closed or reloaded.
+  window.addEventListener('beforeunload', (e) => {
+    if (fileApps.some((app) => app.editor?.editor?.dirty?.())) e.preventDefault();
   });
 }
 
@@ -1816,10 +2897,12 @@ async function start() {
   $('engine-version').textContent = t('app.engine', { version });
   $('about-version').textContent = t('app.engine', { version });
 
-  const apps: Pick<FileApp, 'id' | 'logo' | 'extensions' | 'formats' | 'view'>[] = [
+  const apps: Pick<FileApp, 'id' | 'logo' | 'extensions' | 'formats' | 'view' | 'blank'>[] = [
     { id: 'documents', logo: 'doc', extensions: ['docx', 'odt', 'rtf', 'md', 'markdown', 'html', 'htm', 'txt'],
-      formats: 'DOCX, ODT, RTF, Markdown, HTML, TXT', view: viewDocument },
-    { id: 'spreadsheets', logo: 'xls', extensions: ['xlsx', 'ods', 'xls', 'csv'], formats: 'XLSX, ODS, XLS, CSV', view: viewSpreadsheet },
+      formats: 'DOCX, ODT, RTF, Markdown, HTML, TXT', view: viewDocument,
+      blank: { label: () => t('home.blankDocument'), menu: () => t('menu.newDocument'), untitled: () => t('documents.untitled'), ext: 'docx' } },
+    { id: 'spreadsheets', logo: 'xls', extensions: ['xlsx', 'ods', 'xls', 'csv'], formats: 'XLSX, ODS, XLS, CSV', view: viewSpreadsheet,
+      blank: { label: () => t('home.blankSpreadsheet'), menu: () => t('menu.newSpreadsheet'), untitled: () => t('spreadsheets.untitled'), ext: 'xlsx' } },
     { id: 'presentations', logo: 'ppt', extensions: ['pptx', 'odp'], formats: 'PPTX, ODP', view: viewPresentation },
     { id: 'pdf', logo: 'pdf', extensions: ['pdf'], formats: 'PDF', view: viewPdf },
   ];

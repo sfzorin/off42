@@ -16,6 +16,8 @@ mod sorting;
 pub use sorting::{SortKey,SortOptions};
 #[cfg(test)]
 mod capacity_tests;
+#[cfg(test)]
+mod batch_tests;
 pub use analytics::{Chart, ChartData, ChartKind, ChartSeries, Pivot, PivotAggregate};
 mod formula;
 mod office;
@@ -904,13 +906,18 @@ impl Workbook {
         Some(&st.styles[s.cells.get(&(row, col)).map_or(0, |c| c.style)])
     }
     pub fn set_style(&mut self, range: Range, style: CellStyle) -> Result<bool, Error> {
+        self.update_style(range, |_| style.clone())
+    }
+    /// Change the style of every cell in `range` from its current style (for example turn bold on, or set the
+    /// number format, keeping the rest), as one history step.
+    pub fn update_style(
+        &mut self,
+        range: Range,
+        patch: impl Fn(&CellStyle) -> CellStyle,
+    ) -> Result<bool, Error> {
         self.require_editable()?;
         if !range.valid(self.history.current().sheet()){return Err(Error::Bounds)}
         range.bounded_operation()?;
-        if style.font.len()>4096||style.number_format.len()>4096{return Err(Error::Limit)}
-        if style.borders & !15 != 0 {
-            return Err(Error::Invalid("unsupported border style"));
-        }
         if self.has_external_source()
             && !matches!(self.external_format.as_deref(), Some("ods" | "xlsx"))
         {
@@ -918,42 +925,41 @@ impl Workbook {
                 "Formatting this Office format cannot yet preserve all original style properties",
             ));
         }
-        if self.external_format.as_deref() == Some("ods") {
-            if style.borders & !15 != 0 {
-                return Err(Error::Invalid("Unsupported ODS border"));
-            }
-            let sheet = self.history.current().sheet();
-            if !range.valid(sheet) {
-                return Err(Error::Bounds);
-            }
-            for r in range.top..=range.bottom {
-                for c in range.left..=range.right {
-                    if self.style(r, c).unwrap().number_format != style.number_format {
-                        return Err(Error::Invalid(
-                            "ODS number-format editing is not yet supported",
-                        ));
-                    }
-                }
-            }
-        }
         let mut st = self.history.current().clone();
-        if !range.valid(st.sheet()) {
-            return Err(Error::Bounds);
-        }
         if st.sheet().protected {
             return Err(Error::Protected);
         }
-        let id = match st.styles.iter().position(|s| *s == style) {
-            Some(i) => i,
-            None => {
-                if st.styles.len()>=100_000{return Err(Error::Limit)}
-                st.styles.push(style);
-                st.styles.len() - 1
-            }
-        };
-        let s = st.sheet_mut();
+        let ods = self.external_format.as_deref() == Some("ods");
+        let mut ids = BTreeMap::<usize, usize>::new();
         for r in range.top..=range.bottom {
             for c in range.left..=range.right {
+                let old = st.sheet().cells.get(&(r, c)).map_or(0, |cell| cell.style);
+                let id = match ids.get(&old) {
+                    Some(id) => *id,
+                    None => {
+                        let style = patch(&st.styles[old]);
+                        if style.font.len()>4096||style.number_format.len()>4096{return Err(Error::Limit)}
+                        if style.borders & !15 != 0 {
+                            return Err(Error::Invalid("unsupported border style"));
+                        }
+                        if ods && st.styles[old].number_format != style.number_format {
+                            return Err(Error::Invalid(
+                                "ODS number-format editing is not yet supported",
+                            ));
+                        }
+                        let id = match st.styles.iter().position(|s| *s == style) {
+                            Some(i) => i,
+                            None => {
+                                if st.styles.len()>=100_000{return Err(Error::Limit)}
+                                st.styles.push(style);
+                                st.styles.len() - 1
+                            }
+                        };
+                        ids.insert(old, id);
+                        id
+                    }
+                };
+                let s = st.sheet_mut();
                 let cell = s.cells.entry((r, c)).or_insert_with(|| Cell {
                     text: CellContent::default(),
                     style: 0,
@@ -968,6 +974,64 @@ impl Workbook {
         tables::reconcile_headers(self.history.current(), &mut st)?;
         self.validate_external_table_edit(&st)?;
         Ok(self.history.apply(st))
+    }
+    /// Run several edits as one Undo step. `edit` works on the workbook as usual; when it fails nothing changes, and
+    /// a batch that changes nothing adds no history entry.
+    pub fn batch<T>(
+        &mut self,
+        edit: impl FnOnce(&mut Workbook) -> Result<T, Error>,
+    ) -> Result<T, Error> {
+        self.require_editable()?;
+        let state = self.history.current().clone();
+        let mut trial = Workbook {
+            history: SnapshotHistory::new(state.clone(), 0),
+            snapshots: Default::default(),
+            next_revision: 1,
+            external_source: self.external_source.take(),
+            external_baseline: self.external_baseline.take(),
+            external_format: self.external_format.take(),
+            external_cache: std::mem::take(&mut self.external_cache),
+        };
+        let result = edit(&mut trial);
+        self.external_source = trial.external_source.take();
+        self.external_baseline = trial.external_baseline.take();
+        self.external_format = trial.external_format.take();
+        self.external_cache = std::mem::take(&mut trial.external_cache);
+        let result = result?;
+        if trial.history.current() != &state {
+            self.history.apply(trial.history.current().clone());
+        }
+        Ok(result)
+    }
+    /// Read another sheet without making it the active one (the active sheet is part of the document and its
+    /// history). `read` sees a workbook whose active sheet is `id`.
+    pub fn with_sheet<T>(&self, id: SheetId, read: impl FnOnce(&Workbook) -> T) -> Result<T, Error> {
+        if id == self.active_sheet() {
+            return Ok(read(self));
+        }
+        let mut state = self.history.current().clone();
+        if !state.sheets.iter().any(|s| s.id == id) {
+            return Err(Error::Bounds);
+        }
+        state.active = id;
+        let view = Workbook {
+            history: SnapshotHistory::new(state, 0),
+            snapshots: Default::default(),
+            next_revision: 1,
+            external_source: self.external_source.clone(),
+            external_baseline: self.external_baseline.clone(),
+            external_format: self.external_format.clone(),
+            external_cache: self.external_cache.clone(),
+        };
+        Ok(read(&view))
+    }
+    /// How many Undo steps are kept (8 by default).
+    pub fn set_history_limit(&mut self, limit: usize) {
+        self.history.set_limit(limit);
+    }
+    /// Mark the current state as saved (hosts that publish bytes themselves, such as a browser download).
+    pub fn mark_saved(&mut self) {
+        self.history.mark_saved();
     }
     pub fn merges(&self) -> &[Range] {
         &self.history.current().sheet().merges

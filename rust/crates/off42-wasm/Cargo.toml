@@ -13,6 +13,7 @@ crate-type = ["rlib"]
 [dependencies]
 doc42-core = { path = "../doc42-core" }
 xls42-core = { path = "../xls42-core" }
+edit42 = { path = "../edit42" }
 ppt42-core = { path = "../ppt42-core" }
 pdf42-core = { path = "../pdf42-core" }
 label42 = { path = "../label42" }

@@ -126,6 +126,39 @@ paints them.
 - Dark mode follows the system app mode (`theme.rs`): chrome, menu bar (drawn through `WM_UAHDRAWMENU*`), strip and
   panels turn dark; pages, slides and the DOC42 editor stay white.
 
+## Web editing (`web/`, `crates/edit42`)
+
+The web editors (stage 2) follow the approved Document and Spreadsheet mockups and share one contract with the
+assistant planned in ARCHITECTURE.md D13.
+
+- **Commands, not DOM edits.** Every change is an `edit42` command (JSON) applied to the open file's edit session in
+  the engine; the page is redrawn from the session's snapshot. The document page is `contenteditable` only to get a
+  caret, selection, IME and spelling: every `beforeinput` is cancelled and turned into a command (composition text is
+  committed when it ends). One user action — a keystroke group, a toolbar click, a paste — is one request and one
+  Undo step; a failing request changes nothing and its reason goes to the snackbar. Positions are paragraph id +
+  character offset; cells and ranges are A1 references with a sheet index.
+- **Home**: Blank document / Blank spreadsheet is the first tile (a white page with a plus in the app accent, label
+  under it), then Open from device. File ▸ New … is the first File item.
+- **Title row**: after the first edit, "· Edited" (text colour) until the content is downloaded, then "· Saved"
+  (muted). Download returns the file as opened until it is edited, then saves the edited content in its format.
+  Closing, replacing or leaving a file with changes that were not downloaded asks first ("Close without saving").
+- **Document toolbar**, in this order, only working controls: Undo, Redo, Print | zoom | paragraph style (150 px
+  dropdown: Normal text, Heading 1–3) | Bold, Italic, Underline | align left, centre, right | bulleted, numbered list
+  | word count (opens Document statistics). Toggles show `aria-pressed` with the pressed tint and do not take focus
+  from the page; Undo/Redo are disabled when there is nothing to undo or redo.
+- **Spreadsheet toolbar**: Undo, Redo, Print | zoom | currency symbol of the interface language, %, .0, .00, 123 ▾
+  number formats | Bold, Italic | insert row above, delete rows, insert column left, delete columns | sort A→Z,
+  Z→A. The formula bar shows and edits the active cell's input (monospace, focus ring inside the bar); the cell editor
+  is an input inside the cell with the 2 px selection outline.
+- **Menus**: Documents — File, Edit (Undo, Redo, Cut, Copy, Paste, Select all), View, Insert (today's date, lists),
+  Format (styles, B/I/U, alignment, lists), Help. Spreadsheets — File, Edit (Undo, Redo, Cut, Copy, Paste, Delete
+  contents, Delete rows, Delete columns), View, Insert (rows above/below, columns left/right), Format (number formats,
+  decimals, bold, italic), Data (sort), Sheet, Help. Read-only workbooks (XLS) have no Edit/Insert/Format/Data menus
+  and no editing tools; documents with tracked changes show the sandboxed HTML preview with a *View only* badge.
+- **Page**: the document page is A4 (794 px wide, at least 1123 px high), 96/84 px margins, Arial 12 pt with
+  headings 20/16/13 pt bold; it stays white in the dark theme. Tables, pictures and section breaks are drawn but not
+  editable (`contenteditable=false`); links are shown underlined and never followed.
+
 ## Linux window (`crates/egui42`)
 
 The egui host follows the web app's approved layout so the web, Windows and Linux apps look alike. One host draws all

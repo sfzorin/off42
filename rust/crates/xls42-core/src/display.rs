@@ -381,10 +381,72 @@ pub(super) struct NumberPattern {
     pub grouping: bool,
     pub percent: bool,
     pub exponent: Option<Exponent>,
+    pub currency: Option<Currency>,
+}
+
+/// Currency symbols a number format may carry before or after the number, as a quoted literal (`"€"#,##0.00`,
+/// `#,##0.00 "₽"`) or, for the dollar, also bare (`$#,##0.00`).
+pub(super) const CURRENCY_SYMBOLS: [&str; 26] = [
+    "$", "€", "£", "¥", "₽", "₹", "₩", "₺", "₫", "฿", "₱", "₴", "₪", "zł", "Ft", "R$", "RM", "Rp", "Kč", "kr", "CHF",
+    "NT$", "HK$", "A$", "C$", "lei",
+];
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(super) struct Currency {
+    /// Index into [`CURRENCY_SYMBOLS`].
+    pub symbol: u8,
+    pub prefix: bool,
+    pub space: bool,
+}
+
+impl Currency {
+    pub fn symbol(self) -> &'static str {
+        CURRENCY_SYMBOLS[self.symbol as usize]
+    }
+    pub fn find(symbol: &str) -> Option<u8> {
+        CURRENCY_SYMBOLS.iter().position(|s| *s == symbol).map(|i| i as u8)
+    }
+    /// Splits a currency literal off the start or end of a format code: `(code without it, currency)`.
+    /// A space between symbol and number may be written plain or escaped (`\ `).
+    fn split(code: &str) -> Option<(&str, Option<Self>)> {
+        let literal = |text: &str| -> Option<(u8, usize)> {
+            if let Some(rest) = text.strip_prefix('"') {
+                let end = rest.find('"')?;
+                Some((Self::find(&rest[..end])?, end + 2))
+            } else if text.starts_with('$') {
+                Some((0, 1))
+            } else {
+                None
+            }
+        };
+        if let Some((symbol, used)) = literal(code) {
+            let rest = &code[used..];
+            let (rest, space) = match rest.strip_prefix("\\ ").or_else(|| rest.strip_prefix(' ')) {
+                Some(r) => (r, true),
+                None => (rest, false),
+            };
+            return Some((rest, Some(Self { symbol, prefix: true, space })));
+        }
+        if code.ends_with('"') || code.ends_with('$') {
+            let open = if code.ends_with('"') { code[..code.len() - 1].rfind('"')? } else { code.len() - 1 };
+            let (symbol, used) = literal(&code[open..])?;
+            if open + used != code.len() {
+                return None;
+            }
+            let rest = &code[..open];
+            let (rest, space) = match rest.strip_suffix("\\ ").or_else(|| rest.strip_suffix(' ')) {
+                Some(r) => (r, true),
+                None => (rest, false),
+            };
+            return Some((rest, Some(Self { symbol, prefix: false, space })));
+        }
+        Some((code, None))
+    }
 }
 
 impl NumberPattern {
     pub fn parse(code: &str) -> Option<Self> {
+        let (code, currency) = Currency::split(code)?;
         let (pattern, percent) = code.strip_suffix('%').map_or((code, false), |p| (p, true));
         let (pattern, exponent) = match pattern.split_once(['E', 'e']) {
             Some((mantissa, suffix)) => {
@@ -421,6 +483,7 @@ impl NumberPattern {
             grouping,
             percent,
             exponent,
+            currency,
         };
         parsed.is_valid().then_some(parsed)
     }
@@ -435,6 +498,8 @@ impl NumberPattern {
                     && !self.percent
                     && (1..=12).contains(&exp.digits)
             })
+            && (self.currency.is_none() || (!self.percent && self.exponent.is_none()))
+            && self.currency.is_none_or(|c| (c.symbol as usize) < CURRENCY_SYMBOLS.len())
     }
 
     pub fn code(self) -> String {
@@ -456,7 +521,11 @@ impl NumberPattern {
         if self.percent {
             code.push('%');
         }
-        code
+        match self.currency {
+            Some(c) if c.prefix => format!("\"{}\"{}{code}", c.symbol(), if c.space { " " } else { "" }),
+            Some(c) => format!("{code}{}\"{}\"", if c.space { " " } else { "" }, c.symbol()),
+            None => code,
+        }
     }
 
     pub fn render(self, value: f64) -> String {
@@ -508,7 +577,17 @@ impl NumberPattern {
             ""
         };
         let point = if fraction.is_empty() { "" } else { "." };
-        format!("{sign}{whole}{point}{fraction}{suffix}")
+        match self.currency {
+            Some(c) if c.prefix => {
+                let gap = if c.space { " " } else { "" };
+                format!("{sign}{}{gap}{whole}{point}{fraction}{suffix}", c.symbol())
+            }
+            Some(c) => {
+                let gap = if c.space { " " } else { "" };
+                format!("{sign}{whole}{point}{fraction}{suffix}{gap}{}", c.symbol())
+            }
+            None => format!("{sign}{whole}{point}{fraction}{suffix}"),
+        }
     }
 }
 
